@@ -3,6 +3,9 @@
   import PhraseDisplay from '../components/PhraseDisplay.svelte';
   import { gameStore, actions } from '../stores/gameStore';
   import { get } from 'svelte/store';
+  console.log("Current Phrase:", get(gameStore).currentPhrase);
+  console.log("Correct Positions:", get(gameStore).correctPositions);
+
 
 $: console.log("Pending Purchase:", get(gameStore).pendingPurchase);
 

@@ -19,17 +19,12 @@
           {$gameStore.currentPhrase[index]} <!-- ✅ Reveal entire phrase on loss -->
         {:else if $gameStore.correctPositions[index]}
           {$gameStore.correctPositions[index]} <!-- ✅ Persist correct letters -->
+        {:else if $gameStore.currentInput[index]}
+          {$gameStore.currentInput[index]} <!-- ✅ Always show typed letters -->
         {:else if $gameStore.isGuessMode && index === $gameStore.activeBoxIndex}
-    -->
-    {:else if $gameStore.isGuessMode}
-    {#if $gameStore.activeBoxIndex === index}
-      <span class="guess-cursor"></span> <!-- ✅ Empty span to avoid rendering unintended characters -->
-    {:else if $gameStore.currentInput[index]}
-      {$gameStore.currentInput[index]} <!-- ✅ Shows correct letter -->
-    {:else}
-      _ <!-- ✅ Placeholder when not in Guess Mode -->
-    {/if}
-            {:else}
+          <!-- ✅ Fix: Ensure the last letter is always visible -->
+          _
+        {:else}
           _ <!-- ✅ Placeholder when not in Guess Mode -->
         {/if}
       </div>
@@ -37,30 +32,17 @@
       <div class="phrase-space">&nbsp;</div>
     {/if}
   {/each}
-  </div>
+</div>
 
-<!-- ✅ Styles -->
+<!-- ✅ Styling Fixes -->
 <style>
-    .phrase-display-wrapper {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin-bottom: 20px;
-    }
-  
-    .category {
-        font-size: 18px;
-        font-weight: bold;
-        margin-bottom: 10px;
-    }
-  
     .phrase-display {
         display: flex;
         gap: 5px;
         flex-wrap: wrap;
         justify-content: center;
     }
-  
+
     .phrase-box {
         width: 40px;
         height: 40px;
@@ -74,37 +56,29 @@
         color: #333;
         transition: all 0.2s ease;
     }
-  
+
     /* ✅ Active Guess Mode Box (Orange) */
     .phrase-box.active {
         border-color: orange;
         box-shadow: 0 0 10px orange;
+        color: inherit; /* ✅ Keeps the letter visible even inside the active box */
     }
-  
-    /* ✅ Fix floating arrow issue by using an empty span */
-    .guess-cursor {
-        display: inline-block;
-        width: 1ch;
-        height: 1.2em;
-        border-bottom: 2px solid orange;
-    }
-  
+
     /* ✅ Reveals Full Phrase on Loss */
     .phrase-box.loss {
         background-color: red;
         color: white;
         border-color: darkred;
     }
-  
+
     /* ✅ Highlights Phrase on Win */
     .phrase-box.win {
         background-color: green;
         color: white;
         border-color: darkgreen;
     }
-  
+
     .phrase-space {
         width: 20px;
     }
-  </style>
-  
+</style>

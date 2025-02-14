@@ -21,11 +21,13 @@ const initialState = {
   winState: false,
   lossState: false,
   pendingPurchase: null,
-  currentInput: ""
+  currentInput: "hello world".split('').map(c => c === ' ' ? ' ' : '_').join('')  // ✅ Ensure spaces are pre-filled
 };
 
 // ✅ Auto-fill spaces as correct
-initialState.correctPositions = initialState.currentPhrase.split('').map(char => (char === ' ' ? char : null));
+initialState.correctPositions = initialState.currentPhrase.split('').map(char => 
+  char === ' ' ? ' ' : null
+);
 
 // ✅ Create Writable Store with Initial State
 export const gameStore = writable({ ...initialState });
@@ -35,114 +37,142 @@ export const actions = {
   // ✅ Toggles Guess Mode
   toggleGuessMode() {
     gameStore.update(state => {
-      if (state.guesses === 0) {
-        alert('You need at least one guess remaining to enter Guess Mode!');
-        return state;
-      }
-  
-      const phraseArray = state.currentPhrase.split('');
-  
-      // ✅ Find the first empty space (not a space character)
-      let firstEmptyIndex = phraseArray.findIndex((char, i) => !state.correctPositions[i] && char !== ' ');
-  
-      return {
-        ...state,
-        isGuessMode: !state.isGuessMode,
-        activeBoxIndex: state.isGuessMode ? null : firstEmptyIndex,
-        currentInput: state.isGuessMode ? state.correctPositions.join('') : state.currentInput,
-        pendingPurchase: null // ✅ Clears any pending purchase when toggling
-      };
+        if (state.guesses === 0) {
+            alert('You need at least one guess remaining to enter Guess Mode!');
+            return state;
+        }
+
+        const phraseArray = state.currentPhrase.split('');
+
+        // ✅ Find the FIRST EMPTY SPACE (that isn't a space and hasn't been revealed)
+        let firstEmptyIndex = phraseArray.findIndex((char, i) => 
+            state.correctPositions[i] === null && char !== ' '
+        );
+
+        console.log("🔍 First Empty Index Found:", firstEmptyIndex);
+
+        // ✅ Toggle Guess Mode
+        const newIsGuessMode = !state.isGuessMode;
+
+        return {
+            ...state,
+            isGuessMode: newIsGuessMode,
+            activeBoxIndex: newIsGuessMode ? firstEmptyIndex : null,  // ✅ Set to first empty box when entering
+            currentInput: newIsGuessMode ? state.currentInput : state.correctPositions.join(''), // ✅ Maintain input when leaving
+            pendingPurchase: null  // ✅ Clears pending purchase when toggling
+        };
     });
-  },
-      
+},
 toggleGuessModeAndClearPurchase() {
   gameStore.update(state => {
-    if (state.pendingPurchase) {
-      console.log("🟡 Pending purchase detected. Clearing and entering Guess Mode...");
+      // ✅ If something is selected for purchase, clear it before entering Guess Mode
+      if (state.pendingPurchase) {
+          console.log("🟡 Clearing purchase and entering Guess Mode...");
+          return {
+              ...state,
+              isGuessMode: true,
+              activeBoxIndex: state.correctPositions.indexOf(null), // ✅ Find first empty box
+              currentInput: '',
+              pendingPurchase: null
+          };
+      }
+
+      // ✅ Just toggle Guess Mode if nothing was selected
+      console.log("🔹 Toggling Guess Mode...");
       return {
-        ...state,
-        isGuessMode: true,
-        activeBoxIndex: 0,
-        currentInput: '',  // ✅ Clear any typed letters
-        pendingPurchase: null, // ✅ Remove pending purchase selection
+          ...state,
+          isGuessMode: !state.isGuessMode,
+          activeBoxIndex: state.isGuessMode ? null : state.correctPositions.indexOf(null),
+          currentInput: state.isGuessMode ? '' : state.currentInput,
+          pendingPurchase: null
       };
-    } else {
-      console.log("🔹 No pending purchase. Just toggling Guess Mode...");
-      return {
-        ...state,
-        isGuessMode: !state.isGuessMode,
-        activeBoxIndex: state.isGuessMode ? null : 0,
-        currentInput: state.isGuessMode ? '' : state.currentInput, // ✅ Reset input if leaving Guess Mode
-        pendingPurchase: null, // ✅ Double-check that nothing is selected
-      };
-    }
   });
 
-  // ✅ Ensure UI is fully reset (fix lingering blue selection)
+  // ✅ Ensure UI is reset
   setTimeout(() => {
-    document.activeElement?.blur();  
+      document.activeElement?.blur();
   }, 50);
 },
 
 
   // ✅ Handles Letter Purchase Selection
   selectLetterForPurchase(letter) {
-    console.log("🟣 selectLetterForPurchase called with:", letter);
-  
     gameStore.update(state => {
-      console.log("🔵 Before Update:", state.pendingPurchase);
-      if (state.purchasedLetters.includes(letter) || state.correctPositions.includes(letter)) return state;
-  
-      const newState = {
-        ...state,
-        pendingPurchase: state.pendingPurchase?.letter === letter ? null : { letter, cost: letterCosts[letter] }
-      };
-  
-      console.log("🔵 After Update:", newState.pendingPurchase);
-      return newState;
+        console.log("🟣 selectLetterForPurchase called with:", letter);
+
+        // ✅ If Guess Mode is active, disable it when selecting a letter
+        if (state.isGuessMode) {
+            console.log("🔹 Exiting Guess Mode for Purchase");
+            return {
+                ...state,
+                isGuessMode: false,
+                activeBoxIndex: null,
+                pendingPurchase: { letter, cost: letterCosts[letter] }
+            };
+        }
+
+        // ✅ If the letter is already selected, deselect it
+        if (state.pendingPurchase?.letter === letter) {
+            console.log("🔹 Deselecting Letter:", letter);
+            return {
+                ...state,
+                pendingPurchase: null
+            };
+        }
+
+        // ✅ Otherwise, select the letter for purchase
+        console.log("🔹 Selecting Letter:", letter);
+        return {
+            ...state,
+            pendingPurchase: { letter, cost: letterCosts[letter] }
+        };
     });
-  },
+},
   
   // ✅ Handles Guess Mode Input
   fillActiveBox(letter) {
     gameStore.update(state => {
-      if (!state.isGuessMode || state.activeBoxIndex === null) return state;
-  
-      const phraseArray = state.currentPhrase.split('');
-      let inputArray = state.currentInput.split('') || Array(phraseArray.length).fill('_');
-  
-      let currentIndex = state.activeBoxIndex;
-  
-      // ✅ SKIP spaces when entering letters
-// ✅ Ensure currentIndex is NOT a space before inserting a letter
-if (phraseArray[currentIndex] !== ' ') {
-  inputArray[currentIndex] = letter;
-}
+        if (!state.isGuessMode || state.activeBoxIndex === null) return state;
 
-// ✅ Find next valid box (SKIP spaces & pre-filled letters)
-let nextIndex = currentIndex + 1;
-while (nextIndex < phraseArray.length && (phraseArray[nextIndex] === ' ' || state.correctPositions[nextIndex])) {
-  nextIndex++;  // ✅ Correct! Just update `nextIndex`
-}
+        const phraseArray = state.currentPhrase.split('');
+        let inputArray = state.currentInput.split('');
 
-return {
-  ...state,
-  currentInput: inputArray.join(''),
-  activeBoxIndex: nextIndex < phraseArray.length ? nextIndex : null
-};
-  
-      // ✅ PLACE the letter in the correct position
-      if (currentIndex < phraseArray.length) {
+        let currentIndex = state.activeBoxIndex;
+
+        console.log("🔹 Current Phrase:", phraseArray.join(''));
+        console.log("🔹 Current Input Before:", inputArray.join(''));
+        console.log("🔹 Active Box Index Before:", currentIndex);
+
+        // ✅ Ensure we are inserting in a valid spot (not a space)
+        while (phraseArray[currentIndex] === ' ') {
+            console.warn("🚨 Skipping Space at index:", currentIndex);
+            currentIndex++; // Move past spaces
+        }
+
+        // ✅ Insert Letter at Correct Position
         inputArray[currentIndex] = letter;
-      }
-    
-      return {
-        ...state,
-        currentInput: inputArray.join(''),
-        activeBoxIndex: nextIndex < phraseArray.length ? nextIndex : null
-      };
+        console.log(`✅ Inserted Letter "${letter}" at index ${currentIndex}`);
+
+        // ✅ Find the Next Available Letter Slot
+        let nextIndex = currentIndex + 1;
+        while (nextIndex < phraseArray.length && (phraseArray[nextIndex] === ' ' || state.correctPositions[nextIndex])) {
+            nextIndex++; // Skip spaces and already revealed letters
+        }
+
+        // ✅ If this is the last letter, keep the orange box here
+        if (nextIndex >= phraseArray.length) {
+            nextIndex = currentIndex; // Stay at the last valid letter
+        }
+
+        console.log("🔹 Next Active Box Index:", nextIndex);
+
+        return {
+            ...state,
+            currentInput: inputArray.join(''),
+            activeBoxIndex: nextIndex, // Stay on the last letter instead of moving
+        };
     });
-  },
+},
             
   // ✅ Handles Guess Submission
   submitGuess() {
@@ -298,27 +328,33 @@ resetSelection() {
 },
 
 
-  deleteActiveBox() {
-    gameStore.update(state => {
-        if (!state.isGuessMode || state.activeBoxIndex === null) return state;
+deleteActiveBox() {
+  gameStore.update(state => {
+      if (!state.isGuessMode || state.activeBoxIndex === null) return state;
 
-        let inputArray = state.currentInput.split('');
+      let inputArray = state.currentInput.split('');
 
-        // ✅ Remove letter at active index
-        inputArray[state.activeBoxIndex] = '_';
+      // ✅ Ensure we are at a valid position before deleting
+      let currentIndex = state.activeBoxIndex;
 
-        // ✅ Move back to the previous empty space
-        let prevIndex = state.activeBoxIndex - 1;
-        while (prevIndex >= 0 && state.correctPositions[prevIndex]) {
-            prevIndex--;
-        }
+      // ✅ Skip spaces when moving back
+      let prevIndex = currentIndex - 1;
+      while (prevIndex >= 0 && (state.correctPositions[prevIndex] || state.currentPhrase[prevIndex] === ' ')) {
+          prevIndex--;
+      }
 
-        return {
-            ...state,
-            currentInput: inputArray.join(''),
-            activeBoxIndex: prevIndex >= 0 ? prevIndex : null
-        };
-    });
+      // ✅ Remove letter at current position
+      inputArray[currentIndex] = '_';
+
+      // ✅ Ensure active box stays on first letter if phrase is empty
+      let newActiveIndex = prevIndex >= 0 ? prevIndex : currentIndex;
+
+      return {
+          ...state,
+          currentInput: inputArray.join(''),
+          activeBoxIndex: newActiveIndex
+      };
+  });
 },
 
 

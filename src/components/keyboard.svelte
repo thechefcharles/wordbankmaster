@@ -2,85 +2,98 @@
   import { gameStore, actions, letterCosts } from '../stores/gameStore';
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  
-
 
   let row1 = ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'];
   let row2 = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'];
   let row3 = ['z', 'x', 'c', 'v', 'b', 'n', 'm'];
 
-  function blurOnFocus(event) {
-    event.target.blur();  // ✅ Ensures buttons don't stay selected
-}
-
-
-function handleKeyPress(key) {
-  console.log("🟡 handleKeyPress called with:", key);
-  console.log("🟠 Calling selectLetterForPurchase with:", key);
-actions.selectLetterForPurchase(key);
-
-  gameStore.update(state => {
-    if (!state.isGuessMode || state.activeBoxIndex === null) return state;
-
-    const phraseArray = state.currentPhrase.split('');
-    let inputArray = state.currentInput.split('') || Array(phraseArray.length).fill('_');
-
-    let currentIndex = state.activeBoxIndex;
-
-    // ✅ Ensure we skip spaces **before placing** a letter
-    while (currentIndex < phraseArray.length && phraseArray[currentIndex] === ' ') {
-      currentIndex++; // Move past spaces
-    }
-
-    // ✅ Only place the letter if we are in a valid spot
-    if (currentIndex < phraseArray.length) {
-      inputArray[currentIndex] = key;
-    }
-
-    // ✅ MOVE to next available letter box (skip spaces & filled letters)
-    currentIndex++; 
-    while (currentIndex < phraseArray.length && (phraseArray[currentIndex] === ' ' || state.correctPositions[currentIndex])) {
-      currentIndex++;
-    }
-
-    return {
-      ...state,
-      currentInput: inputArray.join(''),
-      activeBoxIndex: currentIndex < phraseArray.length ? currentIndex : null
-    };
-  });
-}
-
-function handleKeyDown(event) {
-  console.log("🔹 Key Pressed:", event.key);
-
-  const key = event.key.toLowerCase();
-  
-
-  if (key === ' ') {  
-    event.preventDefault(); // ✅ Prevent scrolling
-    console.log("🔹 Spacebar Pressed! Entering Guess Mode...");
-    
-    // ✅ Toggle Guess Mode FIRST before other actions
-    actions.toggleGuessModeAndClearPurchase();
-
-    // ✅ Remove focus from selected buttons (fix lingering blue outline)
-    setTimeout(() => {
-      document.activeElement?.blur();
-    }, 50);
-    return;
+  function blurElement(event) {
+      event.target.blur(); // ✅ Prevents lingering focus
   }
 
-  if (key === 'enter') {
-    confirmAction(event);
+  function handleKeyPress(key) {
+    gameStore.update(state => {
+        if (!state.isGuessMode || state.activeBoxIndex === null) return state;
+
+        const phraseArray = state.currentPhrase.split('');
+        let inputArray = state.currentInput.split('');
+
+        let currentIndex = state.activeBoxIndex;
+
+        let updatedState = { 
+            ...state, 
+            pendingPurchase: null  
+        };
+
+        while (currentIndex < phraseArray.length && phraseArray[currentIndex] === ' ') {
+            currentIndex++;
+        }
+
+        if (currentIndex < phraseArray.length) {
+            inputArray[currentIndex] = key;
+        }
+
+        let nextIndex = currentIndex + 1;
+        while (nextIndex < phraseArray.length && (phraseArray[nextIndex] === ' ' || state.correctPositions[nextIndex])) {
+            nextIndex++;
+        }
+
+        updatedState = {
+            ...updatedState,
+            currentInput: inputArray.join(''),
+            activeBoxIndex: nextIndex < phraseArray.length ? nextIndex : currentIndex 
+        };
+
+        return updatedState;
+    });
+
     setTimeout(() => {
-      actions.resetSelection(); 
+        document.activeElement?.blur(); 
     }, 50);
-  } else if (key === 'backspace' || key === 'delete') {
-    actions.deleteActiveBox();
-  } else if (/^[a-z]$/.test(key)) {
-    handleKeyPress(key);
-  }
+}
+
+  function handleKeyDown(event) {
+    console.log("🔹 Key Pressed:", event.key);
+    const key = event.key.toLowerCase();
+
+    const storeValue = get(gameStore);
+
+    if (key === ' ') {  
+        event.preventDefault();
+        console.log("🔹 Spacebar Pressed! Entering Guess Mode...");
+        actions.toggleGuessModeAndClearPurchase();
+        return;
+    }
+
+    if (key === 'enter') {
+        console.log("🔹 Enter Key Pressed!");
+
+        if (storeValue.pendingPurchase) {
+            console.log("🟢 Confirming Purchase...");
+            actions.confirmPurchase();
+        } else if (storeValue.isGuessMode) {
+            console.log("🟢 Submitting Guess...");
+            actions.submitGuess();
+        }
+
+        return;
+    }
+
+    if (key === 'backspace' || key === 'delete') {
+        console.log("🔹 Backspace/Delete Pressed!");
+        actions.deleteActiveBox();
+        return;
+    }
+
+    if (/^[a-z]$/.test(key)) {
+        if (storeValue.isGuessMode) {
+            console.log("🟢 Guess Mode Active - Filling Active Box");
+            actions.fillActiveBox(key);
+        } else {
+            console.log("🟡 Selecting Letter for Purchase:", key);
+            actions.selectLetterForPurchase(key);
+        }
+    }
 }
 
   function toggleGuessMode() {
@@ -88,43 +101,41 @@ function handleKeyDown(event) {
   }
 
   function confirmAction(event) {
-  console.log("🔹 confirmAction() triggered!");
-  const storeValue = get(gameStore);
-  console.log("🟡 Current Pending Purchase:", storeValue.pendingPurchase);
+    console.log("🔹 confirmAction() triggered!");
+    const storeValue = get(gameStore);
+    console.log("🟡 Current Pending Purchase:", storeValue.pendingPurchase);
 
-  if (get(gameStore).pendingPurchase?.letter) {
-    console.log("🟢 Confirming Letter Purchase...");
-    actions.confirmPurchase();
-  } else if (get(gameStore).pendingPurchase?.type === "guess") {
-    console.log("🟢 Confirming Guess Purchase...");
-    actions.confirmPurchase();
-  } else if (get(gameStore).pendingPurchase?.type === "hint") {
-    console.log("🟢 Confirming Hint Purchase...");
-    actions.confirmPurchase();
-  } else if (get(gameStore).isGuessMode) {
-    console.log("🟢 Submitting Guess...");
-    actions.submitGuess();
+    if (storeValue.pendingPurchase?.letter) {
+      console.log("🟢 Confirming Letter Purchase...");
+      actions.confirmPurchase();
+    } else if (storeValue.pendingPurchase?.type === "guess") {
+      console.log("🟢 Confirming Guess Purchase...");
+      actions.confirmPurchase();
+    } else if (storeValue.pendingPurchase?.type === "hint") {
+      console.log("🟢 Confirming Hint Purchase...");
+      actions.confirmPurchase();
+    } else if (storeValue.isGuessMode) {
+      console.log("🟢 Submitting Guess...");
+      actions.submitGuess();
+    }
+
+    if (event && event.target) {
+      blurElement(event);
+    }
+
+    setTimeout(() => {
+      actions.resetSelection();
+    }, 50);
   }
 
-  if (event && event.target) {
-    event.target.blur();
-  }
-
-  setTimeout(() => {
-    actions.resetSelection();
-  }, 50);
-}
-
-// ✅ Remove duplicate unnecessary blurOnFocus code
-
-function selectHint() {
+  function selectHint() {
     console.log("🟡 Hint Selected (Pending Purchase)");
-    actions.selectPurchase("hint"); // ✅ Marks the hint for purchase but does not buy it immediately
-}
+    actions.selectPurchase("hint");
+  }
 
   function selectGuess() {
     actions.selectPurchase('guess');
-}
+  }
 
   onMount(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -132,10 +143,7 @@ function selectHint() {
   });
 </script>
 
-<!-- ✅ Display Bankroll -->
-<div class="game-info">
-  <h2>Bankroll: {$gameStore.bankroll}</h2>
-</div>
+
 
 <!-- ✅ Display Keyboard with Letter Costs -->
 <div class="keyboard">
@@ -143,15 +151,25 @@ function selectHint() {
     <div class="key-row">
       {#each row as key}
       <button 
-      on:click={() => actions.selectLetterForPurchase(key)}
+      on:click={() => {
+          gameStore.update(state => ({
+              ...state,
+              pendingPurchase: { letter: key, cost: letterCosts[key] }, 
+              isGuessMode: false, 
+              activeBoxIndex: null, 
+          }));
+
+          setTimeout(() => {
+              document.activeElement?.blur();
+          }, 50);
+      }} 
+      on:focus={blurElement}  
       class:selected={$gameStore.pendingPurchase?.letter === key}
-      class:purchased={$gameStore.purchasedLetters.includes(key)} 
-      class:incorrect={$gameStore.guessedLetters.includes(key)} 
-    >
+  >
       <span class="letter">{key.toUpperCase()}</span>
       <span class="cost">${letterCosts[key]}</span>
-    </button>
-          {/each}
+  </button>
+                  {/each}
     </div>
   {/each}
 
@@ -159,28 +177,31 @@ function selectHint() {
     {$gameStore.isGuessMode ? 'Exit Guess Mode' : 'Enter Guess Mode'}
   </button>
 
-<!-- ✅ Fix: Auto-removes focus on click to prevent lingering blue border -->
 <button 
   on:click={confirmAction} 
-  on:focus={(event) => event.target.blur()}  
+  on:focus={blurElement}  
   class:confirm={$gameStore.pendingPurchase || ($gameStore.isGuessMode && !$gameStore.currentInput.includes('_'))}
 >
   Enter
 </button>
 
-  <button 
+<!-- ✅ Hint Button -->
+<button 
     on:click={selectHint} 
+    on:focus={blurElement}  
     class:selected={$gameStore.pendingPurchase?.type === 'hint'}
-  >
+>
     Buy Hint (-$150)
-  </button>
+</button>
 
-  <button 
+<!-- ✅ Purchase Extra Guess Button -->
+<button 
     on:click={selectGuess} 
+    on:focus={blurElement}  
     class:selected={$gameStore.pendingPurchase?.type === 'guess'}
-  >
+>
     Buy Extra Guess (-$100)
-  </button>
+</button>
 </div>
 
 <!-- ✅ Styling -->
