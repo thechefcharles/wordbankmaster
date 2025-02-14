@@ -14,8 +14,10 @@ $: console.log("Pending Purchase:", get(gameStore).pendingPurchase);
 <main>
   <h1>WordBankMaster</h1>
 
-  <!-- ✅ Display Bankroll -->
-  <p class="bankroll">Bankroll: <strong>{$gameStore.bankroll}</strong></p>
+<!-- ✅ Display Bankroll as Whole Dollars -->
+<p class="bankroll">Bankroll: <strong>
+  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format($gameStore.bankroll)}
+</strong></p>
 
   <!-- ✅ Display Phrase -->
   <PhraseDisplay />
@@ -36,6 +38,14 @@ $: console.log("Pending Purchase:", get(gameStore).pendingPurchase);
   {#if !$gameStore.winState && !$gameStore.lossState}
     <Keyboard />
   {/if}
+  {#if $gameStore.lossState}
+  <div class="game-over-banner">
+    <h2>Game Over</h2>
+    <p>You're out of guesses and don't have enough bankroll to continue!</p>
+    <button on:click={restartGame}>Try Again</button>
+  </div>
+{/if}
+
 </main>
 
 <!-- ✅ Styles -->
@@ -82,4 +92,33 @@ $: console.log("Pending Purchase:", get(gameStore).pendingPurchase);
   .reset-btn:hover {
     background-color: navy;
   }
+
+  .game-over-banner {
+    position: fixed;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: red;
+    color: white;
+    padding: 20px;
+    text-align: center;
+    border-radius: 10px;
+}
+
+.game-over-banner button {
+    background: white;
+    color: red;
+    border: none;
+    padding: 10px 15px;
+    font-size: 18px;
+    cursor: pointer;
+    margin-top: 10px;
+    border-radius: 5px;
+}
+
+.game-over-banner button:hover {
+    background: darkred;
+    color: white;
+}
+
 </style>

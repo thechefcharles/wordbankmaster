@@ -17,7 +17,6 @@
 
         const phraseArray = state.currentPhrase.split('');
         let inputArray = state.currentInput.split('');
-
         let currentIndex = state.activeBoxIndex;
 
         let updatedState = { 
@@ -143,76 +142,63 @@
   });
 </script>
 
-
-
 <!-- ✅ Display Keyboard with Letter Costs -->
 <div class="keyboard">
   {#each [row1, row2, row3] as row}
     <div class="key-row">
       {#each row as key}
-      <button 
-      on:click={() => {
-          gameStore.update(state => ({
-              ...state,
-              pendingPurchase: { letter: key, cost: letterCosts[key] }, 
-              isGuessMode: false, 
-              activeBoxIndex: null, 
-          }));
-
-          setTimeout(() => {
-              document.activeElement?.blur();
-          }, 50);
-      }} 
-      on:focus={blurElement}  
-      class:selected={$gameStore.pendingPurchase?.letter === key}
-  >
-      <span class="letter">{key.toUpperCase()}</span>
-      <span class="cost">${letterCosts[key]}</span>
-  </button>
-                  {/each}
+        <button 
+          on:click={() => actions.selectLetterForPurchase(key)}
+          on:focus={blurElement}
+          class:selected={$gameStore.pendingPurchase?.letter === key}
+          class:correct={$gameStore.purchasedLetters.includes(key) && $gameStore.correctPositions.includes(key)}
+          class:incorrect={$gameStore.purchasedLetters.includes(key) && !$gameStore.correctPositions.includes(key)}
+                  >
+          <span class="letter">{key.toUpperCase()}</span>
+          <span class="cost">${letterCosts[key]}</span>
+        </button>
+      {/each}
     </div>
   {/each}
 
-  <button on:click={toggleGuessMode} class="toggle-guess">
-    {$gameStore.isGuessMode ? 'Exit Guess Mode' : 'Enter Guess Mode'}
-  </button>
+  <button 
+  on:click={toggleGuessMode} 
+  class="toggle-guess"
+  class:active={$gameStore.isGuessMode} 
+>
+  {$gameStore.isGuessMode ? 'Exit Guess Mode' : 'Enter Guess Mode'}
+</button>
 
-<button 
+  <button 
   on:click={confirmAction} 
   on:focus={blurElement}  
   class:confirm={$gameStore.pendingPurchase || ($gameStore.isGuessMode && !$gameStore.currentInput.includes('_'))}
+  class:active={$gameStore.pendingPurchase}  
 >
   Enter
 </button>
 
-<!-- ✅ Hint Button -->
-<button 
-    on:click={selectHint} 
-    on:focus={blurElement}  
-    class:selected={$gameStore.pendingPurchase?.type === 'hint'}
->
-    Buy Hint (-$150)
-</button>
+  <!-- ✅ Hint Button -->
+  <button 
+      on:click={selectHint} 
+      on:focus={blurElement}  
+      class:selected={$gameStore.pendingPurchase?.type === 'hint'}
+  >
+      Buy Hint (-$150)
+  </button>
 
-<!-- ✅ Purchase Extra Guess Button -->
-<button 
-    on:click={selectGuess} 
-    on:focus={blurElement}  
-    class:selected={$gameStore.pendingPurchase?.type === 'guess'}
->
-    Buy Extra Guess (-$100)
-</button>
+  <!-- ✅ Purchase Extra Guess Button -->
+  <button 
+      on:click={selectGuess} 
+      on:focus={blurElement}  
+      class:selected={$gameStore.pendingPurchase?.type === 'guess'}
+  >
+      Buy Extra Guess (-$100)
+  </button>
 </div>
 
 <!-- ✅ Styling -->
 <style>
-  .game-info {
-    text-align: center;
-    font-size: 1.2em;
-    font-weight: bold;
-    margin-bottom: 15px;
-  }
-
   .keyboard {
     display: flex;
     flex-direction: column;
@@ -259,34 +245,53 @@
     color: white;
   }
 
-  /* ✅ Purchased Letters Turn Green */
-  .purchased {
-    background-color: green;
-    color: white;
+  /* ✅ Green - Correctly Guessed Letter */
+  .correct {
+    background-color: lightgreen;
+    color: darkgreen;
+    border-color: green;
   }
 
-  /* ✅ Incorrect Guesses Turn Red */
+  /* ✅ Red - Incorrectly Guessed Letter */
   .incorrect {
-    background-color: red;
-    color: white;
+    background-color: lightcoral;
+    color: darkred;
+    border-color: red;
   }
 
   .confirm {
-  background-color: gray;
-  color: white;
-  margin-top: 15px;
-  padding: 10px 20px;
-  opacity: 0.5;
-}
+    background-color: gray;
+    color: white;
+    margin-top: 15px;
+    padding: 10px 20px;
+    opacity: 0.5;
+  }
 
-.confirm.selected {
-  background-color: green;
+  /* ✅ Turn Green When a Purchase is Pending */
+.confirm.active {
+  background-color: green !important;
   opacity: 1;
 }
 
-  /* ✅ Guess Mode Toggle */
-  .toggle-guess {
-    background-color: purple;
-    color: white;
+  .confirm.selected {
+    background-color: green;
+    opacity: 1;
   }
+
+/* ✅ Default Guess Mode Button (Gray) */
+.toggle-guess {
+  background-color: gray;
+  color: white;
+  padding: 10px 20px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 5px;
+  transition: background-color 0.2s ease;
+}
+
+/* ✅ Turns Orange when Guess Mode is Active */
+.toggle-guess.active {
+  background-color: orange !important;
+  color: black;
+}
 </style>

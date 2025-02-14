@@ -8,32 +8,32 @@
 <!-- ✅ Display Phrase -->
 <div class="phrase-display">
     {#each $gameStore.currentPhrase.split('') as char, index}
-    {#if char !== ' '}
-      <div
-        class="phrase-box"
-        class:active={$gameStore.isGuessMode && $gameStore.activeBoxIndex === index}
-        class:win={$gameStore.winState}
-        class:loss={$gameStore.lossState}
-      >
-        {#if $gameStore.lossState}
-          {$gameStore.currentPhrase[index]} <!-- ✅ Reveal entire phrase on loss -->
-        {:else if $gameStore.correctPositions[index]}
-          {$gameStore.correctPositions[index]} <!-- ✅ Persist correct letters -->
-        {:else if $gameStore.currentInput[index]}
-          {$gameStore.currentInput[index]} <!-- ✅ Always show typed letters -->
-        {:else if $gameStore.isGuessMode && index === $gameStore.activeBoxIndex}
-          <!-- ✅ Fix: Ensure the last letter is always visible -->
-          _
-        {:else}
-          _ <!-- ✅ Placeholder when not in Guess Mode -->
-        {/if}
-      </div>
-    {:else}
-      <div class="phrase-space">&nbsp;</div>
-    {/if}
-  {/each}
-</div>
-
+      {#if char !== ' '}
+        <div
+          class="phrase-box"
+          class:active={$gameStore.isGuessMode && $gameStore.activeBoxIndex === index}
+          class:win={$gameStore.winState}
+          class:loss={$gameStore.lossState}
+          
+                  >
+          {#if $gameStore.lossState}
+            {$gameStore.currentPhrase[index]} <!-- ✅ Reveal entire phrase on loss -->
+          {:else if $gameStore.correctPositions[index]}
+            {$gameStore.correctPositions[index]} <!-- ✅ Persist correct letters -->
+          {:else if $gameStore.currentInput[index]}
+            {$gameStore.currentInput[index]} <!-- ✅ Always show typed letters -->
+          {:else if $gameStore.isGuessMode && index === $gameStore.activeBoxIndex}
+            _
+          {:else}
+            _ <!-- ✅ Placeholder when not in Guess Mode -->
+          {/if}
+        </div>
+      {:else}
+        <div class="phrase-space">&nbsp;</div>
+      {/if}
+    {/each}
+  </div>
+  
 <!-- ✅ Styling Fixes -->
 <style>
     .phrase-display {
@@ -61,7 +61,7 @@
     .phrase-box.active {
         border-color: orange;
         box-shadow: 0 0 10px orange;
-        color: inherit; /* ✅ Keeps the letter visible even inside the active box */
+        color: inherit;
     }
 
     /* ✅ Reveals Full Phrase on Loss */
@@ -76,6 +76,20 @@
         background-color: green;
         color: white;
         border-color: darkgreen;
+    }
+
+    /* ✅ Correctly Guessed Letter (Green) */
+    .phrase-box.correct {
+        background-color: lightgreen;
+        color: darkgreen;
+        border-color: green;
+    }
+
+    /* ✅ Incorrectly Guessed Letter (Red) */
+    .phrase-box.incorrect {
+        background-color: lightcoral;
+        color: darkred;
+        border-color: red;
     }
 
     .phrase-space {
