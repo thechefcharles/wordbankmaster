@@ -325,13 +325,18 @@ export function deleteGuessLetter() {
 // Then check for win condition (all editable slots correct) and update state.
 export function submitGuess() {
     gameStore.update(state => {
+      console.log("current state right after sumbitting: ", state);
       if (state.gameState !== "guess_mode") return state;
       const newGuessInput = [...state.guessInput];
       let allCorrect = true;
       console.log("after sumbitting: ", newGuessInput)
       for (let i = 0; i < state.currentPhrase.length; i++) {
+        console.log("in the loop at index ", i, state.currentPhrase[i])
+        console.log("does it inclue it: ", state.purchasedLetters.includes(state.currentPhrase[i]))
         if (state.currentPhrase[i] === ' ') continue;
         if (state.purchasedLetters.includes(state.currentPhrase[i])) continue;
+        console.log("new input of i: ", newGuessInput[i]);
+        console.log("current phrase of i: ", state.currentPhrase[i]);
         if (newGuessInput[i] !== state.currentPhrase[i]) {
           newGuessInput[i] = ''; // Clear incorrect input.
           allCorrect = false;
@@ -349,6 +354,7 @@ export function submitGuess() {
           guessesRemaining: newGuessesRemaining
         };
       } else {
+        console.log("we should be here ");
         let newState = {
           ...state,
           gameState: "default",
