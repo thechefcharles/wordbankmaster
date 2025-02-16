@@ -13,17 +13,18 @@ export const letterCosts = {
  * gameStore: Holds the entire state of the game.
  */
 export const gameStore = writable({
-  bankroll: 1000,
-  guessesRemaining: 2,
-  currentPhrase: "MICHAEL JORDAN",
-  gameState: "default", // "default", "purchase_pending", "guess_mode", "won", "lost"
-  purchasedLetters: [],
-  incorrectLetters: [],
-  hintRevealedLetters: [],
-  selectedPurchase: null, // e.g. { type: 'letter'|'hint'|'extra_guess', value?: letter }
-  guessInput: []
-});
-
+    bankroll: 1000,
+    guessesRemaining: 2,
+    currentPhrase: "MICHAEL JORDAN",
+    category: "Person", // New property for category
+    gameState: "default", // "default", "purchase_pending", "guess_mode", "won", "lost"
+    purchasedLetters: [],
+    incorrectLetters: [],
+    hintRevealedLetters: [],
+    selectedPurchase: null,
+    guessInput: []
+  });
+  
 /**
  * checkLossCondition(state):
  * Checks if guessesRemaining <= 0 and bankroll < minLetterCost => "lost".
@@ -323,16 +324,18 @@ export function submitGuess() {
 }
 
 export function resetGame() {
-  gameStore.set({
-    bankroll: 1000,
-    guessesRemaining: 2,
-    currentPhrase: "MICHAEL JORDAN",
-    gameState: "default",
-    purchasedLetters: [],
-    incorrectLetters: [],
-    hintRevealedLetters: [],
-    selectedPurchase: null,
-    guessInput: []
-  });
-  console.log("Game reset.");
-}
+    gameStore.set({
+      bankroll: 1000,
+      guessesRemaining: 2,
+      currentPhrase: "MICHAEL JORDAN",
+      category: "Person", // Reset the category here
+      gameState: "default",
+      purchasedLetters: [],
+      incorrectLetters: [],
+      hintRevealedLetters: [],
+      selectedPurchase: null,
+      guessInput: []
+    });
+    console.log("Game reset.");
+  }
+  

@@ -2,13 +2,9 @@
     /**
      * +page.svelte
      *
-     * Main page for BankWord. Displays:
-     *  - Phrase (PhraseDisplay)
-     *  - Keyboard (Keyboard)
-     *  - Resource stats (bankroll, guessesRemaining, gameState)
-     *  - Win/loss banner
-     *  - Game action buttons (GameButtons)
-     *  - Reset button that turns green on win/loss
+     * Main page for BankWord.
+     * Displays the header, category, phrase, keyboard, stats, win/loss banner,
+     * game buttons, and a reset button.
      */
     import { gameStore, resetGame } from '$lib/stores/GameStore.js';
     import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
@@ -26,6 +22,9 @@
   
   <main>
     <h1>WordBank</h1>
+    
+    <!-- Display category above the phrase -->
+    <p class="category">Category: {$gameStore.category}</p>
   
     <!-- Phrase Display -->
     <section class="phrase-section">
@@ -51,7 +50,7 @@
       <div class="banner lose">Game Over</div>
     {/if}
   
-    <!-- Game Buttons -->
+    <!-- Game Buttons Section -->
     <section class="buttons-section">
       <GameButtons />
     </section>
@@ -66,7 +65,6 @@
   </main>
   
   <style>
-    /* Center and style the main container */
     main {
       max-width: 600px;
       margin: 0 auto;
@@ -74,39 +72,45 @@
       font-family: sans-serif;
       padding: 20px;
     }
-  
+    
     h1 {
       margin-bottom: 10px;
     }
-  
-    /* Simple background boxes for sections */
+    
+    /* Category displayed right under header */
+    .category {
+      font-size: 1.2em;
+      margin-bottom: 20px;
+    }
+    
     section {
       margin-bottom: 20px;
     }
-  
+    
     .keyboard-section,
     .buttons-section {
       background-color: #f9f9f9;
       padding: 10px;
       border-radius: 4px;
+      margin-bottom: 20px;
     }
-  
-    /* Win/Loss Banner */
+    
     .banner {
       margin: 10px 0;
       padding: 10px;
       font-size: 1.5em;
     }
+    
     .win {
       background-color: green;
       color: white;
     }
+    
     .lose {
       background-color: red;
       color: white;
     }
-  
-    /* Reset button styling */
+    
     button.reset-green {
       background-color: green !important;
       color: white !important;
