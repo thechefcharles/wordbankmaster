@@ -347,6 +347,7 @@ export function submitGuess() {
         else {
           // this means it matches the current phrases index and letter aka correct letter guess
           console.log("this is where correct guesses go");
+          correctLetters.append(newGuessInput[i]);
         }
       }
       
@@ -358,7 +359,8 @@ export function submitGuess() {
           ...state,
           gameState: "won",
           guessInput: newGuessInput,
-          guessesRemaining: newGuessesRemaining
+          guessesRemaining: newGuessesRemaining,
+          purchasedLetters: [...state.purchasedLetters, correctLetters]          
         };
       } else {
         console.log("we should be here ");
@@ -366,7 +368,8 @@ export function submitGuess() {
           ...state,
           gameState: "default",
           guessInput: newGuessInput,
-          guessesRemaining: newGuessesRemaining
+          guessesRemaining: newGuessesRemaining,
+          purchasedLetters: [...state.purchasedLetters, correctLetters]
         };
         console.log("new state: ", newState);
         newState = checkLossCondition(newState);
