@@ -360,7 +360,7 @@ export function submitGuess() {
           gameState: "won",
           guessInput: newGuessInput,
           guessesRemaining: newGuessesRemaining,
-          purchasedLetters: [...state.purchasedLetters, correctLetters]          
+          purchasedLetters: [...state.purchasedLetters, ...correctLetters]          
         };
       } else {
         console.log("we should be here ");
@@ -369,7 +369,7 @@ export function submitGuess() {
           gameState: "default",
           guessInput: newGuessInput,
           guessesRemaining: newGuessesRemaining,
-          purchasedLetters: [...state.purchasedLetters, correctLetters]
+          purchasedLetters: [...state.purchasedLetters, ...correctLetters]
         };
         console.log("new state: ", newState);
         newState = checkLossCondition(newState);
