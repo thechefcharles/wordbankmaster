@@ -1,65 +1,75 @@
 <script>
-  export let letterCosts = {};
-  export let selectedLetter = null;
-  export let revealedLetters = new Set(); // Letters already purchased (correct)
-  export let incorrectLetters = new Set(); // Incorrectly purchased letters
-
-  import { createEventDispatcher } from 'svelte';
-
-  const dispatch = createEventDispatcher();
-
-  function handleLetterClick(letter) {
-    if (revealedLetters.has(letter) || incorrectLetters.has(letter)) return;
-
-    // Allow letter selection for default mode, allow input in guess mode
-    dispatch('letterClick', { letter, cost: letterCosts[letter] });
-}
-</script>
-
-<div class="keyboard">
-  {#each Object.keys(letterCosts) as letter}
+    import { gameStore, selectLetter, inputGuessLetter } from '$lib/stores/GameStore.js';
+    
+    const letterCosts = {
+      Q: 30, W: 50, E: 140, R: 120, T: 120, Y: 60, U: 80, I: 110, O: 90, P: 80,
+      A: 130, S: 120, D: 80, F: 60, G: 70, H: 70, J: 30, K: 50, L: 80,
+      Z: 40, X: 40, C: 80, V: 50, B: 60, N: 100, M: 70
+    };
+  
+    function handleLetterClick(letter) {
+      if ($gameStore.gameState === 'guess_mode') {
+        console.log(`Guess mode: input letter ${letter}`);
+        inputGuessLetter(letter);
+      } else {
+        console.log(`Purchase mode: select letter ${letter}`);
+        selectLetter(letter);
+      }
+    }
+  </script>
+  
+  <p>✅ Keyboard is rendering...</p>
+  
+  <div class="keyboard">
+    {#each Object.keys(letterCosts) as letter}
       <button 
-          class="
-              {selectedLetter === letter ? 'selected' : ''}
-              {revealedLetters.has(letter) ? 'correct' : ''}
-              {incorrectLetters.has(letter) ? 'incorrect' : ''}
-          " 
-          on:click={() => handleLetterClick(letter)}
-          disabled={revealedLetters.has(letter) || incorrectLetters.has(letter)}
+        class="{($gameStore.selectedPurchase && $gameStore.selectedPurchase.type === 'letter' && $gameStore.selectedPurchase.value === letter && $gameStore.gameState === 'purchase_pending')
+                 ? 'pending'
+                 : $gameStore.purchasedLetters.includes(letter)
+                    ? 'purchased'
+                    : $gameStore.incorrectLetters.includes(letter)
+                       ? 'incorrect'
+                       : ''}"
+        on:click={() => handleLetterClick(letter)}
       >
-          {letter} (${letterCosts[letter]})
+        {letter} (${letterCosts[letter]})
       </button>
-  {/each}
-</div>
-
-<style>
-  .keyboard {
+    {/each}
+  </div>
+  
+  <style>
+    .keyboard {
       display: flex;
       flex-wrap: wrap;
+      gap: 8px;
       justify-content: center;
-      gap: 5px;
-      margin-top: 20px;
-  }
-  button {
+      margin: 20px 0;
+    }
+    button {
       width: 50px;
       height: 50px;
-      font-size: 1.2em;
-      border: 1px solid black;
-      background: white;
+      font-size: 18px;
+      font-weight: bold;
+      border: 2px solid black;
+      background-color: white;
       cursor: pointer;
-  }
-  .selected {
-      background: blue;
+    }
+    button.purchased {
+      background-color: green;
       color: white;
-  }
-  .correct {
-      background: green;
+      cursor: default;
+    }
+    button.pending {
+      background-color: blue !important;
+      color: white !important;
+    }
+    button.incorrect {
+      background-color: red;
       color: white;
-      cursor: not-allowed;
-  }
-  .incorrect {
-      background: red;
-      color: white;
-      cursor: not-allowed;
-  }
-</style>
+      cursor: default;
+    }
+    button:hover:not(.purchased, .pending, .incorrect) {
+      background-color: lightgray;
+    }
+  </style>
+  
