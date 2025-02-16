@@ -1,22 +1,14 @@
-<!-- Keyboard.svelte -->
 <script>
     /**
      * Keyboard.svelte
      *
-     * This component renders the on‑screen keyboard with all letters and their purchase prices.
-     * When a letter is clicked, it performs one of two actions:
-     * - In "guess_mode": calls inputGuessLetter(letter) to fill the next guess slot.
-     * - In purchase mode: calls selectLetter(letter) to select a letter for purchase.
-     *
-     * The button styling changes based on the game store’s state:
-     * - "pending": when a letter is selected for purchase.
-     * - "purchased": when a letter has been successfully purchased.
-     * - "incorrect": when a letter was purchased but is not in the phrase.
+     * Renders all letters with their costs. Clicking a letter:
+     *  - In guess mode: inputs the letter into the guess.
+     *  - Otherwise: selects the letter for purchase.
      */
-  
     import { gameStore, selectLetter, inputGuessLetter } from '$lib/stores/GameStore.js';
   
-    // Define the letter cost table.
+    // Letter cost table
     const letterCosts = {
       Q: 30, W: 50, E: 140, R: 120, T: 120, Y: 60, U: 80, I: 110, O: 90, P: 80,
       A: 130, S: 120, D: 80, F: 60, G: 70, H: 70, J: 30, K: 50, L: 80,
@@ -24,9 +16,9 @@
     };
   
     /**
-     * handleLetterClick(letter)
-     * - In guess mode: calls inputGuessLetter(letter) so that the letter fills the next available slot.
-     * - Otherwise: calls selectLetter(letter) to select it for purchase.
+     * handleLetterClick(letter):
+     * - If in guess mode, calls inputGuessLetter.
+     * - Otherwise, calls selectLetter to purchase.
      */
     function handleLetterClick(letter) {
       if ($gameStore.gameState === 'guess_mode') {
@@ -39,40 +31,49 @@
     }
   </script>
   
-  <!-- Render the keyboard buttons -->
-  <div class="keyboard">
-    {#each Object.keys(letterCosts) as letter}
-      <button
-        on:click={() => handleLetterClick(letter)}
-        class="{ 
-          // If a letter is pending purchase in purchase mode...
-          ($gameStore.selectedPurchase && 
-           $gameStore.selectedPurchase.type === 'letter' && 
-           $gameStore.selectedPurchase.value === letter && 
-           $gameStore.gameState === 'purchase_pending')
-             ? 'pending'
-             // Otherwise, if the letter has been purchased, mark it as purchased.
-             : $gameStore.purchasedLetters.includes(letter)
-               ? 'purchased'
-               // Otherwise, if it is marked as incorrect, show as incorrect.
-               : $gameStore.incorrectLetters.includes(letter)
-                 ? 'incorrect'
-                 : ''
-        }"
-      >
-        {letter} (${letterCosts[letter]})
-      </button>
-    {/each}
+  <!-- Keyboard Heading (for debugging) -->
+  <p>✅ Keyboard is rendering...</p>
+  
+  <div class="keyboard-container">
+    <div class="keyboard">
+      {#each Object.keys(letterCosts) as letter}
+        <button
+          on:click={() => handleLetterClick(letter)}
+          class="{
+            ($gameStore.selectedPurchase &&
+             $gameStore.selectedPurchase.type === 'letter' &&
+             $gameStore.selectedPurchase.value === letter &&
+             $gameStore.gameState === 'purchase_pending')
+              ? 'pending'
+              : $gameStore.purchasedLetters.includes(letter)
+                ? 'purchased'
+                : $gameStore.incorrectLetters.includes(letter)
+                  ? 'incorrect'
+                  : ''
+          }"
+        >
+          {letter} (${letterCosts[letter]})
+        </button>
+      {/each}
+    </div>
   </div>
   
   <style>
+    .keyboard-container {
+      background-color: #f9f9f9;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+  
     .keyboard {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       justify-content: center;
-      margin: 20px 0;
     }
+  
+    /* Base button styling */
     button {
       width: 50px;
       height: 50px;
@@ -82,24 +83,24 @@
       background-color: white;
       cursor: pointer;
     }
-    /* Purchased letters: green background */
+    /* Purchased letters: green */
     button.purchased {
       background-color: green;
       color: white;
       cursor: default;
     }
-    /* Pending purchase: blue background */
+    /* Pending purchase: blue */
     button.pending {
       background-color: blue !important;
       color: white !important;
     }
-    /* Incorrect letters: red background */
+    /* Incorrect letters: red */
     button.incorrect {
       background-color: red;
       color: white;
       cursor: default;
     }
-    /* Hover effect for unstyled buttons */
+    /* Hover effect for unstyled letters */
     button:hover:not(.purchased, .pending, .incorrect) {
       background-color: lightgray;
     }
