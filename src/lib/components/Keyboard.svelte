@@ -10,17 +10,28 @@
     enterGuessMode 
   } from '$lib/stores/GameStore.js';
 
-  // Letter cost table remains the same.
   const letterCosts = {
     Q: 30, W: 50, E: 140, R: 120, T: 120, Y: 60, U: 80, I: 110, O: 90, P: 80,
     A: 130, S: 120, D: 80, F: 60, G: 70, H: 70, J: 30, K: 50, L: 80,
     Z: 40, X: 40, C: 80, V: 50, B: 60, N: 100, M: 70
   };
 
+  // Helper: Returns an array of editable indices (non‑space and not locked).
+  function getEditableIndices(state) {
+    const indices = [];
+    const phrase = state.currentPhrase;
+    for (let i = 0; i < phrase.length; i++) {
+      if (phrase[i] === ' ') continue;
+      if (state.purchasedLetters[i] === phrase[i]) continue;
+      indices.push(i);
+    }
+    return indices;
+  }
+
   /**
    * handleLetterClick(letter):
    * - In guess mode: calls inputGuessLetter(letter)
-   * - Otherwise: calls selectLetter(letter) to mark it for purchase.
+   * - Otherwise: calls selectLetter(letter) for purchase.
    */
   function handleLetterClick(letter) {
     if ($gameStore.gameState === 'guess_mode') {
@@ -32,20 +43,33 @@
     }
   }
 
+  // Reactive: Determine if every editable slot is filled.
+  $: guessComplete = $gameStore.gameState === 'guess_mode' && (() => {
+    const phrase = $gameStore.currentPhrase;
+    for (let i = 0; i < phrase.length; i++) {
+      if (phrase[i] === ' ') continue;
+      if ($gameStore.purchasedLetters[i] === phrase[i]) continue;
+      if (!$gameStore.guessedLetters[i]) return false;
+    }
+    return true;
+  })();
+
   /**
    * handleKeyDown(event):
-   * Maps physical keyboard events to game actions:
-   * - "Enter": if in guess mode, calls submitGuess(); otherwise, confirmPurchase().
-   * - "Delete"/"Backspace": calls deleteGuessLetter() in guess mode.
-   * - "Space": toggles guess mode.
-   * - A–Z: processes letter keys.
-   * After handling, blurs the active element.
+   * - "Enter": In guess mode, only submits if guessComplete; otherwise, confirms purchase.
+   * - "Delete"/"Backspace": In guess mode, deletes a guess.
+   * - "Space": Toggles guess mode.
+   * - A–Z: Processes letter keys.
    */
   function handleKeyDown(event) {
     if (event.key === "Enter") {
       event.preventDefault();
       if ($gameStore.gameState === 'guess_mode') {
-        submitGuess();
+        if (guessComplete) {
+          submitGuess();
+        } else {
+          console.log("Not all guess slots are filled.");
+        }
       } else {
         confirmPurchase();
       }
@@ -76,13 +100,13 @@
   });
 </script>
 
+<!-- Render the keyboard keys -->
 <div class="keyboard-container">
   <div class="keyboard">
     {#each Object.keys(letterCosts) as letter}
       <button
         on:click={(e) => { handleLetterClick(letter); e.currentTarget.blur(); }}
         class="{
-          // In purchase mode, use lockedLetters to decide if the key is fully purchased.
           ($gameStore.selectedPurchase &&
            $gameStore.selectedPurchase.type === 'letter' &&
            $gameStore.selectedPurchase.value === letter &&
@@ -103,7 +127,6 @@
 </div>
 
 <style>
-  /* Remove focus outline for all buttons */
   button:focus {
     outline: none;
   }
