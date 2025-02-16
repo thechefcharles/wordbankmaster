@@ -1,25 +1,47 @@
+<!-- GameButtons.svelte -->
 <script>
-    import { 
-      confirmPurchase, 
-      selectHint, 
-      selectExtraGuess, 
-      enterGuessMode, 
-      submitGuess, 
-      deleteGuessLetter 
+    /**
+     * GameButtons.svelte
+     *
+     * This component renders the primary, state, and utility buttons for the game.
+     * It supports the following actions:
+     * - Confirming a purchase or submitting a guess (via the "Enter" button)
+     * - Toggling guess mode (via the "Guess" button)
+     * - Purchasing a hint or an extra guess
+     * - Deleting a letter (only in guess mode)
+     *
+     * The "Enter" button turns green (via the "submit-ready" class) when either:
+     * - In guess mode and all editable slots are filled, or
+     * - When a purchase is pending.
+     */
+  
+    // Import functions and reactive store from GameStore
+    import {
+      confirmPurchase,
+      selectHint,
+      selectExtraGuess,
+      enterGuessMode,
+      submitGuess,
+      deleteGuessLetter
     } from '$lib/stores/GameStore.js';
     import { gameStore } from '$lib/stores/GameStore.js';
   
-    // Reactive block to compute if the guess is complete.
+    /**
+     * Reactive block to determine if the current guess is complete.
+     * This only applies when the game is in "guess_mode".
+     *
+     * It builds an array of "editable" indices (positions that are not spaces
+     * and not locked by already purchased letters) and then checks that each of these
+     * positions in the guessInput array is filled.
+     */
     $: guessComplete = (() => {
       if ($gameStore.gameState !== 'guess_mode') return false;
-      // Build an array of editable indices: non-space and not locked by purchased letters.
       const editableIndices = [];
       for (let i = 0; i < $gameStore.currentPhrase.length; i++) {
         if ($gameStore.currentPhrase[i] === ' ') continue;
         if ($gameStore.purchasedLetters.includes($gameStore.currentPhrase[i])) continue;
         editableIndices.push(i);
       }
-      // Check each editable index: if any are empty, the guess is not complete.
       for (const idx of editableIndices) {
         if ($gameStore.guessInput[idx] === '') return false;
       }
@@ -28,8 +50,10 @@
   </script>
   
   <div class="game-buttons">
+    <!-- Primary Action Buttons -->
     <div class="primary-buttons">
-        <button 
+      <!-- Enter Button: Confirms purchase or submits guess -->
+      <button
         on:click={() => {
           if ($gameStore.gameState === 'guess_mode') {
             if (guessComplete) {
@@ -45,35 +69,43 @@
       >
         Enter { $gameStore.gameState === 'guess_mode' ? "(Submit Guess)" : "(Confirm Purchase)" }
       </button>
-            <button on:click={() => {
-        // Toggling guess mode: if already in guess mode, exit; otherwise, enter guess mode.
-        enterGuessMode();
-      }}>
+  
+      <!-- Toggle Guess Mode Button -->
+      <button on:click={enterGuessMode}>
         Guess (Enter Guess Mode)
       </button>
-      <button 
+  
+      <!-- Hint Purchase Button -->
+      <button
         on:click={selectHint}
         class="{$gameStore.selectedPurchase && $gameStore.selectedPurchase.type === 'hint' && $gameStore.gameState === 'purchase_pending' ? 'pending' : ''}"
       >
         Hint ($150)
       </button>
-      <button 
+  
+      <!-- Extra Guess Purchase Button -->
+      <button
         on:click={selectExtraGuess}
         class="{$gameStore.selectedPurchase && $gameStore.selectedPurchase.type === 'extra_guess' && $gameStore.gameState === 'purchase_pending' ? 'pending' : ''}"
       >
         Extra Guess ($150)
       </button>
+  
+      <!-- Delete Button (active only in guess mode) -->
       <button on:click={() => {
-        if ($gameStore.gameState === 'guess_mode') {
-          deleteGuessLetter();
-        }
+        if ($gameStore.gameState === 'guess_mode') deleteGuessLetter();
       }}>
         Delete
       </button>
     </div>
+  
+    <!-- State Buttons Section -->
     <div class="state-buttons">
+      <!-- Back Button: Exits guess mode -->
       <button>Back (Exit Guess Mode)</button>
     </div>
+  
+    <!-- Utility Buttons Section -->
     <div class="utility-buttons">
       <button>Rules/How to Play</button>
       <button>Settings</button>
@@ -81,6 +113,7 @@
   </div>
   
   <style>
+    /* Container styling for all game buttons */
     .game-buttons {
       display: flex;
       flex-direction: column;
@@ -88,6 +121,7 @@
       gap: 1em;
       margin: 20px 0;
     }
+    /* Styling for grouped button sections */
     .primary-buttons,
     .state-buttons,
     .utility-buttons {
@@ -95,6 +129,7 @@
       gap: 10px;
       flex-wrap: wrap;
     }
+    /* Base button styling */
     button {
       padding: 10px 15px;
       font-size: 16px;
@@ -105,12 +140,12 @@
     button:hover {
       background-color: #ddd;
     }
-    /* When in guess mode and all slots are filled, the Enter button turns green */
+    /* When ready to submit (either guess is complete or purchase pending), button turns green */
     .submit-ready {
       background-color: green !important;
       color: white !important;
     }
-    /* Existing styles for pending, etc. remain here */
+    /* When a purchase option is selected (pending state), style it with a blue background */
     button.pending {
       background-color: blue !important;
       color: white !important;

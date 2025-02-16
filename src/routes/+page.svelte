@@ -1,38 +1,54 @@
+<!-- +page.svelte -->
 <script>
+    /**
+     * +page.svelte
+     *
+     * This is the main page for BankWord.
+     * It displays the current phrase (via PhraseDisplay), the on‑screen keyboard (Keyboard),
+     * and the game action buttons (GameButtons). It also shows resource stats, a win/loss banner,
+     * and a reset button that resets the game when clicked.
+     */
     import { gameStore, resetGame } from '$lib/stores/GameStore.js';
     import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
     import Keyboard from '$lib/components/Keyboard.svelte';
     import GameButtons from '$lib/components/GameButtons.svelte';
-</script>
-
-<main>
-    <h1>BankWord</h1>
-    <p>✅ +page.svelte is rendering...</p>
+  </script>
+  
+  <main>
+    <h1>WordBank</h1>
     
-    <!-- Display the phrase -->
+    
+    <!-- Display the current phrase -->
     <PhraseDisplay />
-    
-    <!-- Display the keyboard -->
+  
+    <!-- Display the on-screen keyboard -->
     <Keyboard />
-    
-    <!-- Display resource stats -->
-    <p>Bankroll: {$gameStore.bankroll}</p>
-    <p>Guesses Remaining: {$gameStore.guessesRemaining}</p>
+  
+    <!-- Resource Stats -->
+    <p>
+        Bankroll: {new Intl.NumberFormat('en-US', { 
+          style: 'currency', 
+          currency: 'USD', 
+          minimumFractionDigits: 0, 
+          maximumFractionDigits: 0 
+        }).format($gameStore.bankroll)}
+      </p>
+          <p>Guesses Remaining: {$gameStore.guessesRemaining}</p>
     <p>Game State: {$gameStore.gameState}</p>
     
-    <!-- Display win/loss banner -->
+    <!-- Win/Loss Banner -->
     {#if $gameStore.gameState === "won"}
       <div class="banner win">Congratulations! You won!</div>
     {:else if $gameStore.gameState === "lost"}
       <div class="banner lose">Game Over</div>
     {/if}
     
-    <!-- Game buttons -->
+    <!-- Game Action Buttons -->
     <GameButtons />
     
-    <!-- Reset Button (turns green when game is over or won) -->
+    <!-- Reset Button: turns green if game is over (won or lost) -->
     <button 
-      on:click={resetGame} 
+      on:click={resetGame}
       class:reset-green={$gameStore.gameState === "won" || $gameStore.gameState === "lost"}
     >
       Reset Game (New Game)
@@ -40,22 +56,35 @@
   </main>
   
   <style>
-    .banner {
+    main {
+      max-width: 600px;
+      margin: 0 auto;
       text-align: center;
-      font-size: 1.5em;
+      font-family: sans-serif;
+    }
+    
+    .banner {
       margin: 10px 0;
       padding: 10px;
+      font-size: 1.5em;
     }
+    
     .win {
-      color: white;
       background-color: green;
-    }
-    .lose {
       color: white;
-      background-color: red;
     }
+    
+    .lose {
+      background-color: red;
+      color: white;
+    }
+    
     button.reset-green {
       background-color: green !important;
       color: white !important;
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
     }
   </style>
+  
