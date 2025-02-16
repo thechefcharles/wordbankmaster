@@ -29,7 +29,7 @@
   
   <div class="game-buttons">
     <div class="primary-buttons">
-      <button 
+        <button 
         on:click={() => {
           if ($gameStore.gameState === 'guess_mode') {
             if (guessComplete) {
@@ -41,11 +41,11 @@
             confirmPurchase();
           }
         }}
-        class="{ $gameStore.gameState === 'guess_mode' && guessComplete ? 'submit-ready' : '' }"
+        class="{ ($gameStore.gameState === 'guess_mode' && guessComplete) || $gameStore.gameState === 'purchase_pending' ? 'submit-ready' : '' }"
       >
         Enter { $gameStore.gameState === 'guess_mode' ? "(Submit Guess)" : "(Confirm Purchase)" }
       </button>
-      <button on:click={() => {
+            <button on:click={() => {
         // Toggling guess mode: if already in guess mode, exit; otherwise, enter guess mode.
         enterGuessMode();
       }}>
@@ -72,7 +72,6 @@
       </button>
     </div>
     <div class="state-buttons">
-      <button>Reset Game (New Game)</button>
       <button>Back (Exit Guess Mode)</button>
     </div>
     <div class="utility-buttons">
