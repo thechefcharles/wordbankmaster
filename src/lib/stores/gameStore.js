@@ -232,9 +232,9 @@ function getEditableIndices(state) {
   // or filled with an incorrect letter. If all editable indices are filled correctly,
   // we default to the last one.
   export function inputGuessLetter(letter) {
-    console.log("letter entered in guess mode: ", letter)
-    console.log("state after letter guess but before function run: ", state)
+    console.log("letter entered in guess mode: ", letter);
     gameStore.update(state => {
+      console.log("state after letter guess but before function run: ", state)
       if (state.gameState !== "guess_mode") return state;
       // Do not allow letters that are already purchased.
       if (state.purchasedLetters.includes(letter)) {
