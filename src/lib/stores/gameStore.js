@@ -96,9 +96,11 @@ export function selectLetter(letter) {
     gameStore.update(state => {
       if (!state.selectedPurchase) return state;
       const purchase = state.selectedPurchase;
+      console.log("selected purchase: ", purchase);
   
       if (purchase.type === 'letter') {
         const letter = purchase.value;
+        console.log("letter value: ", letter);
         const cost = letterCosts[letter] || 0;
         if (state.bankroll < cost) {
           console.log(`Not enough bankroll to purchase letter ${letter}`);
@@ -324,6 +326,7 @@ export function deleteGuessLetter() {
 // Submit the guess: for each editable index, if the input matches the phrase letter, keep it; if not, clear it.
 // Then check for win condition (all editable slots correct) and update state.
 export function submitGuess() {
+    let correctLetters = []
     gameStore.update(state => {
       console.log("current state right after sumbitting: ", state);
       if (state.gameState !== "guess_mode") return state;
@@ -340,6 +343,10 @@ export function submitGuess() {
         if (newGuessInput[i] !== state.currentPhrase[i]) {
           newGuessInput[i] = ''; // Clear incorrect input.
           allCorrect = false;
+        }
+        else {
+          // this means it matches the current phrases index and letter aka correct letter guess
+          console.log("this is where correct guesses go");
         }
       }
       
@@ -361,6 +368,7 @@ export function submitGuess() {
           guessInput: newGuessInput,
           guessesRemaining: newGuessesRemaining
         };
+        console.log("new state: ", newState);
         newState = checkLossCondition(newState);
         if (newState.gameState === "lost") {
           return newState;
