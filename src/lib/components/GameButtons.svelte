@@ -1,21 +1,4 @@
 <script>
-  /**
-   * GameButtons.svelte
-   *
-   * Renders the primary, secondary, and utility buttons for BankWord.
-   *
-   * Primary Buttons:
-   *  - Enter (Confirm Purchase or Submit Guess)
-   *  - Guess (Toggle Guess Mode)
-   *  - Hint
-   *  - Extra Guess
-   *  - Delete
-   *
-   * Utility Buttons:
-   *  - How to Play
-   *  - Settings
-   */
-  
   import {
     confirmPurchase,
     selectHint,
@@ -25,37 +8,36 @@
     deleteGuessLetter
   } from '$lib/stores/GameStore.js';
   import { gameStore } from '$lib/stores/GameStore.js';
-  
-  /**
-   * guessComplete:
-   * In guess mode, an index in the phrase is "editable" if:
-   *   - It is not a space.
-   *   - It is not locked in purchasedLetters (i.e. purchasedLetters[i] equals the actual letter).
-   * For every such editable index, a valid guess must be present in guessedLetters.
-   * Only when every editable slot is filled will guessComplete be true.
-   */
-  $: guessComplete = (() => {
-    if ($gameStore.gameState !== 'guess_mode') return false;
-    const editableIndices = [];
-    for (let i = 0; i < $gameStore.currentPhrase.length; i++) {
-      if ($gameStore.currentPhrase[i] === ' ') continue;
-      if ($gameStore.purchasedLetters[i] === $gameStore.currentPhrase[i]) continue;
-      // If the guessed letter at index i is undefined or an empty string, it isn’t filled.
-      if (!$gameStore.guessedLetters[i] || $gameStore.guessedLetters[i] === "") continue;
-      editableIndices.push(i);
+
+  // Helper: returns an array of editable indices in guess mode.
+  // An index is editable if:
+  //  - The character is not a space.
+  //  - It is not already locked in purchasedLetters.
+  function getEditableIndices(state) {
+    const indices = [];
+    const phrase = state.currentPhrase;
+    for (let i = 0; i < phrase.length; i++) {
+      if (phrase[i] === ' ') continue;
+      if (state.purchasedLetters[i] === phrase[i]) continue;
+      indices.push(i);
     }
-    // Now, to be complete, every index that is not locked and not a space must be guessed.
-    for (let i = 0; i < $gameStore.currentPhrase.length; i++) {
-      if ($gameStore.currentPhrase[i] === ' ') continue;
-      if ($gameStore.purchasedLetters[i] === $gameStore.currentPhrase[i]) continue;
-      if (!$gameStore.guessedLetters[i] || $gameStore.guessedLetters[i] === "") {
-        return false;
-      }
+    return indices;
+  }
+
+  // Reactive: Determine if every editable slot is filled with a guess.
+  $: guessComplete = $gameStore.gameState === 'guess_mode' && (() => {
+    const phrase = $gameStore.currentPhrase;
+    for (let i = 0; i < phrase.length; i++) {
+      // Skip spaces and indices already locked in purchasedLetters.
+      if (phrase[i] === ' ') continue;
+      if ($gameStore.purchasedLetters[i] === phrase[i]) continue;
+      // Immediately return false if an editable slot is missing a guess.
+      if (!$gameStore.guessedLetters[i]) return false;
     }
     return true;
   })();
 </script>
-    
+
 <div class="game-buttons">
   <!-- Primary Actions -->
   <div class="primary-buttons">
@@ -118,12 +100,10 @@
 </div>
     
 <style>
-  /* Remove focus outlines from all buttons */
   button:focus {
     outline: none;
   }
     
-  /* Container for all game buttons */
   .game-buttons {
     display: flex;
     flex-direction: column;
@@ -131,7 +111,6 @@
     gap: 1em;
   }
     
-  /* Grouping for different button sets */
   .primary-buttons,
   .secondary-buttons,
   .utility-buttons {
@@ -141,7 +120,6 @@
     justify-content: center;
   }
     
-  /* Base button styling */
   button {
     padding: 10px 15px;
     font-size: 16px;
@@ -154,19 +132,16 @@
     background-color: #ddd;
   }
     
-  /* When guess is complete or a purchase is pending, turn the Enter button green */
   .submit-ready {
     background-color: green !important;
     color: white !important;
   }
     
-  /* When a purchase option is selected (pending), turn it blue */
   button.pending {
     background-color: blue !important;
     color: white !important;
   }
   
-  /* When in guess mode, the Guess button turns orange */
   button.active-guess {
     background-color: orange !important;
     color: white !important;

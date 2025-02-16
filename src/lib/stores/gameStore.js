@@ -265,7 +265,10 @@ export function confirmPurchase() {
 // Enter guess mode: clear pending purchase and initialize guessedLetters.
 export function enterGuessMode() {
   gameStore.update(state => {
-    console.log("Entering guess mode. Current state:", state);
+    if (state.guessesRemaining <= 0) {
+      console.log("Cannot enter guess mode: no guesses remaining.");
+      return state;
+    }
     if (state.gameState === 'guess_mode') {
       console.log("Exiting guess mode.");
       return { ...state, gameState: "default", guessedLetters: {} };
@@ -342,26 +345,41 @@ export function deleteGuessLetter() {
 export function submitGuess() {
   gameStore.update(state => {
     if (state.gameState !== "guess_mode") return state;
+
+    // Check that every editable slot is filled.
     const phrase = state.currentPhrase;
+    for (let i = 0; i < phrase.length; i++) {
+      if (phrase[i] === ' ') continue;
+      if (state.purchasedLetters[i] === phrase[i]) continue;
+      if (!state.guessedLetters[i]) {
+        console.log("Guess submission aborted: not all guess slots are filled.");
+        return state;
+      }
+    }
+
+    // Prevent deducting a guess if none remain.
+    if (state.guessesRemaining <= 0) {
+      console.log("No guesses remaining.");
+      return state;
+    }
+
     const newGuessed = { ...state.guessedLetters };
     const newPurchased = [...state.purchasedLetters];
     let allCorrect = true;
     
+    // Process each non-space character.
     for (let i = 0; i < phrase.length; i++) {
       if (phrase[i] === ' ') continue;
-      // If already locked, skip.
       if (newPurchased[i] === phrase[i]) continue;
-      // If the guess is correct, lock it in.
       if (newGuessed[i] === phrase[i]) {
         newPurchased[i] = phrase[i];
       } else {
-        // Clear incorrect guess.
         delete newGuessed[i];
         allCorrect = false;
       }
     }
     
-    // Update lockedLetters: for each distinct letter, mark it as locked only if every occurrence is correct.
+    // Update lockedLetters for each distinct letter.
     let newLockedLetters = { ...state.lockedLetters };
     const distinctLetters = Array.from(new Set(phrase.split('').filter(ch => ch !== ' ')));
     distinctLetters.forEach(letter => {
@@ -372,9 +390,10 @@ export function submitGuess() {
       newLockedLetters[letter] = indices.length > 0 && indices.every(idx => newPurchased[idx] === letter);
     });
     
-    const newGuessesRemaining = state.guessesRemaining - 1;
+    // Deduct one guess, ensuring it never goes below zero.
+    const newGuessesRemaining = Math.max(state.guessesRemaining - 1, 0);
     
-    // Determine if the whole phrase is now locked (win condition).
+    // Determine win condition.
     let win = true;
     for (let i = 0; i < phrase.length; i++) {
       if (phrase[i] === ' ') continue;
