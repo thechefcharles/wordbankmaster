@@ -1,5 +1,5 @@
 <script>
-    import { onMount, onDestroy } from 'svelte';
+    import { onMount } from 'svelte';
     import { 
       gameStore, 
       selectLetter, 
@@ -9,7 +9,7 @@
       deleteGuessLetter, 
       enterGuessMode 
     } from '$lib/stores/GameStore.js';
-  
+    
     // Letter cost table remains the same.
     const letterCosts = {
       Q: 30, W: 50, E: 140, R: 120, T: 120, Y: 60, U: 80, I: 110, O: 90, P: 80,
@@ -20,7 +20,7 @@
     /**
      * handleLetterClick(letter)
      * - In guess mode: calls inputGuessLetter(letter)
-     * - Otherwise: calls selectLetter(letter) to select it for purchase.
+     * - Otherwise: calls selectLetter(letter) to mark it for purchase.
      */
     function handleLetterClick(letter) {
       if ($gameStore.gameState === 'guess_mode') {
@@ -31,59 +31,56 @@
         selectLetter(letter);
       }
     }
-  
+    
     /**
      * handleKeyDown(event)
      * Maps physical keyboard events to game actions:
-     * - "Enter": Functions as Enter key (submit guess or confirm purchase).
-     * - "Delete" or "Backspace": Functions as delete in guess mode.
-     * - "Space": Toggles guess mode.
-     * - A–Z: Processes letter keys.
+     * - "Enter": if in guess mode, calls submitGuess(); otherwise, confirmPurchase().
+     * - "Delete"/"Backspace": calls deleteGuessLetter() in guess mode.
+     * - "Space": toggles guess mode.
+     * - A–Z: processes letter keys.
+     * After handling, the active element is blurred.
      */
     function handleKeyDown(event) {
       if (event.key === "Enter") {
         event.preventDefault();
-        // If in guess mode, submit guess; otherwise, confirm purchase.
         if ($gameStore.gameState === 'guess_mode') {
           submitGuess();
         } else {
           confirmPurchase();
         }
-      }
-      else if (event.key === "Delete" || event.key === "Backspace") {
+        document.activeElement.blur();
+      } else if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
         if ($gameStore.gameState === 'guess_mode') {
           deleteGuessLetter();
         }
-      }
-      else if (event.key === " " || event.code === "Space") {
+        document.activeElement.blur();
+      } else if (event.key === " " || event.code === "Space") {
         event.preventDefault();
-        // Toggle guess mode when spacebar is pressed.
         enterGuessMode();
-      }
-      else {
-        // For letter keys (A-Z)
+        document.activeElement.blur();
+      } else {
         const key = event.key.toUpperCase();
         if (/^[A-Z]$/.test(key)) {
           event.preventDefault();
           handleLetterClick(key);
+          document.activeElement.blur();
         }
       }
     }
-  
+    
     onMount(() => {
       window.addEventListener('keydown', handleKeyDown);
-      return () => {
-        window.removeEventListener('keydown', handleKeyDown);
-      };
+      return () => window.removeEventListener('keydown', handleKeyDown);
     });
   </script>
-  
+    
   <div class="keyboard-container">
     <div class="keyboard">
       {#each Object.keys(letterCosts) as letter}
         <button
-          on:click={() => handleLetterClick(letter)}
+          on:click={(e) => { handleLetterClick(letter); e.currentTarget.blur(); }}
           class="{
             ($gameStore.selectedPurchase &&
              $gameStore.selectedPurchase.type === 'letter' &&
@@ -103,8 +100,13 @@
       {/each}
     </div>
   </div>
-  
+    
   <style>
+    /* Remove focus outline for all buttons */
+    button:focus {
+      outline: none;
+    }
+    
     .keyboard-container {
       background-color: #f9f9f9;
       padding: 10px;
