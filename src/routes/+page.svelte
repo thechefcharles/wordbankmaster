@@ -26,7 +26,6 @@
   
   <main>
     <h1>WordBank</h1>
-    <p>✅ +page.svelte is rendering...</p>
   
     <!-- Phrase Display -->
     <section class="phrase-section">

@@ -72,10 +72,13 @@
       </button>
   
       <!-- Guess Mode Toggle -->
-      <button on:click={enterGuessMode}>
-        Guess (Enter Guess Mode)
-      </button>
-  
+      <button 
+      on:click={enterGuessMode}
+      class:active-guess={$gameStore.gameState === 'guess_mode'}
+    >
+      Guess (Enter Guess Mode)
+    </button>
+      
       <!-- Hint Purchase -->
       <button
         on:click={selectHint}
@@ -104,14 +107,10 @@
       </button>
     </div>
   
-    <!-- Secondary Buttons -->
-    <div class="secondary-buttons">
-      <button>Back (Exit Guess Mode)</button>
-    </div>
-  
+   
     <!-- Utility Buttons -->
     <div class="utility-buttons">
-      <button>Rules/How to Play</button>
+      <button>How to Play</button>
       <button>Settings</button>
     </div>
   </div>
@@ -158,5 +157,12 @@
       background-color: blue !important;
       color: white !important;
     }
+
+    /* This CSS applies only to this component */
+  button.active-guess {
+    background-color: orange !important;
+    color: white !important;
+  }
+    
   </style>
   
