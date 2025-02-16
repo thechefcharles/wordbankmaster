@@ -1,124 +1,197 @@
 <script>
-  import Keyboard from '../components/Keyboard.svelte';
-  import PhraseDisplay from '../components/PhraseDisplay.svelte';
-  import { gameStore, actions } from '../stores/gameStore';
-  import { get } from 'svelte/store';
-  console.log("Current Phrase:", get(gameStore).currentPhrase);
-  console.log("Correct Positions:", get(gameStore).correctPositions);
+    import { 
+        gameState, 
+        startNewGame, 
+        confirmPurchase, 
+        enterGuessMode, 
+        updateGuess, 
+        submitGuess, 
+        deleteLastGuessLetter, 
+        cancelSelection, 
+        selectItem 
+    } from '$lib/stores/gameStore';
 
+    import Keyboard from '$lib/components/Keyboard.svelte';
+    import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
+    import { goto } from '$app/navigation';
 
-$: console.log("Pending Purchase:", get(gameStore).pendingPurchase);
+    let currentState;
+    gameState.subscribe(value => currentState = value);
 
+    let username = 'Guest';
+
+    if (typeof window !== 'undefined') {
+        username = localStorage.getItem('username') || 'Guest';
+        console.log('User Logged In:', username !== 'Guest' ? `Yes (Username: ${username})` : 'No');
+    }
+
+    function handleLetterClick(event) {
+        const { letter } = event.detail;
+
+        if (currentState.mode === 'default') {
+            selectItem('letter', letter);
+        } 
+        else if (currentState.mode === 'guess_mode') {
+            console.log(`Guess Mode Letter Clicked: ${letter}`); 
+            updateGuess(letter); // ✅ Update guess input
+        }
+    }
+
+    function handleEnter() {
+        if (currentState.purchasePending) {
+            confirmPurchase();
+        } else if (currentState.mode === 'guess_mode') {
+            submitGuess();
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('username'); 
+        goto('/login'); 
+    }
+
+    // Letter Costs (Needed for Keyboard Component)
+    const letterCosts = {
+        Q: 30, W: 50, E: 140, R: 120, T: 120, Y: 60, U: 80, I: 110, O: 90, P: 80,
+        A: 130, S: 120, D: 80, F: 60, G: 70, H: 70, J: 30, K: 50, L: 80,
+        Z: 40, X: 40, C: 80, V: 50, B: 60, N: 100, M: 70
+    };
 </script>
 
-<main>
-  <h1>WordBankMaster</h1>
+<main class="game-container">
+    <h1>WordBank</h1>
+    <h2>Welcome, {username}!</h2>
+    <button on:click={logout} class="logout-button">Logout</button>
 
-<!-- ✅ Display Bankroll as Whole Dollars -->
-<p class="bankroll">Bankroll: <strong>
-  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format($gameStore.bankroll)}
-</strong></p>
+    <div class="game-info">
+        <p>Category: <strong>Person</strong></p>
+        <p>Bankroll: <strong>${currentState.bankroll}</strong></p>
+        <p>Guesses Remaining: <strong>${currentState.guessesRemaining}</strong></p>
+    </div>
 
-  <!-- ✅ Display Phrase -->
-  <PhraseDisplay />
+    <PhraseDisplay 
+        phrase={currentState.phrase} 
+        revealedLetters={currentState.revealedLetters} 
+        guessInput={currentState.guessInput}  
+        guessTrackerIndex={currentState.guessTrackerIndex} 
+        mode={currentState.mode} 
+    />
 
-  <!-- ✅ Display Guesses Remaining -->
-  <p class="guesses">Guesses Remaining: <strong>{$gameStore.guesses}</strong></p>
+    <div class="button-container">
+        <button on:click={handleEnter} class="enter-button {currentState.purchasePending ? 'confirm' : ''}">
+            {currentState.purchasePending ? 'Confirm' : 'Enter'}
+        </button>
+        
+        <button 
+            on:click={enterGuessMode} 
+            class="guess-button {currentState.mode === 'guess_mode' ? 'active' : ''}">
+            Guess
+        </button>
+    
+        <button 
+            on:click={() => selectItem('hint')} 
+            class="hint-button {currentState.selectedItem === 'hint' ? 'selected' : ''}">
+            Hint (-$150)
+        </button>
 
-  <!-- ✅ Show Win/Loss Messages -->
-  {#if $gameStore.winState}
-    <p class="win-message">🎉 You Won! 🎉</p>
-    <button class="reset-btn" on:click={actions.resetGame}>Restart Game</button>
-  {:else if $gameStore.lossState}
-    <p class="loss-message">😞 You Lost! Try Again!</p>
-    <button class="reset-btn" on:click={actions.resetGame}>Restart Game</button>
-  {/if}
+        <button 
+            on:click={() => selectItem('extra_guess')} 
+            class="extra-guess-button {currentState.selectedItem === 'extra_guess' ? 'selected' : ''}">
+            Extra Guess (-$150)
+        </button>
 
-  <!-- ✅ Disable Keyboard if the Player Wins -->
-  {#if !$gameStore.winState && !$gameStore.lossState}
-    <Keyboard />
-  {/if}
-  {#if $gameStore.lossState}
-  <div class="game-over-banner">
-    <h2>Game Over</h2>
-    <p>You're out of guesses and don't have enough bankroll to continue!</p>
-    <button on:click={restartGame}>Try Again</button>
-  </div>
-{/if}
+        <button on:click={deleteLastGuessLetter} class="delete-button">Delete</button>
 
+        {#if currentState.purchasePending}
+            <button on:click={cancelSelection} class="cancel-button">Cancel</button>
+        {/if}
+    </div>
+
+    <Keyboard 
+        on:letterClick={handleLetterClick} 
+        letterCosts={letterCosts} 
+        selectedLetter={currentState.selectedLetter} 
+        revealedLetters={currentState.revealedLetters} 
+        incorrectLetters={currentState.incorrectLetters} 
+    />
+
+    {#if currentState.mode === 'guess_mode'}
+        <div class="guess-container">
+            {#each currentState.guessInput as letter, index}
+                <input 
+                    type="text" 
+                    class="{index === currentState.guessTrackerIndex ? 'guess-active' : ''}"
+                    value={letter} 
+                    readonly 
+                    on:click={() => updateGuess('')} 
+                />
+            {/each}
+        </div>
+    {/if}
 </main>
 
-<!-- ✅ Styles -->
 <style>
-  main {
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 15px;
-    margin-top: 20px;
-  }
-
-  .bankroll, .guesses {
-    font-size: 1.2em;
-    font-weight: bold;
-  }
-
-  .win-message {
-    color: green;
-    font-size: 22px;
-    font-weight: bold;
-  }
-
-  .loss-message {
-    color: red;
-    font-size: 22px;
-    font-weight: bold;
-  }
-
-  /* ✅ Reset Button */
-  .reset-btn {
-    background-color: darkblue;
-    color: white;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 20px;
-    margin-top: 20px;
-    font-weight: bold;
-  }
-
-  .reset-btn:hover {
-    background-color: navy;
-  }
-
-  .game-over-banner {
-    position: fixed;
-    top: 30%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: red;
-    color: white;
-    padding: 20px;
-    text-align: center;
-    border-radius: 10px;
-}
-
-.game-over-banner button {
-    background: white;
-    color: red;
-    border: none;
-    padding: 10px 15px;
-    font-size: 18px;
-    cursor: pointer;
-    margin-top: 10px;
-    border-radius: 5px;
-}
-
-.game-over-banner button:hover {
-    background: darkred;
-    color: white;
-}
-
+    .game-container {
+        text-align: center;
+        font-family: Arial, sans-serif;
+        max-width: 600px;
+        margin: auto;
+    }
+    .logout-button {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        padding: 10px;
+        background: red;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+    .game-info p {
+        font-size: 1.2em;
+        margin: 5px 0;
+    }
+    .button-container {
+        margin: 15px 0;
+    }
+    .button-container button {
+        margin: 5px;
+        padding: 10px;
+        font-size: 1em;
+    }
+    .selected {
+        background-color: blue !important;
+        color: white !important;
+    }
+    .confirm {
+        background-color: green !important;
+        color: white !important;
+    }
+    .delete-button {
+        background: orange;
+        color: white;
+    }
+    .cancel-button {
+        background: gray;
+        color: white;
+    }
+    .guess-container {
+        display: flex;
+        justify-content: center;
+        gap: 5px;
+        margin-top: 10px;
+    }
+    .guess-container input {
+        width: 40px;
+        height: 40px;
+        text-align: center;
+        font-size: 1.5em;
+        text-transform: uppercase;
+        border: 2px solid gray;
+        background: white;
+    }
+    .guess-active {
+        border: 2px solid orange;
+        background: #fff8e1;
+    }
 </style>
