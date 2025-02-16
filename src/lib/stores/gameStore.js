@@ -347,7 +347,7 @@ export function submitGuess() {
         else {
           // this means it matches the current phrases index and letter aka correct letter guess
           console.log("this is where correct guesses go");
-          correctLetters.append(newGuessInput[i]);
+          correctLetters.push(newGuessInput[i]);
         }
       }
       
