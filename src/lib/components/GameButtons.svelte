@@ -1,166 +1,174 @@
 <script>
-    /**
-     * GameButtons.svelte
-     *
-     * Renders the primary, secondary, and utility buttons for BankWord.
-     *
-     * Primary Buttons:
-     *  - Enter (Confirm Purchase or Submit Guess)
-     *  - Guess (Toggle Guess Mode)
-     *  - Hint
-     *  - Extra Guess
-     *  - Delete
-     *
-     * Utility Buttons:
-     *  - How to Play
-     *  - Settings
-     */
-    
-    import {
-      confirmPurchase,
-      selectHint,
-      selectExtraGuess,
-      enterGuessMode,
-      submitGuess,
-      deleteGuessLetter
-    } from '$lib/stores/GameStore.js';
-    import { gameStore } from '$lib/stores/GameStore.js';
-    
-    /**
-     * guessComplete:
-     * Determines if all editable slots in guess mode are filled.
-     */
-    $: guessComplete = (() => {
-      if ($gameStore.gameState !== 'guess_mode') return false;
-      const editableIndices = [];
-      for (let i = 0; i < $gameStore.currentPhrase.length; i++) {
-        const char = $gameStore.currentPhrase[i];
-        if (char === ' ') continue;
-        if ($gameStore.purchasedLetters.includes(char)) continue;
-        editableIndices.push(i);
+  /**
+   * GameButtons.svelte
+   *
+   * Renders the primary, secondary, and utility buttons for BankWord.
+   *
+   * Primary Buttons:
+   *  - Enter (Confirm Purchase or Submit Guess)
+   *  - Guess (Toggle Guess Mode)
+   *  - Hint
+   *  - Extra Guess
+   *  - Delete
+   *
+   * Utility Buttons:
+   *  - How to Play
+   *  - Settings
+   */
+  
+  import {
+    confirmPurchase,
+    selectHint,
+    selectExtraGuess,
+    enterGuessMode,
+    submitGuess,
+    deleteGuessLetter
+  } from '$lib/stores/GameStore.js';
+  import { gameStore } from '$lib/stores/GameStore.js';
+  
+  /**
+   * guessComplete:
+   * In guess mode, an index in the phrase is "editable" if:
+   *   - It is not a space.
+   *   - It is not locked in purchasedLetters (i.e. purchasedLetters[i] equals the actual letter).
+   * For every such editable index, a valid guess must be present in guessedLetters.
+   * Only when every editable slot is filled will guessComplete be true.
+   */
+  $: guessComplete = (() => {
+    if ($gameStore.gameState !== 'guess_mode') return false;
+    const editableIndices = [];
+    for (let i = 0; i < $gameStore.currentPhrase.length; i++) {
+      if ($gameStore.currentPhrase[i] === ' ') continue;
+      if ($gameStore.purchasedLetters[i] === $gameStore.currentPhrase[i]) continue;
+      // If the guessed letter at index i is undefined or an empty string, it isn’t filled.
+      if (!$gameStore.guessedLetters[i] || $gameStore.guessedLetters[i] === "") continue;
+      editableIndices.push(i);
+    }
+    // Now, to be complete, every index that is not locked and not a space must be guessed.
+    for (let i = 0; i < $gameStore.currentPhrase.length; i++) {
+      if ($gameStore.currentPhrase[i] === ' ') continue;
+      if ($gameStore.purchasedLetters[i] === $gameStore.currentPhrase[i]) continue;
+      if (!$gameStore.guessedLetters[i] || $gameStore.guessedLetters[i] === "") {
+        return false;
       }
-      // If any editable slot is empty, guess is incomplete.
-      for (const idx of editableIndices) {
-        if ($gameStore.guessInput[idx] === '') return false;
-      }
-      return true;
-    })();
-  </script>
+    }
+    return true;
+  })();
+</script>
     
-  <div class="game-buttons">
-    <!-- Primary Actions -->
-    <div class="primary-buttons">
-      <!-- Enter Button: Confirm purchase or submit guess -->
-      <button
-        on:click={(e) => {
-          if ($gameStore.gameState === 'guess_mode') {
-            if (guessComplete) {
-              submitGuess();
-            } else {
-              console.log("Not all guess slots are filled.");
-            }
+<div class="game-buttons">
+  <!-- Primary Actions -->
+  <div class="primary-buttons">
+    <!-- Enter Button: Confirm purchase or submit guess -->
+    <button
+      on:click={(e) => {
+        if ($gameStore.gameState === 'guess_mode') {
+          if (guessComplete) {
+            submitGuess();
           } else {
-            confirmPurchase();
+            console.log("Not all guess slots are filled.");
           }
-          e.currentTarget.blur();
-        }}
-        class="{ ($gameStore.gameState === 'guess_mode' && guessComplete) || $gameStore.gameState === 'purchase_pending' ? 'submit-ready' : '' }"
-      >
-        Enter { $gameStore.gameState === 'guess_mode' ? "(Submit Guess)" : "(Confirm Purchase)" }
-      </button>
+        } else {
+          confirmPurchase();
+        }
+        e.currentTarget.blur();
+      }}
+      class="{ ($gameStore.gameState === 'guess_mode' && guessComplete) || $gameStore.gameState === 'purchase_pending' ? 'submit-ready' : '' }"
+    >
+      Enter { $gameStore.gameState === 'guess_mode' ? "(Submit Guess)" : "(Confirm Purchase)" }
+    </button>
     
-      <!-- Guess Mode Toggle -->
-      <button 
-        on:click={(e) => { enterGuessMode(); e.currentTarget.blur(); }}
-        class:active-guess={$gameStore.gameState === 'guess_mode'}
-      >
-        Guess (Enter Guess Mode)
-      </button>
+    <!-- Guess Mode Toggle -->
+    <button 
+      on:click={(e) => { enterGuessMode(); e.currentTarget.blur(); }}
+      class:active-guess={$gameStore.gameState === 'guess_mode'}
+    >
+      Guess (Enter Guess Mode)
+    </button>
         
-      <!-- Hint Purchase -->
-      <button
-        on:click={(e) => { selectHint(); e.currentTarget.blur(); }}
-        class="{$gameStore.selectedPurchase && $gameStore.selectedPurchase.type === 'hint' && $gameStore.gameState === 'purchase_pending' ? 'pending' : ''}"
-      >
-        Hint ($150)
-      </button>
+    <!-- Hint Purchase -->
+    <button
+      on:click={(e) => { selectHint(); e.currentTarget.blur(); }}
+      class="{$gameStore.selectedPurchase?.type === 'hint' && $gameStore.gameState === 'purchase_pending' ? 'pending' : ''}"
+    >
+      Hint ($150)
+    </button>
     
-      <!-- Extra Guess Purchase -->
-      <button
-        on:click={(e) => { selectExtraGuess(); e.currentTarget.blur(); }}
-        class="{$gameStore.selectedPurchase && $gameStore.selectedPurchase.type === 'extra_guess' && $gameStore.gameState === 'purchase_pending' ? 'pending' : ''}"
-      >
-        Extra Guess ($150)
-      </button>
+    <!-- Extra Guess Purchase -->
+    <button
+      on:click={(e) => { selectExtraGuess(); e.currentTarget.blur(); }}
+      class="{$gameStore.selectedPurchase?.type === 'extra_guess' && $gameStore.gameState === 'purchase_pending' ? 'pending' : ''}"
+    >
+      Extra Guess ($150)
+    </button>
     
-      <!-- Delete (only relevant in guess mode) -->
-      <button
-        on:click={(e) => { if ($gameStore.gameState === 'guess_mode') { deleteGuessLetter(); } e.currentTarget.blur(); }}
-      >
-        Delete
-      </button>
-    </div>
-    
-    <!-- Utility Buttons -->
-    <div class="utility-buttons">
-      <button on:click={(e) => e.currentTarget.blur()}>How to Play</button>
-      <button on:click={(e) => e.currentTarget.blur()}>Settings</button>
-    </div>
+    <!-- Delete (only in guess mode) -->
+    <button
+      on:click={(e) => { if ($gameStore.gameState === 'guess_mode') { deleteGuessLetter(); } e.currentTarget.blur(); }}
+    >
+      Delete
+    </button>
   </div>
     
-  <style>
-    /* Remove focus outlines from all buttons */
-    button:focus {
-      outline: none;
-    }
+  <!-- Utility Buttons -->
+  <div class="utility-buttons">
+    <button on:click={(e) => e.currentTarget.blur()}>How to Play</button>
+    <button on:click={(e) => e.currentTarget.blur()}>Settings</button>
+  </div>
+</div>
     
-    /* Container for all game buttons */
-    .game-buttons {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1em;
-    }
+<style>
+  /* Remove focus outlines from all buttons */
+  button:focus {
+    outline: none;
+  }
     
-    /* Grouping for different button sets */
-    .primary-buttons,
-    .secondary-buttons,
-    .utility-buttons {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
+  /* Container for all game buttons */
+  .game-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1em;
+  }
     
-    /* Base button styling */
-    button {
-      padding: 10px 15px;
-      font-size: 16px;
-      border: 1px solid #333;
-      background-color: #f0f0f0;
-      cursor: pointer;
-    }
+  /* Grouping for different button sets */
+  .primary-buttons,
+  .secondary-buttons,
+  .utility-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
     
-    button:hover {
-      background-color: #ddd;
-    }
+  /* Base button styling */
+  button {
+    padding: 10px 15px;
+    font-size: 16px;
+    border: 1px solid #333;
+    background-color: #f0f0f0;
+    cursor: pointer;
+  }
     
-    /* When guess is complete or a purchase is pending, turn the Enter button green */
-    .submit-ready {
-      background-color: green !important;
-      color: white !important;
-    }
+  button:hover {
+    background-color: #ddd;
+  }
     
-    /* When a purchase option is selected (pending), turn it blue */
-    button.pending {
-      background-color: blue !important;
-      color: white !important;
-    }
+  /* When guess is complete or a purchase is pending, turn the Enter button green */
+  .submit-ready {
+    background-color: green !important;
+    color: white !important;
+  }
+    
+  /* When a purchase option is selected (pending), turn it blue */
+  button.pending {
+    background-color: blue !important;
+    color: white !important;
+  }
   
-    /* When in guess mode, the Guess button turns orange */
-    button.active-guess {
-      background-color: orange !important;
-      color: white !important;
-    }
-  </style>
-  
+  /* When in guess mode, the Guess button turns orange */
+  button.active-guess {
+    background-color: orange !important;
+    color: white !important;
+  }
+</style>

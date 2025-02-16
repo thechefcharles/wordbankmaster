@@ -10,376 +10,418 @@ export const gameStore = writable({
   bankroll: 1000,
   guessesRemaining: 2,
   currentPhrase: "MICHAEL JORDAN",
-  gameState: "default", // "default", "purchase_pending", "guess_mode", "won", etc
+  gameState: "default", // "default", "purchase_pending", "guess_mode", "won", "lost"
+  // purchasedLetters: an array (indexed per character) holding locked letters.
   purchasedLetters: [],
+  // guessedLetters: an object mapping index -> letter for current guess in guess mode.
+  guessedLetters: {},
+  // lockedLetters: an object mapping a letter to true only if every occurrence is correct.
+  lockedLetters: {},
   incorrectLetters: [],
   hintRevealedLetters: [],
-  selectedPurchase: null, // { type: 'letter'|'hint'|'extra_guess', value?: letter }
-  guessInput: [] // Array matching currentPhrase, populated in guess mode
+  selectedPurchase: null // { type: 'letter'|'hint'|'extra_guess', value?: letter }
+  // (Deprecated: guessInput removed)
 });
 
-// Helper function to check for loss conditions.
+// Helper: Check for loss conditions.
 function checkLossCondition(state) {
-    // Determine the cheapest purchase cost from letterCosts.
-    const minLetterCost = Math.min(...Object.values(letterCosts));
-    if (state.guessesRemaining <= 0 && state.bankroll < minLetterCost) {
-      console.log("Loss condition triggered: no guesses remaining and insufficient bankroll.");
-      return {
-        ...state,
-        gameState: "lost",
-        // Automatically fill in the correct phrase.
-        guessInput: state.currentPhrase.split(''),
-        guessesRemaining: 0
-      };
-    }
-    return state;
+  const minLetterCost = Math.min(...Object.values(letterCosts));
+  if (state.guessesRemaining <= 0 && state.bankroll < minLetterCost) {
+    console.log("Loss condition triggered: no guesses remaining and insufficient bankroll.");
+    return {
+      ...state,
+      gameState: "lost",
+      // Reveal entire phrase in guessedLetters.
+      guessedLetters: Object.fromEntries(
+        state.currentPhrase.split('').map((ch, i) => [i, ch])
+      ),
+      guessesRemaining: 0
+    };
   }
+  return state;
+}
 
-// (Purchase mode functions remain here...)
-// -- selectLetter, selectHint, selectExtraGuess, confirmPurchase, etc. --
+// ---------------- Purchase Mode Functions ----------------
+
+// Default mode: select a letter for purchase.
 export function selectLetter(letter) {
-    gameStore.update(state => {
-      // If the letter is already selected, deselect it.
-      if (
-        state.selectedPurchase &&
-        state.selectedPurchase.type === 'letter' &&
-        state.selectedPurchase.value === letter
-      ) {
-        console.log(`Deselecting letter: ${letter}`);
-        return { ...state, selectedPurchase: null, gameState: "default" };
-      }
-      // Otherwise, select the letter (if not already purchased or marked incorrect)
-      if (state.purchasedLetters.includes(letter) || state.incorrectLetters.includes(letter)) {
-        console.log(`Letter ${letter} already purchased or incorrect.`);
-        return state;
-      }
-      console.log(`Selecting letter: ${letter}`);
-      return { 
-        ...state, 
-        gameState: "purchase_pending", 
-        selectedPurchase: { type: 'letter', value: letter } 
-      };
-    });
-  }
-  
-  export function selectHint() {
-    gameStore.update(state => {
-      if (state.selectedPurchase && state.selectedPurchase.type === 'hint') {
-        console.log("Deselecting hint");
-        return { ...state, selectedPurchase: null, gameState: "default" };
-      }
-      console.log("Selecting hint");
-      return {
-        ...state,
-        gameState: "purchase_pending",
-        selectedPurchase: { type: 'hint' }
-      };
-    });
-  }
-  
-  export function selectExtraGuess() {
-    gameStore.update(state => {
-      if (state.selectedPurchase && state.selectedPurchase.type === 'extra_guess') {
-        console.log("Deselecting extra guess");
-        return { ...state, selectedPurchase: null, gameState: "default" };
-      }
-      console.log("Selecting extra guess");
-      return {
-        ...state,
-        gameState: "purchase_pending",
-        selectedPurchase: { type: 'extra_guess' }
-      };
-    });
-  }
-  
-  export function confirmPurchase() {
-    gameStore.update(state => {
-      if (!state.selectedPurchase) return state;
-      const purchase = state.selectedPurchase;
-      console.log("selected purchase: ", purchase);
-  
-      if (purchase.type === 'letter') {
-        const letter = purchase.value;
-        console.log("letter value: ", letter);
-        const cost = letterCosts[letter] || 0;
-        if (state.bankroll < cost) {
-          console.log(`Not enough bankroll to purchase letter ${letter}`);
-          return { ...state, selectedPurchase: null, gameState: "default" };
-        }
-        const isCorrect = state.currentPhrase.includes(letter);
-        let newGuessInput = state.guessInput;
-        if (state.gameState === 'guess_mode') {
-          newGuessInput = state.currentPhrase.split('').map((ch, i) =>
-            ch === letter ? letter : state.guessInput[i]
-          );
-        }
-        let newState = {
-          ...state,
-          bankroll: state.bankroll - cost,
-          purchasedLetters: isCorrect
-            ? [...state.purchasedLetters, letter]
-            : state.purchasedLetters,
-          incorrectLetters: !isCorrect
-            ? [...state.incorrectLetters, letter]
-            : state.incorrectLetters,
-          selectedPurchase: null,
-          guessInput: newGuessInput,
-          gameState: "default"
-        };
-        return checkLossCondition(newState);
-      } else if (purchase.type === 'hint') {
-        const cost = 150;
-        if (state.bankroll < cost) {
-          console.log("Not enough bankroll for hint");
-          return { ...state, selectedPurchase: null, gameState: "default" };
-        }
-        const unrevealed = state.currentPhrase.split('').filter(
-          ch => ch !== ' ' && !state.purchasedLetters.includes(ch)
-        );
-        if (unrevealed.length === 0) {
-          console.log("No unrevealed letters available for hint");
-          return { ...state, selectedPurchase: null, gameState: "default" };
-        }
-        const randomIndex = Math.floor(Math.random() * unrevealed.length);
-        const chosenLetter = unrevealed[randomIndex].toUpperCase();
-        console.log(`Hint: revealing letter ${chosenLetter}`);
-        const newGuessInput = state.currentPhrase.split('').map((ch, i) =>
-          ch === chosenLetter ? chosenLetter : state.guessInput[i]
-        );
-        let newState = {
-          ...state,
-          bankroll: state.bankroll - cost,
-          purchasedLetters: [...state.purchasedLetters, chosenLetter],
-          selectedPurchase: null,
-          guessInput: newGuessInput,
-          gameState: "default"
-        };
-        return checkLossCondition(newState);
-      } else if (purchase.type === 'extra_guess') {
-        const cost = 150;
-        if (state.bankroll < cost) {
-          console.log("Not enough bankroll for extra guess");
-          return { ...state, selectedPurchase: null, gameState: "default" };
-        }
-        let newState = {
-          ...state,
-          bankroll: state.bankroll - cost,
-          guessesRemaining: state.guessesRemaining + 1,
-          selectedPurchase: null,
-          gameState: "default"
-        };
-        return checkLossCondition(newState);
-      }
-      return state;
-    });
-  }
-          
-
-// --- Guess Mode Functions ---
-
-// Enter Guess Mode: clear any pending purchase and initialize guessInput.
-export function enterGuessMode() {
   gameStore.update(state => {
-    // If there are no guesses, check loss condition immediately.
-    console.log("Entered guess mode here is the current state: ", state);
-
-    // REMOVE THIS START
-    if (state.guessesRemaining <= 0) {
-      const minLetterCost = Math.min(...Object.values(letterCosts));
-      if (state.bankroll < minLetterCost) {
-        console.log("Cannot enter guess mode: no guesses and insufficient bankroll.");
-        return {
-          ...state,
-          gameState: "lost",
-          guessInput: state.currentPhrase.split(''),
-          guessesRemaining: 0
-        };
-      }
-      // Otherwise, simply do not allow entering guess mode.
-      console.log("Cannot enter guess mode: no guesses remaining.");
+    if (
+      state.selectedPurchase &&
+      state.selectedPurchase.type === 'letter' &&
+      state.selectedPurchase.value === letter
+    ) {
+      console.log(`Deselecting letter: ${letter}`);
+      return { ...state, selectedPurchase: null, gameState: "default" };
+    }
+    // Instead of a global check with purchasedLetters, we check lockedLetters.
+    if ((state.lockedLetters && state.lockedLetters[letter]) ||
+        state.incorrectLetters.includes(letter)) {
+      console.log(`Letter ${letter} is fully locked or marked incorrect.`);
       return state;
     }
-    // REMOVE THIS END
-
-    // Toggle guess mode if already active.
-    if (state.gameState === 'guess_mode') {
-      console.log("Exiting guess mode.");
-      return { ...state, gameState: "default", guessInput: [] };
-    }
-    // Initialize guessInput for guess mode.
-    const guessInput = state.currentPhrase.split('').map(char =>
-      char === ' ' ? ' ' : (state.purchasedLetters.includes(char) ? char : '')
-    );
-    console.log("Entering guess mode. Initial guessInput:", guessInput);
-    return { ...state, gameState: "guess_mode", selectedPurchase: null, guessInput };
+    console.log(`Selecting letter: ${letter}`);
+    return { 
+      ...state, 
+      gameState: "purchase_pending", 
+      selectedPurchase: { type: 'letter', value: letter }
+    };
   });
 }
-    
-// Helper: Compute editable indices (non-space and not purchased)
 
-// Input a guess letter into the active (tracked) index.
-// Helper: Compute editable indices (non-space and not purchased)
-function getEditableIndices(state) {
-    const indices = [];
-    for (let i = 0; i < state.currentPhrase.length; i++) {
-      if (state.currentPhrase[i] === ' ') continue;
-      if (state.purchasedLetters.includes(state.currentPhrase[i])) continue;
-      indices.push(i);
+export function selectHint() {
+  gameStore.update(state => {
+    if (state.selectedPurchase && state.selectedPurchase.type === 'hint') {
+      console.log("Deselecting hint");
+      return { ...state, selectedPurchase: null, gameState: "default" };
     }
-    return indices;
-  }
-  
-  // Input a guess letter into the active (tracked) index.
-  // The active index is determined as the first editable index that is either empty
-  // or filled with an incorrect letter. If all editable indices are filled correctly,
-  // we default to the last one.
-  export function inputGuessLetter(letter) {
-    console.log("letter entered in guess mode: ", letter);
-    gameStore.update(state => {
-      console.log("state after letter guess but before function run: ", state)
-      if (state.gameState !== "guess_mode") return state;
-      // Do not allow letters that are already purchased.
-      if (state.purchasedLetters.includes(letter)) {
-        console.log("Letter already purchased; ignoring input in guess mode.");
-        return state;
+    console.log("Selecting hint");
+    return {
+      ...state,
+      gameState: "purchase_pending",
+      selectedPurchase: { type: 'hint' }
+    };
+  });
+}
+
+export function selectExtraGuess() {
+  gameStore.update(state => {
+    if (state.selectedPurchase && state.selectedPurchase.type === 'extra_guess') {
+      console.log("Deselecting extra guess");
+      return { ...state, selectedPurchase: null, gameState: "default" };
+    }
+    console.log("Selecting extra guess");
+    return {
+      ...state,
+      gameState: "purchase_pending",
+      selectedPurchase: { type: 'extra_guess' }
+    };
+  });
+}
+
+/**
+ * confirmPurchase:
+ * - In default (purchase) mode, if a letter is purchased, update purchasedLetters per index.
+ *   For each occurrence of the purchased letter in currentPhrase, set that index in purchasedLetters.
+ *   Then check if every non‑space index is now locked; if so, set gameState to "won".
+ * - In guess mode, update only the active index.
+ */
+export function confirmPurchase() {
+  gameStore.update(state => {
+    if (!state.selectedPurchase) return state;
+    const purchase = state.selectedPurchase;
+    console.log("Selected purchase:", purchase);
+
+    if (purchase.type === 'letter') {
+      const letter = purchase.value;
+      const cost = letterCosts[letter] || 0;
+      if (state.bankroll < cost) {
+        console.log(`Not enough bankroll to purchase letter ${letter}`);
+        return { ...state, selectedPurchase: null, gameState: "default" };
       }
-      const editableIndices = getEditableIndices(state);
-      console.log("editable indices: ", editableIndices);
-      if (editableIndices.length === 0) return state;
-  
-      let activeIndex = null;
-      // Look for the first empty editable slot.
-      for (let j = 0; j < editableIndices.length; j++) {
-        const idx = editableIndices[j];
-        console.log("j inidces: ", editableIndices[j])
-        if (state.guessInput[idx] === '') {
-          activeIndex = idx;
-          break;
+      const phrase = state.currentPhrase;
+
+      if (state.gameState !== 'guess_mode') {
+        // DEFAULT MODE: Purchase globally—update every occurrence.
+        let newPurchased = [...state.purchasedLetters];
+        for (let i = 0; i < phrase.length; i++) {
+          if (phrase[i] === letter) {
+            newPurchased[i] = letter;
+          }
         }
-      }
-      // If all editable slots are filled, default to the last one (to allow overriding).
-      if (activeIndex === null) {
-        activeIndex = editableIndices[editableIndices.length - 1];
-      }
-      const newGuessInput = [...state.guessInput];
-      newGuessInput[activeIndex] = letter;
-      console.log(`Input letter ${letter} at index ${activeIndex}. New guessInput:`, newGuessInput);
-      return { ...state, guessInput: newGuessInput };
-    });
-  }
-      
-// Delete a letter from the current active guess slot, or recede to a previous slot.
-export function deleteGuessLetter() {
-    gameStore.update(state => {
-      if (state.gameState !== "guess_mode") return state;
-      const editableIndices = getEditableIndices(state);
-      console.log("editable indices: ", editableIndices)
-      if (editableIndices.length === 0) return state;
-      
-      // Determine the active index for deletion.
-      // First, try to find the first editable index that is empty.
-      let activeIndex = null;
-      for (let j = 0; j < editableIndices.length; j++) {
-        const idx = editableIndices[j];
-        if (state.guessInput[idx] === '') {
-          activeIndex = idx;
-          break;
+        // If the letter doesn't appear in the phrase, mark it as incorrect.
+        let newIncorrect = [...state.incorrectLetters];
+        if (!phrase.includes(letter)) {
+          newIncorrect.push(letter);
         }
-      }
-      // If all editable indices are filled, default to the last one.
-      if (activeIndex === null) {
-        activeIndex = editableIndices[editableIndices.length - 1];
-      }
-      // If the active slot is empty, recede: find the last non-empty editable slot before it.
-      if (state.guessInput[activeIndex] === '') {
-        for (let k = activeIndex - 1; k >= 0; k--) {
-          if (editableIndices.includes(k) && state.guessInput[k] !== '') {
-            activeIndex = k;
+        // Update lockedLetters for this letter:
+        let newLockedLetters = { ...state.lockedLetters };
+        const indices = [];
+        for (let i = 0; i < phrase.length; i++) {
+          if (phrase[i] === letter) indices.push(i);
+        }
+        newLockedLetters[letter] = indices.length > 0 && indices.every(idx => newPurchased[idx] === letter);
+        
+        // Check win condition: if every non-space index in the phrase is locked.
+        let win = true;
+        for (let i = 0; i < phrase.length; i++) {
+          if (phrase[i] === ' ') continue;
+          if (newPurchased[i] !== phrase[i]) {
+            win = false;
             break;
           }
         }
-      }
-      
-      // Clear the letter at the active index.
-      const newGuessInput = [...state.guessInput];
-      newGuessInput[activeIndex] = '';
-      console.log(`Deleted letter at index ${activeIndex}. New guessInput:`, newGuessInput);
-      return { ...state, guessInput: newGuessInput };
-    });
-  }
-
-  export function resetGame() {
-    gameStore.set({
-      bankroll: 1000,
-      guessesRemaining: 2,
-      currentPhrase: "MICHAEL JORDAN", // Static phrase for now.
-      gameState: "default",
-      purchasedLetters: [],
-      incorrectLetters: [],
-      hintRevealedLetters: [],
-      selectedPurchase: null,
-      guessInput: []  // Will be initialized when entering guess mode.
-    });
-    console.log("Game reset.");
-  }
-  
-// Submit the guess: for each editable index, if the input matches the phrase letter, keep it; if not, clear it.
-// Then check for win condition (all editable slots correct) and update state.
-export function submitGuess() {
-    let correctLetters = []
-    gameStore.update(state => {
-      console.log("current state right after sumbitting: ", state);
-      if (state.gameState !== "guess_mode") return state;
-      const newGuessInput = [...state.guessInput];
-      let allCorrect = true;
-      console.log("after sumbitting: ", newGuessInput)
-      for (let i = 0; i < state.currentPhrase.length; i++) {
-        console.log("in the loop at index ", i, state.currentPhrase[i])
-        console.log("does it inclue it: ", state.purchasedLetters.includes(state.currentPhrase[i]))
-        if (state.currentPhrase[i] === ' ') continue;
-        if (state.purchasedLetters.includes(state.currentPhrase[i])) continue;
-        console.log("new input of i: ", newGuessInput[i]);
-        console.log("current phrase of i: ", state.currentPhrase[i]);
-        if (newGuessInput[i] !== state.currentPhrase[i]) {
-          newGuessInput[i] = ''; // Clear incorrect input.
-          allCorrect = false;
-        }
-        else {
-          // this means it matches the current phrases index and letter aka correct letter guess
-          console.log("this is where correct guesses go");
-          correctLetters.push(newGuessInput[i]);
-        }
-      }
-      
-      const newGuessesRemaining = state.guessesRemaining - 1;
-      
-      if (allCorrect) {
-        console.log("✅ Guess submitted correctly. You win!");
-        return {
-          ...state,
-          gameState: "won",
-          guessInput: newGuessInput,
-          guessesRemaining: newGuessesRemaining,
-          purchasedLetters: [...state.purchasedLetters, ...correctLetters]          
-        };
-      } else {
-        console.log("we should be here ");
+        
         let newState = {
           ...state,
-          gameState: "default",
-          guessInput: newGuessInput,
-          guessesRemaining: newGuessesRemaining,
-          purchasedLetters: [...state.purchasedLetters, ...correctLetters]
+          bankroll: state.bankroll - cost,
+          purchasedLetters: newPurchased,
+          incorrectLetters: newIncorrect,
+          lockedLetters: newLockedLetters,
+          selectedPurchase: null,
+          gameState: win ? "won" : "default"
         };
-        console.log("new state: ", newState);
-        newState = checkLossCondition(newState);
-        if (newState.gameState === "lost") {
-          return newState;
+        return checkLossCondition(newState);
+      } else {
+        // GUESS MODE: Update only the active index.
+        const editableIndices = [];
+        for (let i = 0; i < phrase.length; i++) {
+          if (phrase[i] === ' ') continue;
+          if (state.purchasedLetters[i] === phrase[i]) continue;
+          editableIndices.push(i);
+        }
+        if (editableIndices.length === 0) {
+          return { ...state, selectedPurchase: null, gameState: "default" };
+        }
+        let activeIndex = -1;
+        for (let j = 0; j < editableIndices.length; j++) {
+          const idx = editableIndices[j];
+          if (!state.guessedLetters.hasOwnProperty(idx)) {
+            activeIndex = idx;
+            break;
+          }
+        }
+        if (activeIndex === -1) {
+          activeIndex = editableIndices[editableIndices.length - 1];
+        }
+        if (phrase[activeIndex] === letter) {
+          let newPurchased = [...state.purchasedLetters];
+          newPurchased[activeIndex] = letter;
+          let newGuessed = { ...state.guessedLetters, [activeIndex]: letter };
+          let newState = {
+            ...state,
+            bankroll: state.bankroll - cost,
+            purchasedLetters: newPurchased,
+            guessedLetters: newGuessed,
+            selectedPurchase: null,
+            gameState: "default"
+          };
+          return checkLossCondition(newState);
         } else {
-          console.log("❌ Guess submitted incorrectly. Try again.");
-          return newState;
+          console.log(`Letter ${letter} does not match target at active index; purchase canceled.`);
+          return { ...state, selectedPurchase: null, gameState: "default" };
         }
       }
-    });
+    } else if (purchase.type === 'hint') {
+      const cost = 150;
+      if (state.bankroll < cost) {
+        console.log("Not enough bankroll for hint");
+        return { ...state, selectedPurchase: null, gameState: "default" };
+      }
+      const phrase = state.currentPhrase;
+      const unrevealed = phrase.split('').filter(
+        ch => ch !== ' ' && !state.purchasedLetters.includes(ch)
+      );
+      if (unrevealed.length === 0) {
+        console.log("No unrevealed letters available for hint");
+        return { ...state, selectedPurchase: null, gameState: "default" };
+      }
+      const randomIndex = Math.floor(Math.random() * unrevealed.length);
+      const chosenLetter = unrevealed[randomIndex].toUpperCase();
+      console.log(`Hint: revealing letter ${chosenLetter}`);
+      let newPurchased = [...state.purchasedLetters];
+      for (let i = 0; i < phrase.length; i++) {
+        if (phrase[i] === chosenLetter) {
+          newPurchased[i] = chosenLetter;
+        }
+      }
+      // Update lockedLetters for the chosen letter.
+      let newLockedLetters = { ...state.lockedLetters };
+      const indices = [];
+      for (let i = 0; i < phrase.length; i++) {
+        if (phrase[i] === chosenLetter) indices.push(i);
+      }
+      newLockedLetters[chosenLetter] = indices.length > 0 && indices.every(idx => newPurchased[idx] === chosenLetter);
+      let newState = {
+        ...state,
+        bankroll: state.bankroll - cost,
+        purchasedLetters: newPurchased,
+        lockedLetters: newLockedLetters,
+        selectedPurchase: null,
+        gameState: "default"
+      };
+      return checkLossCondition(newState);
+    } else if (purchase.type === 'extra_guess') {
+      const cost = 150;
+      if (state.bankroll < cost) {
+        console.log("Not enough bankroll for extra guess");
+        return { ...state, selectedPurchase: null, gameState: "default" };
+      }
+      let newState = {
+        ...state,
+        bankroll: state.bankroll - cost,
+        guessesRemaining: state.guessesRemaining + 1,
+        selectedPurchase: null,
+        gameState: "default"
+      };
+      return checkLossCondition(newState);
+    }
+    return state;
+  });
+}
+
+// ---------------- Guess Mode Functions ----------------
+
+// Enter guess mode: clear pending purchase and initialize guessedLetters.
+export function enterGuessMode() {
+  gameStore.update(state => {
+    console.log("Entering guess mode. Current state:", state);
+    if (state.gameState === 'guess_mode') {
+      console.log("Exiting guess mode.");
+      return { ...state, gameState: "default", guessedLetters: {} };
+    }
+    return { ...state, gameState: "guess_mode", selectedPurchase: null, guessedLetters: {} };
+  });
+}
+
+// Helper: Compute editable indices – indices that are non‑space and not locked (i.e. not correctly purchased).
+function getEditableIndices(state) {
+  const indices = [];
+  for (let i = 0; i < state.currentPhrase.length; i++) {
+    if (state.currentPhrase[i] === ' ') continue;
+    if (state.purchasedLetters[i] === state.currentPhrase[i]) continue;
+    indices.push(i);
   }
+  return indices;
+}
+  
+// Input a guess letter into the next editable index (update guessedLetters).
+export function inputGuessLetter(letter) {
+  gameStore.update(state => {
+    if (state.gameState !== "guess_mode") return state;
+    if (state.lockedLetters && state.lockedLetters[letter]) {
+      console.log("Letter already fully locked; ignoring input in guess mode.");
+      return state;
+    }
+    const editableIndices = getEditableIndices(state);
+    if (editableIndices.length === 0) return state;
+    let activeIndex = null;
+    for (let j = 0; j < editableIndices.length; j++) {
+      const idx = editableIndices[j];
+      if (!state.guessedLetters.hasOwnProperty(idx)) {
+        activeIndex = idx;
+        break;
+      }
+    }
+    if (activeIndex === null) {
+      activeIndex = editableIndices[editableIndices.length - 1];
+    }
+    const newGuessed = { ...state.guessedLetters, [activeIndex]: letter };
+    console.log(`Input letter ${letter} at index ${activeIndex}. New guessedLetters:`, newGuessed);
+    return { ...state, guessedLetters: newGuessed };
+  });
+}
+      
+// Delete a guess from the current active guess slot (or recede to a previous slot).
+export function deleteGuessLetter() {
+  gameStore.update(state => {
+    if (state.gameState !== "guess_mode") return state;
+    const editableIndices = getEditableIndices(state);
+    if (editableIndices.length === 0) return state;
+    let activeIndex = null;
+    for (let i = editableIndices.length - 1; i >= 0; i--) {
+      const idx = editableIndices[i];
+      if (state.guessedLetters[idx]) {
+        activeIndex = idx;
+        break;
+      }
+    }
+    if (activeIndex === null) return state;
+    const newGuessed = { ...state.guessedLetters };
+    delete newGuessed[activeIndex];
+    console.log(`Deleted letter at index ${activeIndex}. New guessedLetters:`, newGuessed);
+    return { ...state, guessedLetters: newGuessed };
+  });
+}
+  
+// Submit the guess:
+// For each non-space index, if guessedLetters at that index equals the corresponding letter in currentPhrase,
+// lock it in by updating purchasedLetters. Otherwise, clear the guess at that index.
+// Then, update lockedLetters for each distinct letter in the phrase.
+// Deduct one guess and return to default mode.
+export function submitGuess() {
+  gameStore.update(state => {
+    if (state.gameState !== "guess_mode") return state;
+    const phrase = state.currentPhrase;
+    const newGuessed = { ...state.guessedLetters };
+    const newPurchased = [...state.purchasedLetters];
+    let allCorrect = true;
     
+    for (let i = 0; i < phrase.length; i++) {
+      if (phrase[i] === ' ') continue;
+      // If already locked, skip.
+      if (newPurchased[i] === phrase[i]) continue;
+      // If the guess is correct, lock it in.
+      if (newGuessed[i] === phrase[i]) {
+        newPurchased[i] = phrase[i];
+      } else {
+        // Clear incorrect guess.
+        delete newGuessed[i];
+        allCorrect = false;
+      }
+    }
+    
+    // Update lockedLetters: for each distinct letter, mark it as locked only if every occurrence is correct.
+    let newLockedLetters = { ...state.lockedLetters };
+    const distinctLetters = Array.from(new Set(phrase.split('').filter(ch => ch !== ' ')));
+    distinctLetters.forEach(letter => {
+      const indices = [];
+      for (let i = 0; i < phrase.length; i++) {
+        if (phrase[i] === letter) indices.push(i);
+      }
+      newLockedLetters[letter] = indices.length > 0 && indices.every(idx => newPurchased[idx] === letter);
+    });
+    
+    const newGuessesRemaining = state.guessesRemaining - 1;
+    
+    // Determine if the whole phrase is now locked (win condition).
+    let win = true;
+    for (let i = 0; i < phrase.length; i++) {
+      if (phrase[i] === ' ') continue;
+      if (newPurchased[i] !== phrase[i]) {
+        win = false;
+        break;
+      }
+    }
+    
+    if (allCorrect || win) {
+      console.log("✅ Guess submitted correctly. You win!");
+      return {
+        ...state,
+        gameState: "won",
+        guessedLetters: newGuessed,
+        purchasedLetters: newPurchased,
+        lockedLetters: newLockedLetters,
+        guessesRemaining: newGuessesRemaining
+      };
+    } else {
+      console.log("❌ Guess submitted incorrectly. Correct letters remain; returning to default mode.");
+      const newState = {
+        ...state,
+        gameState: "default",
+        guessedLetters: newGuessed,
+        purchasedLetters: newPurchased,
+        lockedLetters: newLockedLetters,
+        guessesRemaining: newGuessesRemaining
+      };
+      return checkLossCondition(newState);
+    }
+  });
+}
+
+export function resetGame() {
+  gameStore.set({
+    bankroll: 1000,
+    guessesRemaining: 2,
+    currentPhrase: "MICHAEL JORDAN", // Static phrase for now.
+    gameState: "default",
+    purchasedLetters: [],
+    lockedLetters: {},
+    incorrectLetters: [],
+    hintRevealedLetters: [],
+    selectedPurchase: null,
+    // Deprecated: guessInput
+    guessedLetters: {}
+  });
+  console.log("Game reset.");
+}

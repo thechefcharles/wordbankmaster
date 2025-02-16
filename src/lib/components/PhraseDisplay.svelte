@@ -1,145 +1,119 @@
 <script>
-    /**
-     * PhraseDisplay.svelte
-     *
-     * Displays the current phrase. Each word is stacked on its own line.
-     * - In guess mode: shows guessInput for each letter, with an orange outline
-     *   around the active (next-editable) slot.
-     * - Otherwise: shows letters that have been purchased.
-     */
-  
-    import { gameStore } from '$lib/stores/GameStore.js';
-  
-    /**
-     * activeGuessIndex:
-     * The index of the next empty (or incorrect) editable slot in guess mode.
-     */
-    $: activeGuessIndex = (() => {
-      if ($gameStore.gameState !== 'guess_mode') return -1;
-  
-      // Build a list of editable positions (skip spaces and purchased letters).
-      const editableIndices = [];
-      for (let i = 0; i < $gameStore.currentPhrase.length; i++) {
-        const char = $gameStore.currentPhrase[i];
-        if (char === ' ') continue;
-        if ($gameStore.purchasedLetters.includes(char)) continue;
-        editableIndices.push(i);
-      }
-  
-      // If no editable indices, return -1
-      if (editableIndices.length === 0) return -1;
-  
-      // Return the first empty slot; if all filled, use the last one
-      for (const idx of editableIndices) {
-        if ($gameStore.guessInput[idx] === '') {
-          return idx;
-        }
-      }
-      return editableIndices[editableIndices.length - 1];
-    })();
-  
-    /**
-     * computeIndex(words, wordIndex, letterIndex):
-     * Computes the "global index" in guessInput for a letter at (wordIndex, letterIndex).
-     * We'll sum up the lengths of all previous words + 1 space per word.
-     */
-    function computeIndex(words, wordIndex, letterIndex) {
-      let index = 0;
-      for (let w = 0; w < wordIndex; w++) {
-        // Add the length of that word + 1 space
-        index += words[w].length + 1;
-      }
-      return index + letterIndex;
+  import { gameStore } from '$lib/stores/GameStore.js';
+
+  // Compute the active guess index in guess mode
+  $: activeGuessIndex = (() => {
+    if ($gameStore.gameState !== 'guess_mode') return -1;
+    const editableIndices = [];
+    for (let i = 0; i < $gameStore.currentPhrase.length; i++) {
+      if ($gameStore.currentPhrase[i] === ' ') continue;
+      if ($gameStore.purchasedLetters[i] === $gameStore.currentPhrase[i]) continue;
+      editableIndices.push(i);
     }
-  </script>
-  
-  {#if $gameStore.gameState === 'guess_mode'}
-    <!-- GUESS MODE: Use guessInput -->
-    <div class="phrase-container">
-      {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
-        <div class="word">
-          {#each word.split('') as letter, cIndex}
-            <!-- Inline the globalIndex expression to avoid {#let} blocks -->
-            {#if $gameStore.purchasedLetters.includes(
-              $gameStore.currentPhrase[
-                computeIndex($gameStore.currentPhrase.split(' '), wIndex, cIndex)
-              ]
-            )}
-              <!-- This letter is locked (purchased) -->
-              <span class="letter-box locked">
-                {
-                  $gameStore.currentPhrase[
-                    computeIndex($gameStore.currentPhrase.split(' '), wIndex, cIndex)
-                  ]
-                }
-              </span>
-            {:else}
-              <span
-                class="letter-box {
-                  computeIndex($gameStore.currentPhrase.split(' '), wIndex, cIndex) === activeGuessIndex
-                    ? 'active'
-                    : ''
-                }"
-              >
-                {
-                  $gameStore.guessInput[
-                    computeIndex($gameStore.currentPhrase.split(' '), wIndex, cIndex)
-                  ]
-                }
-              </span>
-            {/if}
-          {/each}
-        </div>
-      {/each}
-    </div>
-  {:else}
-    <!-- DEFAULT MODE: Show purchased letters only -->
-    <div class="phrase-container">
-      {#each $gameStore.currentPhrase.split(' ') as word}
-        <div class="word">
-          {#each word.split('') as letter}
-            <span class="letter-box">
-              {$gameStore.purchasedLetters.includes(letter) ? letter : ""}
+    if (editableIndices.length === 0) return -1;
+    // Return the first index that hasn't been guessed
+    for (const idx of editableIndices) {
+      if (!$gameStore.guessedLetters[idx]) return idx;
+    }
+    // Otherwise, return the last one
+    return editableIndices[editableIndices.length - 1];
+  })();
+
+  /**
+   * getGlobalIndex(wordIndex, letterIndex):
+   * Computes the global index for a letter at (wordIndex, letterIndex)
+   * by summing the lengths of all previous words + 1 space for each.
+   */
+  function getGlobalIndex(wordIndex, letterIndex) {
+    const words = $gameStore.currentPhrase.split(' ');
+    let offset = 0;
+    for (let w = 0; w < wordIndex; w++) {
+      offset += words[w].length + 1; // length of that word + 1 space
+    }
+    return offset + letterIndex;
+  }
+</script>
+
+{#if $gameStore.gameState === 'guess_mode'}
+  <!-- GUESS MODE: show guessed letters or locked letters per index -->
+  <div class="phrase-container">
+    {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
+      <div class="word">
+        {#each word.split('') as letter, cIndex}
+          {#if $gameStore.purchasedLetters[getGlobalIndex(wIndex, cIndex)] === letter}
+            <!-- If purchasedLetters at that index is correct, show locked -->
+            <span class="letter-box locked">
+              {letter}
             </span>
-          {/each}
-        </div>
-      {/each}
-    </div>
-  {/if}
-  
-  <style>
-    .phrase-container {
-      display: flex;
-      flex-direction: column; /* stack each word on its own line */
-      gap: 8px;
-      align-items: center;
-      margin: 20px 0;
-    }
-  
-    .word {
-      display: flex;
-      gap: 10px;
-    }
-  
-    .letter-box {
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 2px solid black;
-      font-size: 24px;
-      font-weight: bold;
-    }
-  
-    /* The active guess slot in guess mode has an orange outline */
-    .letter-box.active {
-      border-color: orange;
-    }
-  
-    /* If a letter is locked/purchased, we can give it a subtle background */
-    .letter-box.locked {
-      background-color: #eee;
-    }
-  </style>
-  
+          {:else}
+            <!-- Otherwise, display guessed letter if any -->
+            <span
+              class="letter-box {getGlobalIndex(wIndex, cIndex) === activeGuessIndex ? 'active' : ''}"
+            >
+              {$gameStore.guessedLetters[getGlobalIndex(wIndex, cIndex)] || ""}
+            </span>
+          {/if}
+        {/each}
+      </div>
+    {/each}
+  </div>
+{:else}
+  <!-- DEFAULT MODE: Show only locked (purchased) letters -->
+  <div class="phrase-container">
+    {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
+      <div class="word">
+        {#each word.split('') as letter, cIndex}
+          <span class="letter-box">
+            {
+              $gameStore.purchasedLetters[getGlobalIndex(wIndex, cIndex)]
+                ? $gameStore.purchasedLetters[getGlobalIndex(wIndex, cIndex)]
+                : ""
+            }
+          </span>
+        {/each}
+      </div>
+    {/each}
+  </div>
+{/if}
+
+<style>
+  /* Container that holds all words (stacked vertically) */
+  .phrase-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;  /* center each row */
+    gap: 10px;            /* spacing between rows (words) */
+    margin: 20px 0;
+  }
+
+  /* Each word is rendered as a row of letter-boxes */
+  .word {
+    display: flex;
+    gap: 8px; /* spacing between letters in a word */
+  }
+
+  /* Each letter box is bigger, with subtle styling */
+  .letter-box {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #333;
+    background-color: #fff;
+    font-size: 24px;
+    font-weight: bold;
+    border-radius: 5px;   /* slightly rounded corners */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* subtle shadow */
+  }
+
+  /* Highlight the active guess slot in guess mode */
+  .letter-box.active {
+    border-color: orange;
+  }
+
+  /* If a letter is locked/purchased, give it a subtle background */
+  .letter-box.locked {
+    background-color: #eee;
+  }
+</style>
