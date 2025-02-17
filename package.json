@@ -28,15 +28,21 @@
 	  "svelte": "^5.0.0",
 	  "svelte-check": "^4.0.0",
 	  "typescript": "^5.0.0",
-	  "typescript-eslint": "^8.20.0",
+	  "typescript-eslint": "^8.24.0",
 	  "vite": "^6.0.0"
 	},
 	"engines": {
 	  "node": "22.x",
-	  "npm": "10.x"
+	  "npm": ">=10.x"
 	},
 	"overrides": {
-	  "picomatch": "^4.0.2"
+	  "picomatch": "^4.0.2",
+	  "fdir": {
+		"picomatch": "^4.0.2"
+	  },
+	  "micromatch": {
+		"picomatch": "^4.0.2"
+	  }
 	}
   }
   
