@@ -10,6 +10,7 @@ export const letterCosts = {
 export const gameStore = writable({
   bankroll: 1000,
   guessesRemaining: 2,
+  category: "Person",
   currentPhrase: "MICHAEL JORDAN",
   gameState: "default", // "default", "purchase_pending", "guess_mode", "won", "lost"
   // purchasedLetters: an array (indexed per character) holding locked letters.
@@ -41,6 +42,7 @@ function checkLossCondition(state) {
   }
   return state;
 }
+
 
 // ---------------- Purchase Mode Functions ----------------
 
