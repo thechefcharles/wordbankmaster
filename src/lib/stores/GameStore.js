@@ -1,3 +1,4 @@
+//GameStore name change to captial 
 import { writable } from 'svelte/store';
 
 export const letterCosts = {
