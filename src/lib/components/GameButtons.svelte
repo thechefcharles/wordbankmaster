@@ -1,149 +1,74 @@
 <script>
-  import {
-    confirmPurchase,
-    selectHint,
-    selectExtraGuess,
-    enterGuessMode,
-    submitGuess,
-    deleteGuessLetter
-  } from '$lib/stores/GameStore.js';
-  import { gameStore } from '$lib/stores/GameStore.js';
-
-  // Helper: returns an array of editable indices in guess mode.
-  // An index is editable if:
-  //  - The character is not a space.
-  //  - It is not already locked in purchasedLetters.
-  function getEditableIndices(state) {
-    const indices = [];
-    const phrase = state.currentPhrase;
-    for (let i = 0; i < phrase.length; i++) {
-      if (phrase[i] === ' ') continue;
-      if (state.purchasedLetters[i] === phrase[i]) continue;
-      indices.push(i);
-    }
-    return indices;
-  }
-
-  // Reactive: Determine if every editable slot is filled with a guess.
-  $: guessComplete = $gameStore.gameState === 'guess_mode' && (() => {
-    const phrase = $gameStore.currentPhrase;
-    for (let i = 0; i < phrase.length; i++) {
-      // Skip spaces and indices already locked in purchasedLetters.
-      if (phrase[i] === ' ') continue;
-      if ($gameStore.purchasedLetters[i] === phrase[i]) continue;
-      // Immediately return false if an editable slot is missing a guess.
-      if (!$gameStore.guessedLetters[i]) return false;
-    }
-    return true;
-  })();
+  import { selectHint, selectExtraGuess } from '$lib/stores/GameStore.js';
+  // No need to import guess/enter functions since they're handled in Keyboard.svelte now.
 </script>
 
-<div class="game-buttons">
-  <!-- Primary Actions -->
-  <div class="primary-buttons">
-    <!-- Enter Button: Confirm purchase or submit guess -->
-    <button
-      on:click={(e) => {
-        if ($gameStore.gameState === 'guess_mode') {
-          if (guessComplete) {
-            submitGuess();
-          } else {
-            console.log("Not all guess slots are filled.");
-          }
-        } else {
-          confirmPurchase();
-        }
-        e.currentTarget.blur();
-      }}
-      class="{ ($gameStore.gameState === 'guess_mode' && guessComplete) || $gameStore.gameState === 'purchase_pending' ? 'submit-ready' : '' }"
-    >
-      Enter { $gameStore.gameState === 'guess_mode' ? "(Submit Guess)" : "(Confirm Purchase)" }
-    </button>
-    
-    <!-- Guess Mode Toggle -->
-    <button 
-      on:click={(e) => { enterGuessMode(); e.currentTarget.blur(); }}
-      class:active-guess={$gameStore.gameState === 'guess_mode'}
-    >
-      Guess (Enter Guess Mode)
-    </button>
-        
-    <!-- Hint Purchase -->
-    <button
-      on:click={(e) => { selectHint(); e.currentTarget.blur(); }}
-      class="{$gameStore.selectedPurchase?.type === 'hint' && $gameStore.gameState === 'purchase_pending' ? 'pending' : ''}"
-    >
-      Hint ($150)
-    </button>
-    
-    <!-- Extra Guess Purchase -->
-    <button
-      on:click={(e) => { selectExtraGuess(); e.currentTarget.blur(); }}
-      class="{$gameStore.selectedPurchase?.type === 'extra_guess' && $gameStore.gameState === 'purchase_pending' ? 'pending' : ''}"
-    >
-      Extra Guess ($150)
-    </button>
-    
-    <!-- Delete (only in guess mode) -->
-    <button
-      on:click={(e) => { if ($gameStore.gameState === 'guess_mode') { deleteGuessLetter(); } e.currentTarget.blur(); }}
-    >
-      Delete
-    </button>
-  </div>
-    
-  <!-- Utility Buttons -->
-  <div class="utility-buttons">
-    <button on:click={(e) => e.currentTarget.blur()}>How to Play</button>
-    <button on:click={(e) => e.currentTarget.blur()}>Settings</button>
-  </div>
+<!-- Fixed Top Buttons -->
+<!-- Buy Guess button: Fixed at Top Left -->
+<button class="buy-guess-button" on:click={() => selectExtraGuess()}>
+  Buy Guess ($150)
+</button>
+
+<!-- Hint button: Fixed at Top Right -->
+<button class="hint-button" on:click={() => selectHint()}>
+  Hint ($150)
+</button>
+
+<!-- Utility Buttons Container -->
+<div class="utility-buttons">
+  <button on:click={() => { /* Open How to Play modal */ }}>
+    How to Play
+  </button>
+  <button on:click={() => { /* Open Settings modal */ }}>
+    Settings
+  </button>
 </div>
-    
+
 <style>
   button:focus {
     outline: none;
   }
-    
-  .game-buttons {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1em;
+  /* Fixed top buttons */
+  .buy-guess-button {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    padding: 10px 15px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 1000;
   }
-    
-  .primary-buttons,
-  .secondary-buttons,
+  .hint-button {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    padding: 10px 15px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 1000;
+  }
+  /* Utility buttons container */
   .utility-buttons {
+    margin-top: 20px;
     display: flex;
     gap: 10px;
-    flex-wrap: wrap;
     justify-content: center;
   }
-    
-  button {
-    padding: 10px 15px;
-    font-size: 16px;
-    border: 1px solid #333;
+  .utility-buttons button {
+    padding: 8px 12px;
+    font-size: 14px;
     background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
     cursor: pointer;
   }
-    
-  button:hover {
+  .utility-buttons button:hover {
     background-color: #ddd;
-  }
-    
-  .submit-ready {
-    background-color: green !important;
-    color: white !important;
-  }
-    
-  button.pending {
-    background-color: blue !important;
-    color: white !important;
-  }
-  
-  button.active-guess {
-    background-color: orange !important;
-    color: white !important;
   }
 </style>

@@ -31,9 +31,8 @@
 
   <!-- Resource Stats -->
   <section class="stats-section">
-    <p>Bankroll: {currentGame.bankroll}</p>
+    <p class="bankroll">Bankroll: ${Math.floor(currentGame.bankroll)}</p>
     <p>Guesses Remaining: {currentGame.guessesRemaining}</p>
-    <p>Game State: {currentGame.gameState}</p>
   </section>
 
   <!-- Win/Loss Banner -->
@@ -109,5 +108,12 @@
   button.reset-green {
     background-color: green !important;
     color: white !important;
+  }
+
+  .bankroll {
+    font-size: 3rem;     /* Increase as needed */
+    font-weight: bold;
+    color: #333;         /* Customize color */
+    margin-bottom: 1rem; /* Adjust spacing if needed */
   }
 </style>
