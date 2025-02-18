@@ -2,6 +2,21 @@
   import { gameStore } from '$lib/stores/GameStore.js';
   import { onDestroy } from 'svelte';
 
+  let shakeIndexes = new Set(); // Stores which letters should shake temporarily
+
+  // Function to trigger shake animation for correct letters
+  function triggerShake(indexes) {
+    shakeIndexes = new Set(indexes);
+    setTimeout(() => {
+      shakeIndexes.clear(); // Reset after 0.5 seconds
+    }, 500);
+  }
+
+  // ✅ Watch for shaken letters and trigger shake only when new letters are added
+  $: if ($gameStore.shakenLetters?.length > 0) {
+    triggerShake([...$gameStore.shakenLetters]);
+  }
+
   // Helper: Computes the global index (across the full phrase)
   function getGlobalIndex(wordIndex, letterIndex) {
     const words = $gameStore.currentPhrase.split(' ');
@@ -32,7 +47,7 @@
 
   // Letter-by-letter reveal on loss
   let interval;
-  let revealed = []; // array to store revealed letters
+  let revealed = [];
 
   $: if ($gameStore.gameState === 'lost') {
     if (revealed.length === 0) {
@@ -48,7 +63,7 @@
       }, 300); // reveal speed
     }
   } else {
-    // reset if not lost
+    // Reset if not lost
     revealed = [];
     clearInterval(interval);
   }
@@ -65,9 +80,8 @@
       <div class="word">
         {#each word.split('') as letter, cIndex}
           <span class="letter-box">
-            { revealed[getGlobalIndex(wIndex, cIndex)]
-              ? revealed[getGlobalIndex(wIndex, cIndex)]
-              : "_" }
+            {revealed[getGlobalIndex(wIndex, cIndex)] ? 
+              revealed[getGlobalIndex(wIndex, cIndex)] : "_"}
           </span>
         {/each}
       </div>
@@ -98,8 +112,9 @@
     {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
       <div class="word">
         {#each word.split('') as letter, cIndex}
-          <span class="letter-box">
-            { $gameStore.purchasedLetters[getGlobalIndex(wIndex, cIndex)] || "" }
+          <span 
+            class="letter-box {shakeIndexes.has(getGlobalIndex(wIndex, cIndex)) ? 'shake' : ''}">
+            {$gameStore.purchasedLetters[getGlobalIndex(wIndex, cIndex)] || ""}
           </span>
         {/each}
       </div>
@@ -108,54 +123,75 @@
 {/if}
 
 <style>
+/* Enhanced Shake Animation with Pop-Out Effect */
+@keyframes shake {
+  0% { transform: translateX(0) scale(1); }
+  10% { transform: translateX(-6px) scale(1.1); }
+  20% { transform: translateX(6px) scale(1.2); }
+  30% { transform: translateX(-5px) scale(1.1); }
+  40% { transform: translateX(5px) scale(1.2); }
+  50% { transform: translateX(-4px) scale(1.1); }
+  60% { transform: translateX(4px) scale(1.2); }
+  70% { transform: translateX(-3px) scale(1.1); }
+  80% { transform: translateX(3px) scale(1.1); }
+  90% { transform: translateX(-2px) scale(1); }
+  100% { transform: translateX(0) scale(1); }
+}
+
+/* Apply shake animation with longer duration */
+.shake {
+  animation: shake 1s ease-in-out;
+}
+
   /* Container that holds all words/letters */
   .phrase-container {
     display: flex;
     flex-direction: row;
-    flex-wrap: wrap;      /* allow line wraps */
+    flex-wrap: wrap;
     justify-content: center;
     gap: 10px;
     margin: 20px 0;
-    max-width: 100%;      /* never exceed screen width */
+    max-width: 100%;
     box-sizing: border-box; 
-    overflow-x: hidden;   /* hide any accidental overflow */
+    overflow-x: hidden;
   }
 
   .word {
-  display: flex;
-  gap: 2px; /* Adjusts spacing between letters within a word */
-  flex-wrap: wrap; /* Allows words to break into new lines */
-  justify-content: center;
-  max-width: 100%;
-  margin-right: 15px; /* Adds space between words */
-}
+    display: flex;
+    gap: 2px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 100%;
+    margin-right: 15px;
+  }
 
-.letter-box {
-  width: 50px;
-  height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #333;
-  background-color: #fff;
-  font-size: 24px;
-  font-weight: bold;
-  border-radius: 5px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  word-break: break-word; /* Break long words instead of shrinking */
-  overflow-wrap: break-word; /* Ensures break works in all browsers */
-}
-  /* highlight letter in guess mode */
+  .letter-box {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #333;
+    background-color: #fff;
+    font-size: 24px;
+    font-weight: bold;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Highlight letter in guess mode */
   .letter-box.active {
     border-color: orange;
   }
 
-  /* purchased letters */
+  /* Purchased letters */
   .letter-box.locked {
     background-color: #eee;
   }
 
-  /* letter animation in lost mode */
+  /* Letter animation in lost mode */
   .phrase-container .letter {
     font-size: 32px;
     font-weight: bold;
@@ -163,7 +199,7 @@
     transition: opacity 0.3s ease-in;
   }
 
-  /* Shrink boxes on smaller screens (e.g. iPhone SE) */
+  /* Shrink boxes on smaller screens */
   @media (max-width: 480px) {
     .letter-box {
       width: 30px;

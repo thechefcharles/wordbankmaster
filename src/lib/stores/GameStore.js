@@ -18,7 +18,8 @@ export const gameStore = writable({
   lockedLetters: {},
   incorrectLetters: [],
   hintRevealedLetters: [],
-  selectedPurchase: null
+  selectedPurchase: null,
+  lastCorrectLetter: null,  // ✅ Track last purchased correct letter
 });
 
 // Helper: Check for loss conditions.
@@ -109,128 +110,86 @@ export function confirmPurchase() {
   gameStore.update(state => {
     if (!state.selectedPurchase) return state;
     const purchase = state.selectedPurchase;
-    console.log("Selected purchase:", purchase);
+
+    // Track which letters have already been shaken
+    let newShakenLetters = new Set(state.shakenLetters || []);
 
     if (purchase.type === 'letter') {
       const letter = purchase.value;
       const cost = letterCosts[letter] || 0;
+
       if (state.bankroll < cost) {
-        console.log(`Not enough bankroll to purchase letter ${letter}`);
         return { ...state, selectedPurchase: null, gameState: "default" };
       }
-      const phrase = state.currentPhrase;
 
-      if (state.gameState !== 'guess_mode') {
-        // DEFAULT MODE: Purchase globally—update every occurrence.
-        let newPurchased = [...state.purchasedLetters];
-        for (let i = 0; i < phrase.length; i++) {
-          if (phrase[i] === letter) {
-            newPurchased[i] = letter;
-          }
-        }
-        // If the letter doesn't appear in the phrase, mark it as incorrect.
-        let newIncorrect = [...state.incorrectLetters];
-        if (!phrase.includes(letter)) {
-          newIncorrect.push(letter);
-        }
-        // Update lockedLetters for this letter:
-        let newLockedLetters = { ...state.lockedLetters };
-        const indices = [];
-        for (let i = 0; i < phrase.length; i++) {
-          if (phrase[i] === letter) indices.push(i);
-        }
-        newLockedLetters[letter] = indices.length > 0 && indices.every(idx => newPurchased[idx] === letter);
-        
-        // Check win condition: if every non-space index in the phrase is locked.
-        let win = true;
-        for (let i = 0; i < phrase.length; i++) {
-          if (phrase[i] === ' ') continue;
-          if (newPurchased[i] !== phrase[i]) {
-            win = false;
-            break;
-          }
-        }
-        
-        let newState = {
-          ...state,
-          bankroll: state.bankroll - cost,
-          purchasedLetters: newPurchased,
-          incorrectLetters: newIncorrect,
-          lockedLetters: newLockedLetters,
-          selectedPurchase: null,
-          gameState: win ? "won" : "default"
-        };
-        return checkLossCondition(newState);
-      } else {
-        // GUESS MODE: Update only the active index.
-        const editableIndices = [];
-        for (let i = 0; i < phrase.length; i++) {
-          if (phrase[i] === ' ') continue;
-          if (state.purchasedLetters[i] === phrase[i]) continue;
-          editableIndices.push(i);
-        }
-        if (editableIndices.length === 0) {
-          return { ...state, selectedPurchase: null, gameState: "default" };
-        }
-        let activeIndex = -1;
-        for (let j = 0; j < editableIndices.length; j++) {
-          const idx = editableIndices[j];
-          if (!state.guessedLetters.hasOwnProperty(idx)) {
-            activeIndex = idx;
-            break;
-          }
-        }
-        if (activeIndex === -1) {
-          activeIndex = editableIndices[editableIndices.length - 1];
-        }
-        if (phrase[activeIndex] === letter) {
-          let newPurchased = [...state.purchasedLetters];
-          newPurchased[activeIndex] = letter;
-          let newGuessed = { ...state.guessedLetters, [activeIndex]: letter };
-          let newState = {
-            ...state,
-            bankroll: state.bankroll - cost,
-            purchasedLetters: newPurchased,
-            guessedLetters: newGuessed,
-            selectedPurchase: null,
-            gameState: "default"
-          };
-          return checkLossCondition(newState);
-        } else {
-          console.log(`Letter ${letter} does not match target at active index; purchase canceled.`);
-          return { ...state, selectedPurchase: null, gameState: "default" };
+      const phrase = state.currentPhrase;
+      let newPurchased = [...state.purchasedLetters];
+      let newIncorrect = [...state.incorrectLetters];
+
+      let correctIndexes = [];
+      
+      // Purchase correct letter instances
+      for (let i = 0; i < phrase.length; i++) {
+        if (phrase[i] === letter) {
+          newPurchased[i] = letter;
+          if (!newShakenLetters.has(i)) correctIndexes.push(i); // Add to shake only if not shaken before
         }
       }
-    } else if (purchase.type === 'hint') {
+
+      // Mark correct letters for shaking only once
+      if (correctIndexes.length > 0) {
+        correctIndexes.forEach(idx => newShakenLetters.add(idx));
+      } else {
+        newIncorrect.push(letter);
+      }
+
+      // Update locked letters
+      let newLockedLetters = { ...state.lockedLetters };
+      const indices = phrase.split('').map((ch, i) => (ch === letter ? i : -1)).filter(i => i !== -1);
+      newLockedLetters[letter] = indices.every(idx => newPurchased[idx] === letter);
+
+      // Check if the player won
+      let win = phrase.split('').every((ch, i) => ch === ' ' || newPurchased[i] === ch);
+
+      let newState = {
+        ...state,
+        bankroll: state.bankroll - cost,
+        purchasedLetters: newPurchased,
+        incorrectLetters: newIncorrect,
+        lockedLetters: newLockedLetters,
+        shakenLetters: Array.from(newShakenLetters), // Ensure letters shake only once
+        selectedPurchase: null,
+        gameState: win ? "won" : "default"
+      };
+
+      return checkLossCondition(newState);
+    }
+
+    // HINT PURCHASE
+    else if (purchase.type === 'hint') {
       const cost = 150;
       if (state.bankroll < cost) {
-        console.log("Not enough bankroll for hint");
         return { ...state, selectedPurchase: null, gameState: "default" };
       }
+
       const phrase = state.currentPhrase;
-      const unrevealed = phrase.split('').filter(
-        ch => ch !== ' ' && !state.purchasedLetters.includes(ch)
-      );
+      const unrevealed = phrase.split('').map((ch, i) => (ch !== ' ' && !state.purchasedLetters[i] ? i : -1)).filter(i => i !== -1);
+
       if (unrevealed.length === 0) {
-        console.log("No unrevealed letters available for hint");
         return { ...state, selectedPurchase: null, gameState: "default" };
       }
-      const randomIndex = Math.floor(Math.random() * unrevealed.length);
-      const chosenLetter = unrevealed[randomIndex].toUpperCase();
-      console.log(`Hint: revealing letter ${chosenLetter}`);
+
+      // Pick a random unrevealed letter
+      const randomIndex = unrevealed[Math.floor(Math.random() * unrevealed.length)];
       let newPurchased = [...state.purchasedLetters];
-      for (let i = 0; i < phrase.length; i++) {
-        if (phrase[i] === chosenLetter) {
-          newPurchased[i] = chosenLetter;
-        }
-      }
-      // Update lockedLetters for the chosen letter.
+      newPurchased[randomIndex] = phrase[randomIndex];
+
+      // Update locked letters for the revealed letter
       let newLockedLetters = { ...state.lockedLetters };
-      const indices = [];
-      for (let i = 0; i < phrase.length; i++) {
-        if (phrase[i] === chosenLetter) indices.push(i);
-      }
-      newLockedLetters[chosenLetter] = indices.length > 0 && indices.every(idx => newPurchased[idx] === chosenLetter);
+      const letter = phrase[randomIndex];
+      const indices = phrase.split('').map((ch, i) => (ch === letter ? i : -1)).filter(i => i !== -1);
+      newLockedLetters[letter] = indices.every(idx => newPurchased[idx] === letter);
+
       let newState = {
         ...state,
         bankroll: state.bankroll - cost,
@@ -239,13 +198,17 @@ export function confirmPurchase() {
         selectedPurchase: null,
         gameState: "default"
       };
+
       return checkLossCondition(newState);
-    } else if (purchase.type === 'extra_guess') {
+    }
+
+    // EXTRA GUESS PURCHASE
+    else if (purchase.type === 'extra_guess') {
       const cost = 150;
       if (state.bankroll < cost) {
-        console.log("Not enough bankroll for extra guess");
         return { ...state, selectedPurchase: null, gameState: "default" };
       }
+
       let newState = {
         ...state,
         bankroll: state.bankroll - cost,
@@ -253,8 +216,10 @@ export function confirmPurchase() {
         selectedPurchase: null,
         gameState: "default"
       };
+
       return checkLossCondition(newState);
     }
+
     return state;
   });
 }
