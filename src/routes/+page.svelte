@@ -106,24 +106,24 @@ h1 {
   font-weight: bold;
 }
 
-/* Fix phrase container to avoid cutting off */
+/* PHRASE BOXES: Bigger & Tighter Spacing */
 .phrase-container {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   width: 100%;
   max-width: 100%;
-  gap: 5px;
+  gap: 2px; /* Minimized space between boxes */
 }
 
-/* Ensure phrase boxes shrink dynamically */
+/* Adjust letter box size */
 .letter-box {
-  width: min(50px, 6vw); /* Shrink based on screen size */
-  height: min(50px, 6vw);
-  font-size: min(24px, 3.5vw);
+  width: min(60px, 7vw); /* Increased by 10px */
+  height: min(60px, 7vw); /* Increased by 10px */
+  font-size: min(26px, 4vw); /* Scale text */
 }
 
-/* Keyboard fixes */
+/* KEYBOARD: Bigger Keys & No Space Between */
 .keyboard-section {
   width: 100%;
   padding: 5px;
@@ -132,13 +132,16 @@ h1 {
 .keyboard-row {
   display: flex;
   justify-content: center;
-  gap: 5px;
+  gap: 0px; /* No space between keys */
   flex-wrap: nowrap; /* Keep QWERTY layout */
 }
 
+/* Make keys larger while removing spacing */
 .key {
-  width: min(50px, 7vw);
-  height: min(50px, 7vw);
-  font-size: min(16px, 3vw);
+  width: min(55px, 8vw); /* Slightly larger */
+  height: min(55px, 8vw);
+  font-size: min(18px, 3.5vw);
+  margin: 0; /* Remove any extra margins */
+  padding: 2px; /* Minimal padding */
 }
 </style>
