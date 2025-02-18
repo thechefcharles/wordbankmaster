@@ -10,7 +10,22 @@
   import GameButtons from '$lib/components/GameButtons.svelte';
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
   import { selectHint, selectExtraGuess } from '$lib/stores/GameStore.js';
+  import confetti from 'canvas-confetti';
 
+   // Reactive: Watch for game win state
+   $: if ($gameStore.gameState === "won") {
+    launchConfetti();
+  }
+  function launchConfetti() {
+    confetti({
+      particleCount: 300,
+      spread: 300,
+      startVelocity: 200,
+      scalar: 1.4, // Bigger confetti
+      decay: 0.2,  // Slows down confetti disappearance (0.9 means 90% speed reduction per frame)
+      origin: { y: 0.6 }
+    });
+  }
 
   // Create a local reactive variable for the game state
   $: currentGame = $gameStore;
@@ -21,9 +36,11 @@
 </script>
 
 <main>
-  <h1>WordBank</h1>
-  
-  <!-- Use the local variable instead of $gameStore directly -->
+ <!-- 2. Use the imported image as the src -->
+ <div class="logo-container">
+  <img src="/WordBank.png" alt="WordBank Logo" class="wordbank-logo" />
+</div>
+ <!-- Use the local variable instead of $gameStore directly -->
   <p class="category">{currentGame.category} 🌍</p>
 
   <!-- Phrase Display -->
@@ -33,8 +50,9 @@
 
 <!-- Resource Stats -->
 <section class="stats-section">
-  <!-- Keep the $ sign here -->
-  <p class="bankroll-box">$ {Math.floor(currentGame.bankroll)}</p>
+  <div class="bankroll-container">
+    <p class="bankroll-box">$ {Math.floor(currentGame.bankroll)}</p>
+  </div>
   <p class="guesses-remaining">Guesses Remaining: {currentGame.guessesRemaining}</p>
 </section>
 
@@ -79,7 +97,7 @@ main {
   margin: 0 auto;
   text-align: center;
   font-family: sans-serif;
-  padding: 15px; /* Reduced padding */
+  padding: 10px;  /* Reduce padding */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -95,7 +113,8 @@ h1 {
 /* Category display */
 .category {
   font-size: 1.4rem;
-  margin-bottom: 10px;
+  margin-top: -130px;  /* Moves up */
+  margin-bottom: 0px;  /* Removes extra space below */
   font-weight: bold;
 }
 
@@ -123,7 +142,7 @@ h1 {
 
 /* Move guesses remaining up */
 .guesses-remaining {
-  margin-top: -10px; /* Adjust to move up */
+  margin-top: 20px; /* Adjust to move up */
 }
 
 /* PHRASE BOXES: Bigger & Tighter Spacing */
@@ -169,20 +188,28 @@ h1 {
 .reset-button.hidden {
   display: none;
 }
-  .bankroll-box {
-  /* Move it up by giving it a negative top margin or 
-     reducing any parent spacing */
-  margin-top: -10px;  /* Moves it 10px upward; adjust to taste */
+/* Center the bankroll box */
+.bankroll-container {
+  display: flex;
+  justify-content: center;  /* Centers horizontally */
+  align-items: center;      /* Aligns content in the middle */
+  width: 100%;              /* Full width of the container */
+  margin: 0 auto;           /* Centers it */
+  padding-top: 5px;         /* Adjust spacing above */
+}
 
-  /* Make the box smaller */
-  padding: 8px 16px;  /* Less padding for a smaller box */
-  font-size: 2rem;    /* Slightly smaller text; adjust as needed */
+/* Make sure bankroll box stays centered */
+.bankroll-box {
+  padding: 10px 20px;
+  font-size: 2rem;
   font-weight: bold;
   color: white;
   background-color: green;
   border-radius: 8px;
   text-align: center;
   display: inline-block;
+  width: fit-content;  /* Prevents it from stretching */
+  margin: 0 auto;      /* Ensures centering */
 }
 
 /* Buy Guess & Hint Buttons Positioned Closer to Guesses Remaining */
@@ -219,5 +246,28 @@ h1 {
   width: 140px; /* 🔹 Fix width */
   text-align: center;
 }
+
+ /* 3. Style the logo as needed */
+ .wordbank-logo {
+  width: 380px; /* Make it even bigger */
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  padding-bottom: 0px; /* No space below the logo */
+}
+
+/* ✅ Adjust spacing for the logo container */
+.logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: -50px; /* Move elements up more */
+  margin-top: -30px;  /* Reduce space above */
+}
+
+.phrase-section {
+  margin-top: 20px;  /* Move phrase display up */
+}
+
 
 </style>

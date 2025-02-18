@@ -2,12 +2,40 @@
   import { gameStore } from '$lib/stores/GameStore.js';
   import { onDestroy } from 'svelte';
 
+  // Local set to store indexes that should currently shake
+  let shakeIndexes = new Set();
+  // Local copy of the last shaken indexes we’ve already processed
+  let lastProcessedShakes = [];
+
+  // Function to trigger shake animation on given indexes.
+  // Once triggered, those indexes will shake for 1 second.
+  function triggerShake(indexes) {
+    shakeIndexes = new Set(indexes);
+    setTimeout(() => {
+      // We clear the local animation, but we do NOT clear the store's shakenLetters.
+      shakeIndexes.clear();
+    }, 1000);
+  }
+
+  // Only trigger shake when new indexes are added (and we’re not in guess mode).
+  $: if (
+    $gameStore.shakenLetters?.length > 0 &&
+    $gameStore.gameState !== 'guess_mode'
+  ) {
+    // Compare with our local lastProcessedShakes.
+    if (JSON.stringify($gameStore.shakenLetters) !== JSON.stringify(lastProcessedShakes)) {
+      triggerShake([...$gameStore.shakenLetters]);
+      // Update our record so that the same indexes won’t re-trigger.
+      lastProcessedShakes = [...$gameStore.shakenLetters];
+    }
+  }
+
   // Helper: Computes the global index (across the full phrase)
   function getGlobalIndex(wordIndex, letterIndex) {
     const words = $gameStore.currentPhrase.split(' ');
     let offset = 0;
     for (let i = 0; i < wordIndex; i++) {
-      offset += words[i].length + 1; // space
+      offset += words[i].length + 1; // account for space
     }
     return offset + letterIndex;
   }
@@ -30,25 +58,22 @@
       })()
     : -1;
 
-  // Letter-by-letter reveal on loss
+  // For lost mode: reveal letters gradually
   let interval;
-  let revealed = []; // array to store revealed letters
-
+  let revealed = [];
   $: if ($gameStore.gameState === 'lost') {
     if (revealed.length === 0) {
       const phrase = $gameStore.currentPhrase;
       let i = 0;
       interval = setInterval(() => {
         revealed[i] = phrase[i];
-        revealed = [...revealed]; // trigger reactivity
+        // Trigger reactivity by reassigning a copy of the array
+        revealed = [...revealed];
         i++;
-        if (i >= phrase.length) {
-          clearInterval(interval);
-        }
-      }, 300); // reveal speed
+        if (i >= phrase.length) clearInterval(interval);
+      }, 300);
     }
   } else {
-    // reset if not lost
     revealed = [];
     clearInterval(interval);
   }
@@ -65,9 +90,7 @@
       <div class="word">
         {#each word.split('') as letter, cIndex}
           <span class="letter-box">
-            { revealed[getGlobalIndex(wIndex, cIndex)]
-              ? revealed[getGlobalIndex(wIndex, cIndex)]
-              : "_" }
+            {revealed[getGlobalIndex(wIndex, cIndex)] ? revealed[getGlobalIndex(wIndex, cIndex)] : "_"}
           </span>
         {/each}
       </div>
@@ -98,8 +121,8 @@
     {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
       <div class="word">
         {#each word.split('') as letter, cIndex}
-          <span class="letter-box">
-            { $gameStore.purchasedLetters[getGlobalIndex(wIndex, cIndex)] || "" }
+          <span class="letter-box {shakeIndexes.has(getGlobalIndex(wIndex, cIndex)) ? 'shake' : ''}">
+            {$gameStore.purchasedLetters[getGlobalIndex(wIndex, cIndex)] || ""}
           </span>
         {/each}
       </div>
@@ -108,62 +131,73 @@
 {/if}
 
 <style>
-  /* Container that holds all words/letters */
+  /* Enhanced Shake Animation with Pop-Out Effect */
+  @keyframes shake {
+    0% { transform: translateX(0) scale(1); }
+    10% { transform: translateX(-6px) scale(1.1); }
+    20% { transform: translateX(6px) scale(1.2); }
+    30% { transform: translateX(-5px) scale(1.1); }
+    40% { transform: translateX(5px) scale(1.2); }
+    50% { transform: translateX(-4px) scale(1.1); }
+    60% { transform: translateX(4px) scale(1.2); }
+    70% { transform: translateX(-3px) scale(1.1); }
+    80% { transform: translateX(3px) scale(1.1); }
+    90% { transform: translateX(-2px) scale(1); }
+    100% { transform: translateX(0) scale(1); }
+  }
+
+  /* Apply shake animation */
+  .shake {
+    animation: shake 1s ease-in-out;
+  }
+
+  /* Container for the phrase */
   .phrase-container {
     display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;      /* allow line wraps */
+    flex-wrap: wrap;
     justify-content: center;
     gap: 10px;
-    margin: 20px 0;
-    max-width: 100%;      /* never exceed screen width */
-    box-sizing: border-box; 
-    overflow-x: hidden;   /* hide any accidental overflow */
+    margin: 10px 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
   }
 
   .word {
-  display: flex;
-  gap: 2px; /* Adjusts spacing between letters within a word */
-  flex-wrap: wrap; /* Allows words to break into new lines */
-  justify-content: center;
-  max-width: 100%;
-  margin-right: 15px; /* Adds space between words */
-}
+    display: flex;
+    gap: 2px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-right: 15px;
+  }
 
-.letter-box {
-  width: 50px;
-  height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #333;
-  background-color: #fff;
-  font-size: 24px;
-  font-weight: bold;
-  border-radius: 5px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  word-break: break-word; /* Break long words instead of shrinking */
-  overflow-wrap: break-word; /* Ensures break works in all browsers */
-}
-  /* highlight letter in guess mode */
+  .letter-box {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #333;
+    background-color: #fff;
+    font-size: 24px;
+    font-weight: bold;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Highlight active guess letter */
   .letter-box.active {
     border-color: orange;
   }
 
-  /* purchased letters */
+  /* Locked (purchased) letters */
   .letter-box.locked {
     background-color: #eee;
   }
 
-  /* letter animation in lost mode */
-  .phrase-container .letter {
-    font-size: 32px;
-    font-weight: bold;
-    padding: 0 5px;
-    transition: opacity 0.3s ease-in;
-  }
-
-  /* Shrink boxes on smaller screens (e.g. iPhone SE) */
+  /* Shrink boxes on smaller screens */
   @media (max-width: 480px) {
     .letter-box {
       width: 30px;
