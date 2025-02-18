@@ -7,17 +7,16 @@
     const words = $gameStore.currentPhrase.split(' ');
     let offset = 0;
     for (let i = 0; i < wordIndex; i++) {
-      // Add word length plus one for the space
-      offset += words[i].length + 1;
+      offset += words[i].length + 1; // space
     }
     return offset + letterIndex;
   }
 
-  // Reactive: Compute the active guess index (for guess mode)
+  // Reactive: active guess index for guess mode
   $: activeGuessIndex = $gameStore.gameState === 'guess_mode'
     ? (() => {
         const phrase = $gameStore.currentPhrase;
-        let indices = [];
+        const indices = [];
         for (let i = 0; i < phrase.length; i++) {
           if (phrase[i] === ' ') continue;
           if ($gameStore.purchasedLetters[i] === phrase[i]) continue;
@@ -31,28 +30,25 @@
       })()
     : -1;
 
-  // --- New Code for Letter-By-Letter Reveal on Loss ---
+  // Letter-by-letter reveal on loss
   let interval;
-  // 'revealed' will hold the letters as they are revealed
-  let revealed = [];
+  let revealed = []; // array to store revealed letters
 
-  // When game state becomes "lost", start an interval to reveal letters one by one.
   $: if ($gameStore.gameState === 'lost') {
     if (revealed.length === 0) {
       const phrase = $gameStore.currentPhrase;
       let i = 0;
       interval = setInterval(() => {
         revealed[i] = phrase[i];
-        // Trigger reactivity by creating a new array reference.
-        revealed = [...revealed];
+        revealed = [...revealed]; // trigger reactivity
         i++;
         if (i >= phrase.length) {
           clearInterval(interval);
         }
-      }, 300); // Adjust speed (ms) as desired.
+      }, 300); // reveal speed
     }
   } else {
-    // Reset if game is not lost.
+    // reset if not lost
     revealed = [];
     clearInterval(interval);
   }
@@ -62,8 +58,8 @@
   });
 </script>
 
+<!-- LOST MODE -->
 {#if $gameStore.gameState === 'lost'}
-  <!-- Lost Mode: Use the same word/letter layout -->
   <div class="phrase-container">
     {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
       <div class="word">
@@ -77,8 +73,9 @@
       </div>
     {/each}
   </div>
-{:else if $gameStore.gameState === 'guess_mode'}
-  <!-- Guess Mode: Existing display code -->
+
+<!-- GUESS MODE -->
+{:else if ($gameStore.gameState === 'guess_mode')}
   <div class="phrase-container">
     {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
       <div class="word">
@@ -94,8 +91,9 @@
       </div>
     {/each}
   </div>
+
+<!-- DEFAULT MODE -->
 {:else}
-  <!-- Default Mode: Existing display code -->
   <div class="phrase-container">
     {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
       <div class="word">
@@ -110,42 +108,66 @@
 {/if}
 
 <style>
+  /* Container that holds all words/letters */
   .phrase-container {
     display: flex;
     flex-direction: row;
-    flex-wrap: wrap;
+    flex-wrap: wrap;      /* allow line wraps */
     justify-content: center;
     gap: 10px;
     margin: 20px 0;
+    max-width: 100%;      /* never exceed screen width */
+    box-sizing: border-box; 
+    overflow-x: hidden;   /* hide any accidental overflow */
   }
+
   .word {
-    display: flex;
-    gap: 8px;
-  }
-  .letter-box {
-    width: 50px;
-    height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid #333;
-    background-color: #fff;
-    font-size: 24px;
-    font-weight: bold;
-    border-radius: 5px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap; /* Allow breaking into multiple rows */
+  justify-content: center;
+  max-width: 100%;
+}
+
+.letter-box {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #333;
+  background-color: #fff;
+  font-size: 24px;
+  font-weight: bold;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  word-break: break-word; /* Break long words instead of shrinking */
+  overflow-wrap: break-word; /* Ensures break works in all browsers */
+}
+  /* highlight letter in guess mode */
   .letter-box.active {
     border-color: orange;
   }
+
+  /* purchased letters */
   .letter-box.locked {
     background-color: #eee;
   }
-  /* Style for letter animation in lost mode */
+
+  /* letter animation in lost mode */
   .phrase-container .letter {
     font-size: 32px;
     font-weight: bold;
     padding: 0 5px;
     transition: opacity 0.3s ease-in;
+  }
+
+  /* Shrink boxes on smaller screens (e.g. iPhone SE) */
+  @media (max-width: 480px) {
+    .letter-box {
+      width: 25px;
+      height: 25px;
+      font-size: 18px;
+    }
   }
 </style>
