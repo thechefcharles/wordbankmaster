@@ -1,31 +1,8 @@
 <script>
   import { gameStore } from '$lib/stores/GameStore.js';
+  import { onDestroy } from 'svelte';
 
-  // Helper: Returns an array of editable indices (non‑space and not locked).
-  function getEditableIndices(state) {
-    const indices = [];
-    const phrase = state.currentPhrase;
-    for (let i = 0; i < phrase.length; i++) {
-      if (phrase[i] === ' ') continue;
-      if (state.purchasedLetters[i] === phrase[i]) continue;
-      indices.push(i);
-    }
-    return indices;
-  }
-
-  // Reactive: Determine the active guess index.
-  $: activeGuessIndex = $gameStore.gameState === 'guess_mode' ? (() => {
-    const editable = getEditableIndices($gameStore);
-    if (editable.length === 0) return -1;
-    for (const idx of editable) {
-      if (!$gameStore.guessedLetters[idx]) return idx;
-    }
-    // If every editable index has a guess, return the last one.
-    return editable[editable.length - 1];
-  })() : -1;
-
-  // Helper: Computes the global index for a letter in the phrase.
-  // Accounts for spaces between words.
+  // This helper is already in your file for positioning letters in non-lost modes.
   function getGlobalIndex(wordIndex, letterIndex) {
     const words = $gameStore.currentPhrase.split(' ');
     let offset = 0;
@@ -34,10 +11,66 @@
     }
     return offset + letterIndex;
   }
+
+  // For guess mode active index (if needed by your existing code)
+  $: activeGuessIndex = $gameStore.gameState === 'guess_mode' ? (() => {
+    const phrase = $gameStore.currentPhrase;
+    // Compute editable indices: non‑space & not locked.
+    let indices = [];
+    for (let i = 0; i < phrase.length; i++) {
+      if (phrase[i] === ' ') continue;
+      if ($gameStore.purchasedLetters[i] === phrase[i]) continue;
+      indices.push(i);
+    }
+    if (indices.length === 0) return -1;
+    for (const idx of indices) {
+      if (!$gameStore.guessedLetters[idx]) return idx;
+    }
+    return indices[indices.length - 1];
+  })() : -1;
+
+  // --- New Code for Letter-By-Letter Reveal on Loss ---
+  let interval;
+  // 'revealed' will hold the letters as they are revealed
+  let revealed = [];
+  
+  // When the game is lost, start the animation.
+  $: if ($gameStore.gameState === 'lost') {
+    // Only start if we haven't already revealed any letters
+    if (revealed.length === 0) {
+      const phrase = $gameStore.currentPhrase;
+      let i = 0;
+      interval = setInterval(() => {
+        // Reveal one letter at a time
+        revealed[i] = phrase[i];
+        // Trigger reactivity by making a new array reference
+        revealed = [...revealed];
+        i++;
+        if (i >= phrase.length) {
+          clearInterval(interval);
+        }
+      }, 300); // Change the number (in ms) to adjust the speed
+    }
+  } else {
+    // If not lost, clear the revealed array and any interval
+    revealed = [];
+    clearInterval(interval);
+  }
+  
+  onDestroy(() => {
+    clearInterval(interval);
+  });
 </script>
 
-{#if $gameStore.gameState === 'guess_mode'}
-  <!-- Guess Mode: Display guessed letters (or empty slots) with active highlighting -->
+{#if $gameStore.gameState === 'lost'}
+  <!-- Lost Mode: Reveal the entire phrase one letter at a time -->
+  <div class="phrase-container">
+    {#each $gameStore.currentPhrase.split('') as letter, index}
+      <span class="letter">{ revealed[index] ? revealed[index] : '_' }</span>
+    {/each}
+  </div>
+{:else if $gameStore.gameState === 'guess_mode'}
+  <!-- Guess Mode: Existing display code -->
   <div class="phrase-container">
     {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
       <div class="word">
@@ -54,7 +87,7 @@
     {/each}
   </div>
 {:else}
-  <!-- Default Mode: Show only the correctly purchased (locked) letters -->
+  <!-- Default Mode: Existing display code -->
   <div class="phrase-container">
     {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
       <div class="word">
@@ -71,8 +104,9 @@
 <style>
   .phrase-container {
     display: flex;
-    flex-direction: column;
-    align-items: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 10px;
     margin: 20px 0;
   }
@@ -99,7 +133,11 @@
   .letter-box.locked {
     background-color: #eee;
   }
-  button:focus {
-    outline: none;
+  /* New style for letter animation in lost mode */
+  .phrase-container .letter {
+    font-size: 32px;
+    font-weight: bold;
+    padding: 0 5px;
+    transition: opacity 0.3s ease-in;
   }
 </style>
