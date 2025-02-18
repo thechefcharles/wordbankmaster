@@ -106,49 +106,53 @@ export function selectExtraGuess() {
  *   Then check if every non‑space index is now locked; if so, set gameState to "won".
  * - In guess mode, update only the active index.
  */
+import confetti from 'canvas-confetti';
+
 export function confirmPurchase() {
   gameStore.update(state => {
     if (!state.selectedPurchase) return state;
     const purchase = state.selectedPurchase;
 
-    // Track which letters have already been shaken
+    // Preserve the set of letter indexes that have already been shaken
     let newShakenLetters = new Set(state.shakenLetters || []);
 
     if (purchase.type === 'letter') {
       const letter = purchase.value;
       const cost = letterCosts[letter] || 0;
-
       if (state.bankroll < cost) {
-        return { ...state, selectedPurchase: null, gameState: "default" };
+        return { ...state, selectedPurchase: null };
       }
-
       const phrase = state.currentPhrase;
       let newPurchased = [...state.purchasedLetters];
       let newIncorrect = [...state.incorrectLetters];
-
       let correctIndexes = [];
-      
-      // Purchase correct letter instances
+
+      // Loop through the phrase. For each occurrence of the letter:
+      // - Set it as purchased.
+      // - If its index hasn’t been shaken before, record it.
       for (let i = 0; i < phrase.length; i++) {
         if (phrase[i] === letter) {
           newPurchased[i] = letter;
-          if (!newShakenLetters.has(i)) correctIndexes.push(i); // Add to shake only if not shaken before
+          if (!newShakenLetters.has(i)) {
+            correctIndexes.push(i);
+          }
         }
       }
 
-      // Mark correct letters for shaking only once
+      // If any correct letter indexes are found, mark them as shaken.
       if (correctIndexes.length > 0) {
         correctIndexes.forEach(idx => newShakenLetters.add(idx));
       } else {
+        // If the letter isn’t found, record it as an incorrect purchase.
         newIncorrect.push(letter);
       }
 
-      // Update locked letters
+      // Update locked letters for this letter.
       let newLockedLetters = { ...state.lockedLetters };
       const indices = phrase.split('').map((ch, i) => (ch === letter ? i : -1)).filter(i => i !== -1);
       newLockedLetters[letter] = indices.every(idx => newPurchased[idx] === letter);
 
-      // Check if the player won
+      // Check win condition: Every non-space letter must be correctly purchased.
       let win = phrase.split('').every((ch, i) => ch === ' ' || newPurchased[i] === ch);
 
       let newState = {
@@ -157,39 +161,42 @@ export function confirmPurchase() {
         purchasedLetters: newPurchased,
         incorrectLetters: newIncorrect,
         lockedLetters: newLockedLetters,
-        shakenLetters: Array.from(newShakenLetters), // Ensure letters shake only once
+        // Save the shaken indexes so these letters won’t shake again
+        shakenLetters: Array.from(newShakenLetters),
         selectedPurchase: null,
         gameState: win ? "won" : "default"
       };
 
+      // Trigger confetti if the player wins.
+      if (win) {
+        setTimeout(() => launchConfetti(), 300);
+      }
+
       return checkLossCondition(newState);
     }
-
     // HINT PURCHASE
     else if (purchase.type === 'hint') {
       const cost = 150;
       if (state.bankroll < cost) {
         return { ...state, selectedPurchase: null, gameState: "default" };
       }
-
       const phrase = state.currentPhrase;
-      const unrevealed = phrase.split('').map((ch, i) => (ch !== ' ' && !state.purchasedLetters[i] ? i : -1)).filter(i => i !== -1);
-
+      const unrevealed = phrase
+        .split('')
+        .map((ch, i) => (ch !== ' ' && !state.purchasedLetters[i] ? i : -1))
+        .filter(i => i !== -1);
       if (unrevealed.length === 0) {
         return { ...state, selectedPurchase: null, gameState: "default" };
       }
-
-      // Pick a random unrevealed letter
+      // Pick a random unrevealed letter.
       const randomIndex = unrevealed[Math.floor(Math.random() * unrevealed.length)];
       let newPurchased = [...state.purchasedLetters];
       newPurchased[randomIndex] = phrase[randomIndex];
-
-      // Update locked letters for the revealed letter
+      // Update locked letters for that letter.
       let newLockedLetters = { ...state.lockedLetters };
       const letter = phrase[randomIndex];
       const indices = phrase.split('').map((ch, i) => (ch === letter ? i : -1)).filter(i => i !== -1);
       newLockedLetters[letter] = indices.every(idx => newPurchased[idx] === letter);
-
       let newState = {
         ...state,
         bankroll: state.bankroll - cost,
@@ -198,17 +205,14 @@ export function confirmPurchase() {
         selectedPurchase: null,
         gameState: "default"
       };
-
       return checkLossCondition(newState);
     }
-
     // EXTRA GUESS PURCHASE
     else if (purchase.type === 'extra_guess') {
       const cost = 150;
       if (state.bankroll < cost) {
         return { ...state, selectedPurchase: null, gameState: "default" };
       }
-
       let newState = {
         ...state,
         bankroll: state.bankroll - cost,
@@ -216,11 +220,20 @@ export function confirmPurchase() {
         selectedPurchase: null,
         gameState: "default"
       };
-
       return checkLossCondition(newState);
     }
-
     return state;
+  });
+}
+
+// 🎉 Confetti Effect Function
+function launchConfetti() {
+  confetti({
+    particleCount: 120,
+    spread: 100,
+    startVelocity: 40,
+    scalar: 1.2, // Adjust for larger confetti
+    origin: { y: 0.6 }
   });
 }
 
