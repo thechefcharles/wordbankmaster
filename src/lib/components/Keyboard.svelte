@@ -176,28 +176,33 @@
 <style>
   /* Container for entire keyboard */
   .keyboard-container {
-    background-color: #f9f9f9;
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    justify-content: center;
-  }
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  background-color: #f9f9f9;
+  padding: 10px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  justify-content: center;
+  z-index: 1000;
+}
 
   /* Each row: no wrap => QWERTY stays in same order */
   .keyboard-row {
     display: flex;
     flex-wrap: nowrap; /* so layout never changes order on narrow screens */
-    gap: 8px;
+    gap: 2px;
     justify-content: center;
   }
 
   /* Common styling for each key */
   .key {
-    width: 50px;
-    height: 50px;
+    width: 70px;
+    height: 70px;
     font-size: 14px;
     font-weight: bold;
     border: 2px solid black;

@@ -123,10 +123,11 @@
 
   .word {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap; /* Allow breaking into multiple rows */
+  gap: 2px; /* Adjusts spacing between letters within a word */
+  flex-wrap: wrap; /* Allows words to break into new lines */
   justify-content: center;
   max-width: 100%;
+  margin-right: 4px; /* Adds space between words */
 }
 
 .letter-box {
@@ -165,8 +166,8 @@
   /* Shrink boxes on smaller screens (e.g. iPhone SE) */
   @media (max-width: 480px) {
     .letter-box {
-      width: 25px;
-      height: 25px;
+      width: 30px;
+      height: 30px;
       font-size: 18px;
     }
   }
