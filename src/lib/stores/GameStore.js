@@ -1,5 +1,5 @@
-//GameStore name change to captial 
 import { writable } from 'svelte/store';
+import { supabase } from '$lib/supabase.js';
 
 export const letterCosts = {
   Q: 30, W: 50, E: 140, R: 120, T: 120, Y: 60, U: 80, I: 110, O: 90, P: 80,
@@ -13,16 +13,12 @@ export const gameStore = writable({
   category: "Person",
   currentPhrase: "MICHAEL JORDAN",
   gameState: "default", // "default", "purchase_pending", "guess_mode", "won", "lost"
-  // purchasedLetters: an array (indexed per character) holding locked letters.
   purchasedLetters: [],
-  // guessedLetters: an object mapping index -> letter for current guess in guess mode.
   guessedLetters: {},
-  // lockedLetters: an object mapping a letter to true only if every occurrence is correct.
   lockedLetters: {},
   incorrectLetters: [],
   hintRevealedLetters: [],
-  selectedPurchase: null // { type: 'letter'|'hint'|'extra_guess', value?: letter }
-  // (Deprecated: guessInput removed)
+  selectedPurchase: null
 });
 
 // Helper: Check for loss conditions.
@@ -429,6 +425,58 @@ export function submitGuess() {
       return checkLossCondition(newState);
     }
   });
+}
+
+// In your GameStore.js
+export async function fetchRandomGame() {
+  try {
+    // Call the RPC function and ensure a single result is returned.
+    const { data: phraseData, error: phraseError } = await supabase
+      .rpc('get_random_phrase')
+      .single();
+
+    if (phraseError) {
+      throw phraseError;
+    }
+
+    // Log the data to see what is returned.
+    console.log("phraseData:", phraseData);
+
+    // Make sure phraseData has a valid category_id.
+    if (!phraseData || phraseData.category_id === undefined) {
+      throw new Error("No category_id returned from get_random_phrase RPC");
+    }
+
+    // Query the categories table for the category name.
+    const { data: categoryData, error: categoryError } = await supabase
+      .from('categories')
+      .select('name')
+      .eq('id', phraseData.category_id)
+      .single();
+
+    if (categoryError) {
+      throw categoryError;
+    }
+
+    // Update the game store with the new phrase and category.
+    gameStore.set({
+      bankroll: 1000,
+      guessesRemaining: 2,
+      currentPhrase: phraseData.phrase.toUpperCase(),
+      category: categoryData.name,
+      gameState: "default",
+      purchasedLetters: [],
+      guessedLetters: {},
+      lockedLetters: {},
+      incorrectLetters: [],
+      hintRevealedLetters: [],
+      selectedPurchase: null
+    });
+
+    console.log(`Game loaded: ${phraseData.phrase} - ${categoryData.name}`);
+  } catch (err) {
+    console.error("Error fetching game data:", err);
+  }
 }
 
 export function resetGame() {
