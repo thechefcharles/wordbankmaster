@@ -127,7 +127,7 @@
   flex-wrap: wrap; /* Allows words to break into new lines */
   justify-content: center;
   max-width: 100%;
-  margin-right: 4px; /* Adds space between words */
+  margin-right: 15px; /* Adds space between words */
 }
 
 .letter-box {

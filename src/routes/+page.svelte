@@ -9,6 +9,8 @@
   import Keyboard from '$lib/components/Keyboard.svelte';
   import GameButtons from '$lib/components/GameButtons.svelte';
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
+  import { selectHint, selectExtraGuess } from '$lib/stores/GameStore.js';
+
 
   // Create a local reactive variable for the game state
   $: currentGame = $gameStore;
@@ -29,11 +31,24 @@
     <PhraseDisplay />
   </section>
 
-  <!-- Resource Stats -->
-  <section class="stats-section">
-    <p class="bankroll">Bankroll: ${Math.floor(currentGame.bankroll)}</p>
-    <p>Guesses Remaining: {currentGame.guessesRemaining}</p>
-  </section>
+<!-- Resource Stats -->
+<section class="stats-section">
+  <!-- Keep the $ sign here -->
+  <p class="bankroll-box">$ {Math.floor(currentGame.bankroll)}</p>
+  <p class="guesses-remaining">Guesses Remaining: {currentGame.guessesRemaining}</p>
+</section>
+
+<!-- 🔽 Buy Guess & Hint Button Container -->
+<div class="guess-hint-buttons">
+  <button class="buy-guess-button" on:click={selectExtraGuess}>
+    Buy Guess ($150)
+  </button>
+  
+  <button class="hint-button" on:click={selectHint}>
+    Hint ($150)
+  </button>
+</div>
+
 
   <!-- Keyboard Section -->
   <section class="keyboard-section">
@@ -52,9 +67,8 @@
     <GameButtons />
   </section>
 
-  <!-- Reset Button: Reload a new game -->
-  <button on:click={fetchRandomGame}>
-    Reset Game (New Game)
+  <button class="reset-button hidden" on:click={fetchRandomGame}>
+    Reset Game
   </button>
 </main>
 
@@ -73,7 +87,7 @@ main {
 
 /* Fix WordBank spacing */
 h1 {
-  margin-top: 20px; /* Move down slightly */
+  margin-top: 40px; /* Move down slightly */
   margin-bottom: 5px;
   font-size: 2rem;
 }
@@ -90,20 +104,26 @@ h1 {
   display: flex;
   justify-content: space-between;
   width: 100%;
-  padding: 10px 15px;
+  padding: 5px 10px;
 }
 
 .top-buttons button {
   flex: 1;
-  margin: 0 5px;
+  margin: -10 5px;
   font-size: 14px;
 }
 
-/* Adjust bankroll and guesses position */
+/* Adjust stats-section to move everything up */
 .stats-section {
-  margin: 10px 0;
+  margin-top: 10px; /* Move up */
+  margin-bottom: 5px; /* Reduce extra space */
   font-size: 1.2rem;
   font-weight: bold;
+}
+
+/* Move guesses remaining up */
+.guesses-remaining {
+  margin-top: -10px; /* Adjust to move up */
 }
 
 /* PHRASE BOXES: Bigger & Tighter Spacing */
@@ -144,4 +164,60 @@ h1 {
   margin: 0; /* Remove any extra margins */
   padding: 2px; /* Minimal padding */
 }
+
+/* Hide Reset Game Button */
+.reset-button.hidden {
+  display: none;
+}
+  .bankroll-box {
+  /* Move it up by giving it a negative top margin or 
+     reducing any parent spacing */
+  margin-top: -10px;  /* Moves it 10px upward; adjust to taste */
+
+  /* Make the box smaller */
+  padding: 8px 16px;  /* Less padding for a smaller box */
+  font-size: 2rem;    /* Slightly smaller text; adjust as needed */
+  font-weight: bold;
+  color: white;
+  background-color: green;
+  border-radius: 8px;
+  text-align: center;
+  display: inline-block;
+}
+
+/* Buy Guess & Hint Buttons Positioned Closer to Guesses Remaining */
+.guess-hint-buttons {
+  display: flex;
+  justify-content: space-between; /* Places Buy Guess on the left, Hint on the right */
+  width: 100%;
+  max-width: 300px; /* Adjusts button width */
+  margin-top: -5px; /* Moves buttons up */
+}
+
+/* 💰 Buy Guess Button (Left) */
+.buy-guess-button {
+  background-color: #007bff;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  width: 140px; /* 🔹 Fix width */
+  text-align: center;
+}
+
+/* 💡 Hint Button (Right) */
+.hint-button {
+  background-color: #007bff;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  width: 140px; /* 🔹 Fix width */
+  text-align: center;
+}
+
 </style>

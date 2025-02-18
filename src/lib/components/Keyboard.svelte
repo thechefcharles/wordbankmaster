@@ -1,27 +1,28 @@
 <script>
   import { onMount } from 'svelte';
-  import { 
-    gameStore, 
-    selectLetter, 
-    inputGuessLetter, 
-    confirmPurchase, 
-    submitGuess, 
-    deleteGuessLetter, 
-    enterGuessMode 
+  import {
+    gameStore,
+    selectLetter,
+    inputGuessLetter,
+    confirmPurchase,
+    submitGuess,
+    deleteGuessLetter,
+    enterGuessMode
   } from '$lib/stores/GameStore.js';
 
-  // Define letter costs.
+  // Define letter costs
   const letterCosts = {
     Q: 30, W: 50, E: 140, R: 120, T: 120, Y: 60, U: 80, I: 110, O: 90, P: 80,
     A: 130, S: 120, D: 80, F: 60, G: 70, H: 70, J: 30, K: 50, L: 80,
     Z: 40, X: 40, C: 80, V: 50, B: 60, N: 100, M: 70
   };
 
-  // QWERTY rows (no reordering).
+  // Rows for QWERTY layout
   const row1 = ['Q','W','E','R','T','Y','U','I','O','P'];
   const row2 = ['A','S','D','F','G','H','J','K','L'];
   const row3 = ['Z','X','C','V','B','N','M'];
 
+  // Decide if we place a letter in guess mode or buy a letter in default mode
   function handleLetterClick(letter) {
     if ($gameStore.gameState === 'guess_mode') {
       inputGuessLetter(letter);
@@ -34,12 +35,15 @@
   $: guessComplete = $gameStore.gameState === 'guess_mode' && (() => {
     const phrase = $gameStore.currentPhrase;
     for (let i = 0; i < phrase.length; i++) {
+      // skip spaces & locked letters
       if (phrase[i] === ' ' || $gameStore.purchasedLetters[i] === phrase[i]) continue;
+      // if a slot isn't filled, we're not complete
       if (!$gameStore.guessedLetters[i]) return false;
     }
     return true;
   })();
 
+  // Listen to keyboard events (Enter, Backspace, Space, A–Z)
   function handleKeyDown(event) {
     if (event.key === 'Enter') {
       event.preventDefault();
@@ -62,19 +66,22 @@
         handleLetterClick(key);
       }
     }
-    // Remove focus from button or input elements
+    // remove focus from any clicked element
     document.activeElement.blur();
   }
 
+  // Hook up the keyboard events on mount
   onMount(() => {
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   });
 </script>
 
 <!-- Keyboard Layout -->
 <div class="keyboard-container">
-  <!-- Row 1: Q-W-E-R-T-Y-U-I-O-P + Del -->
+  <!-- Row 1: Q–P + Del -->
   <div class="keyboard-row">
     {#each row1 as letter}
       <button
@@ -100,7 +107,7 @@
     </button>
   </div>
 
-  <!-- Row 2: A-S-D-F-G-H-J-K-L -->
+  <!-- Row 2: A–L -->
   <div class="keyboard-row">
     {#each row2 as letter}
       <button
@@ -123,8 +130,9 @@
     {/each}
   </div>
 
-  <!-- Row 3: "Guess" + Z-X-C-V-B-N-M + "Enter" -->
+  <!-- Row 3: "Guess" + Z–M + "Enter" -->
   <div class="keyboard-row">
+    <!-- Guess Button -->
     <button
       class="key guess-button { $gameStore.gameState === 'guess_mode' ? 'active-guess' : '' }"
       on:click={() => enterGuessMode()}
@@ -152,9 +160,10 @@
       </button>
     {/each}
 
+    <!-- Enter Button -->
     <button
       class="key enter-button {
-        ($gameStore.gameState === 'guess_mode' && guessComplete) || 
+        ($gameStore.gameState === 'guess_mode' && guessComplete) ||
         $gameStore.gameState === 'purchase_pending'
           ? 'submit-ready'
           : ''
@@ -174,32 +183,32 @@
 </div>
 
 <style>
-  /* Container for entire keyboard */
+  /* Keyboard Container */
   .keyboard-container {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  background-color: #f9f9f9;
-  padding: 10px;
-  border-radius: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  justify-content: center;
-  z-index: 1000;
-}
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    background-color: #f9f9f9;
+    padding: 10px;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    justify-content: center;
+    z-index: 1000;
+  }
 
-  /* Each row: no wrap => QWERTY stays in same order */
+  /* Each Row (QWERTY layout) */
   .keyboard-row {
     display: flex;
-    flex-wrap: nowrap; /* so layout never changes order on narrow screens */
+    flex-wrap: nowrap;
     gap: 2px;
     justify-content: center;
   }
 
-  /* Common styling for each key */
+  /* Key Styles */
   .key {
     width: 70px;
     height: 70px;
@@ -220,7 +229,8 @@
     color: white;
   }
 
-  .guess-button, .enter-button {
+  .guess-button,
+  .enter-button {
     background-color: #ddd;
     min-width: 60px;
   }
@@ -233,6 +243,7 @@
     font-size: 10px;
   }
 
+  /* Button States */
   button.purchased {
     background-color: green;
     color: white;
@@ -247,6 +258,7 @@
     color: white;
     cursor: default;
   }
+
   button:hover:not(.purchased, .pending, .incorrect) {
     background-color: lightgray;
   }
@@ -259,9 +271,8 @@
     color: white !important;
   }
 
-  /* Shrink keys for smaller screens (so entire row fits) */
+  /* Media Query for small screens */
   @media (max-width: 480px) {
-    /* Decrease each key's width/height and font so row doesn't overflow */
     .key {
       width: 40px;
       height: 40px;
@@ -269,7 +280,56 @@
     }
     .guess-button,
     .enter-button {
-      min-width: 50px; 
+      min-width: 50px;
     }
+  }
+
+  /* ============================= */
+  /* =========== DARK MODE ======= */
+  /* ============================= */
+
+  /* Make sure these are global: 
+     so they apply when <body> has .dark-mode */
+  :global(body.dark-mode) .keyboard-container {
+    background-color: #333;
+  }
+
+  :global(body.dark-mode) .key {
+    background-color: #444;
+    color: white;
+    border-color: #777;
+  }
+
+  :global(body.dark-mode) .key.delete {
+    background-color: #cc6666; /* slightly darker red */
+  }
+
+  :global(body.dark-mode) .guess-button,
+  :global(body.dark-mode) .enter-button {
+    background-color: #555;
+  }
+
+  :global(body.dark-mode) .letter {
+    color: white;
+  }
+
+  :global(body.dark-mode) .price {
+    color: #ccc;
+  }
+
+  :global(body.dark-mode) button.purchased {
+    background-color: #228B22; /* or a darker green */
+  }
+
+  :global(body.dark-mode) button.incorrect {
+    background-color: #990000;
+  }
+
+  :global(body.dark-mode) button.pending {
+    background-color: #5555aa !important; /* or a darker blue */
+  }
+
+  :global(body.dark-mode) button:hover:not(.purchased, .pending, .incorrect) {
+    background-color: #666;
   }
 </style>
