@@ -328,4 +328,16 @@
   :global(body.dark-mode) button:hover:not(.purchased, .pending, .incorrect) {
     background-color: #666;
   }
+
+  /* If your Enter button should remain green (or its default color), override its focus state */
+.enter-button:focus {
+  background-color: green !important;  /* Replace 'green' with your actual Enter button color if different */
+  color: white !important;
+}
+
+/* For any letter buttons using the .key class, force their default background on focus */
+.key:focus {
+  background-color: white !important;  /* Change if your default isn't white */
+  color: inherit !important;
+}
 </style>
