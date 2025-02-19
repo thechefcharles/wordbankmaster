@@ -36,23 +36,44 @@ function launchConfetti() {
   });
 }
 
-// Check if the player lost: no guesses + insufficient bankroll.
 function checkLossCondition(state) {
   const minLetterCost = Math.min(...Object.values(letterCosts));
-  if (state.guessesRemaining <= 0 && state.bankroll < minLetterCost) {
-    console.log("Loss condition triggered: no guesses remaining and insufficient bankroll.");
+  const isLost = state.guessesRemaining <= 0 && state.bankroll < minLetterCost;
+
+  if (isLost) {
+    console.log("💀 Game Over: No guesses remaining and insufficient bankroll.");
+
+    // Gradually reduce bankroll to 0
+    animateBankrollReduction(state.bankroll);
+
     return {
       ...state,
       gameState: "lost",
-      // Reveal entire phrase
+      guessesRemaining: 0,
       guessedLetters: Object.fromEntries(
         state.currentPhrase.split('').map((ch, i) => [i, ch])
       ),
-      guessesRemaining: 0
     };
   }
+
   return state;
 }
+
+function animateBankrollReduction(startingAmount) {
+  let currentAmount = startingAmount;
+  const step = Math.max(1, Math.floor(startingAmount / 50)); // Reduce in small steps
+  const interval = setInterval(() => {
+    gameStore.update(state => {
+      if (currentAmount <= 0) {
+        clearInterval(interval); // Stop when it reaches zero
+        return { ...state, bankroll: 0 };
+      }
+      currentAmount -= step; // Decrease bankroll step by step
+      return { ...state, bankroll: Math.max(0, currentAmount) };
+    });
+  }, 200); // Runs every 50ms for a smooth transition
+}
+
 
 // -------------------- Purchase Mode Functions --------------------
 export function selectLetter(letter) {
@@ -256,7 +277,7 @@ export function enterGuessMode() {
       console.log("Cannot enter guess mode: no guesses remaining.");
       return state;
     }
-    if (state.gameState === 'guess_mode') {
+    if (state.gameState === 'guess_mode') { 
       console.log("Exiting guess mode.");
       return { ...state, gameState: "default", guessedLetters: {} };
     }
@@ -331,7 +352,7 @@ export function submitGuess() {
   gameStore.update(state => {
     if (state.gameState !== "guess_mode") return state;
 
-    // ensure all slots are filled
+    // Ensure all slots are filled
     const phrase = state.currentPhrase;
     for (let i = 0; i < phrase.length; i++) {
       if (phrase[i] === ' ') continue;
@@ -347,24 +368,27 @@ export function submitGuess() {
       return state;
     }
 
-    const newGuessed = { ...state.guessedLetters };
-    const newPurchased = [...state.purchasedLetters];
+    let newGuessed = { ...state.guessedLetters };
+    let newPurchased = [...state.purchasedLetters];
+    let newLockedLetters = { ...state.lockedLetters };  // ✅ Initialize properly
+    let newShakenLetters = new Set(state.shakenLetters || []); // ✅ Track shaking letters
+    let correctIndexes = []; // ✅ Track newly correct positions
     let allCorrect = true;
 
-    // lock correct guesses
+    // Validate guesses
     for (let i = 0; i < phrase.length; i++) {
       if (phrase[i] === ' ') continue;
-      if (newPurchased[i] === phrase[i]) continue;
+      if (newPurchased[i] === phrase[i]) continue; // Already purchased
       if (newGuessed[i] === phrase[i]) {
         newPurchased[i] = phrase[i];
+        correctIndexes.push(i); // ✅ Mark correctly guessed letter
       } else {
         delete newGuessed[i];
         allCorrect = false;
       }
     }
 
-    // update locked letters
-    let newLockedLetters = { ...state.lockedLetters };
+    // Lock letters that are fully revealed
     const distinctLetters = [...new Set(phrase.replace(/\s/g, ''))];
     distinctLetters.forEach(letter => {
       const letterIndices = [];
@@ -374,9 +398,13 @@ export function submitGuess() {
       newLockedLetters[letter] = letterIndices.every(idx => newPurchased[idx] === letter);
     });
 
+    // ✅ Add newly correct indexes to shakenLetters (triggers shake effect)
+    correctIndexes.forEach(idx => newShakenLetters.add(idx));
+
+    // Decrement guesses
     const newGuessesRemaining = Math.max(state.guessesRemaining - 1, 0);
 
-    // check overall win
+    // Check if the user won
     let win = phrase.split('').every((ch, i) => ch === ' ' || newPurchased[i] === ch);
 
     if (allCorrect || win) {
@@ -387,19 +415,20 @@ export function submitGuess() {
         guessedLetters: newGuessed,
         purchasedLetters: newPurchased,
         lockedLetters: newLockedLetters,
+        shakenLetters: Array.from(newShakenLetters), // ✅ Convert Set back to array
         guessesRemaining: newGuessesRemaining
       };
     } else {
       console.log("❌ Incorrect guess. Returning to default mode.");
-      const newState = {
+      return checkLossCondition({
         ...state,
         gameState: "default",
         guessedLetters: newGuessed,
         purchasedLetters: newPurchased,
         lockedLetters: newLockedLetters,
+        shakenLetters: Array.from(newShakenLetters), // ✅ Keep shaking effect
         guessesRemaining: newGuessesRemaining
-      };
-      return checkLossCondition(newState);
+      });
     }
   });
 }
@@ -447,3 +476,26 @@ export function resetGame() {
   });
   console.log("Game reset.");
 }
+
+export function reduceBankrollToZero() {
+  gameStore.update(state => {
+    if (state.gameState !== "lost") return state; // Only trigger if player lost
+
+    let decrementRate = Math.max(state.bankroll / 100, 1); // Decrease rate (ensures gradual reduction)
+    let interval = setInterval(() => {
+      gameStore.update(state => {
+        let newBankroll = Math.max(0, state.bankroll - decrementRate); // Ensure it doesn't go below 0
+
+        if (newBankroll <= 0) {
+          clearInterval(interval); // Stop when bankroll hits zero
+          return { ...state, bankroll: 0 };
+        }
+
+        return { ...state, bankroll: newBankroll };
+      });
+    }, 50); // Runs every 50ms for smooth effect
+
+    return state;
+  });
+}
+
