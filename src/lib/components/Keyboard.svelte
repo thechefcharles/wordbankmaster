@@ -154,7 +154,7 @@
       </button>
     {/each}
     <button
-    class="key enter-button { $gameStore.gameState === 'purchase_pending' ? 'submit-ready' : '' }"
+    class="key enter-button { $gameStore.gameState === 'purchase_pending' ? 'pending' : '' }"
     on:click={() => {
       if ($gameStore.gameState === 'purchase_pending') {
         confirmPurchase();
@@ -162,14 +162,13 @@
         if (guessComplete) submitGuess();
         else console.log("Not all guess slots are filled.");
       } else {
-        // fallback behavior if needed
         confirmPurchase();
       }
     }}
   >
     <div class="letter">Enter</div>
   </button>
-            </div>
+              </div>
 </div>
 
 <style>
@@ -344,22 +343,54 @@
 }
 
 
-/* Continue with existing overrides */
-:global(body.dark-mode) .key.delete {
-  background-color: #cc6666;
-  color: white;
+/* Light Mode - Pending Purchase (Turns Blue) */
+:global(body:not(.dark-mode)) .key.pending {
+  background-color: blue !important;
+  color: white !important;
 }
 
-:global(body.dark-mode) .letter {
-  color: white;
+/* Light Mode - Correct Purchase (Turns Green) */
+:global(body:not(.dark-mode)) .key.purchased {
+  background-color: green !important;
+  color: white !important;
 }
 
-:global(body.dark-mode) .price {
-  color: #ccc;
+/* Light Mode - Incorrect Purchase (Turns Red) */
+:global(body:not(.dark-mode)) .key.incorrect {
+  background-color: red !important;
+  color: white !important;
 }
 
-:global(body.dark-mode) .selected {
+/* Light Mode - Selected Letter (Turns Light Gray) */
+:global(body:not(.dark-mode)) .key.selected {
+  background-color: lightgray !important;
+  color: black !important;
+}
+
+/* Light Mode - Default State (Returns to White) */
+:global(body:not(.dark-mode)) .key:not(.selected):not(.pending):not(.purchased):not(.incorrect) {
+  background-color: white !important;
+  color: black !important;
+}
+/* Light Mode - Enter Button Blinks Green When Purchase is Pending */
+:global(body:not(.dark-mode)) .enter-button.pending {
+  background-color: green !important;
+  color: white !important;
   animation: blink 1s infinite;
+}
+
+/* Ensure Default Enter Button is White in Light Mode */
+:global(body:not(.dark-mode)) .enter-button {
+  background-color: white !important;
+  color: black !important;
+  border: 2px solid black;
+}
+
+/* Blinking Animation */
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
 }
 
 </style>
