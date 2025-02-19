@@ -10,37 +10,48 @@
   let showHowToPlay = false;
   let darkMode = false;
 
-  // Reactive: whether we have 0 guesses left
+  // Reactive: are we out of guesses?
   $: noGuessesLeft = $gameStore.guessesRemaining === 0;
 
-  // Reactive: whether guess mode is currently active
-  $: guessModeActive = $gameStore.gameState === "guess_mode";
+  // Reactive: is guess mode active?
+  $: guessModeActive = $gameStore.gameState === 'guess_mode';
 
-  // Reactive: current bankroll & check if under $150
+  // Reactive: current bankroll & whether it's below $150
   $: bankroll = $gameStore.bankroll;
   $: fundsLow = bankroll < 150;
 
-  // On mount, determine dark mode preference
-  onMount(() => {
-    // 1. Check localStorage for "darkMode" key
-    const storedMode = localStorage.getItem('darkMode');
+  // Reactive variables to check if the Buy Guess or Hint button is pending purchase.
+  $: buyGuessPending = $gameStore.selectedPurchase?.type === 'extra_guess' &&
+                        $gameStore.gameState === 'purchase_pending';
+  $: hintPending = $gameStore.selectedPurchase?.type === 'hint' &&
+                   $gameStore.gameState === 'purchase_pending';
 
-    // 2. If no stored preference, default to dark mode
-    if (storedMode === null) {
-      darkMode = true;
+  // Track selected items locally (if needed for additional blinking, etc.)
+  let selectedItems = new Set();
+
+  function toggleSelection(item) {
+    if (selectedItems.has(item)) {
+      selectedItems.delete(item);
     } else {
-      // 3. If stored, parse "true"/"false"
+      selectedItems.add(item);
+    }
+  }
+
+  // On mount, load dark mode from localStorage
+  onMount(() => {
+    const storedMode = localStorage.getItem('darkMode');
+    if (storedMode === null) {
+      darkMode = true; // default to dark mode if no preference
+    } else {
       darkMode = (storedMode === 'true');
     }
-
-    // 4. Toggle body class accordingly
     document.body.classList.toggle('dark-mode', darkMode);
   });
 
   function toggleDarkMode() {
     darkMode = !darkMode;
     document.body.classList.toggle('dark-mode', darkMode);
-    localStorage.setItem('darkMode', darkMode ? 'true' : 'false');
+    localStorage.setItem('dark-mode', darkMode ? 'true' : 'false');
   }
 </script>
 
@@ -53,7 +64,7 @@
 {:else}
   <div class="guess-hint-buttons">
     <button
-      class="buy-guess-button {fundsLow ? 'disabled red' : ''}"
+      class="buy-guess-button {fundsLow ? 'disabled red' : ''} {buyGuessPending ? 'pending' : ''}"
       disabled={fundsLow}
       on:click={() => { if (!fundsLow) selectExtraGuess(); }}
     >
@@ -61,7 +72,7 @@
     </button>
 
     <button
-      class="hint-button {fundsLow ? 'disabled red' : ''}"
+      class="hint-button {fundsLow ? 'disabled red' : ''} {hintPending ? 'pending' : ''}"
       disabled={fundsLow}
       on:click={() => { if (!fundsLow) selectHint(); }}
     >
@@ -70,7 +81,7 @@
   </div>
 {/if}
 
-<!-- Guess the Entire Phrase + Guesses Remaining -->
+<!-- Guess Mode Button + Guesses Remaining -->
 <div class="guess-phrase-container">
   <button
     class="guess-phrase-button {noGuessesLeft ? 'no-guesses' : ''}"
@@ -89,8 +100,6 @@
   <button class="how-to-play-button" on:click={() => (showHowToPlay = true)}>
     How to Play
   </button>
-  <!-- Show ☀️ if currently in dark mode (because user can switch to light mode),
-       otherwise show 🌙 if in light mode (user can switch to dark) -->
   <button class="dark-mode-button" on:click={toggleDarkMode}>
     {darkMode ? "☀️" : "🌙"}
   </button>
@@ -197,14 +206,26 @@
     transition: background-color 0.3s;
   }
 
-  /* If fundsLow => 'disabled red' style */
+  /* When fundsLow => 'disabled red' */
   .disabled.red {
     background-color: red !important;
     cursor: not-allowed;
     opacity: 0.7;
   }
 
-  /* Entire Phrase + Guess Count container */
+  /* Blinking effect for pending buttons */
+  .buy-guess-button.pending,
+  .hint-button.pending {
+    animation: blink 1s infinite;
+  }
+
+  @keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+
+  /* Guess-phrase container */
   .guess-phrase-container {
     display: flex;
     align-items: center;
@@ -227,14 +248,14 @@
   .guess-phrase-button:hover {
     background-color: darkorange;
   }
-  /* When no guesses left, change to red + disable effect */
+  /* If no guesses left => red */
   .guess-phrase-button.no-guesses {
     background-color: red !important;
     cursor: not-allowed;
     opacity: 0.7;
   }
 
-  /* Guesses remaining box */
+  /* Guesses box */
   .guesses-box {
     background-color: orange;
     color: white;
@@ -264,11 +285,17 @@
     animation: fadeIn 0.3s ease-in-out;
   }
   @keyframes fadeIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
 
-  /* Modal overlay + content */
+  /* Modal overlay */
   .modal-overlay {
     position: fixed;
     top: 0;
@@ -311,7 +338,7 @@
     background: darkred;
   }
 
-  /* Dark Mode */
+  /* Dark Mode overrides */
   :global(body.dark-mode) {
     background: #222;
     color: white;
@@ -341,18 +368,20 @@
     background-color: orange !important;
     color: white !important;
   }
-  /* Ensure red stays red for no-guesses in dark mode */
   :global(body.dark-mode) .guess-phrase-button.no-guesses {
     background-color: red !important;
     color: white !important;
   }
+  :global(body.dark-mode) .disabled.red {
+    background-color: red !important;
+    color: white !important;
+    border-color: #777;
+  }
 
-  /* Focus states for certain buttons */
+  /* Focus states for these local buttons */
   .buy-guess-button:focus,
   .hint-button:focus,
-  .guess-phrase-button:focus,
-  .enter-button:focus,
-  .key:focus {
+  .guess-phrase-button:focus {
     outline: none;
     box-shadow: none;
   }

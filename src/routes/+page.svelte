@@ -1,22 +1,35 @@
 <!-- page.svelte -->
 <svelte:head>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+  />
 </svelte:head>
 
 <script>
   import { onMount } from 'svelte';
+  import { browser } from '$app/environment';  // ensures we only access 'document' in the browser
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
   import Keyboard from '$lib/components/Keyboard.svelte';
   import GameButtons from '$lib/components/GameButtons.svelte';
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
 
-  // Create a local reactive variable for the game state
+  // Reactive variable for the store
   $: currentGame = $gameStore;
 
-  // When component mounts, fetch a random puzzle from Supabase
+  // Fetch a random puzzle on mount
   onMount(() => {
     fetchRandomGame();
   });
+
+  // Toggle .guess-mode on <body> if in the browser
+  $: if (browser) {
+    if (currentGame.gameState === 'guess_mode') {
+      document.body.classList.add('guess-mode');
+    } else {
+      document.body.classList.remove('guess-mode');
+    }
+  }
 </script>
 
 <main>
@@ -49,15 +62,15 @@
   {#if currentGame.gameState === "won"}
     <div class="banner win">Congratulations! You won!</div>
   {:else if currentGame.gameState === "lost"}
-    <div class="banner lose">Game Over</div>
+    <div class="banner lose">Bankrupt!</div>
   {/if}
 
-  <!-- Game Buttons Section -->
+  <!-- Game Buttons -->
   <section class="buttons-section">
     <GameButtons />
   </section>
 
-  <!-- Hidden Reset Button (if you still want it) -->
+  <!-- Hidden Reset Button (optional) -->
   <button class="reset-button hidden" on:click={fetchRandomGame}>
     Reset Game
   </button>
@@ -79,7 +92,7 @@
   /* Category display */
   .category {
     font-size: 1.4rem;
-    margin-top: -140px; 
+    margin-top: -140px;
     margin-bottom: 0px;
     font-weight: bold;
   }
@@ -134,29 +147,37 @@
     margin-bottom: 0px;
   }
 
-  /* Remove default focus outlines for buttons */
-  .buy-guess-button:focus,
-  .hint-button:focus,
-  .guess-phrase-button:focus,
-  .enter-button:focus,
-  .key:focus {
-    outline: none;
-    box-shadow: none;
-  }
-
-  /* Force certain button colors on focus */
-  .buy-guess-button:focus,
-  .hint-button:focus {
-    background-color: #007bff !important;
-    color: white !important;
-  }
-  .guess-phrase-button:focus {
-    background-color: orange !important;
-    color: white !important;
-  }
-
   :global(html, body) {
     overflow-x: hidden;
     touch-action: manipulation;
   }
+
+  @keyframes gameOverPulse {
+  0%, 100% { transform: scale(1) rotate(0deg); text-shadow: 0px 0px 10px red; }
+  25% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px red; }
+  50% { transform: scale(1.5) rotate(-3deg); text-shadow: 0px 0px 30px red; }
+  75% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px red; }
+}
+
+@keyframes gameOverFlash {
+  0% { opacity: 1; }
+  50% { opacity: 0.2; }
+  100% { opacity: 1; }
+}
+
+.banner.lose {
+  font-size: 3rem; /* Make it massive */
+  font-weight: 600;
+  color: red;
+  text-transform: uppercase;
+  background: linear-gradient(45deg, red, black);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-align: center;
+  padding: 20px;
+  border: 5px solid red;
+  border-radius: 10px;
+  animation: gameOverPulse 1.5s infinite, gameOverFlash 0.5s infinite;
+}
+
 </style>

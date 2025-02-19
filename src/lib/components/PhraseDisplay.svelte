@@ -2,18 +2,12 @@
   import { gameStore } from '$lib/stores/GameStore.js';
   import { onDestroy } from 'svelte';
 
-  // Local set of indexes that should shake
+  // Track indexes that should shake
   let shakeIndexes = new Set();
-
-  // Track last processed shakes so we only trigger new ones
   let lastProcessedShakes = [];
 
-  // Watch store for new shakenLetters if not in guess mode
-  $: if (
-    $gameStore.shakenLetters?.length > 0 &&
-    $gameStore.gameState !== 'guess_mode'
-  ) {
-    // Compare with last processed
+  // Watch store for new shaken letters
+  $: if ($gameStore.shakenLetters?.length > 0) {
     if (JSON.stringify($gameStore.shakenLetters) !== JSON.stringify(lastProcessedShakes)) {
       triggerShake([...$gameStore.shakenLetters]);
       lastProcessedShakes = [...$gameStore.shakenLetters];
@@ -24,7 +18,11 @@
     shakeIndexes = new Set(indexes);
     setTimeout(() => {
       shakeIndexes.clear();
-    }, 1000);
+      gameStore.update(state => ({
+        ...state,
+        shakenLetters: []
+      }));
+    }, 1000); // Shake lasts 1 second
   }
 
   // Helper to compute global index across the full phrase
@@ -32,7 +30,7 @@
     const words = $gameStore.currentPhrase.split(' ');
     let offset = 0;
     for (let i = 0; i < wordIndex; i++) {
-      offset += words[i].length + 1; // +1 for the space
+      offset += words[i].length + 1; // Account for spaces
     }
     return offset + letterIndex;
   }
@@ -61,7 +59,7 @@
     clearInterval(interval);
   });
 
-  // For guess mode, track the currently "active" guess index
+  // Track currently "active" guess index in guess mode
   $: activeGuessIndex = (
     $gameStore.gameState === 'guess_mode'
       ? (() => {
@@ -103,7 +101,12 @@
       <div class="word">
         {#each word.split('') as letter, cIndex}
           {#if $gameStore.purchasedLetters[getGlobalIndex(wIndex, cIndex)] === letter}
-            <span class="letter-box locked">{letter}</span>
+            <span 
+              class="letter-box locked 
+                {shakeIndexes.has(getGlobalIndex(wIndex, cIndex)) ? 'shake' : ''}"
+            >
+              {letter}
+            </span>
           {:else}
             <span
               class="letter-box
@@ -200,11 +203,20 @@
     color: black !important;
   }
 
-  /* Glow effect for guess mode container */
+  /* Blinking border effect in guess mode */
   :global(body.guess-mode) .phrase-container {
-    border: 6px solid orange !important;
+    border: 12px solid orange !important;
     background-color: rgba(255, 165, 0, 0.2);
-    animation: glowEffect 1.5s infinite alternate;
+    animation: blinkingBorder 1.5s infinite;
+  }
+
+  @keyframes blinkingBorder {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.4;
+    }
   }
 
   /* Smaller boxes on tiny screens */
