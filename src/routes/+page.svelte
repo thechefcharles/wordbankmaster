@@ -101,7 +101,7 @@ h1 {
 /* Category display */
 .category {
   font-size: 1.4rem;
-  margin-top: -130px;  /* Moves up */
+  margin-top: -140px;  /* Moves up */
   margin-bottom: 0px;  /* Removes extra space below */
   font-weight: bold;
 }
@@ -183,22 +183,24 @@ h1 {
   align-items: center;      /* Aligns content in the middle */
   width: 100%;              /* Full width of the container */
   margin: 0 auto;           /* Centers it */
-  padding-top: 5px;         /* Adjust spacing above */
+  padding-top: -5px;         /* Adjust spacing above */
 }
 
 /* Make sure bankroll box stays centered */
 .bankroll-box {
-  padding: 10px 20px;
-  font-size: 2rem;
+  padding: 5px 15px;
+  font-size: 1.5rem;
   font-weight: bold;
   color: white;
   background-color: green;
-  border-radius: 8px;
+  border-radius: 1px;
   text-align: center;
   display: inline-block;
   width: fit-content;  /* Prevents it from stretching */
   margin: 0 auto;      /* Ensures centering */
 }
+
+
 
 /* Buy Guess & Hint Buttons Positioned Closer to Guesses Remaining */
 .guess-hint-buttons {
@@ -240,7 +242,8 @@ h1 {
   width: 380px; /* Make it even bigger */
   height: auto;
   display: block;
-  margin: 0 auto;
+  margin-bottom: -50px; /* Move elements up more */
+  margin-top: -30px;  /* Reduce space above */
   padding-bottom: 0px; /* No space below the logo */
 }
 
@@ -249,12 +252,13 @@ h1 {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: -50px; /* Move elements up more */
-  margin-top: -30px;  /* Reduce space above */
+  /* Increase negative margin-top to push the logo up */
+  margin-top: -50px;
+  margin-bottom: 0px;
 }
 
 .phrase-section {
-  margin-top: 20px;  /* Move phrase display up */
+  margin-top: 0px;  /* Move phrase display up */
 }
 
 

@@ -106,9 +106,9 @@
   .how-to-play-button {
     background-color: #f0f0f0;
     border: 1px solid #ccc;
-    padding: 6px 10px;
-    font-size: 12px;
-    border-radius: 5px;
+    padding: 4px 8px;
+    font-size: 10px;
+    border-radius: 1px;
     cursor: pointer;
     transition: background-color 0.3s;
     margin-left: 10px;
