@@ -22,6 +22,8 @@
     fetchRandomGame();
   });
 
+  
+
   // Toggle .guess-mode on <body> if in the browser
   $: if (browser) {
     if (currentGame.gameState === 'guess_mode') {
@@ -52,7 +54,7 @@
       <p class="bankroll-box">$ {Math.floor(currentGame.bankroll)}</p>
     </div>
   </section>
-
+  
   <!-- Keyboard Section -->
   <section class="keyboard-section">
     <Keyboard />
@@ -64,6 +66,11 @@
   {:else if currentGame.gameState === "lost"}
     <div class="banner lose">Bankrupt!</div>
   {/if}
+
+  {#if $gameStore.message}
+  <div class="message-box">{$gameStore.message}</div>
+  {/if}
+
 
   <!-- Game Buttons -->
   <section class="buttons-section">
@@ -115,7 +122,7 @@
     align-items: center;
     width: 100%;
     margin: 0 auto;
-    margin-top: 30px;
+    margin-top: 10px;
   }
   .bankroll-box {
     padding: 10px 20px;
@@ -179,5 +186,26 @@
   border-radius: 10px;
   animation: gameOverPulse 1.5s infinite, gameOverFlash 0.5s infinite;
 }
+
+.message-box {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: red;
+  color: white;
+  padding: 10px 20px;
+  font-weight: bold;
+  border-radius: 5px;
+  animation: fadeOut 2s ease-in-out;
+}
+
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+
 
 </style>

@@ -107,9 +107,6 @@
         <div class="price">${letterCosts[letter]}</div>
       </button>
     {/each}
-    <button class="key delete" on:click={() => deleteGuessLetter()}>
-      <div class="letter">Del</div>
-    </button>
   </div>
 
   <!-- Row 2: A-L -->
@@ -157,9 +154,11 @@
       </button>
     {/each}
     <button
-    class="key enter-button {(($gameStore.gameState === 'purchase_pending' && $gameStore.selectedPurchase) || ($gameStore.gameState === 'guess_mode' && guessComplete)) ? 'submit-ready' : ''}"
+    class="key enter-button { $gameStore.extraGuessPending ? 'submit-ready' : '' }"
     on:click={() => {
-      if ($gameStore.gameState === 'guess_mode') {
+      if ($gameStore.extraGuessPending) {
+        confirmPurchase();
+      } else if ($gameStore.gameState === 'guess_mode') {
         if (guessComplete) submitGuess();
         else console.log("Not all guess slots are filled.");
       } else {
@@ -169,7 +168,7 @@
   >
     <div class="letter">Enter</div>
   </button>
-      </div>
+          </div>
 </div>
 
 <style>
@@ -199,7 +198,7 @@
 
   .key {
     width: 70px;
-    height: 70px;
+    height: 50px;
     font-size: 14px;
     font-weight: bold;
     border: 2px solid black;
@@ -219,7 +218,7 @@
   }
   
   .enter-button {
-    width: 140px;
+    width: 70px;
     display: flex;
     align-items: center;
     justify-content: center;
