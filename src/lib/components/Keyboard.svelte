@@ -154,21 +154,22 @@
       </button>
     {/each}
     <button
-    class="key enter-button { $gameStore.extraGuessPending ? 'submit-ready' : '' }"
+    class="key enter-button { $gameStore.gameState === 'purchase_pending' ? 'submit-ready' : '' }"
     on:click={() => {
-      if ($gameStore.extraGuessPending) {
+      if ($gameStore.gameState === 'purchase_pending') {
         confirmPurchase();
       } else if ($gameStore.gameState === 'guess_mode') {
         if (guessComplete) submitGuess();
         else console.log("Not all guess slots are filled.");
       } else {
+        // fallback behavior if needed
         confirmPurchase();
       }
     }}
   >
     <div class="letter">Enter</div>
   </button>
-          </div>
+            </div>
 </div>
 
 <style>

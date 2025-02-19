@@ -67,9 +67,6 @@
     <div class="banner lose">Bankrupt!</div>
   {/if}
 
-  {#if $gameStore.message}
-  <div class="message-box">{$gameStore.message}</div>
-  {/if}
 
 
   <!-- Game Buttons -->
