@@ -6,6 +6,12 @@
   let showHowToPlay = false;
   let darkMode = false;
 
+   // Reactive variable to check if guesses are zero
+   $: noGuessesLeft = $gameStore.guessesRemaining === 0;
+
+  // Reactive variable for displaying the banner
+  $: guessModeActive = $gameStore.gameState === "guess_mode";
+
   // Subscribe reactively to gameStore using $gameStore.
   $: bankroll = $gameStore.bankroll;
   $: fundsLow = bankroll < 150; // If bankroll is below $150
@@ -24,33 +30,44 @@
   }
 </script>
 
-<!-- Buy Guess and Hint Buttons -->
-<div class="guess-hint-buttons">
-  <button
-    class="buy-guess-button {fundsLow ? 'disabled red' : ''}"
-    disabled={fundsLow}
-    on:click={() => { if (!fundsLow) selectExtraGuess(); }}
-  >
-    Buy Guess ($150)
-  </button>
+<!-- Guess Mode Banner (Only shows in guess mode) -->
+{#if guessModeActive}
+  <div class="guess-mode-banner">
+    Guess Mode Activated! Fill every box with a letter to submit.<br>Correct guesses will remain!
+  </div>
+{:else}
+  <!-- Buy Guess and Hint Buttons (Only show when NOT in Guess Mode) -->
+  <div class="guess-hint-buttons">
+    <button
+      class="buy-guess-button {fundsLow ? 'disabled red' : ''}"
+      disabled={fundsLow}
+      on:click={() => { if (!fundsLow) selectExtraGuess(); }}
+    >
+      Buy Guess ($150)
+    </button>
 
-  <button
-    class="hint-button {fundsLow ? 'disabled red' : ''}"
-    disabled={fundsLow}
-    on:click={() => { if (!fundsLow) selectHint(); }}
-  >
-    Hint ($150)
-  </button>
-</div>
+    <button
+      class="hint-button {fundsLow ? 'disabled red' : ''}"
+      disabled={fundsLow}
+      on:click={() => { if (!fundsLow) selectHint(); }}
+    >
+      Hint ($150)
+    </button>
+  </div>
+{/if}
 
 <!-- New Guess Entire Phrase Container -->
 <div class="guess-phrase-container">
-  <button class="guess-phrase-button" on:click={enterGuessMode}>
-    Guess Entire Phrase
-  </button>
-  <div class="guesses-box">
-    {$gameStore.guessesRemaining}
-  </div>
+  <button 
+  class="guess-phrase-button {noGuessesLeft ? 'no-guesses' : ''}" 
+  on:click={enterGuessMode} 
+  disabled={noGuessesLeft}
+>
+  Guess Entire Phrase
+</button>
+<div class="guesses-box {noGuessesLeft ? 'no-guesses' : ''}">
+  {$gameStore.guessesRemaining}
+</div>
 </div>
 
 <!-- Top Buttons -->
@@ -163,20 +180,87 @@
     transition: background-color 0.3s;
     margin-top: 0px
   }
+
+  /* 🔴 Make button red when guesses are zero */
+.guess-phrase-button.no-guesses {
+  background-color: red !important;
+}
+
+  /* 🔹 Ensure it stays orange even when clicked */
+.guess-phrase-button:active,
+.guess-phrase-button:focus,
+.guess-phrase-button:visited {
+  background-color: orange !important;
+  color: white !important;
+  outline: none;
+  box-shadow: none;
+}
+
   .guess-phrase-button:hover {
     background-color: darkorange;
   }
-  .guesses-box {
-    background-color: orange;
-    color: white;
-    padding: 8px 12px;
-    border-radius: 5px;
-    font-size: 16px;
-    margin-left: 10px;
-    margin-top: 0px
-    min-width: 40px;
-    text-align: center;
-  }
+/* Default Guesses Remaining Box */
+.guesses-box {
+  background-color: orange;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 5px;
+  font-size: 16px;
+  margin-left: 10px;
+  min-width: 40px;
+  text-align: center;
+  font-weight: bold;
+}
+
+/* Change to red when no guesses left */
+.guesses-box.no-guesses {
+  background-color: rgba(255, 0, 0, 0.647) !important;
+}
+
+  /* Guess Mode Banner */
+.guess-mode-banner {
+  background-color: rgba(255, 8, 8, 0.641);
+  color: white;
+  font-weight: bold;
+  text-align: center;
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 10px;
+  width: 100%;
+  max-width: 400px;
+  animation: fadeIn 0.3s ease-in-out;
+} 
+
+/* Fade-in animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Default Guess Entire Phrase Button */
+.guess-phrase-button {
+  background-color: orange;
+  color: white;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+/* Change to red when no guesses left */
+.guess-phrase-button.no-guesses {
+  background-color: red !important;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Optional: Add hover effect */
+.guess-phrase-button.no-guesses:hover {
+  background-color: darkred !important;
+}
+
 
   /* Modal Styles */
   .modal-overlay {
@@ -253,6 +337,12 @@
   background-color: orange !important;
   color: white !important;
   }
+
+  /* 🔥 Ensure it stays red in dark mode */
+:global(body.dark-mode) .guess-phrase-button.no-guesses {
+  background-color: red !important;
+  color: white !important;
+}
 
   /* Remove default focus outline and shadow for all relevant buttons */
 .buy-guess-button:focus,

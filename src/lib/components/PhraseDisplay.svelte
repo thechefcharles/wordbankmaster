@@ -187,16 +187,42 @@
     overflow-wrap: break-word;
   }
 
-  /* Highlight active guess letter */
+/* 🔥 Guess Mode: Make phrase container stand out */
+body.guess-mode .phrase-container {
+  border: 6px solid orange !important;
+  background-color: rgba(255, 165, 0, 0.2); /* Light orange background */
+}
+
+/* Individual active letter boxes (inside the phrase) */
+.letter-box.active {
+  border: 3px solid orange !important; /* Make letters pop */
+}
+
+/* 🔥 Guess Mode: Add glowing effect */
+body.guess-mode .phrase-container {
+  border: 6px solid orange !important;
+  background-color: rgba(255, 165, 0, 0.2); /* Light orange background */
+  animation: glowEffect 1.5s infinite alternate;
+}
+/* 🔒 Ensure locked letters always stay visible */
+.letter-box.locked {
+  color: black !important;
+  font-weight: bold;
+}
   .letter-box.active {
-    border-color: orange;
-  }
+  color: black !important; /* Ensure active guessed letters stay black */
+}
 
-  /* Locked (purchased) letters */
-  .letter-box.locked {
-    background-color: #eee;
-  }
+/* 🔥 Ensure all letters are always black (even in dark mode) */
+.letter-box {
+  color: black !important; /* Force black text */
+}
 
+/* 🔥 Dark Mode: Keep text black & background white */
+:global(body.dark-mode) .letter-box {
+  color: black !important;
+  background-color: white !important;
+}
   /* Shrink boxes on smaller screens */
   @media (max-width: 480px) {
     .letter-box {
