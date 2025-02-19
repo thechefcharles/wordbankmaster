@@ -306,7 +306,7 @@
     margin-top: 10px;
     background: red;
     color: white;
-    padding: 10px 20px;
+    padding: 0px 10px;
     font-weight: bold;
     border-radius: 5px;
     text-align: center;
@@ -325,10 +325,10 @@
     background-color: rgba(255, 8, 8, 0.641);
     color: white;
     font-weight: bold;
-    text-align: center;
-    padding: 10px;
-    border-radius: 5px;
-    margin-top: 10px;
+    text-align: center; 
+    padding: 5px;
+    border-radius: 3px;
+    margin-top: -10px;
     width: 100%;
     max-width: 400px;
     animation: fadeIn 0.3s ease-in-out;
