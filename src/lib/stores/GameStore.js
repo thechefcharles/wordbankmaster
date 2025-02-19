@@ -22,7 +22,9 @@ export const gameStore = writable({
   lockedLetters: {},
   incorrectLetters: [],
   selectedPurchase: null,
-  shakenLetters: []
+  shakenLetters: [],
+  extraGuessPending: false,  // NEW property
+  message: "" // <-- Add this for temporary feedback messages
 });
 
 // -------------------- Confetti + Utility --------------------
@@ -277,11 +279,21 @@ export function enterGuessMode() {
       console.log("Cannot enter guess mode: no guesses remaining.");
       return state;
     }
-    if (state.gameState === 'guess_mode') { 
+    if (state.gameState === 'guess_mode') {
       console.log("Exiting guess mode.");
-      return { ...state, gameState: "default", guessedLetters: {} };
+      return { 
+        ...state, 
+        gameState: "default", 
+        guessedLetters: {} 
+      };
     }
-    return { ...state, gameState: "guess_mode", selectedPurchase: null, guessedLetters: {} };
+    console.log("Entering guess mode.");
+    return { 
+      ...state, 
+      gameState: "guess_mode", 
+      selectedPurchase: null, 
+      guessedLetters: {} 
+    };
   });
 }
 
@@ -370,18 +382,18 @@ export function submitGuess() {
 
     let newGuessed = { ...state.guessedLetters };
     let newPurchased = [...state.purchasedLetters];
-    let newLockedLetters = { ...state.lockedLetters };  // ✅ Initialize properly
-    let newShakenLetters = new Set(state.shakenLetters || []); // ✅ Track shaking letters
-    let correctIndexes = []; // ✅ Track newly correct positions
+    let newLockedLetters = { ...state.lockedLetters };
+    let newShakenLetters = new Set(state.shakenLetters || []);
+    let correctIndexes = [];
     let allCorrect = true;
 
     // Validate guesses
     for (let i = 0; i < phrase.length; i++) {
       if (phrase[i] === ' ') continue;
-      if (newPurchased[i] === phrase[i]) continue; // Already purchased
+      if (newPurchased[i] === phrase[i]) continue;
       if (newGuessed[i] === phrase[i]) {
         newPurchased[i] = phrase[i];
-        correctIndexes.push(i); // ✅ Mark correctly guessed letter
+        correctIndexes.push(i);
       } else {
         delete newGuessed[i];
         allCorrect = false;
@@ -398,7 +410,6 @@ export function submitGuess() {
       newLockedLetters[letter] = letterIndices.every(idx => newPurchased[idx] === letter);
     });
 
-    // ✅ Add newly correct indexes to shakenLetters (triggers shake effect)
     correctIndexes.forEach(idx => newShakenLetters.add(idx));
 
     // Decrement guesses
@@ -415,8 +426,9 @@ export function submitGuess() {
         guessedLetters: newGuessed,
         purchasedLetters: newPurchased,
         lockedLetters: newLockedLetters,
-        shakenLetters: Array.from(newShakenLetters), // ✅ Convert Set back to array
-        guessesRemaining: newGuessesRemaining
+        shakenLetters: Array.from(newShakenLetters),
+        guessesRemaining: newGuessesRemaining,
+        message: "🎉 Correct! You solved the phrase!" // Winning message
       };
     } else {
       console.log("❌ Incorrect guess. Returning to default mode.");
@@ -426,11 +438,23 @@ export function submitGuess() {
         guessedLetters: newGuessed,
         purchasedLetters: newPurchased,
         lockedLetters: newLockedLetters,
-        shakenLetters: Array.from(newShakenLetters), // ✅ Keep shaking effect
-        guessesRemaining: newGuessesRemaining
+        shakenLetters: Array.from(newShakenLetters),
+        guessesRemaining: newGuessesRemaining,
+        message: `❌ Incorrect! You have ${newGuessesRemaining} guesses remaining.` // Display incorrect message
       });
     }
   });
+
+  // Auto-clear the message after 2 seconds
+  setTimeout(() => {
+    gameStore.update(state => ({ ...state, message: "" }));
+  }, 2000);
+
+  gameStore.update(state => ({ 
+    ...state, 
+    extraGuessPending: !state.extraGuessPending 
+}));
+
 }
 
 // -------------------- Puzzle Fetch & Reset --------------------
