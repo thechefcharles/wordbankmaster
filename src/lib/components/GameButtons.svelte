@@ -50,9 +50,13 @@
   }
 
   function toggleGuessPurchase() {
-    // Toggle the extra guess purchase (using the guesses remaining box as the button)
-    guessPending = !guessPending;
-  }
+  guessPending = !guessPending;
+  gameStore.update(state => ({
+    ...state,
+    gameState: guessPending ? "purchase_pending" : "default",
+    extraGuessPending: guessPending
+  }));
+}
 
   function confirmPurchase() {
     if (guessPending) {
