@@ -412,40 +412,21 @@ export function submitGuess() {
 // In your GameStore.js
 export async function fetchRandomGame() {
   try {
-    // Call the RPC function and ensure a single result is returned.
-    const { data: phraseData, error: phraseError } = await supabase
-      .rpc('get_random_phrase')
+    // Call the RPC function get_random_puzzle()
+    const { data, error } = await supabase
+      .rpc('get_random_puzzle')
       .single();
 
-    if (phraseError) {
-      throw phraseError;
+    if (error) {
+      throw error;
     }
 
-    // Log the data to see what is returned.
-    console.log("phraseData:", phraseData);
-
-    // Make sure phraseData has a valid category_id.
-    if (!phraseData || phraseData.category_id === undefined) {
-      throw new Error("No category_id returned from get_random_phrase RPC");
-    }
-
-    // Query the categories table for the category name.
-    const { data: categoryData, error: categoryError } = await supabase
-      .from('categories')
-      .select('name')
-      .eq('id', phraseData.category_id)
-      .single();
-
-    if (categoryError) {
-      throw categoryError;
-    }
-
-    // Update the game store with the new phrase and category.
+    // Update the game store with the fetched puzzle.
     gameStore.set({
       bankroll: 1000,
       guessesRemaining: 2,
-      currentPhrase: phraseData.phrase.toUpperCase(),
-      category: categoryData.name,
+      currentPhrase: data.phrase.toUpperCase(),
+      category: data.category,
       gameState: "default",
       purchasedLetters: [],
       guessedLetters: {},
@@ -455,7 +436,7 @@ export async function fetchRandomGame() {
       selectedPurchase: null
     });
 
-    console.log(`Game loaded: ${phraseData.phrase} - ${categoryData.name}`);
+    console.log(`Game loaded: ${data.phrase} - ${data.category}`);
   } catch (err) {
     console.error("Error fetching game data:", err);
   }
