@@ -1,20 +1,40 @@
 <script>
   import { onMount } from 'svelte';
-  import { gameStore, selectHint, selectExtraGuess, enterGuessMode } from '$lib/stores/GameStore.js';
-  import { get } from 'svelte/store';
+  import {
+    gameStore,
+    selectHint,
+    selectExtraGuess,
+    enterGuessMode
+  } from '$lib/stores/GameStore.js';
 
   let showHowToPlay = false;
   let darkMode = false;
 
-  // Subscribe reactively to gameStore using $gameStore.
-  $: bankroll = $gameStore.bankroll;
-  $: fundsLow = bankroll < 150; // If bankroll is below $150
+  // Reactive: whether we have 0 guesses left
+  $: noGuessesLeft = $gameStore.guessesRemaining === 0;
 
+  // Reactive: whether guess mode is currently active
+  $: guessModeActive = $gameStore.gameState === "guess_mode";
+
+  // Reactive: current bankroll & check if under $150
+  $: bankroll = $gameStore.bankroll;
+  $: fundsLow = bankroll < 150;
+
+  // On mount, determine dark mode preference
   onMount(() => {
-    if (typeof window !== 'undefined') {
-      darkMode = localStorage.getItem('darkMode') === 'true';
-      document.body.classList.toggle('dark-mode', darkMode);
+    // 1. Check localStorage for "darkMode" key
+    const storedMode = localStorage.getItem('darkMode');
+
+    // 2. If no stored preference, default to dark mode
+    if (storedMode === null) {
+      darkMode = true;
+    } else {
+      // 3. If stored, parse "true"/"false"
+      darkMode = (storedMode === 'true');
     }
+
+    // 4. Toggle body class accordingly
+    document.body.classList.toggle('dark-mode', darkMode);
   });
 
   function toggleDarkMode() {
@@ -24,53 +44,76 @@
   }
 </script>
 
-<!-- Buy Guess and Hint Buttons -->
-<div class="guess-hint-buttons">
-  <button
-    class="buy-guess-button {fundsLow ? 'disabled red' : ''}"
-    disabled={fundsLow}
-    on:click={() => { if (!fundsLow) selectExtraGuess(); }}
-  >
-    Buy Guess ($150)
-  </button>
+<!-- If in guess mode, show banner; otherwise, show Buy Guess & Hint buttons -->
+{#if guessModeActive}
+  <div class="guess-mode-banner">
+    Guess Mode Activated! Fill every box with a letter to submit.<br />
+    Correct guesses will remain!
+  </div>
+{:else}
+  <div class="guess-hint-buttons">
+    <button
+      class="buy-guess-button {fundsLow ? 'disabled red' : ''}"
+      disabled={fundsLow}
+      on:click={() => { if (!fundsLow) selectExtraGuess(); }}
+    >
+      Buy Guess ($150)
+    </button>
 
-  <button
-    class="hint-button {fundsLow ? 'disabled red' : ''}"
-    disabled={fundsLow}
-    on:click={() => { if (!fundsLow) selectHint(); }}
-  >
-    Hint ($150)
-  </button>
-</div>
+    <button
+      class="hint-button {fundsLow ? 'disabled red' : ''}"
+      disabled={fundsLow}
+      on:click={() => { if (!fundsLow) selectHint(); }}
+    >
+      Hint ($150)
+    </button>
+  </div>
+{/if}
 
-<!-- New Guess Entire Phrase Container -->
+<!-- Guess the Entire Phrase + Guesses Remaining -->
 <div class="guess-phrase-container">
-  <button class="guess-phrase-button" on:click={enterGuessMode}>
-    Guess Entire Phrase
+  <button
+    class="guess-phrase-button {noGuessesLeft ? 'no-guesses' : ''}"
+    on:click={enterGuessMode}
+    disabled={noGuessesLeft}
+  >
+    Guess Mode
   </button>
-  <div class="guesses-box">
+  <div class="guesses-box {noGuessesLeft ? 'no-guesses' : ''}">
     {$gameStore.guessesRemaining}
   </div>
 </div>
 
-<!-- Top Buttons -->
+<!-- Top Buttons: "How to Play" & Dark Mode Toggle -->
 <div class="top-buttons">
-  <button class="how-to-play-button" on:click={() => showHowToPlay = true}>
+  <button class="how-to-play-button" on:click={() => (showHowToPlay = true)}>
     How to Play
   </button>
+  <!-- Show ☀️ if currently in dark mode (because user can switch to light mode),
+       otherwise show 🌙 if in light mode (user can switch to dark) -->
   <button class="dark-mode-button" on:click={toggleDarkMode}>
-    {darkMode ? "🌙" : "☀️"}
+    {darkMode ? "☀️" : "🌙"}
   </button>
 </div>
 
 <!-- "How to Play" Modal -->
 {#if showHowToPlay}
-  <div class="modal-overlay" on:click={() => (showHowToPlay = false)} role="dialog" aria-modal="true">
+  <div
+    class="modal-overlay"
+    on:click={() => (showHowToPlay = false)}
+    role="dialog"
+    aria-modal="true"
+  >
     <div class="modal-content" on:click|stopPropagation>
       <h2>📜 How to Play</h2>
-      <p>💰 <b>You start with $1000.</b> Use it wisely to <b>buy letters, get hints, and guess the phrase!</b></p>
+      <p>
+        💰 <b>You start with $1000.</b> Use it wisely to
+        <b>buy letters, get hints, and guess the phrase!</b>
+      </p>
       <h3>🎯 Goal</h3>
-      <p>Solve the phrase <b>before running out of money!</b></p>
+      <p>
+        Solve the phrase <b>before running out of money!</b>
+      </p>
       <h3>🕹️ Gameplay</h3>
       <ul>
         <li>🔤 Click/tap letters to buy them.</li>
@@ -80,18 +123,20 @@
         <li>🎟️ Extra Guess ($150) – Buy another shot.</li>
       </ul>
       <p><b>Think smart, spend wisely, and guess like a pro!</b> 🚀</p>
-      <button class="close-btn" on:click={() => (showHowToPlay = false)}>Close</button>
+      <button class="close-btn" on:click={() => (showHowToPlay = false)}>
+        Close
+      </button>
     </div>
   </div>
 {/if}
 
 <style>
-  /* Remove focus outline */
+  /* Remove focus outlines */
   button:focus {
     outline: none;
   }
 
-  /* Top Buttons */
+  /* Top buttons container */
   .top-buttons {
     display: flex;
     justify-content: space-between;
@@ -103,6 +148,7 @@
     right: 0;
   }
 
+  /* "How to Play" button */
   .how-to-play-button {
     background-color: #f0f0f0;
     border: 1px solid #ccc;
@@ -118,6 +164,7 @@
     background-color: #e0e0e0;
   }
 
+  /* Dark Mode toggle button */
   .dark-mode-button {
     background: none;
     border: none;
@@ -129,7 +176,13 @@
     right: 5px;
   }
 
-  /* Buy Guess & Hint Buttons */
+  /* Guess & Hint buttons */
+  .guess-hint-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 30px;
+  }
   .hint-button,
   .buy-guess-button {
     background-color: #007bff;
@@ -142,16 +195,24 @@
     width: 140px;
     text-align: center;
     transition: background-color 0.3s;
-    margin-top: 30px;
   }
 
-  /* New Guess Entire Phrase Container */
+  /* If fundsLow => 'disabled red' style */
+  .disabled.red {
+    background-color: red !important;
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  /* Entire Phrase + Guess Count container */
   .guess-phrase-container {
     display: flex;
     align-items: center;
     justify-content: center;
     margin-top: 30px;
   }
+
+  /* Default guess-phrase button styling */
   .guess-phrase-button {
     background-color: orange;
     color: white;
@@ -161,11 +222,19 @@
     cursor: pointer;
     font-size: 14px;
     transition: background-color 0.3s;
-    margin-top: 0px
+    margin-top: 0;
   }
   .guess-phrase-button:hover {
     background-color: darkorange;
   }
+  /* When no guesses left, change to red + disable effect */
+  .guess-phrase-button.no-guesses {
+    background-color: red !important;
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  /* Guesses remaining box */
   .guesses-box {
     background-color: orange;
     color: white;
@@ -173,12 +242,33 @@
     border-radius: 5px;
     font-size: 16px;
     margin-left: 10px;
-    margin-top: 0px
     min-width: 40px;
     text-align: center;
+    font-weight: bold;
+  }
+  .guesses-box.no-guesses {
+    background-color: rgba(255, 0, 0, 0.647) !important;
   }
 
-  /* Modal Styles */
+  /* Guess Mode Banner */
+  .guess-mode-banner {
+    background-color: rgba(255, 8, 8, 0.641);
+    color: white;
+    font-weight: bold;
+    text-align: center;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+    width: 100%;
+    max-width: 400px;
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  /* Modal overlay + content */
   .modal-overlay {
     position: fixed;
     top: 0;
@@ -221,7 +311,7 @@
     background: darkred;
   }
 
-  /* Dark Mode Styles */
+  /* Dark Mode */
   :global(body.dark-mode) {
     background: #222;
     color: white;
@@ -242,39 +332,37 @@
   :global(body.dark-mode) .utility-buttons button:hover {
     background: #666;
   }
-
   :global(body.dark-mode) .hint-button,
   :global(body.dark-mode) .buy-guess-button {
-  background-color: #007bff !important;
-  color: white !important;
+    background-color: #007bff !important;
+    color: white !important;
   }
-
   :global(body.dark-mode) .guess-phrase-button {
-  background-color: orange !important;
-  color: white !important;
+    background-color: orange !important;
+    color: white !important;
+  }
+  /* Ensure red stays red for no-guesses in dark mode */
+  :global(body.dark-mode) .guess-phrase-button.no-guesses {
+    background-color: red !important;
+    color: white !important;
   }
 
-  /* Remove default focus outline and shadow for all relevant buttons */
-.buy-guess-button:focus,
-.hint-button:focus,
-.guess-phrase-button:focus,
-.enter-button:focus,
-.key:focus {
-  outline: none;
-  box-shadow: none;
-}
-
-/* Ensure Buy Guess & Hint buttons retain their blue color when focused */
-.buy-guess-button:focus,
-.hint-button:focus {
-  background-color: #007bff !important;
-  color: white !important;
-}
-
-/* Ensure the Guess Entire Phrase button stays orange when focused */
-.guess-phrase-button:focus {
-  background-color: orange !important;
-  color: white !important;
-}
-
+  /* Focus states for certain buttons */
+  .buy-guess-button:focus,
+  .hint-button:focus,
+  .guess-phrase-button:focus,
+  .enter-button:focus,
+  .key:focus {
+    outline: none;
+    box-shadow: none;
+  }
+  .buy-guess-button:focus,
+  .hint-button:focus {
+    background-color: #007bff !important;
+    color: white !important;
+  }
+  .guess-phrase-button:focus {
+    background-color: orange !important;
+    color: white !important;
+  }
 </style>
