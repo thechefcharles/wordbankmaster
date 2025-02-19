@@ -132,13 +132,6 @@
 
   <!-- Row 3: "Guess" + Z–M + "Enter" -->
   <div class="keyboard-row">
-    <!-- Guess Button -->
-    <button
-      class="key guess-button { $gameStore.gameState === 'guess_mode' ? 'active-guess' : '' }"
-      on:click={() => enterGuessMode()}
-    >
-      <div class="letter">Guess</div>
-    </button>
 
     {#each row3 as letter}
       <button
@@ -229,11 +222,14 @@
     color: white;
   }
 
-  .guess-button,
+  
   .enter-button {
-    background-color: #ddd;
-    min-width: 60px;
-  }
+  width: 140px;  /* Assuming other keys are 70px wide */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
 
   .letter {
     line-height: 1;

@@ -53,7 +53,6 @@
   <div class="bankroll-container">
     <p class="bankroll-box">$ {Math.floor(currentGame.bankroll)}</p>
   </div>
-  <p class="guesses-remaining">Guesses Remaining: {currentGame.guessesRemaining}</p>
 </section>
 
 
