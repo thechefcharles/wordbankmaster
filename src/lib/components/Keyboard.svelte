@@ -7,22 +7,16 @@
     confirmPurchase,
     submitGuess,
     deleteGuessLetter,
-    enterGuessMode
+    enterGuessMode,
+    letterCosts
   } from '$lib/stores/GameStore.js';
 
-  // Define letter costs
-  const letterCosts = {
-    Q: 30, W: 50, E: 140, R: 120, T: 120, Y: 60, U: 80, I: 110, O: 90, P: 80,
-    A: 130, S: 120, D: 80, F: 60, G: 70, H: 70, J: 30, K: 50, L: 80,
-    Z: 40, X: 40, C: 80, V: 50, B: 60, N: 100, M: 70
-  };
-
-  // Rows for QWERTY layout
+  // QWERTY rows
   const row1 = ['Q','W','E','R','T','Y','U','I','O','P'];
   const row2 = ['A','S','D','F','G','H','J','K','L'];
   const row3 = ['Z','X','C','V','B','N','M'];
 
-  // Decide if we place a letter in guess mode or buy a letter in default mode
+  // Click logic depends on gameState (guess vs purchase)
   function handleLetterClick(letter) {
     if ($gameStore.gameState === 'guess_mode') {
       inputGuessLetter(letter);
@@ -31,19 +25,18 @@
     }
   }
 
-  // Reactive: check if all guess slots are filled
+  // Check if all guess slots are filled
   $: guessComplete = $gameStore.gameState === 'guess_mode' && (() => {
     const phrase = $gameStore.currentPhrase;
     for (let i = 0; i < phrase.length; i++) {
-      // skip spaces & locked letters
-      if (phrase[i] === ' ' || $gameStore.purchasedLetters[i] === phrase[i]) continue;
-      // if a slot isn't filled, we're not complete
+      if (phrase[i] === ' ') continue;
+      if ($gameStore.purchasedLetters[i] === phrase[i]) continue;
       if (!$gameStore.guessedLetters[i]) return false;
     }
     return true;
   })();
 
-  // Listen to keyboard events (Enter, Backspace, Space, A–Z)
+  // Keyboard events
   function handleKeyDown(event) {
     if (event.key === 'Enter') {
       event.preventDefault();
@@ -53,24 +46,29 @@
       } else {
         confirmPurchase();
       }
-    } else if (event.key === 'Delete' || event.key === 'Backspace') {
+    } 
+    else if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault();
-      if ($gameStore.gameState === 'guess_mode') deleteGuessLetter();
-    } else if (event.key === ' ' || event.code === 'Space') {
+      if ($gameStore.gameState === 'guess_mode') {
+        deleteGuessLetter();
+      }
+    } 
+    else if (event.key === ' ' || event.code === 'Space') {
       event.preventDefault();
       enterGuessMode();
-    } else {
+    } 
+    else {
+      // If it's an A-Z letter
       const key = event.key.toUpperCase();
       if (/^[A-Z]$/.test(key)) {
         event.preventDefault();
         handleLetterClick(key);
       }
     }
-    // remove focus from any clicked element
+    // remove focus
     document.activeElement.blur();
   }
 
-  // Hook up the keyboard events on mount
   onMount(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => {
@@ -81,7 +79,7 @@
 
 <!-- Keyboard Layout -->
 <div class="keyboard-container">
-  <!-- Row 1: Q–P + Del -->
+  <!-- Row 1: Q-P + Del -->
   <div class="keyboard-row">
     {#each row1 as letter}
       <button
@@ -102,12 +100,12 @@
         <div class="price">${letterCosts[letter]}</div>
       </button>
     {/each}
-    <button class="key delete" on:click={() => deleteGuessLetter()}>
+    <button class="key delete" on:click={deleteGuessLetter}>
       <div class="letter">Del</div>
     </button>
   </div>
 
-  <!-- Row 2: A–L -->
+  <!-- Row 2: A-L -->
   <div class="keyboard-row">
     {#each row2 as letter}
       <button
@@ -130,9 +128,8 @@
     {/each}
   </div>
 
-  <!-- Row 3: "Guess" + Z–M + "Enter" -->
+  <!-- Row 3: Z-M + Enter -->
   <div class="keyboard-row">
-
     {#each row3 as letter}
       <button
         class="key {
@@ -153,7 +150,6 @@
       </button>
     {/each}
 
-    <!-- Enter Button -->
     <button
       class="key enter-button {
         ($gameStore.gameState === 'guess_mode' && guessComplete) ||
@@ -176,7 +172,6 @@
 </div>
 
 <style>
-  /* Keyboard Container */
   .keyboard-container {
     position: absolute;
     bottom: 20px;
@@ -193,7 +188,6 @@
     z-index: 1000;
   }
 
-  /* Each Row (QWERTY layout) */
   .keyboard-row {
     display: flex;
     flex-wrap: nowrap;
@@ -201,7 +195,6 @@
     justify-content: center;
   }
 
-  /* Key Styles */
   .key {
     width: 70px;
     height: 70px;
@@ -222,14 +215,13 @@
     color: white;
   }
 
-  
   .enter-button {
-  width: 140px;  /* Assuming other keys are 70px wide */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
+    width: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
 
   .letter {
     line-height: 1;
@@ -239,7 +231,7 @@
     font-size: 10px;
   }
 
-  /* Button States */
+  /* Button states */
   button.purchased {
     background-color: green;
     color: white;
@@ -254,38 +246,26 @@
     color: white;
     cursor: default;
   }
-
   button:hover:not(.purchased, .pending, .incorrect) {
     background-color: lightgray;
-  }
-  .active-guess {
-    background-color: orange !important;
-    color: white !important;
   }
   .submit-ready {
     background-color: green !important;
     color: white !important;
   }
 
-  /* Media Query for small screens */
   @media (max-width: 480px) {
     .key {
       width: 40px;
       height: 40px;
       font-size: 12px;
     }
-    .guess-button,
     .enter-button {
       min-width: 50px;
     }
   }
 
-  /* ============================= */
-  /* =========== DARK MODE ======= */
-  /* ============================= */
-
-  /* Make sure these are global: 
-     so they apply when <body> has .dark-mode */
+  /* Dark mode overrides */
   :global(body.dark-mode) .keyboard-container {
     background-color: #333;
   }
@@ -297,12 +277,7 @@
   }
 
   :global(body.dark-mode) .key.delete {
-    background-color: #cc6666; /* slightly darker red */
-  }
-
-  :global(body.dark-mode) .guess-button,
-  :global(body.dark-mode) .enter-button {
-    background-color: #555;
+    background-color: #cc6666;
   }
 
   :global(body.dark-mode) .letter {
@@ -314,7 +289,7 @@
   }
 
   :global(body.dark-mode) button.purchased {
-    background-color: #228B22; /* or a darker green */
+    background-color: #228b22; 
   }
 
   :global(body.dark-mode) button.incorrect {
@@ -322,22 +297,19 @@
   }
 
   :global(body.dark-mode) button.pending {
-    background-color: #5555aa !important; /* or a darker blue */
+    background-color: #5555aa !important;
   }
 
   :global(body.dark-mode) button:hover:not(.purchased, .pending, .incorrect) {
     background-color: #666;
   }
 
-  /* If your Enter button should remain green (or its default color), override its focus state */
-.enter-button:focus {
-  background-color: green !important;  /* Replace 'green' with your actual Enter button color if different */
-  color: white !important;
-}
-
-/* For any letter buttons using the .key class, force their default background on focus */
-.key:focus {
-  background-color: white !important;  /* Change if your default isn't white */
-  color: inherit !important;
-}
+  .enter-button:focus {
+    background-color: green !important;
+    color: white !important;
+  }
+  .key:focus {
+    background-color: white !important;
+    color: inherit !important;
+  }
 </style>

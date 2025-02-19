@@ -2,72 +2,51 @@
   import { gameStore } from '$lib/stores/GameStore.js';
   import { onDestroy } from 'svelte';
 
-  // Local set to store indexes that should currently shake
+  // Local set of indexes that should shake
   let shakeIndexes = new Set();
-  // Local copy of the last shaken indexes we’ve already processed
+
+  // Track last processed shakes so we only trigger new ones
   let lastProcessedShakes = [];
 
-  // Function to trigger shake animation on given indexes.
-  // Once triggered, those indexes will shake for 1 second.
-  function triggerShake(indexes) {
-    shakeIndexes = new Set(indexes);
-    setTimeout(() => {
-      // We clear the local animation, but we do NOT clear the store's shakenLetters.
-      shakeIndexes.clear();
-    }, 1000);
-  }
-
-  // Only trigger shake when new indexes are added (and we’re not in guess mode).
+  // Watch store for new shakenLetters if not in guess mode
   $: if (
     $gameStore.shakenLetters?.length > 0 &&
     $gameStore.gameState !== 'guess_mode'
   ) {
-    // Compare with our local lastProcessedShakes.
+    // Compare with last processed
     if (JSON.stringify($gameStore.shakenLetters) !== JSON.stringify(lastProcessedShakes)) {
       triggerShake([...$gameStore.shakenLetters]);
-      // Update our record so that the same indexes won’t re-trigger.
       lastProcessedShakes = [...$gameStore.shakenLetters];
     }
   }
 
-  // Helper: Computes the global index (across the full phrase)
+  function triggerShake(indexes) {
+    shakeIndexes = new Set(indexes);
+    setTimeout(() => {
+      shakeIndexes.clear();
+    }, 1000);
+  }
+
+  // Helper to compute global index across the full phrase
   function getGlobalIndex(wordIndex, letterIndex) {
     const words = $gameStore.currentPhrase.split(' ');
     let offset = 0;
     for (let i = 0; i < wordIndex; i++) {
-      offset += words[i].length + 1; // account for space
+      offset += words[i].length + 1; // +1 for the space
     }
     return offset + letterIndex;
   }
 
-  // Reactive: active guess index for guess mode
-  $: activeGuessIndex = $gameStore.gameState === 'guess_mode'
-    ? (() => {
-        const phrase = $gameStore.currentPhrase;
-        const indices = [];
-        for (let i = 0; i < phrase.length; i++) {
-          if (phrase[i] === ' ') continue;
-          if ($gameStore.purchasedLetters[i] === phrase[i]) continue;
-          indices.push(i);
-        }
-        if (indices.length === 0) return -1;
-        for (const idx of indices) {
-          if (!$gameStore.guessedLetters[idx]) return idx;
-        }
-        return indices[indices.length - 1];
-      })()
-    : -1;
-
-  // For lost mode: reveal letters gradually
+  // Animate reveal if lost
   let interval;
   let revealed = [];
+
   $: if ($gameStore.gameState === 'lost') {
     if (revealed.length === 0) {
       const phrase = $gameStore.currentPhrase;
       let i = 0;
       interval = setInterval(() => {
         revealed[i] = phrase[i];
-        // Trigger reactivity by reassigning a copy of the array
         revealed = [...revealed];
         i++;
         if (i >= phrase.length) clearInterval(interval);
@@ -81,6 +60,26 @@
   onDestroy(() => {
     clearInterval(interval);
   });
+
+  // For guess mode, track the currently "active" guess index
+  $: activeGuessIndex = (
+    $gameStore.gameState === 'guess_mode'
+      ? (() => {
+          const phrase = $gameStore.currentPhrase;
+          const indices = [];
+          for (let i = 0; i < phrase.length; i++) {
+            if (phrase[i] === ' ') continue;
+            if ($gameStore.purchasedLetters[i] === phrase[i]) continue;
+            indices.push(i);
+          }
+          if (indices.length === 0) return -1;
+          for (const idx of indices) {
+            if (!$gameStore.guessedLetters[idx]) return idx;
+          }
+          return indices[indices.length - 1];
+        })()
+      : -1
+  );
 </script>
 
 <!-- LOST MODE -->
@@ -106,7 +105,10 @@
           {#if $gameStore.purchasedLetters[getGlobalIndex(wIndex, cIndex)] === letter}
             <span class="letter-box locked">{letter}</span>
           {:else}
-            <span class="letter-box {getGlobalIndex(wIndex, cIndex) === activeGuessIndex ? 'active' : ''}">
+            <span
+              class="letter-box
+                {getGlobalIndex(wIndex, cIndex) === activeGuessIndex ? 'active' : ''}"
+            >
               {$gameStore.guessedLetters[getGlobalIndex(wIndex, cIndex)] || ""}
             </span>
           {/if}
@@ -121,7 +123,9 @@
     {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
       <div class="word">
         {#each word.split('') as letter, cIndex}
-          <span class="letter-box {shakeIndexes.has(getGlobalIndex(wIndex, cIndex)) ? 'shake' : ''}">
+          <span
+            class="letter-box {shakeIndexes.has(getGlobalIndex(wIndex, cIndex)) ? 'shake' : ''}"
+          >
             {$gameStore.purchasedLetters[getGlobalIndex(wIndex, cIndex)] || ""}
           </span>
         {/each}
@@ -131,27 +135,24 @@
 {/if}
 
 <style>
-  /* Enhanced Shake Animation with Pop-Out Effect */
   @keyframes shake {
-    0% { transform: translateX(0) scale(1); }
-    10% { transform: translateX(-6px) scale(1.1); }
-    20% { transform: translateX(6px) scale(1.2); }
-    30% { transform: translateX(-5px) scale(1.1); }
-    40% { transform: translateX(5px) scale(1.2); }
-    50% { transform: translateX(-4px) scale(1.1); }
-    60% { transform: translateX(4px) scale(1.2); }
-    70% { transform: translateX(-3px) scale(1.1); }
-    80% { transform: translateX(3px) scale(1.1); }
-    90% { transform: translateX(-2px) scale(1); }
+    0%   { transform: translateX(0) scale(1); }
+    10%  { transform: translateX(-6px) scale(1.1); }
+    20%  { transform: translateX(6px) scale(1.2); }
+    30%  { transform: translateX(-5px) scale(1.1); }
+    40%  { transform: translateX(5px) scale(1.2); }
+    50%  { transform: translateX(-4px) scale(1.1); }
+    60%  { transform: translateX(4px) scale(1.2); }
+    70%  { transform: translateX(-3px) scale(1.1); }
+    80%  { transform: translateX(3px) scale(1.1); }
+    90%  { transform: translateX(-2px) scale(1); }
     100% { transform: translateX(0) scale(1); }
   }
 
-  /* Apply shake animation */
   .shake {
     animation: shake 1s ease-in-out;
   }
 
-  /* Container for the phrase */
   .phrase-container {
     display: flex;
     flex-wrap: wrap;
@@ -187,43 +188,26 @@
     overflow-wrap: break-word;
   }
 
-/* 🔥 Guess Mode: Make phrase container stand out */
-body.guess-mode .phrase-container {
-  border: 6px solid orange !important;
-  background-color: rgba(255, 165, 0, 0.2); /* Light orange background */
-}
-
-/* Individual active letter boxes (inside the phrase) */
-.letter-box.active {
-  border: 3px solid orange !important; /* Make letters pop */
-}
-
-/* 🔥 Guess Mode: Add glowing effect */
-body.guess-mode .phrase-container {
-  border: 6px solid orange !important;
-  background-color: rgba(255, 165, 0, 0.2); /* Light orange background */
-  animation: glowEffect 1.5s infinite alternate;
-}
-/* 🔒 Ensure locked letters always stay visible */
-.letter-box.locked {
-  color: black !important;
-  font-weight: bold;
-}
+  .letter-box.locked {
+    color: black !important;
+    font-weight: bold;
+  }
   .letter-box.active {
-  color: black !important; /* Ensure active guessed letters stay black */
-}
+    border: 3px solid orange !important;
+    color: black !important;
+  }
+  .letter-box {
+    color: black !important;
+  }
 
-/* 🔥 Ensure all letters are always black (even in dark mode) */
-.letter-box {
-  color: black !important; /* Force black text */
-}
+  /* Glow effect for guess mode container */
+  :global(body.guess-mode) .phrase-container {
+    border: 6px solid orange !important;
+    background-color: rgba(255, 165, 0, 0.2);
+    animation: glowEffect 1.5s infinite alternate;
+  }
 
-/* 🔥 Dark Mode: Keep text black & background white */
-:global(body.dark-mode) .letter-box {
-  color: black !important;
-  background-color: white !important;
-}
-  /* Shrink boxes on smaller screens */
+  /* Smaller boxes on tiny screens */
   @media (max-width: 480px) {
     .letter-box {
       width: 30px;
