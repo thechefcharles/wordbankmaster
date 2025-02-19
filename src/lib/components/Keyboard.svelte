@@ -179,7 +179,7 @@
   /* Keyboard Container */
   .keyboard-container {
     position: absolute;
-    bottom: 0;
+    bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
     width: 100%;
