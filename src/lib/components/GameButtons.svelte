@@ -30,22 +30,33 @@
   onMount(() => {
     const storedMode = localStorage.getItem('darkMode');
     darkMode = storedMode === null ? true : storedMode === 'true';
-    document.body.classList.toggle('dark-mode', darkMode);
+
+    if (darkMode) {
+        document.body.classList.add('dark-mode');
+    } else {
+        document.body.classList.remove('dark-mode');
+    }
 
     const onKeyDown = (event) => {
-      if (event.key === 'Enter') {
-        confirmPurchase();
-      }
+        if (event.key === 'Enter') {
+            confirmPurchase();
+        }
     };
+
     window.addEventListener('keydown', onKeyDown);
     return () => {
-      window.removeEventListener('keydown', onKeyDown);
+        window.removeEventListener('keydown', onKeyDown);
     };
-  });
+});
 
   function toggleDarkMode() {
     darkMode = !darkMode;
-    document.body.classList.toggle('dark-mode', darkMode);
+    if (darkMode) {
+    document.body.classList.add('dark-mode');
+} else {
+    document.body.classList.remove('dark-mode');
+}
+
     localStorage.setItem('darkMode', darkMode ? 'true' : 'false');
   }
 
@@ -280,6 +291,13 @@
   :global(body:not(.guess-mode)) .delete-guess-button {
     display: none;
   }
+
+  :global(body:not(.dark-mode)) .key .letter,
+:global(body:not(.dark-mode)) .key .letter.selected,
+:global(body:not(.dark-mode)) .key .letter.pending {
+  color: #000 !important;
+}
+
 
   /* ---------------------------
      Message Box
@@ -517,4 +535,11 @@
     background-color: orange !important;
     color: white !important;
   }
+
+  :global(body:not(.dark-mode)) .key .letter,
+:global(body:not(.dark-mode)) .key .letter.selected,
+:global(body:not(.dark-mode)) .key .letter.pending {
+  color: #000 !important;
+}
+
 </style>
