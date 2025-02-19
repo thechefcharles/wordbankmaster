@@ -56,17 +56,6 @@
   <p class="guesses-remaining">Guesses Remaining: {currentGame.guessesRemaining}</p>
 </section>
 
-<!-- 🔽 Buy Guess & Hint Button Container -->
-<div class="guess-hint-buttons">
-  <button class="buy-guess-button" on:click={selectExtraGuess}>
-    Buy Guess ($150)
-  </button>
-  
-  <button class="hint-button" on:click={selectHint}>
-    Hint ($150)
-  </button>
-</div>
-
 
   <!-- Keyboard Section -->
   <section class="keyboard-section">
@@ -242,7 +231,7 @@ h1 {
   border-radius: 5px;
   border: none;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 14px;a
   width: 140px; /* 🔹 Fix width */
   text-align: center;
 }

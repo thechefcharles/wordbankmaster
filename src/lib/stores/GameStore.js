@@ -46,6 +46,11 @@ function checkLossCondition(state) {
 // Default mode: select a letter for purchase.
 export function selectLetter(letter) {
   gameStore.update(state => {
+    // If user can’t afford this letter, do nothing.
+    if (state.bankroll < (letterCosts[letter] || 0)) {
+      console.log(`Insufficient funds to purchase letter ${letter}`);
+      return state;
+    }
     if (
       state.selectedPurchase &&
       state.selectedPurchase.type === 'letter' &&
@@ -54,16 +59,15 @@ export function selectLetter(letter) {
       console.log(`Deselecting letter: ${letter}`);
       return { ...state, selectedPurchase: null, gameState: "default" };
     }
-    // Instead of a global check with purchasedLetters, we check lockedLetters.
     if ((state.lockedLetters && state.lockedLetters[letter]) ||
         state.incorrectLetters.includes(letter)) {
       console.log(`Letter ${letter} is fully locked or marked incorrect.`);
       return state;
     }
     console.log(`Selecting letter: ${letter}`);
-    return { 
-      ...state, 
-      gameState: "purchase_pending", 
+    return {
+      ...state,
+      gameState: "purchase_pending",
       selectedPurchase: { type: 'letter', value: letter }
     };
   });
@@ -147,10 +151,10 @@ export function confirmPurchase() {
         newIncorrect.push(letter);
       }
 
-      // Update locked letters for this letter.
-      let newLockedLetters = { ...state.lockedLetters };
-      const indices = phrase.split('').map((ch, i) => (ch === letter ? i : -1)).filter(i => i !== -1);
-      newLockedLetters[letter] = indices.every(idx => newPurchased[idx] === letter);
+// Update locked letters for this letter only if it appears in the phrase.
+let newLockedLetters = { ...state.lockedLetters };
+const indices = phrase.split('').map((ch, i) => (ch === letter ? i : -1)).filter(i => i !== -1);
+newLockedLetters[letter] = indices.length > 0 && indices.every(idx => newPurchased[idx] === letter);
 
       // Check win condition: Every non-space letter must be correctly purchased.
       let win = phrase.split('').every((ch, i) => ch === ' ' || newPurchased[i] === ch);
