@@ -1,6 +1,6 @@
 <!-- page.svelte -->
 <svelte:head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 </svelte:head>
 
 <script>
@@ -91,12 +91,6 @@ main {
   align-items: center;
 }
 
-/* Fix WordBank spacing */
-h1 {
-  margin-top: 40px; /* Move down slightly */
-  margin-bottom: 5px;
-  font-size: 2rem;
-}
 
 /* Category display */
 .category {
@@ -106,7 +100,7 @@ h1 {
   font-weight: bold;
 }
 
-/* Move Buy Guess & Hint buttons to avoid overlap */
+/* How to Play and Dark Mode */
 .top-buttons {
   display: flex;
   justify-content: space-between;
@@ -118,36 +112,6 @@ h1 {
   flex: 1;
   margin: -10 5px;
   font-size: 14px;
-}
-
-/* Adjust stats-section to move everything up */
-.stats-section {
-  margin-top: 10px; /* Move up */
-  margin-bottom: 5px; /* Reduce extra space */
-  font-size: 1.2rem;
-  font-weight: bold;
-}
-
-/* Move guesses remaining up */
-.guesses-remaining {
-  margin-top: 20px; /* Adjust to move up */
-}
-
-/* PHRASE BOXES: Bigger & Tighter Spacing */
-.phrase-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  width: 100%;
-  max-width: 100%;
-  gap: 2px; /* Minimized space between boxes */
-}
-
-/* Adjust letter box size */
-.letter-box {
-  width: min(60px, 7vw); /* Increased by 10px */
-  height: min(60px, 7vw); /* Increased by 10px */
-  font-size: min(26px, 4vw); /* Scale text */
 }
 
 /* KEYBOARD: Bigger Keys & No Space Between */
@@ -163,15 +127,6 @@ h1 {
   flex-wrap: nowrap; /* Keep QWERTY layout */
 }
 
-/* Make keys larger while removing spacing */
-.key {
-  width: min(55px, 8vw); /* Slightly larger */
-  height: min(55px, 8vw);
-  font-size: min(18px, 3.5vw);
-  margin: 0; /* Remove any extra margins */
-  padding: 2px; /* Minimal padding */
-}
-
 /* Hide Reset Game Button */
 .reset-button.hidden {
   display: none;
@@ -184,12 +139,13 @@ h1 {
   width: 100%;              /* Full width of the container */
   margin: 0 auto;           /* Centers it */
   padding-top: -5px;         /* Adjust spacing above */
+  margin-top: 30px;
 }
 
 /* Make sure bankroll box stays centered */
 .bankroll-box {
-  padding: 5px 15px;
-  font-size: 1.5rem;
+  padding: 10px 20px;
+  font-size: 1.7rem;
   font-weight: bold;
   color: white;
   background-color: rgb(103, 208, 103);
@@ -198,43 +154,6 @@ h1 {
   display: inline-block;
   width: fit-content;  /* Prevents it from stretching */
   margin: 0 auto;      /* Ensures centering */
-}
-
-
-
-/* Buy Guess & Hint Buttons Positioned Closer to Guesses Remaining */
-.guess-hint-buttons {
-  display: flex;
-  justify-content: space-between; /* Places Buy Guess on the left, Hint on the right */
-  width: 100%;
-  max-width: 300px; /* Adjusts button width */
-  margin-top: -5px; /* Moves buttons up */
-}
-
-/* 💰 Buy Guess Button (Left) */
-.buy-guess-button {
-  background-color: #007bff;
-  color: white;
-  padding: 6px 10px;
-  border-radius: 5px;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  width: 140px; /* 🔹 Fix width */
-  text-align: center;
-}
-
-/* 💡 Hint Button (Right) */
-.hint-button {
-  background-color: #007bff;
-  color: white;
-  padding: 6px 10px;
-  border-radius: 5px;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;a
-  width: 140px; /* 🔹 Fix width */
-  text-align: center;
 }
 
  /* 3. Style the logo as needed */
@@ -257,9 +176,6 @@ h1 {
   margin-bottom: 0px;
 }
 
-.phrase-section {
-  margin-top: 0px;  /* Move phrase display up */
-}
 
 /* Remove default focus outline and shadow for all relevant buttons */
 .buy-guess-button:focus,
@@ -284,5 +200,13 @@ h1 {
   color: white !important;
 }
 
+:global(html, body) {
+    touch-action: manipulation;
+  }
+
+  :global(html, body) {
+    overflow-x: hidden;
+    touch-action: manipulation;
+  }
 
 </style>

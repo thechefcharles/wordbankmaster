@@ -142,25 +142,7 @@
     width: 140px;
     text-align: center;
     transition: background-color 0.3s;
-  }
-  .hint-button:hover,
-  .buy-guess-button:hover {
-    background-color: #0056b3;
-  }
-
-  /* Disabled Buttons */
-  .hint-button.disabled,
-  .buy-guess-button.disabled {
-    background-color: red !important;
-    cursor: not-allowed;
-    opacity: 0.7;
-  }
-  .red {
-    background-color: red !important;
-  }
-  .hint-button.disabled:hover,
-  .buy-guess-button.disabled:hover {
-    background-color: red !important;
+    margin-top: 30px;
   }
 
   /* New Guess Entire Phrase Container */
@@ -168,7 +150,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: 10px;
+    margin-top: 30px;
   }
   .guess-phrase-button {
     background-color: orange;
@@ -179,6 +161,7 @@
     cursor: pointer;
     font-size: 14px;
     transition: background-color 0.3s;
+    margin-top: 0px
   }
   .guess-phrase-button:hover {
     background-color: darkorange;
@@ -190,6 +173,7 @@
     border-radius: 5px;
     font-size: 16px;
     margin-left: 10px;
+    margin-top: 0px
     min-width: 40px;
     text-align: center;
   }
