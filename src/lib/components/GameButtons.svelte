@@ -258,4 +258,39 @@
   :global(body.dark-mode) .utility-buttons button:hover {
     background: #666;
   }
+
+  :global(body.dark-mode) .hint-button,
+  :global(body.dark-mode) .buy-guess-button {
+  background-color: #007bff !important;
+  color: white !important;
+  }
+
+  :global(body.dark-mode) .guess-phrase-button {
+  background-color: orange !important;
+  color: white !important;
+  }
+
+  /* Remove default focus outline and shadow for all relevant buttons */
+.buy-guess-button:focus,
+.hint-button:focus,
+.guess-phrase-button:focus,
+.enter-button:focus,
+.key:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Ensure Buy Guess & Hint buttons retain their blue color when focused */
+.buy-guess-button:focus,
+.hint-button:focus {
+  background-color: #007bff !important;
+  color: white !important;
+}
+
+/* Ensure the Guess Entire Phrase button stays orange when focused */
+.guess-phrase-button:focus {
+  background-color: orange !important;
+  color: white !important;
+}
+
 </style>
