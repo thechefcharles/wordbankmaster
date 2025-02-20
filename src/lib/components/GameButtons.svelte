@@ -341,18 +341,20 @@
   .hint-button,
 .buy-guess-button {
   /* Ensure buttons take equal width but override to force a circular shape */
-  width: 40px;               /* Increase size for a more round look */
-  height: 40px;
+  width: 25px;               /* Increase size for a more round look */
+  height: 25px;
   border-radius: 50%;        /* Makes it a perfect circle */
   border: none;
   cursor: pointer;
   color: #fff;
   font-weight: bold;
   text-align: center;
+  margin-left: 20px;
+  margin-right: 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;           /* Adjust font size as needed */
+  font-size: 6px;           /* Adjust font size as needed */
   text-transform: uppercase;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   box-sizing: border-box;
