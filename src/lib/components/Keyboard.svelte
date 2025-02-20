@@ -55,50 +55,62 @@
   /**
    * Global keyboard handler to support Enter, Delete/Backspace, and Space.
    */
-  function handleKeyDown(event) {
+   function handleKeyDown(event) {
+  event.preventDefault(); // Prevent unintended default browser actions
+
+  const key = event.key.toUpperCase();
+
+  gameStore.update(state => {
+    // --- ENTER KEY FUNCTIONALITY ---
     if (event.key === 'Enter') {
-      event.preventDefault();
-      if ($gameStore.gameState === 'guess_mode') {
-        if (guessComplete) submitGuess();
-        else console.log("Not all guess slots are filled.");
-      } else {
+      if (state.selectedPurchase) {
         confirmPurchase();
+        return { ...state, gameState: "default" }; // Stay in default mode after purchase
       }
-    } else if (event.key === 'Delete' || event.key === 'Backspace') {
-      event.preventDefault();
-      if ($gameStore.gameState === 'guess_mode') {
+
+      if (state.gameState === "guess_mode") {
+        return guessComplete
+          ? submitGuess()
+          : { ...state, gameState: "default", guessedLetters: {} }; // Exit guess mode if incomplete
+      }
+
+      if (!state.selectedPurchase && state.gameState !== "guess_mode") {
+        return { ...state, gameState: "guess_mode", guessedLetters: {} };
+      }
+
+      return state;
+    }
+
+    // --- BACKSPACE / DELETE (Remove last guessed letter) ---
+    if (event.key === 'Backspace' || event.key === 'Delete') {
+      if (state.gameState === "guess_mode") {
         deleteGuessLetter();
       }
-    } else if (event.key === ' ' || event.code === 'Space') {
-      event.preventDefault();
-      enterGuessMode();
-    } else {
-      const key = event.key.toUpperCase();
-      if (/^[A-Z]$/.test(key)) {
-        event.preventDefault();
-        handleLetterClick(key);
-      }
+      return state;
     }
-    // Remove focus from active element after key press
-    document.activeElement.blur();
-  }
 
-  // Set up and clean up global keydown listener on mount
-  onMount(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
+    // --- SPACEBAR (Toggles Guess Mode) ---
+    if (event.key === ' ' || event.code === 'Space') {
+      enterGuessMode();
+      return state;
+    }
+
+    // --- LETTER SELECTION (Only when not submitting) ---
+    if (/^[A-Z]$/.test(key)) {
+      if (state.gameState === "guess_mode") {
+        inputGuessLetter(key);
+      } else {
+        selectLetter(key);
+      }
+      return state;
+    }
+
+    return state;
   });
 
-  // (Optional) A function to toggle local key selection (not currently used in markup)
-  function toggleKeySelection(letter) {
-    if (selectedKeys.has(letter)) {
-      selectedKeys.delete(letter);
-    } else {
-      selectedKeys.add(letter);
-    }
-  }
+  // Remove focus from active element after key press
+  document.activeElement.blur();
+}
 </script>
 
 <div class="keyboard-container">
@@ -175,19 +187,6 @@
       </button>
     {/each}
     <!-- Enter Button: Blinks green when guessComplete is true -->
-    <button
-      class="key enter-button { $gameStore.gameState === 'purchase_pending' ? 'pending' : (guessComplete ? 'submit-ready' : '') }"
-      on:click={() => {
-        if ($gameStore.gameState === "purchase_pending") {
-          confirmPurchase();
-        } else if ($gameStore.gameState === "guess_mode") {
-          if (guessComplete) submitGuess();
-          else console.log("Not all guess slots are filled.");
-        }
-      }}
-    >
-      <div class="letter">Enter</div>
-    </button>
   </div>
 </div>
 
