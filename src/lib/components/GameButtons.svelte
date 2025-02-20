@@ -160,16 +160,6 @@
   </div>
 </div>
 
-<!-- Delete button only appears in guess mode -->
-{#if guessModeActive}
-  <button 
-    class="key delete"
-    on:click={deleteGuessLetter}
-    aria-label="Delete last guessed letter"
-  >
-    Delete
-  </button>
-{/if}
 
 <!-- Top Buttons: "How to Play" and Dark Mode Toggle -->
 <div class="top-buttons">
@@ -348,21 +338,44 @@
      Unified Control Buttons
      (Hint, Enter, Buy)
   =========================== */
-.hint-button,
-.buy-guess-button,
-.guess-phrase-button {
-    flex: 1; /* Ensures buttons take equal width */
-    min-width: 100px; /* Prevents buttons from getting too small */
-    height: 40px; /* Ensures uniform height */
-    font-size: 12px;
-    font-weight: bold;
-    border-radius: 5px;
-    cursor: pointer;
-    text-align: center;
-    transition: background-color 0.3s, border 0.3s;
-    box-sizing: border-box;
+  .hint-button,
+.buy-guess-button {
+  /* Ensure buttons take equal width but override to force a circular shape */
+  width: 40px;               /* Increase size for a more round look */
+  height: 40px;
+  border-radius: 50%;        /* Makes it a perfect circle */
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  font-weight: bold;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;           /* Adjust font size as needed */
+  text-transform: uppercase;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
 }
 
+/* Both buttons use a blue arcade style */
+.hint-button,
+.buy-guess-button {
+  background: radial-gradient(circle at 30% 30%, #4488ff, #0055bb 80%);
+  box-shadow: 0 4px 0 #003366, 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Hover effect: slight pop-up */
+.hint-button:hover,
+.buy-guess-button:hover {
+  transform: translateY(-2px);
+}
+
+/* Active effect: button pressed down */
+.hint-button:active,
+.buy-guess-button:active {
+  transform: translateY(2px);
+}
 /* Adjust for smaller screens */
 @media (max-width: 400px) {
     .guess-controls {
@@ -390,12 +403,25 @@
 
 /* Enter Guess Mode: Orange */
 .guess-phrase-button {
-    background-color: orange;
-    color: white;
-    flex-shrink: 0; /* Prevents shrinking */
+  background-color: orange;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: background-color 0.3s, transform 0.2s;
+  box-sizing: border-box;
 }
+
 .guess-phrase-button:hover {
-    background-color: darkorange;
+  background-color: darkorange;
+}
+
+.guess-phrase-button:active {
+  transform: scale(0.98);
 }
 
 /* Disabled & Pending States */
