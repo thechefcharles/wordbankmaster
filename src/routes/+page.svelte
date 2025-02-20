@@ -1,30 +1,25 @@
 <!-- page.svelte -->
 <svelte:head>
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
-  />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 </svelte:head>
 
 <script>
   import { onMount } from 'svelte';
-  import { browser } from '$app/environment';  // ensures we only access 'document' in the browser
+  import { browser } from '$app/environment'; // Only run document-related code in the browser
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
   import Keyboard from '$lib/components/Keyboard.svelte';
   import GameButtons from '$lib/components/GameButtons.svelte';
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
 
-  // Reactive variable for the store
+  // Keep a reactive local reference to the game store
   $: currentGame = $gameStore;
 
-  // Fetch a random puzzle on mount
+  // On mount, fetch a random puzzle
   onMount(() => {
     fetchRandomGame();
   });
 
-  
-
-  // Toggle .guess-mode on <body> if in the browser
+  // Whenever the game state changes, add or remove the "guess-mode" class on <body>
   $: if (browser) {
     if (currentGame.gameState === 'guess_mode') {
       document.body.classList.add('guess-mode');
@@ -43,12 +38,12 @@
   <!-- Category Display -->
   <p class="category">{currentGame.category} 🌍</p>
 
-  <!-- Phrase Display -->
+  <!-- Phrase Display Section -->
   <section class="phrase-section">
     <PhraseDisplay />
   </section>
 
-  <!-- Resource Stats (Bankroll, etc.) -->
+  <!-- Resource Stats (Bankroll) -->
   <section class="stats-section">
     <div class="bankroll-container">
       <p class="bankroll-box">$ {Math.floor(currentGame.bankroll)}</p>
@@ -67,21 +62,19 @@
     <div class="banner lose">Bankrupt!</div>
   {/if}
 
-
-
-  <!-- Game Buttons -->
+  <!-- Game Buttons Section -->
   <section class="buttons-section">
     <GameButtons />
   </section>
 
-  <!-- Hidden Reset Button (optional) -->
+  <!-- Optional Reset Button (Hidden) -->
   <button class="reset-button hidden" on:click={fetchRandomGame}>
     Reset Game
   </button>
 </main>
 
 <style>
-  /* Overall container */
+  /* Main container styling */
   main {
     max-width: 600px;
     margin: 0 auto;
@@ -93,26 +86,26 @@
     align-items: center;
   }
 
-  /* Category display */
+  /* Category text styling */
   .category {
     font-size: 1.4rem;
     margin-top: -140px;
-    margin-bottom: 0px;
+    margin-bottom: 0;
     font-weight: bold;
   }
 
-  /* Keyboard section wrapper */
+  /* Keyboard section styling */
   .keyboard-section {
     width: 100%;
     padding: 5px;
   }
 
-  /* Hide Reset Game Button */
+  /* Hide reset button */
   .reset-button.hidden {
     display: none;
   }
 
-  /* Bankroll styling */
+  /* Bankroll container and box styling */
   .bankroll-container {
     display: flex;
     justify-content: center;
@@ -141,68 +134,48 @@
     display: block;
     margin-bottom: -50px;
     margin-top: -30px;
-    padding-bottom: 0px;
+    padding-bottom: 0;
   }
   .logo-container {
     display: flex;
     justify-content: center;
     align-items: center;
     margin-top: -50px;
-    margin-bottom: 0px;
+    margin-bottom: 0;
   }
 
+  /* Global overrides for touch and overflow */
   :global(html, body) {
     overflow-x: hidden;
     touch-action: manipulation;
   }
 
+  /* ---------------------------
+     Game Over Banner Animations
+  --------------------------- */
   @keyframes gameOverPulse {
-  0%, 100% { transform: scale(1) rotate(0deg); text-shadow: 0px 0px 10px red; }
-  25% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px red; }
-  50% { transform: scale(1.5) rotate(-3deg); text-shadow: 0px 0px 30px red; }
-  75% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px red; }
-}
-
-@keyframes gameOverFlash {
-  0% { opacity: 1; }
-  50% { opacity: 0.2; }
-  100% { opacity: 1; }
-}
-
-.banner.lose {
-  font-size: 3rem; /* Make it massive */
-  font-weight: 600;
-  color: red;
-  text-transform: uppercase;
-  background: linear-gradient(45deg, red, black);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-align: center;
-  padding: 20px;
-  border: 5px solid red;
-  border-radius: 10px;
-  animation: gameOverPulse 1.5s infinite, gameOverFlash 0.5s infinite;
-}
-
-.message-box {
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: red;
-  color: white;
-  padding: 10px 20px;
-  font-weight: bold;
-  border-radius: 5px;
-  animation: fadeOut 2s ease-in-out;
-}
-
-@keyframes fadeOut {
-  0% { opacity: 1; }
-  80% { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-
-
+    0%, 100% { transform: scale(1) rotate(0deg); text-shadow: 0px 0px 10px red; }
+    25% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px red; }
+    50% { transform: scale(1.5) rotate(-3deg); text-shadow: 0px 0px 30px red; }
+    75% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px red; }
+  }
+  @keyframes gameOverFlash {
+    0% { opacity: 1; }
+    50% { opacity: 0.2; }
+    100% { opacity: 1; }
+  }
+  .banner.lose {
+    font-size: 3rem;
+    font-weight: 600;
+    color: red;
+    text-transform: uppercase;
+    background: linear-gradient(45deg, red, black);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+    padding: 20px;
+    border: 5px solid red;
+    border-radius: 10px;
+    animation: gameOverPulse 1.5s infinite, gameOverFlash 0.5s infinite;
+  }
 </style>
