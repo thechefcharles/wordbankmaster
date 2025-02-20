@@ -2,11 +2,14 @@
   import { gameStore } from '$lib/stores/GameStore.js';
   import { onDestroy } from 'svelte';
 
-  // Track indexes that should shake
+  // ----------------------------
+  // Local State for Shake Animation
+  // ----------------------------
   let shakeIndexes = new Set();
   let lastProcessedShakes = [];
 
-  // Watch store for new shaken letters
+  // Watch for new shaken letters in the store.
+  // When new indices are detected, trigger the shake effect.
   $: if ($gameStore.shakenLetters?.length > 0) {
     if (JSON.stringify($gameStore.shakenLetters) !== JSON.stringify(lastProcessedShakes)) {
       triggerShake([...$gameStore.shakenLetters]);
@@ -14,6 +17,8 @@
     }
   }
 
+  // Trigger shake animation on given letter indexes.
+  // After 1 second, clear the shake effect and reset shakenLetters in the store.
   function triggerShake(indexes) {
     shakeIndexes = new Set(indexes);
     setTimeout(() => {
@@ -22,44 +27,57 @@
         ...state,
         shakenLetters: []
       }));
-    }, 1000); // Shake lasts 1 second
+    }, 1000);
   }
 
-  // Helper to compute global index across the full phrase
+  // ----------------------------
+  // Helper: Global Index Calculation
+  // ----------------------------
+  // Converts a (wordIndex, letterIndex) into a global index in the phrase.
   function getGlobalIndex(wordIndex, letterIndex) {
     const words = $gameStore.currentPhrase.split(' ');
     let offset = 0;
     for (let i = 0; i < wordIndex; i++) {
-      offset += words[i].length + 1; // Account for spaces
+      // Each word length plus one for the space
+      offset += words[i].length + 1;
     }
     return offset + letterIndex;
   }
 
-  // Animate reveal if lost
+  // ----------------------------
+  // Animate Phrase Reveal When Game is Lost
+  // ----------------------------
   let interval;
   let revealed = [];
 
+  // When game state is "lost", gradually reveal each letter.
   $: if ($gameStore.gameState === 'lost') {
     if (revealed.length === 0) {
       const phrase = $gameStore.currentPhrase;
       let i = 0;
       interval = setInterval(() => {
         revealed[i] = phrase[i];
+        // Force reactivity
         revealed = [...revealed];
         i++;
         if (i >= phrase.length) clearInterval(interval);
       }, 300);
     }
   } else {
+    // Reset when not lost
     revealed = [];
     clearInterval(interval);
   }
 
+  // Clean up the interval on component destruction.
   onDestroy(() => {
     clearInterval(interval);
   });
 
-  // Track currently "active" guess index in guess mode
+  // ----------------------------
+  // Active Guess Index in Guess Mode
+  // ----------------------------
+  // Compute the next editable index for guess mode.
   $: activeGuessIndex = (
     $gameStore.gameState === 'guess_mode'
       ? (() => {
@@ -71,6 +89,8 @@
             indices.push(i);
           }
           if (indices.length === 0) return -1;
+          // Return the first index that hasn't been guessed yet,
+          // or the last one if all are filled.
           for (const idx of indices) {
             if (!$gameStore.guessedLetters[idx]) return idx;
           }
@@ -80,38 +100,39 @@
   );
 </script>
 
-<!-- LOST MODE -->
+<!--
+  Render the phrase differently based on game state:
+  - LOST MODE: Reveal entire phrase gradually.
+  - GUESS MODE: Display purchased letters; empty slots show user guesses.
+  - DEFAULT MODE: Display current purchased letters, with shake animation if needed.
+-->
 {#if $gameStore.gameState === 'lost'}
+  <!-- Lost Mode: Reveal the entire phrase -->
   <div class="phrase-container">
     {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
       <div class="word">
         {#each word.split('') as letter, cIndex}
           <span class="letter-box">
-            {revealed[getGlobalIndex(wIndex, cIndex)] ? revealed[getGlobalIndex(wIndex, cIndex)] : "_"}
+            {revealed[getGlobalIndex(wIndex, cIndex)] 
+              ? revealed[getGlobalIndex(wIndex, cIndex)] 
+              : "_"}
           </span>
         {/each}
       </div>
     {/each}
   </div>
-
-<!-- GUESS MODE -->
-{:else if ($gameStore.gameState === 'guess_mode')}
+{:else if $gameStore.gameState === 'guess_mode'}
+  <!-- Guess Mode: Show purchased letters and guess inputs -->
   <div class="phrase-container">
     {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
       <div class="word">
         {#each word.split('') as letter, cIndex}
           {#if $gameStore.purchasedLetters[getGlobalIndex(wIndex, cIndex)] === letter}
-            <span 
-              class="letter-box locked 
-                {shakeIndexes.has(getGlobalIndex(wIndex, cIndex)) ? 'shake' : ''}"
-            >
+            <span class="letter-box locked {shakeIndexes.has(getGlobalIndex(wIndex, cIndex)) ? 'shake' : ''}">
               {letter}
             </span>
           {:else}
-            <span
-              class="letter-box
-                {getGlobalIndex(wIndex, cIndex) === activeGuessIndex ? 'active' : ''}"
-            >
+            <span class="letter-box {getGlobalIndex(wIndex, cIndex) === activeGuessIndex ? 'active' : ''}">
               {$gameStore.guessedLetters[getGlobalIndex(wIndex, cIndex)] || ""}
             </span>
           {/if}
@@ -119,16 +140,13 @@
       </div>
     {/each}
   </div>
-
-<!-- DEFAULT MODE -->
 {:else}
+  <!-- Default Mode: Display purchased letters with shake animation if applicable -->
   <div class="phrase-container">
     {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
       <div class="word">
         {#each word.split('') as letter, cIndex}
-          <span
-            class="letter-box {shakeIndexes.has(getGlobalIndex(wIndex, cIndex)) ? 'shake' : ''}"
-          >
+          <span class="letter-box {shakeIndexes.has(getGlobalIndex(wIndex, cIndex)) ? 'shake' : ''}">
             {$gameStore.purchasedLetters[getGlobalIndex(wIndex, cIndex)] || ""}
           </span>
         {/each}
@@ -138,6 +156,9 @@
 {/if}
 
 <style>
+  /* ---------------------------
+     Shake Animation for Letters
+  --------------------------- */
   @keyframes shake {
     0%   { transform: translateX(0) scale(1); }
     10%  { transform: translateX(-6px) scale(1.1); }
@@ -151,11 +172,13 @@
     90%  { transform: translateX(-2px) scale(1); }
     100% { transform: translateX(0) scale(1); }
   }
-
   .shake {
     animation: shake 1s ease-in-out;
   }
 
+  /* ---------------------------
+     Layout for the Phrase Display
+  --------------------------- */
   .phrase-container {
     display: flex;
     flex-wrap: wrap;
@@ -166,7 +189,6 @@
     box-sizing: border-box;
     overflow-x: hidden;
   }
-
   .word {
     display: flex;
     gap: 2px;
@@ -174,7 +196,6 @@
     justify-content: center;
     margin-right: 15px;
   }
-
   .letter-box {
     width: 50px;
     height: 50px;
@@ -189,37 +210,35 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     word-break: break-word;
     overflow-wrap: break-word;
+    color: black;
   }
-
   .letter-box.locked {
+    /* Locked letters (correctly purchased) */
     color: black !important;
     font-weight: bold;
   }
   .letter-box.active {
+    /* Active guess slot styling */
     border: 3px solid orange !important;
     color: black !important;
   }
-  .letter-box {
-    color: black !important;
-  }
 
-  /* Blinking border effect in guess mode */
+  /* ---------------------------
+     Guess Mode Blinking Border 
+  --------------------------- */
   :global(body.guess-mode) .phrase-container {
-    border: 12px solid orange !important;
+    border: 5px solid orange !important;
     background-color: rgba(255, 165, 0, 0.2);
     animation: blinkingBorder 1.5s infinite;
   }
-
   @keyframes blinkingBorder {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.4;
-    }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
   }
 
-  /* Smaller boxes on tiny screens */
+  /* ---------------------------
+     Responsive Adjustments
+  --------------------------- */
   @media (max-width: 480px) {
     .letter-box {
       width: 30px;
