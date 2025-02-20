@@ -13,6 +13,12 @@
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
   import FlipDigit from '$lib/components/FlipDigit.svelte';
 
+  onMount(() => {
+    document.body.classList.add('dark-mode');
+  });
+
+  
+
   // Reactive bankroll value from your store
   $: bankroll = $gameStore.bankroll || 0;
   // Split the bankroll into individual digits
@@ -225,4 +231,10 @@
     border-radius: 10px;
     animation: gameOverPulse 1.5s infinite, gameOverFlash 0.5s infinite;
   }
+
+  :global(body.dark-mode) {
+  background: #222;
+  color: white;
+}
+
 </style>
