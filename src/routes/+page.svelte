@@ -55,12 +55,12 @@
     <Keyboard />
   </section>
 
-  <!-- Win/Loss Banner -->
-  {#if currentGame.gameState === "won"}
-    <div class="banner win">Congratulations! You won!</div>
-  {:else if currentGame.gameState === "lost"}
-    <div class="banner lose">Bankrupt!</div>
-  {/if}
+<!-- Win/Loss Banner -->
+{#if currentGame.gameState === "won"}
+  <div class="banner win">Winner!</div>
+{:else if currentGame.gameState === "lost"}
+  <div class="banner lose">Bankrupt!</div>
+{/if}
 
   <!-- Game Buttons Section -->
   <section class="buttons-section">
@@ -149,6 +149,38 @@
     overflow-x: hidden;
     touch-action: manipulation;
   }
+
+  /* ===========================
+   Win Banner Animation
+=========================== */
+@keyframes winPulse {
+  0%, 100% { transform: scale(1) rotate(0deg); text-shadow: 0px 0px 10px green; }
+  25% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px limegreen; }
+  50% { transform: scale(1.5) rotate(-3deg); text-shadow: 0px 0px 30px limegreen; }
+  75% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px green; }
+}
+
+@keyframes winFlash {
+  0% { opacity: 1; }
+  50% { opacity: 0.2; }
+  100% { opacity: 1; }
+}
+
+.banner.win {
+  font-size: 3rem;
+  font-weight: 600;
+  color: limegreen;
+  text-transform: uppercase;
+  background: linear-gradient(45deg, green, limegreen);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-align: center;
+  padding: 20px;
+  border: 5px solid limegreen;
+  border-radius: 10px;
+  animation: winPulse 1.5s infinite, winFlash 0.5s infinite;
+}
+
 
   /* ---------------------------
      Game Over Banner Animations
