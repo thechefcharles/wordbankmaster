@@ -98,57 +98,56 @@
 {#if guessModeActive}
   <!-- Guess mode banner appears when in guess mode -->
   <div class="guess-mode-banner">
-    Guess Mode Activated! Fill every box with a letter to submit.<br />
+    Fill every phrase box to submit.<br />
     Correct guesses will remain!
   </div>
-{:else}
-  <!-- When not in guess mode, show only the Hint button -->
-  <div class="guess-hint-buttons">
-    <button
-      class="hint-button {fundsLow ? 'disabled red' : ''} {hintPending ? 'pending' : ''}"
-      disabled={fundsLow}
-      on:click={() => { if (!fundsLow) selectHint(); }}
-    >
-      Hint ($150)
-    </button>
-  </div>
-  {#if $gameStore.message}
-    <!-- Display a feedback message (for example, "Incorrect! You have X guesses remaining") -->
-    <div class="message-box">{$gameStore.message}</div>
-  {/if}
 {/if}
 
-<!-- Row for Guess Mode control, Extra Guess purchase, and Delete (in guess mode) -->
-<div class="guess-phrase-container">
-  <!-- Toggle Guess Mode -->
-  <button
-  class="guess-phrase-button {guessModeActive ? 'exit-mode' : ''}"
-  on:click={enterGuessMode}
-  disabled={noGuessesLeft}
->
-  {guessModeActive
-    ? "Exit Guess Mode"
-    : `Enter Guess Mode (${$gameStore.guessesRemaining})`}
-</button>
+<!-- Display message feedback if needed -->
+{#if $gameStore.message}
+  <div class="message-box">{$gameStore.message}</div>
+{/if}
 
-  <!-- Guesses Remaining Box acts as the extra guess purchase control -->
+<!-- Row for Hint, Enter Guess Mode, and Buy Guess Buttons -->
+<div class="guess-controls">
+  <!-- Hint Button (Left) -->
   <button 
-  class="buy-guess-button {noGuessesLeft ? 'no-guesses' : ''} {guessPending ? 'pending' : ''}"
-  on:click={toggleGuessPurchase}
->
-  Buy Extra Guess
-  {#if guessPending}
-    <span class="plus-one">+1</span>
-  {/if}
-</button>
+    class="hint-button {fundsLow ? 'disabled red' : ''} {hintPending ? 'pending' : ''}"
+    on:click={() => !fundsLow && selectHint()}
+    disabled={fundsLow}
+  >
+    Hint
+  </button>
 
-  <!-- Delete button only appears in guess mode -->
-  {#if guessModeActive}
-    <button class="delete-guess-button" on:click={deleteGuessLetter}>
-      ❌ Delete
-    </button>
-  {/if}
+  <!-- Enter Guess Mode Button (Centered) -->
+  <button
+    class="guess-phrase-button {guessModeActive ? 'exit-mode' : ''}"
+    on:click={enterGuessMode}
+    disabled={noGuessesLeft}
+  >
+    {guessModeActive
+      ? "Exit Guess Mode"
+      : `Enter Guess Mode (${$gameStore.guessesRemaining})`}
+  </button>
+
+  <!-- Buy Extra Guess Button (Right) -->
+  <button 
+    class="buy-guess-button {noGuessesLeft ? 'no-guesses' : ''} {guessPending ? 'pending' : ''}"
+    on:click={toggleGuessPurchase}
+  >
+    Buy Guess
+  </button>
 </div>
+
+<!-- Delete button only appears in guess mode -->
+{#if guessModeActive}
+  <button 
+    class="key delete"
+    on:click={deleteGuessLetter}
+  >
+     Delete
+  </button>
+{/if}
 
 <!-- Top Buttons: "How to Play" and Dark Mode Toggle -->
 <div class="top-buttons">
@@ -187,9 +186,9 @@
 {/if}
 
 <style>
-  /* ---------------------------
+  /* ===========================
      Global Reset & Utility
-  --------------------------- */
+  =========================== */
   button:focus {
     outline: none;
   }
@@ -198,9 +197,9 @@
     touch-action: manipulation;
   }
 
-  /* ---------------------------
+  /* ===========================
      Top Buttons & Modal Styles
-  --------------------------- */
+  =========================== */
   .top-buttons {
     position: absolute;
     top: 5px;
@@ -267,144 +266,187 @@
     background: darkred;
   }
 
-  /* ---------------------------
-     Guess & Hint Buttons
-  --------------------------- */
-  .guess-hint-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-top: 10px;
-  }
-  .hint-button {
-    background-color: #007bff;
-    color: white;
-    padding: 8px 12px;
+  /* ===========================
+     Base Button Styles
+  =========================== */
+  .button-base {
+    font-size: 12px;
+    font-weight: bold;
+    padding: 6px 12px;
+    border: 2px solid transparent;
     border-radius: 5px;
-    border: none;
     cursor: pointer;
-    font-size: 14px;
-    width: 140px;
     text-align: center;
-    transition: background-color 0.3s;
+    transition: background-color 0.3s, border 0.3s;
+    box-sizing: border-box;
   }
-  .hint-button.pending {
-    animation: blink 1s infinite;
+
+  /* ===========================
+     Unified Control Buttons
+     (Hint, Enter, Buy)
+  =========================== */
+  .hint-button,
+.buy-guess-button,
+.guess-phrase-button {
+    flex: 1;  /* Ensures buttons evenly distribute space */
+    min-width: 90px;  /* Prevents buttons from getting too small */
+    max-width: 150px; /* Ensures buttons stay in a reasonable range */
+    height: 38px;  /* Standard height */
+    font-size: 12px; /* Adjust for smaller screens */
+    font-weight: bold;
+    border: 2px solid transparent;
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.3s, border 0.3s;
+    box-sizing: border-box;
+}
+
+@media (max-width: 400px) {
+    .guess-phrase-container {
+        flex-wrap: nowrap;  /* Prevents stacking unless absolutely necessary */
+        gap: 4px;  /* Reduces gap to save space */
+    }
+    .hint-button,
+    .buy-guess-button,
+    .guess-phrase-button {
+        min-width: 80px; /* Allow even smaller buttons */
+        max-width: 120px;
+        font-size: 10px;
+        height: 34px;
+    }
+}
+
+  /* Hint & Buy Guess: Same Color */
+  .hint-button,
+  .buy-guess-button {
+    background-color: blue;
+    color: white;
   }
-  @keyframes blink {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
+  .hint-button:hover,
+  .buy-guess-button:hover {
+    background-color: darkblue;
   }
+
+  /* Enter Guess Mode: Orange */
+  .guess-phrase-button {
+    background-color: orange;
+    color: white;
+    flex-shrink: 0; /* Prevents shrinking if text changes */
+  }
+  .guess-phrase-button:hover {
+    background-color: darkorange;
+  }
+
+  /* Disabled & Pending States */
   .disabled.red {
     background-color: red !important;
     cursor: not-allowed;
     opacity: 0.7;
   }
+  .pending {
+    animation: blink 1s infinite;
+  }
+  @keyframes blink {
+    0%   { opacity: 1; }
+    50%  { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
 
-  /* ---------------------------
-     Guess Mode & Extra Guess Section
-  --------------------------- */
-  .guess-phrase-container {
+  /* DELETE BUTTON - Styled like the Hint Button but Red */
+.key.delete {
+  display: block; /* Ensure it takes full width if needed */
+    margin: 10px auto 0; /* Centers it horizontally below the button */
+    background-color: red;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 8px 12px;
+    border: 2px solid darkred; 
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: center; 
+    width: 100px; /* Matches button width */
+    height: 30px;
+    transition: background-color 0.3s, border 0.3s;}
+
+/* DELETE BUTTON - Hover */
+.key.delete:hover {
+    background-color: darkred; /* Darker red on hover */
+    border-color: #8B0000; /* Deep red border */
+}
+
+/* DELETE BUTTON - Click Effect */
+.key.delete:active {
+    background-color: rgb(139, 0, 0); /* Darkest red when clicked */
+    border-color: black;
+    transform: scale(0.95); /* Slight shrink effect */
+}
+
+/* DISABLED STATE - Faded Red */
+.key.delete:disabled {
+    background-color: #ff9999;
+    border-color: #cc6666;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* ===========================
+   Phrase Container (Ensures Phrases Take Fixed Space)
+=========================== */
+.guess-phrase-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 4px; /* Keeps spacing small */
+    width: 100%;
+    max-width: 800px; /* Prevents excessive width on large screens */
+    padding: 10px 0;
+}
+
+/* ===========================
+   Dynamic Guess Phrase Boxes
+=========================== */
+.guess-phrase {
+    flex-grow: 1; /* Allows even distribution */
+    flex-basis: calc(100% / var(--phrase-length)); /* Dynamically adjust width */
+    min-width: 30px; /* Prevents boxes from getting too small */
+    max-width: 60px; /* Ensures they don’t grow too big */
+    height: 60px; /* Keeps consistent height */
+    font-size: clamp(1.4rem, 3vw, 2.2rem); /* Adjusts text size dynamically */
+    text-align: center;
+    border: 3px solid black;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    margin-top: 10%;
-  }
-  .guess-phrase-button {
-    background-color: orange;
-    color: white;
-    padding: 8px 12px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.3s;
-  }
-  .guess-phrase-button:hover {
-    background-color: darkorange;
-  }
-  .guess-phrase-button.no-guesses {
-    background-color: red !important;
-    cursor: not-allowed;
-    opacity: 0.7;
-  }
-  .guesses-box {
-    background-color: orange;
-    color: white;
-    padding: 8px 12px;
-    border-radius: 5px;
-    font-size: 16px;
-    margin-left: 10px;
-    min-width: 40px;
-    text-align: center;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.3s;
-  }
-  .guesses-box:hover {
-    background-color: darkorange;
-  }
-  .guesses-box.pending {
-    background-color: orange !important;
-    animation: blink 1s infinite;
-  }
-  .plus-one {
-    color: green;
-    font-weight: bold;
-    font-size: 1rem;
-    margin-left: 5px;
-  }
-  .cost-display {
-    color: red;
-    font-weight: bold;
-    margin-left: 10px;
-    font-size: 1.2rem;
-  }
-  .delete-guess-button {
-    background-color: #ff6666;
-    color: white;
-    padding: 8px 12px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.3s;
-    margin-top: 10px;
-  }
-  .delete-guess-button:hover {
-    background-color: #cc3333;
-  }
-  :global(body:not(.guess-mode)) .delete-guess-button {
-    display: none;
-  }
+    padding: 5px;
+    transition: all 0.2s ease-in-out;
+}
 
-  /* ---------------------------
-     Enter Button Styling
-  --------------------------- */
-  /* Default styling for the Enter button */
-  :global(body:not(.dark-mode)) .enter-button {
-    background-color: white !important;
-    color: black !important;
-    border: 2px solid black;
-  }
-  /* In purchase_pending state, make it blink green in light mode */
-  :global(body:not(.dark-mode)) .enter-button.pending {
-    background-color: green !important;
-    color: white !important;
-    animation: blink 1s infinite;
-  }
-  /* Dark mode rules for the Enter button */
-  :global(body.dark-mode) .enter-button.submit-ready {
-    background-color: green !important;
-    color: white !important;
-    animation: blink 1s infinite;
-  }
-  
-  /* ---------------------------
-     Message Box (Feedback)
-  --------------------------- */
+/* ===========================
+   Smaller Screens (Ensure Boxes Fit)
+=========================== */
+@media (max-width: 500px) {
+    .guess-phrase {
+        min-width: 25px;
+        max-width: 45px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+}
+
+@media (max-width: 400px) {
+    .guess-phrase {
+        min-width: 22px;
+        max-width: 40px;
+        height: 45px;
+        font-size: 1rem;
+    }
+}
+
+  /* ===========================
+     Message & Banner
+  =========================== */
   .message-box {
     margin-top: 10px;
     background: red;
@@ -416,40 +458,35 @@
     animation: fadeOut 2s ease-in-out;
   }
   @keyframes fadeOut {
-    0% { opacity: 1; }
-    80% { opacity: 1; }
+    0%   { opacity: 1; }
+    80%  { opacity: 1; }
     100% { opacity: 0; }
   }
-
-  /* ---------------------------
-     Guess Mode Banner
-  --------------------------- */
   .guess-mode-banner {
     background-color: rgba(255, 8, 8, 0.641);
     color: white;
+    font-size: 0.6rem;
     font-weight: bold;
     text-align: center;
-    padding: 5px;
-    border-radius: 3px;
-    margin-top: -10px;
-    width: 100%;
-    max-width: 400px;
+    padding: 10px;
+    border-radius: 5px;
+    margin: 0 auto 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 80%;
+    max-width: 600px;
+    min-width: 300px;
     animation: fadeIn 0.3s ease-in-out;
   }
   @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
+    from { opacity: 0; transform: scale(0.95); }
+    to   { opacity: 1; transform: scale(1); }
   }
 
-  /* ---------------------------
-     Top Section, Logo, Category & Bankroll
-  --------------------------- */
+  /* ===========================
+     Layout: Top Section, Logo, Category & Bankroll
+  =========================== */
   main {
     max-width: 600px;
     margin: 0 auto;
@@ -463,7 +500,7 @@
   }
   .category {
     font-size: 1.4rem;
-    margin-top: -140px;
+    margin-top: -100px;
     margin-bottom: 0;
     font-weight: bold;
   }
@@ -476,7 +513,7 @@
     margin-top: 30px;
   }
   .bankroll-box {
-    padding: 10px 20px;
+    padding: 6px 14px;
     font-size: 1.7rem;
     font-weight: bold;
     color: white;
@@ -491,21 +528,21 @@
     width: 380px;
     height: auto;
     display: block;
-    margin-bottom: -50px;
-    margin-top: -30px;
+    margin-bottom: -60px;
+    margin-top: -50px;
     padding-bottom: 0;
   }
   .logo-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-top: -50px;
+    margin-top: -80px;
     margin-bottom: 0;
   }
 
-  /* ---------------------------
+  /* ===========================
      Modal Styles
-  --------------------------- */
+  =========================== */
   .modal-overlay {
     position: fixed;
     top: 0;
@@ -548,9 +585,9 @@
     background: darkred;
   }
 
-  /* ---------------------------
+  /* ===========================
      Dark Mode Overrides
-  --------------------------- */
+  =========================== */
   :global(body.dark-mode) {
     background: #222;
     color: white;
@@ -604,11 +641,11 @@
     background-color: orange !important;
     color: white !important;
   }
-
-  /* Light Mode overrides for letter color */
   :global(body:not(.dark-mode)) .key .letter,
   :global(body:not(.dark-mode)) .key .letter.selected,
   :global(body:not(.dark-mode)) .key .letter.pending {
     color: #000 !important;
   }
+
+  
 </style>

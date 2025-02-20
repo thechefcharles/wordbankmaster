@@ -190,27 +190,41 @@
   /* ---------------------------
      Keyboard Container & Rows
   --------------------------- */
-  .keyboard-container {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100%;
-    background-color: #f9f9f9;
-    padding: 10px;
-    border-radius: 4px;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    justify-content: center;
-    z-index: 1000;
-  }
-  .keyboard-row {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 2px;
-    justify-content: center;
-  }
+/* ---------------------------
+   Keyboard Container (Fixed at Bottom & Centered)
+--------------------------- */
+.keyboard-container {
+  position: fixed; /* Keep it at the bottom */
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%); /* Ensures full centering */
+  width: 100%;
+  max-width: 600px; /* Adjust this based on the design */
+  background-color: #f9f9f9;
+  padding: 10px;
+  border-top: 2px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  justify-content: center;
+  z-index: 1000; /* Keeps it on top */
+}
+
+/* Ensure keyboard rows stay centered */
+.keyboard-row {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  flex-wrap: nowrap;
+}
+
+/* Make sure body allows space for the keyboard */
+body {
+  padding-bottom: 200px; /* Prevents overlap with the keyboard */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 
   /* ---------------------------
      Key Styles
@@ -292,6 +306,8 @@
     animation: blink 1s infinite;
   }
 
+  
+
   /* ---------------------------
      DARK MODE Overrides
   --------------------------- */
@@ -340,4 +356,11 @@
     50% { opacity: 0.5; }
     100% { opacity: 1; }
   }
+
+  :global(body:not(.dark-mode)) .key .letter {
+  transition: none !important;
+}
+
+  
+  
 </style>

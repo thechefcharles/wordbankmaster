@@ -224,10 +224,10 @@
   }
 
   /* ---------------------------
-     Guess Mode Blinking Border
+     Guess Mode Blinking Border 
   --------------------------- */
   :global(body.guess-mode) .phrase-container {
-    border: 12px solid orange !important;
+    border: 5px solid orange !important;
     background-color: rgba(255, 165, 0, 0.2);
     animation: blinkingBorder 1.5s infinite;
   }

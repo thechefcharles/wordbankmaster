@@ -88,8 +88,8 @@
 
   /* Category text styling */
   .category {
-    font-size: 1.4rem;
-    margin-top: -140px;
+    font-size: 1.2rem;
+    margin-top: -150px;
     margin-bottom: 0;
     font-weight: bold;
   }
@@ -115,8 +115,8 @@
     margin-top: 10px;
   }
   .bankroll-box {
-    padding: 10px 20px;
-    font-size: 1.7rem;
+    padding: 8px 18px;
+    font-size: 1.2rem;
     font-weight: bold;
     color: white;
     background-color: rgb(103, 208, 103);
@@ -132,8 +132,8 @@
     width: 380px;
     height: auto;
     display: block;
-    margin-bottom: -50px;
-    margin-top: -30px;
+    margin-bottom: -60px;
+    margin-top: -50px;
     padding-bottom: 0;
   }
   .logo-container {
@@ -178,4 +178,6 @@
     border-radius: 10px;
     animation: gameOverPulse 1.5s infinite, gameOverFlash 0.5s infinite;
   }
+
+  
 </style>

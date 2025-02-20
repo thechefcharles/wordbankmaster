@@ -464,7 +464,6 @@ export function submitGuess() {
         lockedLetters: newLockedLetters,
         shakenLetters: Array.from(newShakenLetters),
         guessesRemaining: newGuessesRemaining,
-        message: "🎉 Correct! You solved the phrase!"
       };
     } else {
       console.log("❌ Incorrect guess. Returning to default mode.");
