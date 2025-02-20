@@ -1,6 +1,41 @@
 <script>
   import { gameStore } from '$lib/stores/GameStore.js';
   import { onDestroy } from 'svelte';
+  import { derived } from "svelte/store";
+
+  
+
+  // Track the phrase and word breaks
+  $: phrase = $gameStore.phrase || "";  
+  let maxLettersPerRow = 10; // Adjust based on your design
+
+  // Function to format phrase with hyphens
+  function formatPhrase(phrase) {
+    let words = phrase.split(" "); // Split into words
+    let formattedPhrase = [];
+    let currentRow = "";
+    
+    for (let word of words) {
+      if (currentRow.length + word.length + 1 > maxLettersPerRow) {
+        // If adding the word exceeds the row limit, insert a hyphen
+        if (currentRow.length > 0) {
+          formattedPhrase.push(currentRow + "-");
+        }
+        currentRow = word; // Start new row
+      } else {
+        // Append the word to the current row
+        currentRow += (currentRow.length > 0 ? " " : "") + word;
+      }
+    }
+
+    // Push the last row
+    if (currentRow) formattedPhrase.push(currentRow);
+
+    return formattedPhrase;
+  }
+
+  // Derive formatted phrase for display
+  $: displayedPhrase = formatPhrase(phrase);
 
   // ----------------------------
   // Local State for Shake Animation
@@ -99,6 +134,15 @@
       : -1
   );
 </script>
+
+<!-- Render the formatted phrase -->
+<div class="phrase-display">
+  {#each displayedPhrase as line}
+    <div class="phrase-line">{line}</div>
+  {/each}
+</div>
+
+
 
 <!--
   Render the phrase differently based on game state:
@@ -241,9 +285,38 @@
   --------------------------- */
   @media (max-width: 480px) {
     .letter-box {
-      width: 30px;
-      height: 30px;
+      width: 50px;
+      height: 50px;
       font-size: 18px;
     }
   }
+
+  .phrase-line {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.phrase-line::after {
+  content: "";
+  display: inline-block;
+  width: 0;
+}
+
+.phrase-line:last-child::after {
+  content: ""; /* Ensures no hyphen at the end of the last row */
+}
+
+.phrase-line {
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  -moz-hyphens: auto;
+  word-break: break-word;
+  /* ...other styles... */
+}
+
+
 </style>
