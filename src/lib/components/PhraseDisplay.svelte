@@ -142,6 +142,8 @@
   {/each}
 </div>
 
+
+
 <!--
   Render the phrase differently based on game state:
   - LOST MODE: Reveal entire phrase gradually.
@@ -307,5 +309,14 @@
 .phrase-line:last-child::after {
   content: ""; /* Ensures no hyphen at the end of the last row */
 }
+
+.phrase-line {
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  -moz-hyphens: auto;
+  word-break: break-word;
+  /* ...other styles... */
+}
+
 
 </style>

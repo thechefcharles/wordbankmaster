@@ -1,5 +1,4 @@
 <script>
-  // Import Svelte utilities and functions from your store
   import { onMount } from 'svelte';
   import {
     gameStore,
@@ -12,86 +11,93 @@
   // Local UI state variables
   let showHowToPlay = false;
   let darkMode = false;
-  let guessPending = false; // True when the user has selected the extra guess purchase
+  
 
   // Reactive declarations based on the global gameStore
+  $: showHintCost = $gameStore.selectedPurchase?.type === 'hint' && $gameStore.gameState === 'purchase_pending';
+  $: showGuessCost = $gameStore.selectedPurchase?.type === 'extra_guess' && $gameStore.gameState === 'purchase_pending';
   $: noGuessesLeft = $gameStore.guessesRemaining === 0;
   $: guessModeActive = $gameStore.gameState === 'guess_mode';
   $: bankroll = $gameStore.bankroll;
   $: fundsLow = bankroll < 150;
   $: hintPending = $gameStore.selectedPurchase?.type === 'hint' &&
                    $gameStore.gameState === 'purchase_pending';
+  $: guessPending = $gameStore.selectedPurchase?.type === 'extra_guess' &&
+                   $gameStore.gameState === 'purchase_pending';
+                   
 
-  // On component mount, load dark mode preference and add an Enter key listener
-  onMount(() => {
-    // Load dark mode from localStorage; default to dark mode if not set
-    const storedMode = localStorage.getItem('darkMode');
-    darkMode = storedMode === null ? true : storedMode === 'true';
-    // Ensure the <body> has (or not) the dark-mode class
-    if (darkMode) {
-      document.body.classList.add('dark-mode');
-    } else {
-      document.body.classList.remove('dark-mode');
-    }
-    // Add Enter key listener to confirm purchase
-    const onKeyDown = (event) => {
-      if (event.key === 'Enter') {
-        confirmPurchase();
+  // Toggle Hint Selection
+  function toggleHintPurchase() {
+    gameStore.update(state => {
+      if (state.selectedPurchase?.type === "hint") {
+        // Deselect Hint
+        showHintCost = false;
+        return { ...state, selectedPurchase: null, gameState: "default" };
       }
+      // Select Hint
+      showHintCost = true;
+      return { ...state, selectedPurchase: { type: "hint" }, gameState: "purchase_pending" };
+    });
+  }
+
+  // Toggle Extra Guess Selection
+  function toggleGuessPurchase() {
+    gameStore.update(state => {
+      if (state.selectedPurchase?.type === "extra_guess") {
+        // Deselect Guess
+        showGuessCost = false;
+        return { ...state, selectedPurchase: null, gameState: "default" };
+      }
+      // Select Guess
+      showGuessCost = true;
+      return { ...state, selectedPurchase: { type: "extra_guess" }, gameState: "purchase_pending" };
+    });
+  }
+
+  // Confirm the selected purchase
+  function confirmPurchase() {
+    gameStore.update(state => {
+      if (!state.selectedPurchase) return state;
+
+      const purchase = state.selectedPurchase;
+      let newState = { ...state, selectedPurchase: null, gameState: "default" };
+
+      if (purchase.type === "hint" && state.bankroll >= 150) {
+        newState.bankroll -= 150;
+        selectHint();
+        showHintCost = false;
+      }
+
+      if (purchase.type === "extra_guess" && state.bankroll >= 150) {
+        newState.bankroll -= 150;
+        newState.guessesRemaining += 1;
+        selectExtraGuess();
+        showGuessCost = false;
+      }
+
+      return newState;
+    });
+  }
+
+  // Toggle dark mode and store preference
+  function toggleDarkMode() {
+    darkMode = !darkMode;
+    document.body.classList.toggle('dark-mode', darkMode);
+    localStorage.setItem('darkMode', darkMode);
+  }
+
+  // On component mount, load dark mode preference and add Enter key listener
+  onMount(() => {
+    darkMode = localStorage.getItem('darkMode') === 'true';
+    document.body.classList.toggle('dark-mode', darkMode);
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Enter') confirmPurchase();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   });
 
-  // Toggle dark mode and store preference
-  function toggleDarkMode() {
-    darkMode = !darkMode;
-    if (darkMode) {
-      document.body.classList.add('dark-mode');
-    } else {
-      document.body.classList.remove('dark-mode');
-    }
-    localStorage.setItem('darkMode', darkMode ? 'true' : 'false');
-  }
-
-  // Toggle the extra guess purchase pending state.
-  // This updates both local (guessPending) and global (extraGuessPending via gameState) state.
-  function toggleGuessPurchase() {
-  if ($gameStore.gameState === "purchase_pending") {
-    // If it's already pending, cancel the purchase
-    gameStore.update(state => ({
-      ...state,
-      gameState: "default",
-      selectedPurchase: null,
-      extraGuessPending: false
-    }));
-    guessPending = false;
-  } else {
-    // Start extra guess purchase
-    gameStore.update(state => ({
-      ...state,
-      gameState: "purchase_pending",
-      selectedPurchase: { type: "extra_guess" },
-      extraGuessPending: true
-    }));
-    guessPending = true;
-  }
-}
-
-  // Confirm the extra guess purchase (deduct money and add a guess)
-  function confirmPurchase() {
-  if ($gameStore.selectedPurchase?.type === "extra_guess") {
-    gameStore.update(state => ({
-      ...state,
-      bankroll: state.bankroll - 150,
-      guessesRemaining: state.guessesRemaining + 1,
-      gameState: "default",
-      selectedPurchase: null,
-      extraGuessPending: false
-    }));
-    guessPending = false;
-  }
-}
 </script>
 
 <!-- Render content based on whether guess mode is active -->
@@ -109,17 +115,22 @@
 
 <!-- Row for Hint, Enter Guess Mode, and Buy Guess Buttons -->
 <div class="guess-controls">
-  <!-- Hint Button -->
-  <button 
-    class="hint-button"
-    class:disabled-red={fundsLow}
-    class:pending={hintPending}
-    on:click={() => !fundsLow && selectHint()}
-    disabled={fundsLow}
-    aria-label="Buy a hint for $150"
-  >
-    Hint
-  </button>
+  <!-- Hint Button + Cost Indicator -->
+  <div class="button-container">
+    {#if showHintCost}
+      <div class="cost-indicator">-$150</div>
+    {/if}
+    <button 
+      class="hint-button"
+      class:disabled-red={fundsLow}
+      class:pending={hintPending}
+      on:click={toggleHintPurchase}
+      disabled={fundsLow}
+      aria-label="Buy a hint for $150"
+    >
+      Hint
+    </button>
+  </div>
 
   <!-- Enter Guess Mode Button -->
   <button
@@ -132,16 +143,21 @@
     {guessModeActive ? "Exit Guess Mode" : `Enter Guess Mode (${$gameStore.guessesRemaining})`}
   </button>
 
-  <!-- Buy Extra Guess Button -->
-  <button 
-    class="buy-guess-button"
-    class:no-guesses={noGuessesLeft}
-    class:pending={guessPending}
-    on:click={toggleGuessPurchase}
-    aria-label="Buy an extra guess for $150"
-  >
-    Buy Guess
-  </button>
+  <!-- Buy Extra Guess Button + Cost Indicator -->
+  <div class="button-container">
+    {#if showGuessCost}
+      <div class="cost-indicator">-$150</div>
+    {/if}
+    <button 
+      class="buy-guess-button"
+      class:no-guesses={noGuessesLeft}
+      class:pending={guessPending}
+      on:click={toggleGuessPurchase}
+      aria-label="Buy an extra guess for $150"
+    >
+      Buy Guess
+    </button>
+  </div>
 </div>
 
 <!-- Delete button only appears in guess mode -->
@@ -192,6 +208,33 @@
 {/if}
 
 <style>
+/* ===========================
+     Cost Indicator
+=========================== */
+/* ===========================
+     Cost Indicator
+=========================== */
+.button-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.cost-indicator {
+    position: absolute;
+    top: -20px;
+    color: red;
+    font-size: 16px;
+    font-weight: bold;
+    opacity: 1;
+}
+
+@keyframes fadeOut {
+    0% { opacity: 1; transform: translateY(0); }
+    50% { opacity: 0.8; transform: translateY(-5px); }
+    100% { opacity: 0; transform: translateY(-10px); }
+}
   /* ===========================
      Global Reset & Utility
   =========================== */

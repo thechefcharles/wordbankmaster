@@ -292,9 +292,6 @@ body {
     color: white;
     cursor: default;
   }
-  button:hover:not(.purchased, .pending, .incorrect) {
-    background-color: lightgray;
-  }
 
   /* ---------------------------
      Enter Button Blinking Effect for Submit Ready State

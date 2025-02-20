@@ -1,16 +1,22 @@
-<!-- page.svelte -->
+<!-- +page.svelte -->
 <svelte:head>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
 </svelte:head>
 
 <script>
   import { onMount } from 'svelte';
-  import { browser } from '$app/environment'; // Only run document-related code in the browser
+  import { browser } from '$app/environment'; // For browser-only document access
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
   import Keyboard from '$lib/components/Keyboard.svelte';
   import GameButtons from '$lib/components/GameButtons.svelte';
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
+  import FlipDigit from '$lib/components/FlipDigit.svelte';
 
+  // Reactive bankroll value from your store
+  $: bankroll = $gameStore.bankroll || 0;
+  // Split the bankroll into individual digits
+  $: digits = String(bankroll).split('');
   // Keep a reactive local reference to the game store
   $: currentGame = $gameStore;
 
@@ -19,7 +25,7 @@
     fetchRandomGame();
   });
 
-  // Whenever the game state changes, add or remove the "guess-mode" class on <body>
+  // Toggle the "guess-mode" class on the document body based on game state
   $: if (browser) {
     if (currentGame.gameState === 'guess_mode') {
       document.body.classList.add('guess-mode');
@@ -46,21 +52,26 @@
   <!-- Resource Stats (Bankroll) -->
   <section class="stats-section">
     <div class="bankroll-container">
-      <p class="bankroll-box">$ {Math.floor(currentGame.bankroll)}</p>
+      <div class="bankroll-box">
+        <span class="currency">$</span>
+        {#each digits as d}
+          <FlipDigit digit={+d} />
+        {/each}
+      </div>
     </div>
   </section>
-  
+
   <!-- Keyboard Section -->
   <section class="keyboard-section">
     <Keyboard />
   </section>
 
-<!-- Win/Loss Banner -->
-{#if currentGame.gameState === "won"}
-  <div class="banner win">Winner!</div>
-{:else if currentGame.gameState === "lost"}
-  <div class="banner lose">Bankrupt!</div>
-{/if}
+  <!-- Win/Loss Banner -->
+  {#if currentGame.gameState === "won"}
+    <div class="banner win">Winner!</div>
+  {:else if currentGame.gameState === "lost"}
+    <div class="banner lose">Bankrupt!</div>
+  {/if}
 
   <!-- Game Buttons Section -->
   <section class="buttons-section">
@@ -111,20 +122,26 @@
     justify-content: center;
     align-items: center;
     width: 100%;
-    margin: 0 auto;
-    margin-top: 10px;
+    margin: 10px auto 0;
   }
+  
   .bankroll-box {
-    padding: 8px 18px;
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: white;
-    background-color: rgb(103, 208, 103);
-    border-radius: 1px;
+    padding: 5px 10px;             /* Reduced padding */
+    font-size: 1.5rem;             /* Smaller font size */
+    font-family: 'Orbitron', sans-serif; /* Bold digital font */
+    color: #fff;
+    background: linear-gradient(45deg, #2e7d32, #66bb6a);
+    border: 3px solid #1b5e20;
+    border-radius: 8px;
     text-align: center;
-    display: inline-block;
-    width: fit-content;
-    margin: 0 auto;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .currency {
+    margin-right: 4px;
   }
 
   /* Logo styling */
@@ -136,6 +153,7 @@
     margin-top: -50px;
     padding-bottom: 0;
   }
+  
   .logo-container {
     display: flex;
     justify-content: center;
@@ -150,52 +168,49 @@
     touch-action: manipulation;
   }
 
-  /* ===========================
-   Win Banner Animation
-=========================== */
-@keyframes winPulse {
-  0%, 100% { transform: scale(1) rotate(0deg); text-shadow: 0px 0px 10px green; }
-  25% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px limegreen; }
-  50% { transform: scale(1.5) rotate(-3deg); text-shadow: 0px 0px 30px limegreen; }
-  75% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px green; }
-}
+  /* Win Banner Animations */
+  @keyframes winPulse {
+    0%, 100% { transform: scale(1) rotate(0deg); text-shadow: 0px 0px 10px green; }
+    25% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px limegreen; }
+    50% { transform: scale(1.5) rotate(-3deg); text-shadow: 0px 0px 30px limegreen; }
+    75% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px green; }
+  }
+  
+  @keyframes winFlash {
+    0% { opacity: 1; }
+    50% { opacity: 0.2; }
+    100% { opacity: 1; }
+  }
+  
+  .banner.win {
+    font-size: 3rem;
+    font-weight: 600;
+    color: limegreen;
+    text-transform: uppercase;
+    background: linear-gradient(45deg, green, limegreen);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+    padding: 20px;
+    border: 5px solid limegreen;
+    border-radius: 10px;
+    animation: winPulse 1.5s infinite, winFlash 0.5s infinite;
+  }
 
-@keyframes winFlash {
-  0% { opacity: 1; }
-  50% { opacity: 0.2; }
-  100% { opacity: 1; }
-}
-
-.banner.win {
-  font-size: 3rem;
-  font-weight: 600;
-  color: limegreen;
-  text-transform: uppercase;
-  background: linear-gradient(45deg, green, limegreen);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-align: center;
-  padding: 20px;
-  border: 5px solid limegreen;
-  border-radius: 10px;
-  animation: winPulse 1.5s infinite, winFlash 0.5s infinite;
-}
-
-
-  /* ---------------------------
-     Game Over Banner Animations
-  --------------------------- */
+  /* Game Over Banner Animations */
   @keyframes gameOverPulse {
     0%, 100% { transform: scale(1) rotate(0deg); text-shadow: 0px 0px 10px red; }
     25% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px red; }
     50% { transform: scale(1.5) rotate(-3deg); text-shadow: 0px 0px 30px red; }
     75% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px red; }
   }
+  
   @keyframes gameOverFlash {
     0% { opacity: 1; }
     50% { opacity: 0.2; }
     100% { opacity: 1; }
   }
+  
   .banner.lose {
     font-size: 3rem;
     font-weight: 600;
@@ -210,6 +225,4 @@
     border-radius: 10px;
     animation: gameOverPulse 1.5s infinite, gameOverFlash 0.5s infinite;
   }
-
-  
 </style>
