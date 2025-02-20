@@ -102,7 +102,7 @@
 </script>
 
 <div class="keyboard-container">
-  <!-- Row 1: Letters Q - P -->
+  <!-- Row 1: Letters Q - P, plus conditionally the Delete button -->
   <div class="keyboard-row">
     {#each row1 as letter}
       <button
@@ -123,6 +123,11 @@
         <div class="price">${letterCosts[letter]}</div>
       </button>
     {/each}
+    {#if $gameStore.gameState === 'guess_mode'}
+      <button class="key delete" on:click={deleteGuessLetter}>
+        <div class="letter">Del</div>
+      </button>
+    {/if}
   </div>
 
   <!-- Row 2: Letters A - L -->
@@ -190,41 +195,36 @@
   /* ---------------------------
      Keyboard Container & Rows
   --------------------------- */
-/* ---------------------------
-   Keyboard Container (Fixed at Bottom & Centered)
---------------------------- */
-.keyboard-container {
-  position: fixed; /* Keep it at the bottom */
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%); /* Ensures full centering */
-  width: 100%;
-  max-width: 600px; /* Adjust this based on the design */
-  background-color: #f9f9f9;
-  padding: 10px;
-  border-top: 2px solid #ccc;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  justify-content: center;
-  z-index: 1000; /* Keeps it on top */
-}
+  .keyboard-container {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 600px;
+    background-color: #f9f9f9;
+    padding: 10px;
+    border-top: 2px solid #ccc;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    justify-content: center;
+    z-index: 1000;
+  }
 
-/* Ensure keyboard rows stay centered */
-.keyboard-row {
-  display: flex;
-  justify-content: center;
-  gap: 2px;
-  flex-wrap: nowrap;
-}
+  .keyboard-row {
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+    flex-wrap: nowrap;
+  }
 
-/* Make sure body allows space for the keyboard */
-body {
-  padding-bottom: 200px; /* Prevents overlap with the keyboard */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
+  body {
+    padding-bottom: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
 
   /* ---------------------------
      Key Styles
@@ -244,10 +244,19 @@ body {
     padding: 2px;
     box-sizing: border-box;
   }
-  .key.delete {
-    background-color: #ff6666;
-    color: white;
-  }
+/* Style for the delete button - red background with white text */
+.key.delete {
+  background-color: red; /* Changed to a solid red */
+  color: white;
+  border: 2px solid darkred; /* Optional: add a darker red border */
+}
+
+/* Dark mode override for the delete button */
+:global(body.dark-mode) .key.delete {
+  background-color: red;
+  color: white;
+  border: 2px solid darkred;
+}
 
   /* ---------------------------
      Enter Button Specifics
@@ -303,8 +312,6 @@ body {
     animation: blink 1s infinite;
   }
 
-  
-
   /* ---------------------------
      DARK MODE Overrides
   --------------------------- */
@@ -329,18 +336,12 @@ body {
     color: white !important;
     animation: blink 1s infinite;
   }
-
-  /* Explicitly Override Enter Button Pending & Submit Ready States in Dark Mode */
   :global(body.dark-mode) .enter-button.pending,
   :global(body.dark-mode) .enter-button.submit-ready {
     background-color: green !important;
     color: white !important;
     animation: blink 1s infinite;
   }
-
-  /* ---------------------------
-     Light Mode Fix for Enter Button
-  --------------------------- */
   :global(body:not(.dark-mode)) .enter-button.submit-ready {
     background-color: green !important;
     color: white !important;
@@ -355,9 +356,6 @@ body {
   }
 
   :global(body:not(.dark-mode)) .key .letter {
-  transition: none !important;
-}
-
-  
-  
+    transition: none !important;
+  }
 </style>
