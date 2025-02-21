@@ -1,50 +1,66 @@
 <script>
   import { gameStore } from '$lib/stores/GameStore.js';
   import { onDestroy } from 'svelte';
-  import { derived } from "svelte/store";
-
-  
-
-  // Track the phrase and word breaks
-  $: phrase = $gameStore.phrase || "";  
-  let maxLettersPerRow = 10; // Adjust based on your design
-
-  // Function to format phrase with hyphens
-  function formatPhrase(phrase) {
-    let words = phrase.split(" "); // Split into words
-    let formattedPhrase = [];
-    let currentRow = "";
-    
-    for (let word of words) {
-      if (currentRow.length + word.length + 1 > maxLettersPerRow) {
-        // If adding the word exceeds the row limit, insert a hyphen
-        if (currentRow.length > 0) {
-          formattedPhrase.push(currentRow + "-");
-        }
-        currentRow = word; // Start new row
-      } else {
-        // Append the word to the current row
-        currentRow += (currentRow.length > 0 ? " " : "") + word;
-      }
-    }
-
-    // Push the last row
-    if (currentRow) formattedPhrase.push(currentRow);
-
-    return formattedPhrase;
-  }
-
-  // Derive formatted phrase for display
-  $: displayedPhrase = formatPhrase(phrase);
 
   // ----------------------------
-  // Local State for Shake Animation
+  // PHRASE FORMATTING
+  // ----------------------------
+
+  // Reactive: current phrase from game store
+  $: phrase = $gameStore.phrase || "";
+  // Maximum characters per row (for hyphenation/line breaks)
+  let maxLettersPerRow = 10;
+
+  /**
+   * getFormattedPhrase
+   * Splits the phrase into rows with hyphenation if needed.
+   *
+   * @param {string} phrase - The current phrase.
+   * @returns {string[]} Array of formatted rows.
+   */
+  function getFormattedPhrase(phrase) {
+    const words = phrase.split(" ");
+    const formattedRows = [];
+    let currentRow = "";
+
+    for (const word of words) {
+      // +1 for space between words
+      if (currentRow.length + word.length + (currentRow ? 1 : 0) > maxLettersPerRow) {
+        if (currentRow) formattedRows.push(currentRow + "-");
+        currentRow = word;
+      } else {
+        currentRow += (currentRow ? " " : "") + word;
+      }
+    }
+    if (currentRow) formattedRows.push(currentRow);
+    return formattedRows;
+  }
+
+  // Reactive: derive formatted phrase for display
+  $: formattedPhrase = getFormattedPhrase(phrase);
+
+  // ----------------------------
+  // SHAKE ANIMATION HANDLING
   // ----------------------------
   let shakeIndexes = new Set();
   let lastProcessedShakes = [];
 
-  // Watch for new shaken letters in the store.
-  // When new indices are detected, trigger the shake effect.
+  /**
+   * triggerShake
+   * Activates the shake animation for specified letter indexes.
+   *
+   * @param {number[]} indexes - Array of letter indexes to shake.
+   */
+  function triggerShake(indexes) {
+    shakeIndexes = new Set(indexes);
+    setTimeout(() => {
+      shakeIndexes.clear();
+      // Reset shakenLetters in the store after animation completes
+      gameStore.update(state => ({ ...state, shakenLetters: [] }));
+    }, 1000);
+  }
+
+  // Watch for changes in shakenLetters from the store
   $: if ($gameStore.shakenLetters?.length > 0) {
     if (JSON.stringify($gameStore.shakenLetters) !== JSON.stringify(lastProcessedShakes)) {
       triggerShake([...$gameStore.shakenLetters]);
@@ -52,121 +68,105 @@
     }
   }
 
-  // Trigger shake animation on given letter indexes.
-  // After 1 second, clear the shake effect and reset shakenLetters in the store.
-  function triggerShake(indexes) {
-    shakeIndexes = new Set(indexes);
-    setTimeout(() => {
-      shakeIndexes.clear();
-      gameStore.update(state => ({
-        ...state,
-        shakenLetters: []
-      }));
-    }, 1000);
-  }
-
   // ----------------------------
-  // Helper: Global Index Calculation
+  // GLOBAL INDEX CALCULATION
   // ----------------------------
-  // Converts a (wordIndex, letterIndex) into a global index in the phrase.
+  /**
+   * getGlobalIndex
+   * Converts (wordIndex, letterIndex) into a global index within the phrase.
+   *
+   * @param {number} wordIndex - Index of the word.
+   * @param {number} letterIndex - Index of the letter within the word.
+   * @returns {number} Global index in the full phrase.
+   */
   function getGlobalIndex(wordIndex, letterIndex) {
     const words = $gameStore.currentPhrase.split(' ');
     let offset = 0;
     for (let i = 0; i < wordIndex; i++) {
-      // Each word length plus one for the space
-      offset += words[i].length + 1;
+      offset += words[i].length + 1; // include space
     }
     return offset + letterIndex;
   }
 
   // ----------------------------
-  // Animate Phrase Reveal When Game is Lost
+  // PHRASE REVEAL (LOSS MODE)
   // ----------------------------
-  let interval;
+  let revealInterval;
   let revealed = [];
 
-  // When game state is "lost", gradually reveal each letter.
+  // Reactive: if game is lost, gradually reveal the entire phrase letter by letter
   $: if ($gameStore.gameState === 'lost') {
     if (revealed.length === 0) {
-      const phrase = $gameStore.currentPhrase;
+      const fullPhrase = $gameStore.currentPhrase;
       let i = 0;
-      interval = setInterval(() => {
-        revealed[i] = phrase[i];
-        // Force reactivity
+      revealInterval = setInterval(() => {
+        revealed[i] = fullPhrase[i];
+        // Force reactivity by creating a new array
         revealed = [...revealed];
         i++;
-        if (i >= phrase.length) clearInterval(interval);
+        if (i >= fullPhrase.length) clearInterval(revealInterval);
       }, 300);
     }
   } else {
-    // Reset when not lost
+    // Reset reveal state when not lost
     revealed = [];
-    clearInterval(interval);
+    clearInterval(revealInterval);
   }
 
-  // Clean up the interval on component destruction.
+  // Clean up interval on component destruction
   onDestroy(() => {
-    clearInterval(interval);
+    clearInterval(revealInterval);
   });
 
   // ----------------------------
-  // Active Guess Index in Guess Mode
+  // ACTIVE GUESS SLOT CALCULATION
   // ----------------------------
-  // Compute the next editable index for guess mode.
-  $: activeGuessIndex = (
+  /**
+   * Determine the next editable index for guess mode.
+   * Returns the first index that hasn't been guessed, or the last one if all are filled.
+   */
+  $: activeGuessIndex =
     $gameStore.gameState === 'guess_mode'
       ? (() => {
-          const phrase = $gameStore.currentPhrase;
-          const indices = [];
-          for (let i = 0; i < phrase.length; i++) {
-            if (phrase[i] === ' ') continue;
-            if ($gameStore.purchasedLetters[i] === phrase[i]) continue;
-            indices.push(i);
+          const fullPhrase = $gameStore.currentPhrase;
+          const editableIndices = [];
+          for (let i = 0; i < fullPhrase.length; i++) {
+            if (fullPhrase[i] === ' ') continue;
+            if ($gameStore.purchasedLetters[i] === fullPhrase[i]) continue;
+            editableIndices.push(i);
           }
-          if (indices.length === 0) return -1;
-          // Return the first index that hasn't been guessed yet,
-          // or the last one if all are filled.
-          for (const idx of indices) {
+          if (editableIndices.length === 0) return -1;
+          for (const idx of editableIndices) {
             if (!$gameStore.guessedLetters[idx]) return idx;
           }
-          return indices[indices.length - 1];
+          return editableIndices[editableIndices.length - 1];
         })()
-      : -1
-  );
+      : -1;
 </script>
 
-<!-- Render the formatted phrase -->
+<!-- Display formatted phrase lines (for non-interactive preview) -->
 <div class="phrase-display">
-  {#each displayedPhrase as line}
+  {#each formattedPhrase as line}
     <div class="phrase-line">{line}</div>
   {/each}
 </div>
 
-
-
-<!--
-  Render the phrase differently based on game state:
-  - LOST MODE: Reveal entire phrase gradually.
-  - GUESS MODE: Display purchased letters; empty slots show user guesses.
-  - DEFAULT MODE: Display current purchased letters, with shake animation if needed.
--->
+<!-- Render phrase based on current game state -->
 {#if $gameStore.gameState === 'lost'}
-  <!-- Lost Mode: Reveal the entire phrase -->
+  <!-- Lost Mode: Gradually reveal the full phrase -->
   <div class="phrase-container">
     {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
       <div class="word">
         {#each word.split('') as letter, cIndex}
           <span class="letter-box">
-            {revealed[getGlobalIndex(wIndex, cIndex)] 
-              ? revealed[getGlobalIndex(wIndex, cIndex)] 
-              : "_"}
+            {revealed[getGlobalIndex(wIndex, cIndex)] ? revealed[getGlobalIndex(wIndex, cIndex)] : "_"}
           </span>
         {/each}
       </div>
     {/each}
   </div>
 {:else if $gameStore.gameState === 'guess_mode'}
-  <!-- Guess Mode: Show purchased letters and guess inputs -->
+  <!-- Guess Mode: Show purchased letters and input guesses -->
   <div class="phrase-container">
     {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
       <div class="word">
@@ -185,7 +185,7 @@
     {/each}
   </div>
 {:else}
-  <!-- Default Mode: Display purchased letters with shake animation if applicable -->
+  <!-- Default Mode: Display only purchased letters with potential shake animation -->
   <div class="phrase-container">
     {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
       <div class="word">
@@ -221,7 +221,7 @@
   }
 
   /* ---------------------------
-     Layout for the Phrase Display
+     Layout for Phrase Display
   --------------------------- */
   .phrase-container {
     display: flex;
@@ -257,18 +257,16 @@
     color: black;
   }
   .letter-box.locked {
-    /* Locked letters (correctly purchased) */
     color: black !important;
     font-weight: bold;
   }
   .letter-box.active {
-    /* Active guess slot styling */
     border: 3px solid orange !important;
     color: black !important;
   }
 
   /* ---------------------------
-     Guess Mode Blinking Border 
+     Guess Mode Styling
   --------------------------- */
   :global(body.guess-mode) .phrase-container {
     border: 5px solid orange !important;
@@ -291,32 +289,23 @@
     }
   }
 
+  /* ---------------------------
+     Formatted Phrase Preview
+  --------------------------- */
+  .phrase-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
   .phrase-line {
-  display: flex;
-  justify-content: center;
-  gap: 5px;
-  font-size: 1.5rem;
-  font-weight: bold;
-  text-transform: uppercase;
-}
-
-.phrase-line::after {
-  content: "";
-  display: inline-block;
-  width: 0;
-}
-
-.phrase-line:last-child::after {
-  content: ""; /* Ensures no hyphen at the end of the last row */
-}
-
-.phrase-line {
-  hyphens: auto;
-  -webkit-hyphens: auto;
-  -moz-hyphens: auto;
-  word-break: break-word;
-  /* ...other styles... */
-}
-
-
+    hyphens: auto;
+    -webkit-hyphens: auto;
+    -moz-hyphens: auto;
+    word-break: break-word;
+  }
 </style>

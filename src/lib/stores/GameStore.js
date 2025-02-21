@@ -4,31 +4,31 @@ import { supabase } from '$lib/supabase.js';
 import confetti from 'canvas-confetti';
 
 /* ================================
-   Cost Definitions & Store Initialization
+   Constants & Store Initialization
 =================================== */
 
-// Define the cost for each letter.
-export const letterCosts = {
+// Cost definitions for each letter
+export const LETTER_COSTS = {
   Q: 30,  W: 50,  E: 140, R: 120, T: 120, Y: 60,  U: 80,  I: 110, O: 90,  P: 80,
   A: 130, S: 120, D: 80,  F: 60,  G: 70,  H: 70,  J: 30,  K: 50,  L: 80,
   Z: 40,  X: 40,  C: 80,  V: 50,  B: 60,  N: 100, M: 70
 };
 
-// Initialize the game store with default properties.
+// Initial state for the game store
 export const gameStore = writable({
   bankroll: 1000,
   guessesRemaining: 2,
   category: "Person",
   currentPhrase: "MICHAEL JORDAN",
-  gameState: "default", // Possible values: "default", "purchase_pending", "guess_mode", "won", "lost"
+  gameState: "default", // States: "default", "purchase_pending", "guess_mode", "won", "lost"
   purchasedLetters: [],
   guessedLetters: {},
   lockedLetters: {},
   incorrectLetters: [],
   selectedPurchase: null,
   shakenLetters: [],
-  extraGuessPending: false, // Flag for extra guess pending purchase
-  message: "" // Temporary feedback messages (e.g. incorrect guess)
+  extraGuessPending: false, // Flag for extra guess purchase pending
+  message: "" // Feedback messages (e.g., incorrect guess)
 });
 
 /* ================================
@@ -36,8 +36,8 @@ export const gameStore = writable({
 =================================== */
 
 /**
- * launchConfetti()
- * Triggers a confetti effect for celebration.
+ * launchConfetti
+ * Triggers a celebratory confetti animation.
  */
 function launchConfetti() {
   confetti({
@@ -50,14 +50,37 @@ function launchConfetti() {
 }
 
 /**
- * checkLossCondition(state)
- * Checks if the loss condition is met (no guesses remaining and insufficient bankroll)
- * and triggers the bankroll reduction animation if so.
+ * animateBankrollReduction
+ * Gradually reduces the bankroll to zero (used in game over).
+ *
+ * @param {number} startingAmount - The bankroll amount to start from.
+ */
+function animateBankrollReduction(startingAmount) {
+  let currentAmount = startingAmount;
+  const decrementStep = Math.max(1, Math.floor(startingAmount / 50)); // Use small decrement steps
+  const interval = setInterval(() => {
+    gameStore.update(state => {
+      if (currentAmount <= 0) {
+        clearInterval(interval);
+        return { ...state, bankroll: 0 };
+      }
+      currentAmount -= decrementStep;
+      return { ...state, bankroll: Math.max(0, currentAmount) };
+    });
+  }, 200);
+}
+
+/**
+ * checkLossCondition
+ * Checks if the player has lost (no guesses remaining and insufficient bankroll).
+ * Also reveals the entire phrase upon loss.
+ *
+ * @param {object} state - The current game state.
+ * @returns {object} Updated state if loss condition met.
  */
 function checkLossCondition(state) {
-  const minLetterCost = Math.min(...Object.values(letterCosts));
+  const minLetterCost = Math.min(...Object.values(LETTER_COSTS));
   const isLost = state.guessesRemaining <= 0 && state.bankroll < minLetterCost;
-
   if (isLost) {
     console.log("💀 Game Over: No guesses remaining and insufficient bankroll.");
     animateBankrollReduction(state.bankroll);
@@ -65,7 +88,6 @@ function checkLossCondition(state) {
       ...state,
       gameState: "lost",
       guessesRemaining: 0,
-      // Reveal the entire phrase upon loss.
       guessedLetters: Object.fromEntries(
         state.currentPhrase.split('').map((ch, i) => [i, ch])
       )
@@ -74,41 +96,24 @@ function checkLossCondition(state) {
   return state;
 }
 
-/**
- * animateBankrollReduction(startingAmount)
- * Gradually reduces the bankroll from the starting amount to 0.
- */
-function animateBankrollReduction(startingAmount) {
-  let currentAmount = startingAmount;
-  const step = Math.max(1, Math.floor(startingAmount / 50)); // Small decrement steps
-  const interval = setInterval(() => {
-    gameStore.update(state => {
-      if (currentAmount <= 0) {
-        clearInterval(interval);
-        return { ...state, bankroll: 0 };
-      }
-      currentAmount -= step;
-      return { ...state, bankroll: Math.max(0, currentAmount) };
-    });
-  }, 200);
-}
-
 /* ================================
    Purchase Mode Functions
 =================================== */
 
 /**
- * selectLetter(letter)
- * Selects a letter for purchase if funds are sufficient.
- * If the same letter is reselected, it deselects it.
+ * selectLetter
+ * Selects or deselects a letter for purchase.
+ *
+ * @param {string} letter - The letter to select.
  */
 export function selectLetter(letter) {
   gameStore.update(state => {
-    const cost = letterCosts[letter] || 0;
+    const cost = LETTER_COSTS[letter] || 0;
     if (state.bankroll < cost) {
       console.log(`Insufficient funds to purchase letter ${letter}`);
       return state;
     }
+    // Deselect if already selected
     if (
       state.selectedPurchase &&
       state.selectedPurchase.type === 'letter' &&
@@ -117,6 +122,7 @@ export function selectLetter(letter) {
       console.log(`Deselecting letter: ${letter}`);
       return { ...state, selectedPurchase: null, gameState: "default" };
     }
+    // Prevent selection if letter is locked or marked incorrect
     if ((state.lockedLetters && state.lockedLetters[letter]) ||
         state.incorrectLetters.includes(letter)) {
       console.log(`Letter ${letter} is fully locked or marked incorrect.`);
@@ -132,7 +138,7 @@ export function selectLetter(letter) {
 }
 
 /**
- * selectHint()
+ * selectHint
  * Toggles hint selection for purchase.
  */
 export function selectHint() {
@@ -151,7 +157,7 @@ export function selectHint() {
 }
 
 /**
- * selectExtraGuess()
+ * selectExtraGuess
  * Toggles extra guess selection for purchase.
  */
 export function selectExtraGuess() {
@@ -170,8 +176,8 @@ export function selectExtraGuess() {
 }
 
 /**
- * confirmPurchase()
- * Processes the current selected purchase based on its type (letter, hint, or extra guess).
+ * confirmPurchase
+ * Processes the selected purchase (letter, hint, or extra guess) and updates the state.
  */
 export function confirmPurchase() {
   gameStore.update(state => {
@@ -179,45 +185,42 @@ export function confirmPurchase() {
     const purchase = state.selectedPurchase;
     let newShakenLetters = new Set(state.shakenLetters || []);
 
-    // --- Letter Purchase ---
+    // --- Process Letter Purchase ---
     if (purchase.type === 'letter') {
       const letter = purchase.value;
-      const cost = letterCosts[letter] || 0;
-      if (state.bankroll < cost) {
-        return { ...state, selectedPurchase: null };
-      }
+      const cost = LETTER_COSTS[letter] || 0;
+      if (state.bankroll < cost) return { ...state, selectedPurchase: null };
+
       const phrase = state.currentPhrase;
       let newPurchased = [...state.purchasedLetters];
       let newIncorrect = [...state.incorrectLetters];
       let correctIndexes = [];
 
-      // Mark purchased letters and record indices for shaking animation
+      // Mark positions where the purchased letter occurs
       for (let i = 0; i < phrase.length; i++) {
         if (phrase[i] === letter) {
           newPurchased[i] = letter;
-          if (!newShakenLetters.has(i)) {
-            correctIndexes.push(i);
-          }
+          if (!newShakenLetters.has(i)) correctIndexes.push(i);
         }
       }
+      // Add indexes for shake animation if letter is found
       if (correctIndexes.length > 0) {
         correctIndexes.forEach(idx => newShakenLetters.add(idx));
       } else {
         newIncorrect.push(letter);
       }
 
-      // Update locked letters for the letter if all instances are purchased
+      // Lock letter if all its occurrences are now purchased
       let newLockedLetters = { ...state.lockedLetters };
-      const indices = phrase
-        .split('')
-        .map((ch, i) => (ch === letter ? i : -1))
-        .filter(i => i !== -1);
+      const indices = phrase.split('').reduce((acc, ch, i) => {
+        if (ch === letter) acc.push(i);
+        return acc;
+      }, []);
       newLockedLetters[letter] = indices.length > 0 &&
         indices.every(idx => newPurchased[idx] === letter);
 
-      // Check win condition
-      let win = phrase.split('').every((ch, i) => ch === ' ' || newPurchased[i] === ch);
-
+      // Determine if the player has won
+      const win = phrase.split('').every((ch, i) => ch === ' ' || newPurchased[i] === ch);
       const newState = {
         ...state,
         bankroll: state.bankroll - cost,
@@ -234,31 +237,29 @@ export function confirmPurchase() {
       }
       return checkLossCondition(newState);
     }
-
-    // --- Hint Purchase ---
+    // --- Process Hint Purchase ---
     else if (purchase.type === 'hint') {
       const cost = 150;
       if (state.bankroll < cost) {
         return { ...state, selectedPurchase: null, gameState: "default" };
       }
       const phrase = state.currentPhrase;
-      const unrevealed = phrase
-        .split('')
-        .map((ch, i) => (ch !== ' ' && !state.purchasedLetters[i] ? i : -1))
-        .filter(i => i !== -1);
-      if (unrevealed.length === 0) {
-        return { ...state, selectedPurchase: null, gameState: "default" };
-      }
-      const randomIndex = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+      const unrevealedIndices = phrase.split('').reduce((acc, ch, i) => {
+        if (ch !== ' ' && !state.purchasedLetters[i]) acc.push(i);
+        return acc;
+      }, []);
+      if (unrevealedIndices.length === 0) return { ...state, selectedPurchase: null, gameState: "default" };
+
+      const randomIndex = unrevealedIndices[Math.floor(Math.random() * unrevealedIndices.length)];
       let newPurchased = [...state.purchasedLetters];
       newPurchased[randomIndex] = phrase[randomIndex];
 
       let newLockedLetters = { ...state.lockedLetters };
       const letter = phrase[randomIndex];
-      const indices = phrase
-        .split('')
-        .map((ch, i) => (ch === letter ? i : -1))
-        .filter(i => i !== -1);
+      const indices = phrase.split('').reduce((acc, ch, i) => {
+        if (ch === letter) acc.push(i);
+        return acc;
+      }, []);
       newLockedLetters[letter] = indices.every(idx => newPurchased[idx] === letter);
 
       const newState = {
@@ -271,8 +272,7 @@ export function confirmPurchase() {
       };
       return checkLossCondition(newState);
     }
-
-    // --- Extra Guess Purchase ---
+    // --- Process Extra Guess Purchase ---
     else if (purchase.type === 'extra_guess') {
       const cost = 150;
       if (state.bankroll < cost) {
@@ -293,11 +293,11 @@ export function confirmPurchase() {
 
 /* ================================
    Guess Mode Functions
-=================================== */
+=============================================== */
 
 /**
- * enterGuessMode()
- * Toggles between guess mode and default mode.
+ * enterGuessMode
+ * Toggles between default mode and guess mode.
  */
 export function enterGuessMode() {
   gameStore.update(state => {
@@ -307,25 +307,19 @@ export function enterGuessMode() {
     }
     if (state.gameState === 'guess_mode') {
       console.log("Exiting guess mode.");
-      return { 
-        ...state, 
-        gameState: "default", 
-        guessedLetters: {} 
-      };
+      return { ...state, gameState: "default", guessedLetters: {} };
     }
     console.log("Entering guess mode.");
-    return { 
-      ...state, 
-      gameState: "guess_mode", 
-      selectedPurchase: null, 
-      guessedLetters: {} 
-    };
+    return { ...state, gameState: "guess_mode", selectedPurchase: null, guessedLetters: {} };
   });
 }
 
 /**
- * getEditableIndices(state)
- * Returns an array of indices for letters that are not spaces and not yet purchased.
+ * getEditableIndices
+ * Returns indices in the phrase that are editable (non-space and not already purchased).
+ *
+ * @param {object} state - The current game state.
+ * @returns {number[]} Array of editable indices.
  */
 function getEditableIndices(state) {
   const indices = [];
@@ -338,8 +332,10 @@ function getEditableIndices(state) {
 }
 
 /**
- * inputGuessLetter(letter)
+ * inputGuessLetter
  * Inserts a guessed letter into the next available slot.
+ *
+ * @param {string} letter - The guessed letter.
  */
 export function inputGuessLetter(letter) {
   gameStore.update(state => {
@@ -351,15 +347,9 @@ export function inputGuessLetter(letter) {
     const editableIndices = getEditableIndices(state);
     if (editableIndices.length === 0) return state;
 
-    // Find the first empty slot in guessedLetters; if all are filled, overwrite the last one.
-    let activeIndex = null;
-    for (let idx of editableIndices) {
-      if (!state.guessedLetters.hasOwnProperty(idx)) {
-        activeIndex = idx;
-        break;
-      }
-    }
-    if (activeIndex === null) {
+    // Find the first empty slot; if all filled, overwrite the last slot.
+    let activeIndex = editableIndices.find(idx => !state.guessedLetters.hasOwnProperty(idx));
+    if (activeIndex === undefined) {
       activeIndex = editableIndices[editableIndices.length - 1];
     }
     const newGuessed = { ...state.guessedLetters, [activeIndex]: letter };
@@ -369,7 +359,7 @@ export function inputGuessLetter(letter) {
 }
 
 /**
- * deleteGuessLetter()
+ * deleteGuessLetter
  * Removes the last entered guessed letter.
  */
 export function deleteGuessLetter() {
@@ -378,17 +368,15 @@ export function deleteGuessLetter() {
     const editableIndices = getEditableIndices(state);
     if (editableIndices.length === 0) return state;
 
-    // Find the last filled slot in guessedLetters.
+    // Remove the last filled slot
     let activeIndex = null;
     for (let i = editableIndices.length - 1; i >= 0; i--) {
-      const idx = editableIndices[i];
-      if (state.guessedLetters[idx]) {
-        activeIndex = idx;
+      if (state.guessedLetters[editableIndices[i]]) {
+        activeIndex = editableIndices[i];
         break;
       }
     }
     if (activeIndex === null) return state;
-
     const newGuessed = { ...state.guessedLetters };
     delete newGuessed[activeIndex];
     console.log(`Deleted letter at index ${activeIndex}.`, newGuessed);
@@ -397,16 +385,15 @@ export function deleteGuessLetter() {
 }
 
 /**
- * submitGuess()
- * Validates the guess, updates state for correct or incorrect submission,
- * and displays a message.
+ * submitGuess
+ * Validates the guess, updates game state, and provides feedback.
  */
 export function submitGuess() {
   gameStore.update(state => {
     if (state.gameState !== "guess_mode") return state;
     
     const phrase = state.currentPhrase;
-    // Check that all non-space slots have a guess.
+    // Ensure all non-space positions are filled
     for (let i = 0; i < phrase.length; i++) {
       if (phrase[i] === ' ') continue;
       if (state.purchasedLetters[i] === phrase[i]) continue;
@@ -427,7 +414,7 @@ export function submitGuess() {
     let correctIndexes = [];
     let allCorrect = true;
 
-    // Validate each guessed letter
+    // Validate each guess
     for (let i = 0; i < phrase.length; i++) {
       if (phrase[i] === ' ') continue;
       if (newPurchased[i] === phrase[i]) continue;
@@ -440,19 +427,19 @@ export function submitGuess() {
       }
     }
 
-    // Update locked letters: lock a letter if all its positions are correct.
+    // Update locked letters: lock a letter if all instances are correctly guessed/purchased.
     const distinctLetters = [...new Set(phrase.replace(/\s/g, ''))];
     distinctLetters.forEach(letter => {
-      const letterIndices = [];
+      const indices = [];
       for (let i = 0; i < phrase.length; i++) {
-        if (phrase[i] === letter) letterIndices.push(i);
+        if (phrase[i] === letter) indices.push(i);
       }
-      newLockedLetters[letter] = letterIndices.every(idx => newPurchased[idx] === letter);
+      newLockedLetters[letter] = indices.every(idx => newPurchased[idx] === letter);
     });
 
     correctIndexes.forEach(idx => newShakenLetters.add(idx));
     const newGuessesRemaining = Math.max(state.guessesRemaining - 1, 0);
-    let win = phrase.split('').every((ch, i) => ch === ' ' || newPurchased[i] === ch);
+    const win = phrase.split('').every((ch, i) => ch === ' ' || newPurchased[i] === ch);
 
     if (allCorrect || win) {
       console.log("✅ Guess submitted correctly. You win!");
@@ -480,16 +467,13 @@ export function submitGuess() {
     }
   });
 
-  // Auto-clear feedback message after 2 seconds.
+  // Clear feedback message after 2 seconds
   setTimeout(() => {
     gameStore.update(state => ({ ...state, message: "" }));
   }, 2000);
 
-  // Toggle the extra guess pending flag after submission.
-  gameStore.update(state => ({ 
-    ...state, 
-    extraGuessPending: !state.extraGuessPending 
-  }));
+  // Toggle extra guess pending flag post submission
+  gameStore.update(state => ({ ...state, extraGuessPending: !state.extraGuessPending }));
 }
 
 /* ================================
@@ -497,8 +481,8 @@ export function submitGuess() {
 =================================== */
 
 /**
- * fetchRandomGame()
- * Retrieves a random puzzle via a Supabase RPC and initializes the game store.
+ * fetchRandomGame
+ * Retrieves a random puzzle using Supabase and initializes the game state.
  */
 export async function fetchRandomGame() {
   try {
@@ -520,7 +504,6 @@ export async function fetchRandomGame() {
       extraGuessPending: false,
       message: ""
     });
-
     console.log(`Game loaded: ${data.phrase} - ${data.category}`);
   } catch (err) {
     console.error("Error fetching game data:", err);
@@ -528,8 +511,8 @@ export async function fetchRandomGame() {
 }
 
 /**
- * resetGame()
- * Resets the game store to its initial state.
+ * resetGame
+ * Resets the game state to the initial values.
  */
 export function resetGame() {
   gameStore.set({
@@ -550,16 +533,16 @@ export function resetGame() {
 }
 
 /**
- * reduceBankrollToZero()
- * Gradually reduces the bankroll to 0 (for game over effect) when the game state is "lost".
+ * reduceBankrollToZero
+ * Gradually reduces the bankroll to zero (for a game-over visual effect).
  */
 export function reduceBankrollToZero() {
   gameStore.update(state => {
     if (state.gameState !== "lost") return state;
-    let decrementRate = Math.max(state.bankroll / 100, 1);
-    let interval = setInterval(() => {
+    const decrementRate = Math.max(state.bankroll / 100, 1);
+    const interval = setInterval(() => {
       gameStore.update(state => {
-        let newBankroll = Math.max(0, state.bankroll - decrementRate);
+        const newBankroll = Math.max(0, state.bankroll - decrementRate);
         if (newBankroll <= 0) {
           clearInterval(interval);
           return { ...state, bankroll: 0 };

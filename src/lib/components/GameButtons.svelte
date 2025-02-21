@@ -10,22 +10,31 @@
     submitGuess
   } from '$lib/stores/GameStore.js';
 
-  // Local UI state variables
+  // ----------------------------
+  // LOCAL UI STATE
+  // ----------------------------
   let showHowToPlay = false;
   let darkMode = false;
 
-  // Reactive declarations based on the global gameStore
-  $: showHintCost = $gameStore.selectedPurchase?.type === 'hint' && $gameStore.gameState === 'purchase_pending';
-  $: showGuessCost = $gameStore.selectedPurchase?.type === 'extra_guess' && $gameStore.gameState === 'purchase_pending';
+  // ----------------------------
+  // REACTIVE DERIVATIONS FROM GAME STORE
+  // ----------------------------
+  // Purchase-related flags
+  $: purchasePending = !!$gameStore.selectedPurchase;
+  $: hintPending =
+    $gameStore.selectedPurchase?.type === 'hint' &&
+    $gameStore.gameState === 'purchase_pending';
+  $: guessPending =
+    $gameStore.selectedPurchase?.type === 'extra_guess' &&
+    $gameStore.gameState === 'purchase_pending';
+  $: showHintCost = hintPending;
+  $: showGuessCost = guessPending;
+
+  // Game status flags
   $: noGuessesLeft = $gameStore.guessesRemaining === 0;
   $: guessModeActive = $gameStore.gameState === 'guess_mode';
   $: bankroll = $gameStore.bankroll;
   $: fundsLow = bankroll < 150;
-  $: hintPending = $gameStore.selectedPurchase?.type === 'hint' && $gameStore.gameState === 'purchase_pending';
-  $: guessPending = $gameStore.selectedPurchase?.type === 'extra_guess' && $gameStore.gameState === 'purchase_pending';
-
-  // Determine if any purchase is pending
-  $: purchasePending = !!$gameStore.selectedPurchase;
 
   // Determine if all guess slots are filled in guess mode
   $: guessComplete = guessModeActive && (() => {
@@ -38,44 +47,55 @@
     return true;
   })();
 
-  // Dynamic label for the main action button:
-  // - If a purchase is pending, show "Confirm Purchase"
+  // Dynamic label for the main action button based on state:
+  // - If a purchase is pending → "Confirm Purchase"
   // - Else if in guess mode:
-  //    • if complete, show "Submit Guess"
-  //    • else, show "Exit Guess Mode"
-  // - Otherwise, show "Guess (x)" where x is the remaining guesses.
+  //    • If complete → "Submit Guess"
+  //    • Else → "Exit Guess Mode"
+  // - Otherwise → "Guess (x)" where x is the number of remaining guesses.
   $: buttonLabel = purchasePending
     ? "Confirm Purchase"
     : guessModeActive
       ? (guessComplete ? "Submit Guess" : "Exit Guess Mode")
       : `Guess (${$gameStore.guessesRemaining})`;
 
-  // Main button click handler (acts as Enter/Submit/Exit/Confirm)
+  // ----------------------------
+  // EVENT HANDLERS
+  // ----------------------------
+
+  /**
+   * handleMainButtonClick
+   * Main action button handler:
+   * - If a purchase is pending, confirms it.
+   * - In guess mode, submits the guess if complete or exits guess mode.
+   * - Otherwise, enters guess mode.
+   */
   function handleMainButtonClick() {
-  if (purchasePending) {
-    // Confirm the purchase and ensure the game does NOT enter guess mode
-    confirmPurchase();
-    return; // Exit early so it doesn't fall through to guess mode
-  }
-
-  if (guessModeActive) {
-    if (guessComplete) {
-      // Submit the guess if all slots are filled
-      submitGuess();
-    } else {
-      // Exit guess mode if incomplete
-      gameStore.update(state => ({ ...state, gameState: "default", guessedLetters: {} }));
+    if (purchasePending) {
+      confirmPurchase();
+      return;
     }
-    return;
+
+    if (guessModeActive) {
+      if (guessComplete) {
+        submitGuess();
+      } else {
+        // Exit guess mode if the guess is incomplete
+        gameStore.update(state => ({ ...state, gameState: "default", guessedLetters: {} }));
+      }
+      return;
+    }
+
+    // If not in guess mode and no purchase pending, enter guess mode
+    if (!purchasePending && !guessModeActive) {
+      enterGuessMode();
+    }
   }
 
-  // If no purchase is pending and not already in guess mode, enter guess mode
-  if (!purchasePending && !guessModeActive) {
-    enterGuessMode();
-  }
-}
-
-  // Toggle Hint Selection (with forced blur)
+  /**
+   * toggleHintPurchase
+   * Toggles hint purchase selection.
+   */
   function toggleHintPurchase() {
     gameStore.update(state => {
       if (state.selectedPurchase?.type === "hint") {
@@ -86,7 +106,10 @@
     setTimeout(() => document.activeElement.blur(), 0);
   }
 
-  // Toggle Extra Guess Selection (with forced blur)
+  /**
+   * toggleGuessPurchase
+   * Toggles extra guess purchase selection.
+   */
   function toggleGuessPurchase() {
     gameStore.update(state => {
       if (state.selectedPurchase?.type === "extra_guess") {
@@ -97,47 +120,51 @@
     setTimeout(() => document.activeElement.blur(), 0);
   }
 
-  // Toggle dark mode and store preference
+  /**
+   * toggleDarkMode
+   * Toggles dark mode for the UI and saves preference in localStorage.
+   */
   function toggleDarkMode() {
     darkMode = !darkMode;
     document.body.classList.toggle('dark-mode', darkMode);
     localStorage.setItem('darkMode', darkMode);
   }
 
-  // Set up key listener on mount (Enter key triggers the main action)
+  // ----------------------------
+  // GLOBAL KEY LISTENER (for Enter key)
+  // ----------------------------
   onMount(() => {
-  darkMode = localStorage.getItem('darkMode') === 'true';
-  document.body.classList.toggle('dark-mode', darkMode);
+    // Initialize dark mode based on stored preference
+    darkMode = localStorage.getItem('darkMode') === 'true';
+    document.body.classList.toggle('dark-mode', darkMode);
 
-  const onKeyDown = (event) => {
-    if (event.key === 'Enter') {
-      event.preventDefault(); // Prevent accidental form submission or unwanted behavior
+    const onKeyDown = (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        // Do nothing if a purchase is pending (forcing explicit button click)
+        if ($gameStore.selectedPurchase) return;
 
-      // Ensure Enter key mimics the onscreen button behavior
-      gameStore.update(state => {
-        if (state.selectedPurchase) {
-          confirmPurchase();
-          return { ...state, gameState: "default" }; // Ensure we do NOT enter guess mode
+        if ($gameStore.gameState === "guess_mode") {
+          if (guessComplete) {
+            submitGuess();
+          } else {
+            gameStore.update(state => ({ ...state, gameState: "default", guessedLetters: {} }));
+          }
+        } else {
+          // If not in purchase or guess mode, enter guess mode
+          enterGuessMode();
         }
+      }
+    };
 
-        if (state.gameState === "guess_mode") {
-          return state.guessedLetters && Object.keys(state.guessedLetters).length > 0
-            ? submitGuess()
-            : { ...state, gameState: "default", guessedLetters: {} };
-        }
-
-        // If not in purchase or guess mode, enter guess mode
-        return { ...state, gameState: "guess_mode", guessedLetters: {} };
-      });
-    }
-  };
-
-  window.addEventListener('keydown', onKeyDown);
-  return () => window.removeEventListener('keydown', onKeyDown);
-});
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  });
 </script>
 
-<!-- If in guess mode, display a banner -->
+<!-- ----------------------------
+     UI RENDERING
+----------------------------- -->
 {#if guessModeActive}
   <div class="guess-mode-banner">
     Fill every phrase box to submit.<br />
@@ -145,14 +172,12 @@
   </div>
 {/if}
 
-<!-- Display any feedback message -->
 {#if $gameStore.message}
   <div class="message-box">{$gameStore.message}</div>
 {/if}
 
-<!-- Render the purchase controls -->
 <div class="guess-controls">
-  <!-- Hint Button + Cost Indicator -->
+  <!-- Hint Purchase Button -->
   <div class="button-container">
     {#if showHintCost}
       <div class="cost-indicator">-$150</div>
@@ -167,20 +192,21 @@
     </button>
   </div>
 
-<!-- Dynamic Main Action Button -->
-<button
-  class="guess-phrase-button 
-    {purchasePending ? 'pending' : ''} 
-    {guessModeActive && !guessComplete ? 'exit-mode' : ''} 
-    {guessComplete ? 'guess-complete' : ''}"
-  on:click={handleMainButtonClick}
-  disabled={noGuessesLeft && !purchasePending}
-  aria-label={buttonLabel}
->
-  {buttonLabel}
-</button>
+  <!-- Main Action Button -->
+  <button
+    class="guess-phrase-button"
+    class:pending={purchasePending}
+    class:confirm-purchase={purchasePending}
+    class:exit-mode={guessModeActive && !guessComplete}
+    class:guess-complete={guessComplete}
+    on:click={handleMainButtonClick}
+    disabled={noGuessesLeft && !purchasePending}
+    aria-label={buttonLabel}
+  >
+    {buttonLabel}
+  </button>
 
-  <!-- Buy Extra Guess Button + Cost Indicator -->
+  <!-- Extra Guess Purchase Button -->
   <div class="button-container">
     {#if showGuessCost}
       <div class="cost-indicator">-$150</div>
@@ -196,7 +222,7 @@
   </div>
 </div>
 
-<!-- Top Buttons: "How to Play" and Dark Mode Toggle -->
+<!-- Top Controls -->
 <div class="top-buttons">
   <button class="how-to-play-button" on:click={() => (showHowToPlay = true)} aria-label="How to Play Instructions">
     How to Play
@@ -206,7 +232,7 @@
   </button>
 </div>
 
-<!-- "How to Play" Modal -->
+<!-- How To Play Modal -->
 {#if showHowToPlay}
   <div class="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal-content">
@@ -231,10 +257,10 @@
     </div>
   </div>
 {/if}
-
+  
 <style>
   /* ---------------------------
-     Cost Indicator
+     Cost Indicator Styles
   --------------------------- */
   .button-container {
     position: relative;
@@ -256,7 +282,7 @@
   }
 
   /* ---------------------------
-     Global Reset & Utility
+     Global Reset & Utility Styles
   --------------------------- */
   button:focus {
     outline: none;
@@ -336,7 +362,7 @@
   }
 
   /* ---------------------------
-     Guess Controls & Unified Button Styles
+     Guess Controls & Main Button Styles
   --------------------------- */
   .guess-controls {
     display: flex;
@@ -347,7 +373,6 @@
     margin: 10px auto;
     gap: 8px;
   }
-  /* Main Action Button */
   .guess-phrase-button {
     background-color: orange;
     color: white;
@@ -367,7 +392,6 @@
   .guess-phrase-button:active {
     transform: scale(0.98);
   }
-  /* When a purchase is pending, turn the main action button green and blink */
   .guess-phrase-button.pending {
     background-color: green !important;
     color: white !important;
@@ -379,29 +403,27 @@
     100% { background-color: green; }
   }
 
-  /* Hint & Buy Guess Buttons (Circular) */
+  /* ---------------------------
+     Hint & Extra Guess Button Styles
+  --------------------------- */
   .hint-button,
   .buy-guess-button {
-    width: 25px;
-    height: 25px;
+    width: 35px;
+    height: 35px;
     border-radius: 50%;
     border: none;
     cursor: pointer;
     color: #fff;
     font-weight: bold;
     text-align: center;
-    margin-left: 20px;
-    margin-right: 20px;
+    margin: 0 20px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 6px;
+    font-size: 8px;
     text-transform: uppercase;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     box-sizing: border-box;
-  }
-  .hint-button,
-  .buy-guess-button {
     background: radial-gradient(circle at 30% 30%, #4488ff, #0055bb 80%);
     box-shadow: 0 4px 0 #003366, 0 6px 20px rgba(0, 0, 0, 0.4);
   }
@@ -441,9 +463,10 @@
   }
   :global(body.dark-mode) button.pending,
   :global(body.dark-mode) .key.pending {
-    animation: none !important;
-    background-color: inherit !important;
-  }
+  animation: blinkGreen 1s infinite; /* or none if you prefer */
+  background-color: green !important; /* or another dark-mode-friendly color */
+  color: #fff !important; /* ensure the text is still visible */
+}
   .buy-guess-button:focus,
   .hint-button:focus,
   .guess-phrase-button:focus {
@@ -458,213 +481,5 @@
   .guess-phrase-button:focus {
     background-color: orange !important;
     color: white !important;
-  }
-  :global(body:not(.dark-mode)) .key .letter,
-  :global(body:not(.dark-mode)) .key .letter.selected,
-  :global(body:not(.dark-mode)) .key .letter.pending {
-    color: #000 !important;
-  }
-
-  /* ---------------------------
-     Keyboard Container & Rows
-  --------------------------- */
-  .keyboard-container {
-    position: fixed;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100%;
-    max-width: 600px;
-    background-color: #f9f9f9;
-    padding: 10px;
-    border-top: 2px solid #ccc;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    justify-content: center;
-    z-index: 1000;
-  }
-  .keyboard-row {
-    display: flex;
-    justify-content: center;
-    gap: 2px;
-    flex-wrap: nowrap;
-  }
-  body {
-    padding-bottom: 200px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  /* Key Styles */
-  .key {
-    width: 70px;
-    height: 50px;
-    font-size: 14px;
-    font-weight: bold;
-    border: 2px solid black;
-    background-color: white;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 2px;
-    box-sizing: border-box;
-  }
-  .key.delete {
-    background-color: red;
-    color: white;
-    border: 2px solid darkred;
-  }
-  :global(body.dark-mode) .key.delete {
-    background-color: red;
-    color: white;
-    border: 2px solid darkred;
-  }
-
-  /* ---------------------------
-     Phrase Container & Boxes
-  --------------------------- */
-  .guess-phrase-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 4px;
-    width: 100%;
-    max-width: 800px;
-    padding: 10px 0;
-  }
-  .guess-phrase {
-    flex-grow: 1;
-    flex-basis: calc(100% / var(--phrase-length));
-    min-width: 30px;
-    max-width: 60px;
-    height: 60px;
-    font-size: clamp(1.4rem, 3vw, 2.2rem);
-    text-align: center;
-    border: 3px solid black;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 5px;
-    transition: all 0.2s ease-in-out;
-  }
-  @media (max-width: 500px) {
-    .guess-phrase {
-      min-width: 25px;
-      max-width: 45px;
-      height: 50px;
-      font-size: 1.2rem;
-    }
-  }
-  @media (max-width: 400px) {
-    .guess-phrase {
-      min-width: 22px;
-      max-width: 40px;
-      height: 45px;
-      font-size: 1rem;
-    }
-  }
-
-  /* ---------------------------
-     Message & Banner
-  --------------------------- */
-  .message-box {
-    margin-top: 10px;
-    background: red;
-    color: white;
-    padding: 10px 20px;
-    font-weight: bold;
-    border-radius: 5px;
-    text-align: center;
-    animation: fadeOut 2s ease-in-out;
-  }
-  @keyframes fadeOut {
-    0% { opacity: 1; transform: translateY(0); }
-    50% { opacity: 0.8; transform: translateY(-5px); }
-    100% { opacity: 0; transform: translateY(-10px); }
-  }
-  .guess-mode-banner {
-    background-color: rgba(255, 8, 8, 0.641);
-    color: white;
-    font-size: 0.6rem;
-    font-weight: bold;
-    text-align: center;
-    padding: 10px;
-    border-radius: 5px;
-    margin: 0 auto 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 80%;
-    max-width: 600px;
-    min-width: 300px;
-    animation: fadeIn 0.3s ease-in-out;
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
-  }
-
-  /* ---------------------------
-     Layout: Top Section, Logo, Category & Bankroll
-  --------------------------- */
-  main {
-    max-width: 600px;
-    margin: 0 auto;
-    text-align: center;
-    font-family: sans-serif;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-  }
-  .category {
-    font-size: 1.2rem;
-    margin-top: -150px;
-    margin-bottom: 0;
-    font-weight: bold;
-  }
-  .bankroll-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    margin: 10px auto 0;
-  }
-  .bankroll-box {
-    padding: 5px 10px;
-    font-size: 1.5rem;
-    font-family: 'Orbitron', sans-serif;
-    color: #fff;
-    background: linear-gradient(45deg, #2e7d32, #66bb6a);
-    border: 3px solid #1b5e20;
-    border-radius: 8px;
-    text-align: center;
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
-    display: inline-flex;
-    justify-content: center;
-    align-items: center;
-  }
-  .currency {
-    margin-right: 4px;
-  }
-  .wordbank-logo {
-    width: 380px;
-    height: auto;
-    display: block;
-    margin-bottom: -60px;
-    margin-top: -50px;
-    padding-bottom: 0;
-  }
-  .logo-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: -50px;
-    margin-bottom: 0;
   }
 </style>

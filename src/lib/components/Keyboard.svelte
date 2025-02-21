@@ -1,5 +1,4 @@
 <script>
-  // Import necessary Svelte functions and store functions
   import { onMount } from 'svelte';
   import {
     gameStore,
@@ -11,25 +10,23 @@
     enterGuessMode
   } from '$lib/stores/GameStore.js';
 
-  // Local state for keyboard (if needed)
-  let selectedKeys = new Set();
-
-  // Define letter costs (for display purposes)
+  // Define letter costs for display purposes (mirrors GameStore constants)
   const letterCosts = {
     Q: 30, W: 50, E: 140, R: 120, T: 120, Y: 60, U: 80, I: 110, O: 90, P: 80,
     A: 130, S: 120, D: 80, F: 60, G: 70, H: 70, J: 30, K: 50, L: 80,
     Z: 40, X: 40, C: 80, V: 50, B: 60, N: 100, M: 70
   };
 
-  // Define keyboard rows for a QWERTY layout
+  // Define rows for a QWERTY layout
   const row1 = ['Q','W','E','R','T','Y','U','I','O','P'];
   const row2 = ['A','S','D','F','G','H','J','K','L'];
   const row3 = ['Z','X','C','V','B','N','M'];
 
   /**
-   * handleLetterClick(letter)
-   * - In guess mode, inputs the guess letter.
-   * - Otherwise, selects the letter for purchase.
+   * handleLetterClick
+   * Depending on the game state, either inputs a guess letter or selects a letter for purchase.
+   *
+   * @param {string} letter - The letter clicked.
    */
   function handleLetterClick(letter) {
     if ($gameStore.gameState === 'guess_mode') {
@@ -40,81 +37,75 @@
   }
 
   /**
-   * Reactive check: Determine if all guess slots are filled.
+   * Global keyboard handler for Enter, Backspace/Delete, Space, and letter keys.
+   *
+   * Prevents default browser behavior and maps keys to game actions.
    */
-  $: guessComplete = $gameStore.gameState === 'guess_mode' && (() => {
-    const phrase = $gameStore.currentPhrase;
-    for (let i = 0; i < phrase.length; i++) {
-      if (phrase[i] === ' ') continue; // Skip spaces
-      if ($gameStore.purchasedLetters[i] === phrase[i]) continue; // Skip purchased letters
-      if (!$gameStore.guessedLetters[i]) return false; // If any box is empty, return false
-    }
-    return true;
-  })();
+  function handleKeyDown(event) {
+    event.preventDefault();
+    const key = event.key.toUpperCase();
 
-  /**
-   * Global keyboard handler to support Enter, Delete/Backspace, and Space.
-   */
-   function handleKeyDown(event) {
-  event.preventDefault(); // Prevent unintended default browser actions
-
-  const key = event.key.toUpperCase();
-
-  gameStore.update(state => {
-    // --- ENTER KEY FUNCTIONALITY ---
-    if (event.key === 'Enter') {
-      if (state.selectedPurchase) {
-        confirmPurchase();
-        return { ...state, gameState: "default" }; // Stay in default mode after purchase
+    gameStore.update(state => {
+      // ENTER: Confirm purchase or submit guess/enter guess mode
+      if (event.key === 'Enter') {
+        if (state.selectedPurchase) {
+          confirmPurchase();
+          return { ...state, gameState: "default" };
+        }
+        if (state.gameState === "guess_mode") {
+          // If guess is complete, submit; otherwise, exit guess mode.
+          return state.guessedLetters &&
+            Object.keys(state.guessedLetters).length === state.currentPhrase.replace(/\s/g, '').length
+              ? submitGuess()
+              : { ...state, gameState: "default", guessedLetters: {} };
+        }
+        // If not in guess mode, enter guess mode.
+        if (!state.selectedPurchase && state.gameState !== "guess_mode") {
+          return { ...state, gameState: "guess_mode", guessedLetters: {} };
+        }
+        return state;
       }
 
-      if (state.gameState === "guess_mode") {
-        return guessComplete
-          ? submitGuess()
-          : { ...state, gameState: "default", guessedLetters: {} }; // Exit guess mode if incomplete
+      // BACKSPACE / DELETE: Remove last guessed letter in guess mode
+      if (event.key === 'Backspace' || event.key === 'Delete') {
+        if (state.gameState === "guess_mode") {
+          deleteGuessLetter();
+        }
+        return state;
       }
 
-      if (!state.selectedPurchase && state.gameState !== "guess_mode") {
-        return { ...state, gameState: "guess_mode", guessedLetters: {} };
+      // SPACEBAR: Toggle guess mode
+      if (event.key === ' ' || event.code === 'Space') {
+        enterGuessMode();
+        return state;
       }
 
-      return state;
-    }
-
-    // --- BACKSPACE / DELETE (Remove last guessed letter) ---
-    if (event.key === 'Backspace' || event.key === 'Delete') {
-      if (state.gameState === "guess_mode") {
-        deleteGuessLetter();
-      }
-      return state;
-    }
-
-    // --- SPACEBAR (Toggles Guess Mode) ---
-    if (event.key === ' ' || event.code === 'Space') {
-      enterGuessMode();
-      return state;
-    }
-
-    // --- LETTER SELECTION (Only when not submitting) ---
-    if (/^[A-Z]$/.test(key)) {
-      if (state.gameState === "guess_mode") {
-        inputGuessLetter(key);
-      } else {
-        selectLetter(key);
+      // Letter keys: Either input as guess or select for purchase.
+      if (/^[A-Z]$/.test(key)) {
+        if (state.gameState === "guess_mode") {
+          inputGuessLetter(key);
+        } else {
+          selectLetter(key);
+        }
+        return state;
       }
       return state;
-    }
+    });
 
-    return state;
+    // Remove focus from active element after key press to avoid unwanted focus styling
+    document.activeElement.blur();
+  }
+
+  // Set up a global keydown listener on mount.
+  onMount(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   });
-
-  // Remove focus from active element after key press
-  document.activeElement.blur();
-}
 </script>
 
+<!-- Keyboard layout rendering -->
 <div class="keyboard-container">
-  <!-- Row 1: Letters Q - P, plus conditionally the Delete button -->
+  <!-- Row 1: Q - P -->
   <div class="keyboard-row">
     {#each row1 as letter}
       <button
@@ -142,7 +133,7 @@
     {/if}
   </div>
 
-  <!-- Row 2: Letters A - L -->
+  <!-- Row 2: A - L -->
   <div class="keyboard-row">
     {#each row2 as letter}
       <button
@@ -165,7 +156,7 @@
     {/each}
   </div>
 
-  <!-- Row 3: Letters Z - M plus the Enter button -->
+  <!-- Row 3: Z - M -->
   <div class="keyboard-row">
     {#each row3 as letter}
       <button
@@ -186,13 +177,12 @@
         <div class="price">${letterCosts[letter]}</div>
       </button>
     {/each}
-    <!-- Enter Button: Blinks green when guessComplete is true -->
   </div>
 </div>
 
 <style>
   /* ---------------------------
-     Keyboard Container & Rows
+     Keyboard Container & Layout
   --------------------------- */
   .keyboard-container {
     position: fixed;
@@ -207,19 +197,16 @@
     display: flex;
     flex-direction: column;
     gap: 5px;
-    justify-content: center;
     z-index: 1000;
   }
-
   .keyboard-row {
     display: flex;
     justify-content: center;
     gap: 2px;
     flex-wrap: nowrap;
   }
-
   body {
-    padding-bottom: 200px;
+    padding-bottom: 200px; /* Ensure space for the keyboard */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -243,36 +230,19 @@
     padding: 2px;
     box-sizing: border-box;
   }
-/* Style for the delete button - red background with white text */
-.key.delete {
-  background-color: red; /* Changed to a solid red */
-  color: white;
-  border: 2px solid darkred; /* Optional: add a darker red border */
-}
-
-/* Dark mode override for the delete button */
-:global(body.dark-mode) .key.delete {
-  background-color: red;
-  color: white;
-  border: 2px solid darkred;
-}
-
-  /* ---------------------------
-     Enter Button Specifics
-  --------------------------- */
-  .enter-button {
-    width: 70px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    background-color: white !important;
-    color: black !important;
-    border: 2px solid black;
+  .key.delete {
+    background-color: red;
+    color: white;
+    border: 2px solid darkred;
+  }
+  :global(body.dark-mode) .key.delete {
+    background-color: red;
+    color: white;
+    border: 2px solid darkred;
   }
 
   /* ---------------------------
-     Letter & Price Display
+     Letter & Price Styling
   --------------------------- */
   .letter {
     line-height: 1;
@@ -285,34 +255,31 @@
   /* ---------------------------
      Key State Styles
   --------------------------- */
-  button.purchased {
+  .purchased {
     background-color: green;
     color: white;
     cursor: default;
   }
-  button.pending {
+  .pending {
     background-color: blue !important;
     color: white !important;
     animation: blink 1s infinite;
   }
-  button.incorrect {
+  .incorrect {
     background-color: red;
     color: white;
     cursor: default;
   }
 
-  /* ---------------------------
-     Enter Button Blinking Effect for Submit Ready State
-  --------------------------- */
-  .enter-button.submit-ready,
-  .enter-button.pending {
-    background-color: green !important;
-    color: white !important;
-    animation: blink 1s infinite;
+  /* Blinking animation for pending keys */
+  @keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
   }
 
   /* ---------------------------
-     DARK MODE Overrides
+     Dark Mode Overrides
   --------------------------- */
   :global(body.dark-mode) .keyboard-container {
     background-color: #333;
@@ -322,39 +289,17 @@
     color: white;
     border-color: #777;
   }
-  :global(body.dark-mode) .key.purchased {
+  :global(body.dark-mode) .purchased {
     background-color: green !important;
     color: white !important;
   }
-  :global(body.dark-mode) .key.incorrect {
+  :global(body.dark-mode) .incorrect {
     background-color: red !important;
     color: white !important;
   }
-  :global(body.dark-mode) .key.pending {
+  :global(body.dark-mode) .pending {
     background-color: blue !important;
     color: white !important;
     animation: blink 1s infinite;
-  }
-  :global(body.dark-mode) .enter-button.pending,
-  :global(body.dark-mode) .enter-button.submit-ready {
-    background-color: green !important;
-    color: white !important;
-    animation: blink 1s infinite;
-  }
-  :global(body:not(.dark-mode)) .enter-button.submit-ready {
-    background-color: green !important;
-    color: white !important;
-    animation: blink 1s infinite;
-  }
-
-  /* Blinking animation */
-  @keyframes blink {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
-  }
-
-  :global(body:not(.dark-mode)) .key .letter {
-    transition: none !important;
   }
 </style>
