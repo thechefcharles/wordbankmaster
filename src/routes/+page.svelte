@@ -1,43 +1,33 @@
 <!-- +page.svelte -->
 <svelte:head>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet" />
 </svelte:head>
 
 <script>
   import { onMount } from 'svelte';
-  import { browser } from '$app/environment'; // For browser-only document access
+  import { browser } from '$app/environment';
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
   import Keyboard from '$lib/components/Keyboard.svelte';
   import GameButtons from '$lib/components/GameButtons.svelte';
-  import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
   import FlipDigit from '$lib/components/FlipDigit.svelte';
+  import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
 
+  // On mount: add dark mode (could be updated later based on user settings) 
   onMount(() => {
     document.body.classList.add('dark-mode');
+    fetchRandomGame(); // Fetch a new puzzle on load
   });
 
-  
-
-  // Reactive bankroll value from your store
-  $: bankroll = $gameStore.bankroll || 0;
-  // Split the bankroll into individual digits
-  $: digits = String(bankroll).split('');
-  // Keep a reactive local reference to the game store
+  // Reactive subscriptions from the game store
   $: currentGame = $gameStore;
+  // Derive the bankroll and split it into individual digits for display
+  $: bankroll = currentGame.bankroll || 0;
+  $: digits = String(bankroll).split('');
 
-  // On mount, fetch a random puzzle
-  onMount(() => {
-    fetchRandomGame();
-  });
-
-  // Toggle the "guess-mode" class on the document body based on game state
+  // When in the browser, update the document body class based on the game state
   $: if (browser) {
-    if (currentGame.gameState === 'guess_mode') {
-      document.body.classList.add('guess-mode');
-    } else {
-      document.body.classList.remove('guess-mode');
-    }
+    document.body.classList.toggle('guess-mode', currentGame.gameState === 'guess_mode');
   }
 </script>
 
@@ -55,7 +45,7 @@
     <PhraseDisplay />
   </section>
 
-  <!-- Resource Stats (Bankroll) -->
+  <!-- Bankroll Display -->
   <section class="stats-section">
     <div class="bankroll-container">
       <div class="bankroll-box">
@@ -84,7 +74,7 @@
     <GameButtons />
   </section>
 
-  <!-- Optional Reset Button (Hidden) -->
+  <!-- Hidden Reset Button (for debugging/testing) -->
   <button class="reset-button hidden" on:click={fetchRandomGame}>
     Reset Game
   </button>
@@ -111,13 +101,16 @@
     font-weight: bold;
   }
 
-  /* Keyboard section styling */
-  .keyboard-section {
+  /* Section styling */
+  .phrase-section,
+  .stats-section,
+  .keyboard-section,
+  .buttons-section {
     width: 100%;
     padding: 5px;
   }
 
-  /* Hide reset button */
+  /* Reset button hidden */
   .reset-button.hidden {
     display: none;
   }
@@ -130,11 +123,10 @@
     width: 100%;
     margin: 10px auto 0;
   }
-  
   .bankroll-box {
-    padding: 5px 10px;             /* Reduced padding */
-    font-size: 1.5rem;             /* Smaller font size */
-    font-family: 'Orbitron', sans-serif; /* Bold digital font */
+    padding: 5px 10px;
+    font-size: 1.5rem;
+    font-family: 'Orbitron', sans-serif;
     color: #fff;
     background: linear-gradient(45deg, #2e7d32, #66bb6a);
     border: 3px solid #1b5e20;
@@ -145,7 +137,6 @@
     justify-content: center;
     align-items: center;
   }
-  
   .currency {
     margin-right: 4px;
   }
@@ -155,11 +146,9 @@
     width: 380px;
     height: auto;
     display: block;
-    margin-bottom: -60px;
-    margin-top: -50px;
+    margin: -50px auto -60px;
     padding-bottom: 0;
   }
-  
   .logo-container {
     display: flex;
     justify-content: center;
@@ -181,13 +170,11 @@
     50% { transform: scale(1.5) rotate(-3deg); text-shadow: 0px 0px 30px limegreen; }
     75% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px green; }
   }
-  
   @keyframes winFlash {
     0% { opacity: 1; }
     50% { opacity: 0.2; }
     100% { opacity: 1; }
   }
-  
   .banner.win {
     font-size: 3rem;
     font-weight: 600;
@@ -210,13 +197,11 @@
     50% { transform: scale(1.5) rotate(-3deg); text-shadow: 0px 0px 30px red; }
     75% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px red; }
   }
-  
   @keyframes gameOverFlash {
     0% { opacity: 1; }
     50% { opacity: 0.2; }
     100% { opacity: 1; }
   }
-  
   .banner.lose {
     font-size: 3rem;
     font-weight: 600;
@@ -232,9 +217,9 @@
     animation: gameOverPulse 1.5s infinite, gameOverFlash 0.5s infinite;
   }
 
+  /* Dark mode overrides */
   :global(body.dark-mode) {
-  background: #222;
-  color: white;
-}
-
+    background: #222;
+    color: white;
+  }
 </style>
