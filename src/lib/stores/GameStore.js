@@ -18,8 +18,8 @@ export const LETTER_COSTS = {
 export const gameStore = writable({
   bankroll: 1000,
   guessesRemaining: 2,
-  category: "Person",
-  currentPhrase: "MICHAEL JORDAN",
+  category: "Person", // might not need
+  currentPhrase: "MICHAEL JORDAN",//might not need
   gameState: "default", // States: "default", "purchase_pending", "guess_mode", "won", "lost"
   purchasedLetters: [],
   guessedLetters: {},
@@ -27,7 +27,7 @@ export const gameStore = writable({
   incorrectLetters: [],
   selectedPurchase: null,
   shakenLetters: [],
-  extraGuessPending: false, // Flag for extra guess purchase pending
+  extraGuessPending: false, // Flag for extra guess purchase pending , might not need use selected purchase?
   message: "" // Feedback messages (e.g., incorrect guess)
 });
 
@@ -184,110 +184,99 @@ export function confirmPurchase() {
     if (!state.selectedPurchase) return state;
     const purchase = state.selectedPurchase;
     let newShakenLetters = new Set(state.shakenLetters || []);
+    let newState = { ...state, selectedPurchase: null, gameState: "default" };
 
     // --- Process Letter Purchase ---
     if (purchase.type === 'letter') {
       const letter = purchase.value;
       const cost = LETTER_COSTS[letter] || 0;
-      if (state.bankroll < cost) return { ...state, selectedPurchase: null };
+      if (state.bankroll < cost) return newState;
 
       const phrase = state.currentPhrase;
       let newPurchased = [...state.purchasedLetters];
       let newIncorrect = [...state.incorrectLetters];
-      let correctIndexes = [];
 
       // Mark positions where the purchased letter occurs
       for (let i = 0; i < phrase.length; i++) {
         if (phrase[i] === letter) {
           newPurchased[i] = letter;
-          if (!newShakenLetters.has(i)) correctIndexes.push(i);
+          newShakenLetters.add(i);
         }
       }
-      // Add indexes for shake animation if letter is found
-      if (correctIndexes.length > 0) {
-        correctIndexes.forEach(idx => newShakenLetters.add(idx));
-      } else {
+
+      // If letter was incorrect, mark it
+      if (!phrase.includes(letter)) {
         newIncorrect.push(letter);
       }
 
-      // Lock letter if all its occurrences are now purchased
+      // Lock the letter if all occurrences are found
       let newLockedLetters = { ...state.lockedLetters };
       const indices = phrase.split('').reduce((acc, ch, i) => {
         if (ch === letter) acc.push(i);
         return acc;
       }, []);
-      newLockedLetters[letter] = indices.length > 0 &&
-        indices.every(idx => newPurchased[idx] === letter);
+      newLockedLetters[letter] = indices.length > 0 && indices.every(idx => newPurchased[idx] === letter);
 
-      // Determine if the player has won
+      // Check if player won
       const win = phrase.split('').every((ch, i) => ch === ' ' || newPurchased[i] === ch);
-      const newState = {
-        ...state,
+
+      newState = {
+        ...newState,
         bankroll: state.bankroll - cost,
         purchasedLetters: newPurchased,
         incorrectLetters: newIncorrect,
         lockedLetters: newLockedLetters,
         shakenLetters: Array.from(newShakenLetters),
-        selectedPurchase: null,
         gameState: win ? "won" : "default"
       };
 
       if (win) {
         setTimeout(() => launchConfetti(), 300);
       }
-      return checkLossCondition(newState);
     }
+
     // --- Process Hint Purchase ---
     else if (purchase.type === 'hint') {
       const cost = 150;
-      if (state.bankroll < cost) {
-        return { ...state, selectedPurchase: null, gameState: "default" };
-      }
+      if (state.bankroll < cost) return newState;
+
       const phrase = state.currentPhrase;
       const unrevealedIndices = phrase.split('').reduce((acc, ch, i) => {
         if (ch !== ' ' && !state.purchasedLetters[i]) acc.push(i);
         return acc;
       }, []);
-      if (unrevealedIndices.length === 0) return { ...state, selectedPurchase: null, gameState: "default" };
+
+      if (unrevealedIndices.length === 0) return newState;
 
       const randomIndex = unrevealedIndices[Math.floor(Math.random() * unrevealedIndices.length)];
       let newPurchased = [...state.purchasedLetters];
       newPurchased[randomIndex] = phrase[randomIndex];
 
-      let newLockedLetters = { ...state.lockedLetters };
-      const letter = phrase[randomIndex];
-      const indices = phrase.split('').reduce((acc, ch, i) => {
-        if (ch === letter) acc.push(i);
-        return acc;
-      }, []);
-      newLockedLetters[letter] = indices.every(idx => newPurchased[idx] === letter);
-
-      const newState = {
-        ...state,
+      newState = {
+        ...newState,
         bankroll: state.bankroll - cost,
-        purchasedLetters: newPurchased,
-        lockedLetters: newLockedLetters,
-        selectedPurchase: null,
-        gameState: "default"
+        purchasedLetters: newPurchased
       };
-      return checkLossCondition(newState);
     }
+
     // --- Process Extra Guess Purchase ---
     else if (purchase.type === 'extra_guess') {
       const cost = 150;
-      if (state.bankroll < cost) {
-        return { ...state, selectedPurchase: null, gameState: "default" };
-      }
-      const newState = {
-        ...state,
+      if (state.bankroll < cost) return newState;
+
+      newState = {
+        ...newState,
         bankroll: state.bankroll - cost,
-        guessesRemaining: state.guessesRemaining + 1,
-        selectedPurchase: null,
-        gameState: "default"
+        guessesRemaining: state.guessesRemaining + 1
       };
-      return checkLossCondition(newState);
     }
-    return state;
+
+    // // Ensure game state resets **immediately**
+    // setTimeout(() => {
+    //   gameStore.update(s => ({ ...s, selectedPurchase: null, gameState: "default" }));
+    // }, 10);
+
+    return newState;
   });
 }
 
@@ -512,7 +501,7 @@ export async function fetchRandomGame() {
 
 /**
  * resetGame
- * Resets the game state to the initial values.
+ * Resets the game state to the initial values. ** fix this to return to fetchrandomgame **
  */
 export function resetGame() {
   gameStore.set({

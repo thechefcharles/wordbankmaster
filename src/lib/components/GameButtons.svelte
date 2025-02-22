@@ -131,7 +131,7 @@
   }
 
   // ----------------------------
-  // GLOBAL KEY LISTENER (for Enter key)
+  // GLOBAL KEY LISTENER (for Enter key) **What is this doing???**
   // ----------------------------
   onMount(() => {
     // Initialize dark mode based on stored preference
@@ -167,8 +167,8 @@
 ----------------------------- -->
 {#if guessModeActive}
   <div class="guess-mode-banner">
-    Fill every phrase box to submit.<br />
-    Correct guesses will remain!
+    Fill entire phrase to submit.<br />
+    Correct letters will remain!
   </div>
 {/if}
 
@@ -177,7 +177,7 @@
 {/if}
 
 <div class="guess-controls">
-  <!-- Hint Purchase Button -->
+  <!-- Hint Purchase Button check this maybe remove?--> 
   <div class="button-container">
     {#if showHintCost}
       <div class="cost-indicator">-$150</div>
@@ -192,21 +192,20 @@
     </button>
   </div>
 
-  <!-- Main Action Button -->
-  <button
-    class="guess-phrase-button"
-    class:pending={purchasePending}
-    class:confirm-purchase={purchasePending}
-    class:exit-mode={guessModeActive && !guessComplete}
-    class:guess-complete={guessComplete}
-    on:click={handleMainButtonClick}
-    disabled={noGuessesLeft && !purchasePending}
-    aria-label={buttonLabel}
-  >
-    {buttonLabel}
-  </button>
+<!-- Main Action Button -->
+<button
+  class="guess-phrase-button"
+  class:exit-mode={guessModeActive && !guessComplete}
+  class:guess-complete={guessComplete}
+  class:pending={$gameStore.gameState === "purchase_pending"}
+  on:click={handleMainButtonClick}
+  disabled={noGuessesLeft && $gameStore.gameState !== "purchase_pending"}
+  aria-label={buttonLabel}
+>
+  {buttonLabel}
+</button>
 
-  <!-- Extra Guess Purchase Button -->
+  <!-- Extra Guess Purchase Button check this maybe remove?-->
   <div class="button-container">
     {#if showGuessCost}
       <div class="cost-indicator">-$150</div>
@@ -284,6 +283,11 @@
   /* ---------------------------
      Global Reset & Utility Styles
   --------------------------- */
+  /* Remove iOS tap highlight */
+  button, a, [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
   button:focus {
     outline: none;
   }
@@ -374,8 +378,8 @@
     gap: 8px;
   }
   .guess-phrase-button {
-    background-color: orange;
-    color: white;
+    background-color: orange !important;
+    color: white !important;
     padding: 10px 20px;
     border: none;
     border-radius: 5px;
@@ -385,22 +389,50 @@
     text-transform: uppercase;
     transition: background-color 0.3s, transform 0.2s;
     box-sizing: border-box;
+    opacity: 1 !important;   /* Force full visibility */
+    filter: none !important; /* Ensure no blur or desaturation */
+    animation: none !important; /* Prevent any unwanted animation */
+    -webkit-user-select: none; /* Optional: prevent text select on iOS */
+    user-select: none;
   }
   .guess-phrase-button:hover {
     background-color: darkorange;
   }
   .guess-phrase-button:active {
     transform: scale(0.98);
+    background-color: orange !important;
+    opacity: 1 !important;
+    filter: none !important;
   }
+  /* 🔥 Highlight pending state */
   .guess-phrase-button.pending {
     background-color: green !important;
-    color: white !important;
     animation: blinkGreen 1s infinite;
   }
   @keyframes blinkGreen {
     0% { background-color: green; }
     50% { background-color: #00cc00; }
     100% { background-color: green; }
+  }
+  /* Ensure full visibility when not disabled */
+  .guess-phrase-button:not([disabled]) {
+    opacity: 1 !important;
+    filter: none !important;
+  }
+  /* Ensure button remains fully visible when disabled */
+  .guess-phrase-button:disabled {
+    background-color: orange !important;
+    color: white !important;
+    opacity: 1 !important;
+    filter: none !important;
+    pointer-events: none;
+  }
+  /* Prevent disabled-red and disabled-purchase classes from affecting the guess button */
+  .disabled-red:not(.guess-phrase-button),
+  .disabled-purchase:not(.guess-phrase-button) {
+    opacity: 0.5;
+    filter: blur(1px);
+    pointer-events: none;
   }
 
   /* ---------------------------
@@ -461,12 +493,12 @@
     color: inherit !important;
     box-shadow: none !important;
   }
-  :global(body.dark-mode) button.pending,
-  :global(body.dark-mode) .key.pending {
-  animation: blinkGreen 1s infinite; /* or none if you prefer */
-  background-color: green !important; /* or another dark-mode-friendly color */
-  color: #fff !important; /* ensure the text is still visible */
-}
+  :global(body.dark-mode) .guess-phrase-button.pending {
+    animation: blinkGreen 1s infinite !important;
+    background-color: green !important;
+    color: white !important;
+  }
+
   .buy-guess-button:focus,
   .hint-button:focus,
   .guess-phrase-button:focus {
