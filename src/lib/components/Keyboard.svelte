@@ -21,6 +21,7 @@
   const row1 = ['Q','W','E','R','T','Y','U','I','O','P'];
   const row2 = ['A','S','D','F','G','H','J','K','L'];
   const row3 = ['Z','X','C','V','B','N','M'];
+  
 
   $: disabledKeys = Object.keys(letterCosts).filter(letter => 
     letterCosts[letter] > $gameStore.bankroll || 
@@ -115,19 +116,13 @@
   <div class="keyboard-row">
     {#each row1 as letter}
       <button
-        class="key {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''} 
-                {$gameStore.incorrectLetters.includes(letter) ? 'incorrect' : ''}
-                 $gameStore.selectedPurchase?.type === 'letter' &&
-                  $gameStore.selectedPurchase.value === letter &&
-                  $gameStore.gameState === 'purchase_pending'
-                    ? 'pending'
-                    : $gameStore.lockedLetters?.[letter]
-                      ? 'purchased'
-                      : $gameStore.incorrectLetters.includes(letter)
-                        ? 'incorrect'
-                        : ''
-                }"
-        on:click={() => handleLetterClick(letter)}
+      class="key 
+      {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''} 
+      {($gameStore.selectedPurchase?.type === 'letter' && 
+        $gameStore.selectedPurchase.value === letter && 
+        $gameStore.gameState === 'purchase_pending') ? 'pending' : ''}
+      {($gameStore.lockedLetters?.[letter]) ? 'purchased' : ''}
+      {($gameStore.incorrectLetters.includes(letter)) ? 'incorrect' : ''}"        on:click={() => handleLetterClick(letter)}
       >
         <div class="letter">{letter}</div>
         <div class="price">${letterCosts[letter]}</div>
@@ -314,7 +309,7 @@
   /* 🔹 Apply blur effect to unaffordable letters */
   .key.incorrect,
   .key.disabled {
-    filter: blur(2px);  /* 🔹 Blur effect */
+    filter: blur(.8px);  /* 🔹 Blur effect */
     opacity: 0.5;       /* 🔹 Make slightly faded */
     pointer-events: none; /* 🔹 Prevent clicking */
     transition: filter 0.3s ease, opacity 0.3s ease;

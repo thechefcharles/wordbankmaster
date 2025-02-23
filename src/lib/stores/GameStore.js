@@ -462,7 +462,6 @@ export function submitGuess() {
         lockedLetters: newLockedLetters,
         shakenLetters: Array.from(newShakenLetters),
         guessesRemaining: newGuessesRemaining,
-        message: `❌ Incorrect! You have ${newGuessesRemaining} guesses remaining.`
       });
     }
   });

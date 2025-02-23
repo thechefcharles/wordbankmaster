@@ -291,8 +291,6 @@
      Guess Mode Styling
   --------------------------- */
   :global(body.guess-mode) .phrase-container {
-    border: 5px solid orange !important;
-    background-color: rgba(255, 165, 0, 0.2);
     animation: blinkingBorder 1.5s infinite;
   }
   @keyframes blinkingBorder {

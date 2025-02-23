@@ -55,6 +55,7 @@ $: digits = String(bankroll).split('');
 $: if (browser) {
   document.body.classList.toggle('guess-mode', currentGame.gameState === 'guess_mode');
 }
+
 </script>
 
 <main>
@@ -164,7 +165,7 @@ $: if (browser) {
     justify-content: center;
     align-items: center;
     letter-spacing: 1px; /* Adds a slight retro spacing */
-    margin-top: 0px;
+    margin-top: 20px;
   }  
   .currency {
     margin-right: 4px;
@@ -256,8 +257,8 @@ $: if (browser) {
 button:active {
   outline: none !important;
   box-shadow: none !important;
+  background: inherit !important;
 }
-
 /* 🔄 Fix for Chrome/Safari Mobile Persistent Highlight */
 button:focus-visible {
   outline: none !important;
