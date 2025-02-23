@@ -126,12 +126,12 @@
 <!-- ----------------------------
      UI RENDERING
 ----------------------------- -->
-{#if guessModeActive}
+<!-- {#if guessModeActive}
   <div class="guess-mode-banner">
     Fill entire phrase to submit.<br />
     Correct guesses remain!
   </div>
-{/if}
+{/if} -->
 
 {#if $gameStore.message}
   <div class="message-box">{$gameStore.message}</div>
@@ -184,40 +184,25 @@
   </div>
 </div>
 
-<div class="top-buttons">
-  <button class="how-to-play-button" on:click={() => showHowToPlay = true} aria-label="How to Play Instructions">
-    How to Play
-  </button>
-  <button class="dark-mode-button" on:click={toggleDarkMode} aria-label="Toggle Dark Mode">
-    {darkMode ? "☀️" : "🌙"}
-  </button>
-</div>
-
 {#if showHowToPlay}
   <div class="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal-content">
-      <h2>📜 How to Play</h2>
-      <p>
-        💰 <b>You start with $1000.</b> Use it wisely to <b>buy letters, get hints, and guess the phrase!</b>
-      </p>
-      <h3>🎯 Goal</h3>
-      <p>Solve the phrase <b>before running out of money!</b></p>
-      <h3>🕹️ Gameplay</h3>
       <ul>
-        <li>🔤 Click/tap letters to buy them.</li>
-        <li>⏎ Press Enter to confirm purchases or submit a guess.</li>
-        <li>🔄 Press Space to toggle Guess Mode.</li>
-        <li>💡 Hints ($150) – Reveal a random letter.</li>
-        <li>🎟️ Extra Guess ($150) – Buy another shot.</li>
+        <li>🔤 Buy Letters/Hints and Extra Guesses!</li>
+        <li>⏎ Submit a guess if you might know the phrase!</li>
+        <li>🔄 Correct guess will remain.</li>
+        <li>💡 Hints - Reveal a random letter.</li>
+        <li>🎟️ Extra Guess - Buy another chance to guess the entire phrase!</li>
       </ul>
-      <p><b>Think smart, spend wisely, and guess like a pro!</b> 🚀</p>
+      <p><b>Think smart, spend wisely, and stack your Bankroll for the next game!</b> 🚀</p>
+
+      <!-- Close Button (X) -->
       <button class="close-btn" on:click={() => showHowToPlay = false} aria-label="Close How to Play">
-        Close
+        ❌
       </button>
     </div>
   </div>
 {/if}
-
 <style>
   @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
 
@@ -266,7 +251,7 @@
     border-radius: 50%;
     border: none;
     cursor: pointer;
-    margin-top: -30px;
+    margin-top: 20px;
     color: #fff;
     font-weight: bold;
     text-align: center;
@@ -299,7 +284,7 @@
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    margin-top: -30px;
+    margin-top: 20px;
     border: none;
     cursor: pointer;
     color: #fff;
@@ -336,28 +321,30 @@
     color: orange;
     text-transform: uppercase;
     text-align: center;
-    padding: 3px;  /* 🔹 Reduce padding */
+    padding: 2px 15px;  /* 🔹 Adjust padding to avoid too much height */
     border: 1px solid orange; /* 🔹 Reduce border thickness */
     border-radius: 2px; /* 🔹 Smaller rounded corners */
     background: rgba(255, 165, 0, 0.2);
     animation: blinkingBorder 1.5s infinite;
-    max-width: 60%; /* 🔹 Ensure it doesn't stretch across the entire screen */
+    max-width: 100%; /* 🔹 Ensure it doesn't stretch across the entire screen */
     margin: 10px auto; /* 🔹 Center it */
     margin-top: -10px;
     margin-bottom: 40px;
+    white-space: nowrap;
+    width: auto;
+    
 }
 
   
   .guess-phrase-button {
     background: linear-gradient(180deg, #ff9800, #e65100); /* Gradient for depth */    color: white;
     padding: 8px 30px;
-    min-width: 200px;
-    max-width: 300px;
-    min-height: 40px;
+    width: 250px;
+    min-height: 50px;
     border: none;
     border-radius: 8px;
-    font-size: 20px;
-    margin-top: -30px;
+    font-size: 23px;
+    margin-top: 20px;
     font-family: 'VT323', sans-serif; /* Arcade-style font */
     font-weight: bold;
     cursor: pointer;

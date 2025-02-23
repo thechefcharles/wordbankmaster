@@ -462,7 +462,7 @@ export function submitGuess() {
         lockedLetters: newLockedLetters,
         shakenLetters: Array.from(newShakenLetters),
         guessesRemaining: newGuessesRemaining,
-        message: `❌ ${newGuessesRemaining} guesses remaining!`
+        message: `❌ ${newGuessesRemaining} guess(es) remaining!`
       });
     }
   });

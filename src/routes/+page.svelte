@@ -12,60 +12,83 @@
   import GameButtons from '$lib/components/GameButtons.svelte';
   import FlipDigit from '$lib/components/FlipDigit.svelte';
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
-  
 
-  // On mount: add dark mode (could be updated later based on user settings) 
-onMount(() => {
-  // 🌙 Ensure dark mode is applied on page load
-  document.body.classList.add('dark-mode');
+  let showHowToPlay = false;
+  let darkMode = false;
 
-  // 🎯 Fetch a new puzzle on load
-  fetchRandomGame();
+  function toggleDarkMode() {
+    darkMode = !darkMode;
+    document.body.classList.toggle('dark-mode', darkMode);
+    localStorage.setItem('darkMode', darkMode ? "true" : "false"); // Store as string
+  }
 
-  // 🔥 Remove focus from buttons when clicked
-  document.addEventListener('click', (event) => {
-    if (event.target.tagName === 'BUTTON') {
-      event.target.blur();
-    }
-  });
-});
+  onMount(() => {
+    // ✅ Load dark mode from localStorage (convert to boolean)
+    const storedDarkMode = localStorage.getItem('darkMode') === "true";
+    darkMode = storedDarkMode; // Update reactive variable
+    document.body.classList.toggle('dark-mode', darkMode); // Apply correct mode
 
-onMount(() => {
-    // Prevent buttons from gaining focus on click
-    document.addEventListener('mousedown', (event) => {
-      if (event.target.tagName === 'BUTTON') {
+    // 🎯 Fetch a new puzzle after ensuring dark mode is set
+    fetchRandomGame();
+
+    // 🔥 Remove focus from buttons when clicked
+    document.addEventListener("mousedown", (event) => {
+      if (event.target.tagName === "BUTTON") {
         event.preventDefault();
         event.target.blur();
       }
     });
 
-    // Prevent focus on touch devices
-    document.addEventListener('touchstart', (event) => {
-      if (event.target.tagName === 'BUTTON') {
-        event.target.blur();
-      }
-    });
-
-    // Prevent keyboard "Tab" from focusing elements
+    // 🚫 Prevent Tab key from focusing elements
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Tab") {
-        event.preventDefault();
-      }
+      if (event.key === "Tab") event.preventDefault();
     });
   });
 
-// 🔄 Reactive subscriptions from the game store
-$: currentGame = $gameStore;
-$: bankroll = currentGame.bankroll || 0;
-$: digits = String(bankroll).split('');
+  // 🔄 Reactive subscriptions from the game store
+  $: currentGame = $gameStore;
+  $: bankroll = currentGame.bankroll || 0;
+  $: digits = String(bankroll).split('');
 
-// 🔄 When in the browser, update the body class for guess mode
-$: if (browser) {
-  document.body.classList.toggle('guess-mode', currentGame.gameState === 'guess_mode');
-}
+  // 🔄 Ensure body class updates based on game state
+  $: if (browser) {
+    document.body.classList.toggle("guess-mode", currentGame.gameState === "guess_mode");
+  }
 </script>
 
 <main>
+  <!-- Top Buttons (How to Play & Dark Mode) -->
+  <div class="top-buttons">
+    <button class="how-to-play-button" on:click={() => showHowToPlay = true} aria-label="How to Play Instructions">
+      ❓
+    </button>
+    <button class="dark-mode-button" on:click={toggleDarkMode} aria-label="Toggle Dark Mode">
+      {darkMode ? "☀️" : "🌙"}
+    </button>
+  </div>
+
+  <!-- Modal -->
+  {#if showHowToPlay}
+    <div class="modal-overlay" role="dialog" aria-modal="true">
+      <div class="modal-content">
+        <h2 class="modal-title">📜 How to Play WordBank 🏆</h2>
+        <ul class="modal-list">
+          <li>🔤 <strong>Buy Letters</strong> to uncover parts of the phrase!</li>
+          <li>💡 <strong>Use Hints</strong> to reveal a random letter!</li>
+          <li>🎟️ <strong>Buy Extra Guesses</strong> when you're running out!</li>
+          <li>⏎ <strong>Submit a Guess</strong> if you think you know the phrase!</li>
+          <li>💰 <strong>Stack Your Bankroll</strong> for future games!</li>
+        </ul>
+        <p class="modal-footer">
+          <b>Think smart, spend wisely, and build your Bankroll for the next round! 🚀</b>
+        </p>
+        <button class="close-btn" on:click={() => showHowToPlay = false} aria-label="Close How to Play">
+          ❌ Close
+        </button>
+      </div>
+    </div>
+  {/if}
+
   <!-- Logo -->
   <div class="logo-container">
     <img src="/WordBank.png" alt="WordBank Logo" class="wordbank-logo" />
@@ -79,23 +102,6 @@ $: if (browser) {
     <PhraseDisplay />
   </section>
 
-  <!-- Bankroll Display -->
-  <section class="stats-section">
-    <div class="bankroll-container">
-      <div class="bankroll-box">
-        <span class="currency">$</span>
-        {#each digits as d}
-          <FlipDigit digit={+d} />
-        {/each}
-      </div>
-    </div>
-  </section>
-
-  <!-- Keyboard Section -->
-  <section class="keyboard-section">
-    <Keyboard />
-  </section>
-
   <!-- Win/Loss Banner -->
   {#if currentGame.gameState === "won"}
     <div class="banner win">Winner!</div>
@@ -103,12 +109,27 @@ $: if (browser) {
     <div class="banner lose">Bankrupt!</div>
   {/if}
 
-  <!-- Game Buttons Section -->
-  <section class="buttons-section">
-    <GameButtons />
-  </section>
+  <!-- ✅ This section groups the bankroll display and guess button together -->
+  <div class="bankroll-guess-wrapper">
+    <!-- ✅ Fixed Bankroll Display Above the Guess Button -->
+    <div class="bankroll-box">
+      <span class="currency">$</span>
+      {#each digits as d}
+        <FlipDigit digit={+d} />
+      {/each}
+    </div>
 
-  <!-- Hidden Reset Button (for debugging/testing) -->
+    <!-- ✅ Guess Button Below Bankroll Display -->
+    <div class="guess-button-container">
+      <GameButtons />
+    </div>
+  </div>
+
+  <!-- ✅ Keep the Keyboard at the Bottom -->
+  <div class="keyboard-container">
+    <Keyboard />
+  </div>
+
   <button class="reset-button hidden" on:click={fetchRandomGame}>
     Reset Game
   </button>
@@ -138,7 +159,7 @@ $: if (browser) {
   /* Category text styling */
   .category {
     font-size: 1.0rem;
-    margin-top: -140px;
+    margin-top: -120px;
     margin-bottom: 0;
     font-weight: bold;
   }
@@ -172,7 +193,9 @@ $: if (browser) {
     justify-content: center;
     align-items: center;
     letter-spacing: 1px; /* Adds a slight retro spacing */
-    margin-top: 10px;
+    margin-top: 60px;
+    height: 40px;
+    width: 120px;
   }  
   .currency {
     margin-right: 4px;
@@ -191,7 +214,7 @@ $: if (browser) {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-top: -50px;
+    margin-top: -20px;
     margin-bottom: 0;
   }
 
@@ -321,5 +344,204 @@ select {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
+/* ✅ This wraps the keyboard & guess button, keeping them at the bottom */
+.keyboard-button-wrapper {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-bottom: 10px; /* Space at the bottom for usability */
+}
+
+/* ✅ Keeps the Guess Phrase button at a fixed distance above the keyboard */
+.guess-button-container {
+    margin-bottom: 170px; /* Adjust this value for more or less space above the keyboard */
+}
+
+/* ✅ Prevents the keyboard from shifting */
+.keyboard-section {
+    position: relative;
+    width: 100%;
+}
+
+.top-buttons {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  right: 5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 10px;
+  z-index: 1000;
+}
+
+.how-to-play-button, .dark-mode-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.how-to-play-button {
+  color: white;
+}
+
+.dark-mode-button {
+  color: yellow;
+}
+
+/* Modal Styling */
+/* ✅ How to Play Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7); /* Darkened background */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* ✅ Centered Modal Box */
+.modal-content {
+  background: linear-gradient(180deg, #222, #333);
+  padding: 20px;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease-out;
+  border: 3px solid limegreen;
+}
+
+/* ✅ Title with Neon Effect */
+.modal-title {
+  font-size: 24px;
+  color: limegreen;
+  font-family: 'Orbitron', sans-serif;
+  text-transform: uppercase;
+  text-shadow: 0 0 8px limegreen, 0 0 15px rgba(0, 255, 0, 0.7);
+  margin-bottom: 10px;
+}
+
+/* ✅ Instructions List */
+.modal-list {
+  list-style-type: none;
+  padding: 0;
+  text-align: left;
+}
+
+.modal-list li {
+  font-size: 16px;
+  font-family: 'VT323', sans-serif;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 8px;
+  margin-bottom: 5px;
+  border-radius: 5px;
+  text-shadow: 0px 0px 5px rgba(255, 255, 255, 0.4);
+}
+
+/* ✅ Footer Message */
+.modal-footer {
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
+  padding: 10px;
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.4);
+}
+
+/* ✅ Close Button */
+.close-btn {
+  margin-top: 10px;
+  padding: 10px 20px;
+  border: none;
+  background: red;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.3s;
+  text-shadow: 0px 0px 5px rgba(255, 255, 255, 0.4);
+}
+
+.close-btn:hover {
+  background: darkred;
+}
+
+/* ✅ Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-20px); }
+  to { transform: translateY(0); }
+}
+
+/* ✅ This keeps the bankroll display & guess button together */
+.bankroll-guess-wrapper {
+    position: fixed;
+    bottom: 0px;  /* Adjust this to fine-tune distance from the keyboard */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 1000;
+}
+
+/* ✅ Styling for Bankroll Box */
+.bankroll-box {
+    padding: 2px 10px;
+    font-size: 1.4rem;
+    font-family: 'VT323', sans-serif;
+    color: white;
+    background: linear-gradient(45deg, #2e7d32, #66bb6a);
+    border: 3px solid #1b5e20;
+    border-radius: 8px;
+    text-align: center;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    letter-spacing: 1px;
+    margin-bottom: 0px; /* Keeps space between bankroll & button */
+}
+
+/* ✅ Keeps the Guess Phrase button right below the bankroll */
+.guess-button-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+/* ✅ Keep the Keyboard at the Bottom */
+.keyboard-container {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    justify-content: center;
+    padding-bottom: 10px;
+}
+
 
 </style>

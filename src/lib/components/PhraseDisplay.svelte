@@ -228,20 +228,22 @@
   .phrase-container {
     display: flex;
     flex-wrap: wrap;
-    flex-direction: column;
+    flex-direction: row;
     width: auto; /* Full viewport width */
-    max-width: 90%; /* Ensure it never exceeds viewport */
-    padding: 0; /* Remove any padding */
-    margin: 0 auto; /* Remove extra margins */
+    max-width: 100%; /* Ensure it never exceeds viewport */
+    max-height: fit-content;
+    padding: 0px 0px; /* 🔹 Adjust padding */
+    margin: 0px 0px; /* Remove extra margins */
     gap: 20px; /* Minimize space between boxes */
     justify-content: center;
     align-items: center;
     box-sizing: border-box;
     overflow: visible;
     text-align: center;
-    line-height: .2px;
-    margin-top: 10px;
+    line-height: 1px;
+    margin-top: 30px;
     margin-bottom: 2px;
+    height: 200px;
     
   }
   .word {
@@ -318,17 +320,17 @@
      Guess Mode Styling
   --------------------------- */
   :global(body.guess-mode) .phrase-container {
-    border: 5px solid orange; /* 🔹 Change border color and thickness */
-    background-color: rgba(255, 165, 0, 0.2); /* 🔹 Slight background tint */
-    border-radius: 8px; /* 🔹 Rounded edges */
-    padding: 10px; /* 🔹 Adjust spacing inside the box */
-    margin: 10px auto; /* 🔹 Center it on the screen */
-    max-width: 90%; /* 🔹 Adjust width to fit content */
+    border-radius: 28px; /* 🔹 Rounded edges */
+    padding: 0px 0px; /* 🔹 Added slight padding for better alignment */
+    margin: 0 0; /* 🔹 Prevents unnecessary vertical movement */
+    max-width: 100%; /* 🔹 Adjust width to fit content */
+    max-height: fit-content;
     display: flex;
     justify-content: center;
     align-items: center;
     flex-wrap: wrap;
     animation: blinkingBorder 1.5s infinite; /* 🔹 Optional blinking effect */
+    height: 400px;
   }
   @keyframes blinkingBorder {
     0%, 100% { opacity: 1; }
