@@ -10,16 +10,10 @@
     submitGuess
   } from '$lib/stores/GameStore.js';
 
-  // ----------------------------
-  // LOCAL UI STATE
-  // ----------------------------
   let showHowToPlay = false;
   let darkMode = false;
 
-  // ----------------------------
-  // REACTIVE DERIVATIONS FROM GAME STORE
-  // ----------------------------
-  // Purchase-related flags
+  // Reactive derivations from the game store
   $: purchasePending = !!$gameStore.selectedPurchase;
   $: hintPending =
     $gameStore.selectedPurchase?.type === 'hint' &&
@@ -36,7 +30,7 @@
   $: bankroll = $gameStore.bankroll;
   $: fundsLow = bankroll < 150;
 
-  // Determine if all guess slots are filled in guess mode
+  // Check if all guess slots are filled in guess mode
   $: guessComplete = guessModeActive && (() => {
     const phrase = $gameStore.currentPhrase;
     for (let i = 0; i < phrase.length; i++) {
@@ -47,12 +41,7 @@
     return true;
   })();
 
-  // Dynamic label for the main action button based on state:
-  // - If a purchase is pending → "Confirm Purchase"
-  // - Else if in guess mode:
-  //    • If complete → "Submit Guess"
-  //    • Else → "Exit Guess Mode"
-  // - Otherwise → "Guess (x)" where x is the number of remaining guesses.
+  // Dynamic label for the main action button
   $: buttonLabel = purchasePending
     ? "Confirm Purchase"
     : guessModeActive
@@ -62,40 +51,24 @@
   // ----------------------------
   // EVENT HANDLERS
   // ----------------------------
-
-  /**
-   * handleMainButtonClick
-   * Main action button handler:
-   * - If a purchase is pending, confirms it.
-   * - In guess mode, submits the guess if complete or exits guess mode.
-   * - Otherwise, enters guess mode.
-   */
   function handleMainButtonClick() {
     if (purchasePending) {
       confirmPurchase();
       return;
     }
-
     if (guessModeActive) {
       if (guessComplete) {
         submitGuess();
       } else {
-        // Exit guess mode if the guess is incomplete
         gameStore.update(state => ({ ...state, gameState: "default", guessedLetters: {} }));
       }
       return;
     }
-
-    // If not in guess mode and no purchase pending, enter guess mode
     if (!purchasePending && !guessModeActive) {
       enterGuessMode();
     }
   }
 
-  /**
-   * toggleHintPurchase
-   * Toggles hint purchase selection.
-   */
   function toggleHintPurchase() {
     gameStore.update(state => {
       if (state.selectedPurchase?.type === "hint") {
@@ -106,10 +79,6 @@
     setTimeout(() => document.activeElement.blur(), 0);
   }
 
-  /**
-   * toggleGuessPurchase
-   * Toggles extra guess purchase selection.
-   */
   function toggleGuessPurchase() {
     gameStore.update(state => {
       if (state.selectedPurchase?.type === "extra_guess") {
@@ -120,10 +89,6 @@
     setTimeout(() => document.activeElement.blur(), 0);
   }
 
-  /**
-   * toggleDarkMode
-   * Toggles dark mode for the UI and saves preference in localStorage.
-   */
   function toggleDarkMode() {
     darkMode = !darkMode;
     document.body.classList.toggle('dark-mode', darkMode);
@@ -131,19 +96,16 @@
   }
 
   // ----------------------------
-  // GLOBAL KEY LISTENER (for Enter key)
+  // GLOBAL KEY LISTENER
   // ----------------------------
   onMount(() => {
-    // Initialize dark mode based on stored preference
     darkMode = localStorage.getItem('darkMode') === 'true';
     document.body.classList.toggle('dark-mode', darkMode);
 
     const onKeyDown = (event) => {
       if (event.key === 'Enter') {
         event.preventDefault();
-        // Do nothing if a purchase is pending (forcing explicit button click)
-        if ($gameStore.selectedPurchase) return;
-
+        if ($gameStore.selectedPurchase) return; // Do nothing if a purchase is pending
         if ($gameStore.gameState === "guess_mode") {
           if (guessComplete) {
             submitGuess();
@@ -151,7 +113,6 @@
             gameStore.update(state => ({ ...state, gameState: "default", guessedLetters: {} }));
           }
         } else {
-          // If not in purchase or guess mode, enter guess mode
           enterGuessMode();
         }
       }
@@ -168,7 +129,7 @@
 {#if guessModeActive}
   <div class="guess-mode-banner">
     Fill every phrase box to submit.<br />
-    Correct guesses will remain!
+    Correct guesses remain!
   </div>
 {/if}
 
@@ -176,9 +137,9 @@
   <div class="message-box">{$gameStore.message}</div>
 {/if}
 
-<div class="guess-controls">
-  <!-- Hint Purchase Button -->
-  <div class="button-container">
+<div class="buttons-container">
+  <!-- Hint Button -->
+  <div class="hint-button-container">
     {#if showHintCost}
       <div class="cost-indicator">-$150</div>
     {/if}
@@ -192,22 +153,20 @@
     </button>
   </div>
 
-  <!-- Main Action Button -->
-  <button
-    class="guess-phrase-button"
-    class:pending={purchasePending}
-    class:confirm-purchase={purchasePending}
-    class:exit-mode={guessModeActive && !guessComplete}
-    class:guess-complete={guessComplete}
-    on:click={handleMainButtonClick}
-    disabled={noGuessesLeft && !purchasePending}
-    aria-label={buttonLabel}
-  >
-    {buttonLabel}
-  </button>
+  <!-- Main Guess Button -->
+  <div class="main-guess-button-container">
+    <button
+      class="guess-phrase-button {purchasePending ? 'pending' : ''} {guessModeActive && !guessComplete ? 'exit-mode' : ''} {guessComplete ? 'guess-complete' : ''}"
+      on:click={handleMainButtonClick}
+      disabled={noGuessesLeft && !purchasePending}
+      aria-label={buttonLabel}
+    >
+      {buttonLabel}
+    </button>
+  </div>
 
-  <!-- Extra Guess Purchase Button -->
-  <div class="button-container">
+  <!-- Extra Guess Button -->
+  <div class="extra-guess-button-container">
     {#if showGuessCost}
       <div class="cost-indicator">-$150</div>
     {/if}
@@ -222,9 +181,8 @@
   </div>
 </div>
 
-<!-- Top Controls -->
 <div class="top-buttons">
-  <button class="how-to-play-button" on:click={() => (showHowToPlay = true)} aria-label="How to Play Instructions">
+  <button class="how-to-play-button" on:click={() => showHowToPlay = true} aria-label="How to Play Instructions">
     How to Play
   </button>
   <button class="dark-mode-button" on:click={toggleDarkMode} aria-label="Toggle Dark Mode">
@@ -232,7 +190,6 @@
   </button>
 </div>
 
-<!-- How To Play Modal -->
 {#if showHowToPlay}
   <div class="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal-content">
@@ -251,45 +208,172 @@
         <li>🎟️ Extra Guess ($150) – Buy another shot.</li>
       </ul>
       <p><b>Think smart, spend wisely, and guess like a pro!</b> 🚀</p>
-      <button class="close-btn" on:click={() => (showHowToPlay = false)} aria-label="Close How to Play">
+      <button class="close-btn" on:click={() => showHowToPlay = false} aria-label="Close How to Play">
         Close
       </button>
     </div>
   </div>
 {/if}
-  
+
 <style>
-  /* ---------------------------
-     Cost Indicator Styles
-  --------------------------- */
-  .button-container {
+  /* Overall container for independent button control */
+  .buttons-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    margin: 20px 0;
+  }
+
+  /* Each button container is independent */
+  .hint-button-container,
+  .main-guess-button-container,
+  .extra-guess-button-container {
     position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
   }
+
   .cost-indicator {
     position: absolute;
     top: -20px;
-    color: red;
     font-size: 16px;
     font-weight: bold;
-  }
-  @keyframes fadeOut {
-    0% { opacity: 1; transform: translateY(0); }
-    50% { opacity: 0.8; transform: translateY(-5px); }
-    100% { opacity: 0; transform: translateY(-10px); }
+    color: red;
   }
 
   /* ---------------------------
-     Global Reset & Utility Styles
+     Hint Button Styles
   --------------------------- */
-  button:focus {
-    outline: none;
+  .hint-button {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    font-weight: bold;
+    text-align: center;
+    font-size: 8px;
+    text-transform: uppercase;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+    background: radial-gradient(circle at 30% 30%, #4488ff, #0055bb 80%);
+    box-shadow: 0 0 4px #0055bb, 0 0 8px #4488ff, 0 0 12px rgba(0, 85, 187, 0.9);
+    border: 3px solid #0033aa;
   }
-  :global(html, body) {
-    overflow-x: hidden;
-    touch-action: manipulation;
+  .hint-button:hover {
+    transform: translateY(-2px);
+  }
+  .hint-button:active {
+    transform: translateY(2px);
+  }
+  .hint-button.pending {
+    animation: tightArcadeGlow 0.3s infinite alternate ease-in-out;
+  }
+
+  /* ---------------------------
+     Extra Guess Button Styles
+  --------------------------- */
+  .buy-guess-button {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    font-weight: bold;
+    text-align: center;
+    font-size: 8px;
+    text-transform: uppercase;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+    background: radial-gradient(circle at 30% 30%, #4488ff, #0055bb 80%);
+    box-shadow: 0 0 4px #0055bb, 0 0 8px #4488ff, 0 0 12px rgba(0, 85, 187, 0.9);
+    border: 3px solid #0033aa;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .buy-guess-button:hover {
+    transform: translateY(-2px);
+  }
+  .buy-guess-button:active {
+    transform: translateY(2px);
+  }
+  .buy-guess-button.pending {
+    animation: tightArcadeGlow 0.3s infinite alternate ease-in-out;
+  }
+
+  /* ---------------------------
+     Main Guess Button Styles
+  --------------------------- */
+  .guess-phrase-button {
+    background-color: orange;
+    color: white;
+    padding: 12px 30px;
+    min-width: 230px;
+    min-height: 40px;
+    border: none;
+    border-radius: 5px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: background-color 0.3s, transform 0.2s;
+    box-sizing: border-box;
+  }
+  .guess-phrase-button:hover {
+    background-color: darkorange;
+  }
+  .guess-phrase-button:active {
+    transform: scale(0.98);
+  }
+  .guess-phrase-button.pending {
+    background-color: green !important;
+    color: white !important;
+    animation: blinkGreen 1s infinite;
+  }
+
+  /* ---------------------------
+     Animations
+  --------------------------- */
+  @keyframes tightArcadeGlow {
+  0% {
+    box-shadow:
+      0 0 3px #66aaff,
+      0 0 5px #3388ff,
+      0 0 7px rgba(195, 199, 205, 0.5);
+    border: 3px solid #b8bdc6;
+  }
+  100% {
+    box-shadow:
+      0 0 4px #4488ff,
+      0 0 7px #0055bb,
+      0 0 9px rgba(0, 85, 187, 0.7);
+    border: 3px solid #a4abb4;
+  }
+}
+
+/* Apply the updated animation to the hint button when pending */
+.hint-button.pending {
+  animation: tightArcadeGlow 0.3s infinite alternate ease-in-out;
+}
+  @keyframes blinkGreen {
+    0% { background-color: green; }
+    50% { background-color: #00cc00; }
+    100% { background-color: green; }
+  }
+
+  /* ---------------------------
+     Disabled / Purchase States
+  --------------------------- */
+  .disabled-purchase {
+    opacity: 0.5;
+    filter: blur(1px);
+    pointer-events: none;
   }
 
   /* ---------------------------
@@ -312,8 +396,8 @@
     font-size: 10px;
     border-radius: 1px;
     cursor: pointer;
-    transition: background-color 0.3s;
     margin: 0;
+    transition: background-color 0.3s;
   }
   .how-to-play-button:hover {
     background-color: #e0e0e0;
@@ -362,89 +446,6 @@
   }
 
   /* ---------------------------
-     Guess Controls & Main Button Styles
-  --------------------------- */
-  .guess-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    max-width: 400px;
-    margin: 10px auto;
-    gap: 8px;
-  }
-  .guess-phrase-button {
-    background-color: orange;
-    color: white;
-    padding: 12px 30px;
-    min-width: 180px;
-    min-height: 60px; /* Set a wider minimum width */
-    border: none;
-    border-radius: 5px;
-    font-size: 14px;
-    font-weight: bold;
-    cursor: pointer;
-    text-transform: uppercase;
-    transition: background-color 0.3s, transform 0.2s;
-    box-sizing: border-box;
-    margin-top: 30px;
-  }
-  .guess-phrase-button:hover {
-    background-color: darkorange;
-  }
-  .guess-phrase-button:active {
-    transform: scale(0.98);
-  }
-  .guess-phrase-button.pending {
-    background-color: green !important;
-    color: white !important;
-    animation: blinkGreen 1s infinite;
-  }
-  @keyframes blinkGreen {
-    0% { background-color: green; }
-    50% { background-color: #00cc00; }
-    100% { background-color: green; }
-  }
-
-  /* ---------------------------
-     Hint & Extra Guess Button Styles
-  --------------------------- */
-  .hint-button,
-  .buy-guess-button {
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    border: none;
-    cursor: pointer;
-    color: #fff;
-    font-weight: bold;
-    text-align: center;
-    margin: 0 20px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 8px;
-    text-transform: uppercase;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    box-sizing: border-box;
-    background: radial-gradient(circle at 30% 30%, #4488ff, #0055bb 80%);
-    box-shadow: 0 4px 0 #003366, 0 6px 20px rgba(0, 0, 0, 0.4);
-  }
-  .hint-button:hover,
-  .buy-guess-button:hover {
-    transform: translateY(-2px);
-  }
-  .hint-button:active,
-  .buy-guess-button:active {
-    transform: translateY(2px);
-  }
-  .disabled-red, .disabled-purchase {
-    opacity: 0.5;
-    filter: blur(1px);
-    pointer-events: none;
-  }
-
-  /* ---------------------------
      Dark Mode Overrides
   --------------------------- */
   :global(body.dark-mode) .hint-button,
@@ -466,23 +467,28 @@
   }
   :global(body.dark-mode) button.pending,
   :global(body.dark-mode) .key.pending {
-  animation: blinkGreen 1s infinite; /* or none if you prefer */
-  background-color: green !important; /* or another dark-mode-friendly color */
-  color: #fff !important; /* ensure the text is still visible */
-}
-  .buy-guess-button:focus,
-  .hint-button:focus,
-  .guess-phrase-button:focus {
-    outline: none;
-    box-shadow: none;
+    animation: blinkGreen 1s infinite;
+    background-color: green !important;
+    color: #fff !important;
   }
-  .buy-guess-button:focus,
-  .hint-button:focus {
-    background-color: #007bff !important;
-    color: white !important;
+  :global(body.dark-mode) .hint-button,
+  :global(body.dark-mode) .buy-guess-button {
+    background: radial-gradient(circle at 30% 30%, #66aaff, #3388ff 80%) !important;
+    box-shadow: 0 0 6px #3388ff, 0 0 10px #66aaff, 0 0 14px rgba(0, 170, 255, 0.9) !important;
+    border: 3px solid #66aaff !important;
   }
-  .guess-phrase-button:focus {
-    background-color: orange !important;
-    color: white !important;
+  :global(body.dark-mode) .hint-button.pending,
+  :global(body.dark-mode) .buy-guess-button.pending {
+    animation: tightArcadeGlowDark 0.3s infinite alternate ease-in-out !important;
+  }
+  @keyframes tightArcadeGlowDark {
+    0% {
+      box-shadow: 0 0 6px #aaffff, 0 0 10px #66ffff, 0 0 14px rgba(0, 170, 255, 0.8);
+      border: 3px solid #66ffff !important;
+    }
+    100% {
+      box-shadow: 0 0 8px #66aaff, 0 0 14px #3388ff, 0 0 18px rgba(0, 170, 255, 0.9);
+      border: 3px solid #aaffff !important;
+    }
   }
 </style>
