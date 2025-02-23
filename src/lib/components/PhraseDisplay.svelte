@@ -283,8 +283,8 @@
   --------------------------- */
   @media (max-width: 480px) {
     .letter-box {
-      width: 40px;
-      height: 60px;
+      width: 35px;
+      height: 50px;
       font-size: 18px;
     }
   }

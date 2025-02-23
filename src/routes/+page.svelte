@@ -158,7 +158,7 @@ $: if (browser) {
     justify-content: center;
     align-items: center;
     letter-spacing: 1px; /* Adds a slight retro spacing */
-    margin-top: 50px;
+    margin-top: 0px;
   }  
   .currency {
     margin-right: 4px;

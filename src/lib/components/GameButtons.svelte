@@ -387,7 +387,7 @@
     text-transform: uppercase;
     transition: background-color 0.3s, transform 0.2s;
     box-sizing: border-box;
-    margin-top: 100px;
+    margin-top: 30px;
   }
   .guess-phrase-button:hover {
     background-color: darkorange;
