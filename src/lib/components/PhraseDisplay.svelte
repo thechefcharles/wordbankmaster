@@ -151,6 +151,8 @@
   {/each}
 </div>
 
+
+
 <!-- Render phrase based on current game state -->
 {#if $gameStore.gameState === 'lost'}
   <!-- Lost Mode: Gradually reveal the full phrase -->
@@ -225,26 +227,32 @@
   --------------------------- */
   .phrase-container {
     display: flex;
-    grid-template-columns: repeat(auto-fit, minmax(1fr, 1fr)); /* Responsive columns */
     flex-wrap: wrap;
-    width: 100%; /* Full viewport width */
-    max-width: 100vw; /* Ensure it never exceeds viewport */
+    flex-direction: column;
+    width: auto; /* Full viewport width */
+    max-width: 90%; /* Ensure it never exceeds viewport */
     padding: 0; /* Remove any padding */
     margin: 0 auto; /* Remove extra margins */
-    gap: 1px; /* Minimize space between boxes */
+    gap: 20px; /* Minimize space between boxes */
     justify-content: center;
     align-items: center;
     box-sizing: border-box;
-    overflow-x: hidden;
+    overflow: visible;
     text-align: center;
+    line-height: .2px;
+    margin-top: 10px;
+    margin-bottom: 2px;
+    
   }
   .word {
     display: flex;
-    gap: 0px;
+    gap: 2px;
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
-    margin-right: 15px;
+    margin-right: 0px;
+    margin-left: 0px;
+    margin-bottom: -15px;
     text-align: center;
   }
   .letter-box {
@@ -253,7 +261,6 @@
     padding: 0px;
     flex-grow: 1;
     max-width: 50px; /* Prevents it from getting too big */
-    height: auto; /* Adjust height automatically */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -268,8 +275,12 @@
     overflow-wrap: break-word;
     color: black;
     background: linear-gradient(145deg, #dfe6e9, #ffffff);
+    box-shadow: inset -2px -2px 5px rgba(255, 255, 255, 0.8),
+                inset 2px 2px 5px rgba(0, 0, 0, 0.3);
 
   }
+
+  
   .letter-box.locked {
     color: black !important;
     font-weight: bold;
@@ -279,28 +290,7 @@
     color: black !important;
   }
 
-  html, body {
-    margin: 0;
-    padding: 0;
-    width: 100vw;
-    overflow-x: hidden;
-}
-
-
-  /* ---------------------------
-     Guess Mode Styling
-  --------------------------- */
-  :global(body.guess-mode) .phrase-container {
-    border: 5px solid orange !important;
-    background-color: rgba(255, 165, 0, 0.2);
-    animation: blinkingBorder 1.5s infinite;
-  }
-  @keyframes blinkingBorder {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-
-  /* ---------------------------
+   /* ---------------------------
      Responsive Adjustments
   --------------------------- */
   @media (max-width: 480px) {
@@ -310,6 +300,42 @@
       font-size: 25px;
     }
   }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh; /* Prevents any extra scrolling */
+    overflow: hidden; /* Remove unwanted scrolling */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+
+  /* ---------------------------
+     Guess Mode Styling
+  --------------------------- */
+  :global(body.guess-mode) .phrase-container {
+    border: 5px solid orange; /* 🔹 Change border color and thickness */
+    background-color: rgba(255, 165, 0, 0.2); /* 🔹 Slight background tint */
+    border-radius: 8px; /* 🔹 Rounded edges */
+    padding: 10px; /* 🔹 Adjust spacing inside the box */
+    margin: 10px auto; /* 🔹 Center it on the screen */
+    max-width: 90%; /* 🔹 Adjust width to fit content */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    animation: blinkingBorder 1.5s infinite; /* 🔹 Optional blinking effect */
+  }
+  @keyframes blinkingBorder {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+ 
 
   /* ---------------------------
      Formatted Phrase Preview

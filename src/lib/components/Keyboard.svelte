@@ -22,9 +22,58 @@
   const row2 = ['A','S','D','F','G','H','J','K','L'];
   const row3 = ['Z','X','C','V','B','N','M'];
 
-  $: disabledKeys = Object.keys(letterCosts).filter(letter => 
-    letterCosts[letter] > $gameStore.bankroll || 
-    $gameStore.incorrectLetters.includes(letter)  // 🔹 Keep incorrect letters blurred
+  $: glowKeys = Object.keys(letterCosts).filter(letter =>
+  // ✅ In default mode, highlight purchasable keys
+  ($gameStore.gameState !== "guess_mode" &&
+    letterCosts[letter] <= $gameStore.bankroll &&  // Can afford
+    !$gameStore.lockedLetters?.[letter] &&         // Not green
+    !$gameStore.incorrectLetters.includes(letter)) // Not red
+
+  || 
+
+  // ✅ In guess mode, highlight enterable keys
+  ($gameStore.gameState === "guess_mode" &&
+    !$gameStore.lockedLetters?.[letter]) // Anything that isn't locked is enterable
+);
+
+
+  // 🔹 Identify all keys that are still available for purchase
+$: purchasableKeys = Object.keys(letterCosts).filter(letter =>
+  !$gameStore.lockedLetters?.[letter] &&  // ✅ Not already purchased
+  !$gameStore.incorrectLetters.includes(letter) &&  // ✅ Not incorrect
+  letterCosts[letter] <= $gameStore.bankroll  // ✅ Can be afforded
+);
+
+$: blurredKeys = Object.keys(letterCosts).filter(letter => 
+  // 🔹 In default mode, blur incorrect (red), purchased (green), and unaffordable letters
+  ($gameStore.gameState !== "guess_mode" &&
+    (letterCosts[letter] > $gameStore.bankroll ||  // Blurs unaffordable letters
+    $gameStore.lockedLetters?.[letter] ||          // Blurs purchased (green) letters
+    $gameStore.incorrectLetters.includes(letter))  // Blurs incorrect (red) letters
+  )
+
+  ||
+
+  // 🔹 In guess mode, ONLY blur red (incorrect) & green (purchased) letters
+  ($gameStore.gameState === "guess_mode" &&
+    ($gameStore.lockedLetters?.[letter] || $gameStore.incorrectLetters.includes(letter))
+  )
+);
+
+$: disabledKeys = Object.keys(letterCosts).filter(letter => 
+  // 🔹 If NOT in guess mode, disable unaffordable, incorrect (red), and purchased (green) letters
+  ($gameStore.gameState !== "guess_mode" &&
+    (letterCosts[letter] > $gameStore.bankroll || 
+     $gameStore.lockedLetters?.[letter] || 
+     $gameStore.incorrectLetters.includes(letter)) 
+  )
+
+  ||
+
+  // 🔹 If IN guess mode, only disable red & green letters (everything else should be selectable)
+  ($gameStore.gameState === "guess_mode" &&
+    ($gameStore.lockedLetters?.[letter] || $gameStore.incorrectLetters.includes(letter))
+  )
 );
 
 
@@ -34,13 +83,15 @@
    *
    * @param {string} letter - The letter clicked.
    */
-  function handleLetterClick(letter) {
-    if ($gameStore.gameState === 'guess_mode') {
-      inputGuessLetter(letter);
-    } else {
-      selectLetter(letter);
-    }
+   function handleLetterClick(letter) {
+  if ($gameStore.gameState === 'guess_mode') {
+    // 🔹 Allow guessing ANY letter (even if unaffordable)
+    inputGuessLetter(letter);
+  } else if (!blurredKeys.includes(letter)) {
+    // 🔹 Only allow purchasing if the letter is NOT blurred
+    selectLetter(letter);
   }
+}
 
   /**
    * Global keyboard handler for Enter, Backspace/Delete, Space, and letter keys.
@@ -115,20 +166,18 @@
   <div class="keyboard-row">
     {#each row1 as letter}
       <button
-        class="key {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''} 
-                {$gameStore.incorrectLetters.includes(letter) ? 'incorrect' : ''}
-                 $gameStore.selectedPurchase?.type === 'letter' &&
-                  $gameStore.selectedPurchase.value === letter &&
-                  $gameStore.gameState === 'purchase_pending'
-                    ? 'pending'
-                    : $gameStore.lockedLetters?.[letter]
-                      ? 'purchased'
-                      : $gameStore.incorrectLetters.includes(letter)
-                        ? 'incorrect'
-                        : ''
-                }"
-        on:click={() => handleLetterClick(letter)}
-      >
+      class="key
+      {glowKeys.includes(letter) ? 'glow' : ''}
+       {blurredKeys.includes(letter) ? 'blurred' : ''}
+      {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''} 
+      {purchasableKeys.includes(letter) ? 'purchasable' : ''}  /* 🔹 Highlight purchasable keys */
+      { $gameStore.lockedLetters?.[letter] ? 'purchased' : '' }
+      { $gameStore.incorrectLetters.includes(letter) ? 'incorrect' : '' }
+      { $gameStore.selectedPurchase?.type === 'letter' &&
+        $gameStore.selectedPurchase.value === letter &&
+        $gameStore.gameState === 'purchase_pending' ? 'pending' : '' }"
+    on:click={() => handleLetterClick(letter)}
+          >
         <div class="letter">{letter}</div>
         <div class="price">${letterCosts[letter]}</div>
       </button>
@@ -139,7 +188,13 @@
   <div class="keyboard-row">
     {#each row2 as letter}
       <button
-        class="key {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''} 
+        class="key
+                {glowKeys.includes(letter) ? 'glow' : ''} 
+                {blurredKeys.includes(letter) ? 'blurred' : ''}
+                {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''} 
+                {purchasableKeys.includes(letter) ? 'purchasable' : ''}  /* 🔹 Highlight purchasable keys */
+                { $gameStore.lockedLetters?.[letter] ? 'purchased' : '' }
+                {$gameStore.incorrectLetters.includes(letter) ? 'incorrect' : ''}
                 { $gameStore.selectedPurchase?.type === 'letter' &&
                   $gameStore.selectedPurchase.value === letter &&
                   $gameStore.gameState === 'purchase_pending'
@@ -162,7 +217,13 @@
   <div class="keyboard-row">
     {#each row3 as letter}
       <button
-        class="key {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''} 
+        class="key
+                 {glowKeys.includes(letter) ? 'glow' : ''} 
+                 {blurredKeys.includes(letter) ? 'blurred' : ''}
+                {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''} 
+                {purchasableKeys.includes(letter) ? 'purchasable' : ''}  /* 🔹 Highlight purchasable keys */
+                { $gameStore.lockedLetters?.[letter] ? 'purchased' : '' }
+                {$gameStore.incorrectLetters.includes(letter) ? 'incorrect' : ''}
                 { $gameStore.selectedPurchase?.type === 'letter' &&
                   $gameStore.selectedPurchase.value === letter &&
                   $gameStore.gameState === 'purchase_pending'
@@ -314,8 +375,8 @@
   /* 🔹 Apply blur effect to unaffordable letters */
   .key.incorrect,
   .key.disabled {
-    filter: blur(2px);  /* 🔹 Blur effect */
-    opacity: 0.5;       /* 🔹 Make slightly faded */
+    filter: blur(.7px);  /* 🔹 Blur effect */
+    opacity: 0.6;       /* 🔹 Make slightly faded */
     pointer-events: none; /* 🔹 Prevent clicking */
     transition: filter 0.3s ease, opacity 0.3s ease;
 }
@@ -327,5 +388,118 @@ body.guess-mode .key.disabled {
     opacity: 1 !important;
     pointer-events: all;
 }
+
+/* 🔹 Blur correctly purchased (green) letters on the keyboard in guess mode */
+body.guess-mode .key.purchased {
+    filter: blur(.7px); /* 🔹 Add blur effect */
+    opacity: 0.6; /* 🔹 Make slightly faded */
+    pointer-events: none; /* 🔹 Prevent clicking */
+    transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+/* 🔹 Blur letters if unaffordable or restricted in guess mode */
+.key.blurred {
+    filter: blur(.7px);  /* 🔹 Apply blur effect */
+    opacity: 0.6;       /* 🔹 Make them slightly faded */
+    pointer-events: none; /* 🔹 Prevent clicking */
+    transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+/* 🔹 In guess mode: Unblur all selectable letters */
+body.guess-mode .key:not(.purchased):not(.incorrect) {
+    filter: none !important;
+    opacity: 1 !important;
+    pointer-events: all !important;
+}
+
+/* 🔹 In guess mode: Ensure incorrect & purchased letters remain blurred */
+body.guess-mode .key.purchased,
+body.guess-mode .key.incorrect {
+    filter: blur(1.5px); /* Keep them blurred */
+    opacity: 0.7;
+    pointer-events: none;
+    transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+/* 🔹 Ensure non-blurred keys are normal */
+.key:not(.blurred) {
+    filter: none;
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* 🔹 Prevent unwanted blurring outside guess mode */
+body:not(.guess-mode) .key.purchased,
+body:not(.guess-mode) .key.incorrect {
+    filter: none !important;
+    opacity: 1 !important;
+    pointer-events: all !important;
+}
+
+/* 🔹 In guess mode, blur red (incorrect) and green (purchased) letters */
+body.guess-mode .key.purchased,
+body.guess-mode .key.incorrect {
+    filter: blur(.7px);
+    opacity: 0.6;
+    pointer-events: none;
+    transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+/* 🔹 In guess mode, unaffordable letters should become CLEAR (unblurred) */
+body.guess-mode .key.blurred {
+    filter: none !important;
+    opacity: 1 !important;
+    pointer-events: all !important;
+}
+
+/* 🔹 Subtle white glow effect for purchasable keys */
+.key.purchasable {
+    background-color: rgba(255, 255, 255, 0.1); /* Very light white tint */
+    box-shadow: 0 0 6px 2px rgba(255, 255, 255, 0.4); /* Soft outer glow */
+    animation: glowPulse 1.5s infinite alternate; /* Slower, subtle pulsing */
+    transition: box-shadow 0.3s ease, background-color 0.3s ease;
+}
+
+/* 🔹 Slight increase in glow on hover */
+.key.purchasable:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 8px 3px rgba(255, 255, 255, 0.5);
+}
+
+/* 🔹 Soft pulsing glow animation */
+@keyframes glowPulse {
+    0% {
+        box-shadow: 0 0 6px 2px rgba(255, 255, 255, 0.4);
+    }
+    100% {
+        box-shadow: 0 0 10px 4px rgba(255, 255, 255, 0.5);
+    }
+}
+
+/* 🔹 Subtle white glow for purchasable/enterable keys */
+.key.glow {
+    background-color: rgba(255, 255, 255, 0.05); /* Very light white tint */
+    box-shadow: 0 0 5px 1px rgba(255, 255, 255, 0.3); /* Softer glow */
+    animation: softPulse 1.5s infinite alternate ease-in-out; /* Slower and minimal */
+    transition: box-shadow 0.3s ease, background-color 0.3s ease;
+}
+
+/* 🔹 Gentle increase on hover */
+.key.glow:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 7px 2px rgba(255, 255, 255, 0.4);
+}
+
+/* 🔹 Soft pulsing effect */
+@keyframes softPulse {
+    0% {
+        box-shadow: 0 0 5px 1px rgba(255, 255, 255, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.4);
+    }
+}
+
+
 
 </style>

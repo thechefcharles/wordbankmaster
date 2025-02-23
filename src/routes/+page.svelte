@@ -31,20 +31,28 @@ onMount(() => {
 });
 
 onMount(() => {
-  document.addEventListener('mousedown', (event) => {
-    if (event.target.tagName === 'BUTTON') {
-      event.target.blur();
-    }
+    // Prevent buttons from gaining focus on click
+    document.addEventListener('mousedown', (event) => {
+      if (event.target.tagName === 'BUTTON') {
+        event.preventDefault();
+        event.target.blur();
+      }
+    });
+
+    // Prevent focus on touch devices
+    document.addEventListener('touchstart', (event) => {
+      if (event.target.tagName === 'BUTTON') {
+        event.target.blur();
+      }
+    });
+
+    // Prevent keyboard "Tab" from focusing elements
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Tab") {
+        event.preventDefault();
+      }
+    });
   });
-
-  document.addEventListener('touchstart', (event) => {
-    if (event.target.tagName === 'BUTTON') {
-      event.target.blur();
-    }
-  });
-});
-
-
 
 // 🔄 Reactive subscriptions from the game store
 $: currentGame = $gameStore;
@@ -164,7 +172,7 @@ $: if (browser) {
     justify-content: center;
     align-items: center;
     letter-spacing: 1px; /* Adds a slight retro spacing */
-    margin-top: 0px;
+    margin-top: 10px;
   }  
   .currency {
     margin-right: 4px;
@@ -194,19 +202,21 @@ $: if (browser) {
   }
 
   /* Win Banner Animations */
-  @keyframes winPulse {
-    0%, 100% { transform: scale(1) rotate(0deg); text-shadow: 0px 0px 10px green; }
-    25% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px limegreen; }
-    50% { transform: scale(1.5) rotate(-3deg); text-shadow: 0px 0px 30px limegreen; }
-    75% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px green; }
-  }
-  @keyframes winFlash {
+/* Adjusted Win Banner Animations */
+@keyframes winPulse {
+    0%, 100% { transform: scale(1) rotate(0deg); text-shadow: 0px 0px 5px green; }
+    25% { transform: scale(1.1) rotate(2deg); text-shadow: 0px 0px 10px limegreen; }
+    50% { transform: scale(1.25) rotate(-2deg); text-shadow: 0px 0px 15px limegreen; }
+    75% { transform: scale(1.1) rotate(2deg); text-shadow: 0px 0px 10px green; }
+}
+@keyframes winFlash {
     0% { opacity: 1; }
-    50% { opacity: 0.2; }
+    50% { opacity: 0.4; }
     100% { opacity: 1; }
-  }
-  .banner.win {
-    font-size: 3rem;
+}
+
+.banner.win {
+    font-size: 1.5rem;  /* 🔹 Reduce font size from 3rem to 1.5rem */
     font-weight: 600;
     color: limegreen;
     text-transform: uppercase;
@@ -214,11 +224,11 @@ $: if (browser) {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     text-align: center;
-    padding: 20px;
-    border: 5px solid limegreen;
-    border-radius: 10px;
+    padding: 10px;  /* 🔹 Reduce padding from 20px to 10px */
+    border: 2.5px solid limegreen;  /* 🔹 Reduce border thickness from 5px to 2.5px */
+    border-radius: 5px;  /* 🔹 Reduce border radius for a smaller look */
     animation: winPulse 1.5s infinite, winFlash 0.5s infinite;
-  }
+}
 
   /* Game Over Banner Animations */
   @keyframes gameOverPulse {
@@ -233,7 +243,7 @@ $: if (browser) {
     100% { opacity: 1; }
   }
   .banner.lose {
-    font-size: 3rem;
+    font-size: 1.5rem;
     font-weight: 600;
     color: red;
     text-transform: uppercase;
@@ -241,9 +251,9 @@ $: if (browser) {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     text-align: center;
-    padding: 20px;
-    border: 5px solid red;
-    border-radius: 10px;
+    padding: 10px;
+    border: 2.5px solid red;
+    border-radius: 5px;
     animation: gameOverPulse 1.5s infinite, gameOverFlash 0.5s infinite;
   }
 
@@ -283,7 +293,25 @@ button {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+  outline: none !important;
+    box-shadow: none !important;
+    border: none;
 }
+
+button:focus {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+   /* Prevent focus for mouse clicks and keyboard navigation */
+   button:focus-visible {
+    outline: none !important;
+  }
+
+  button::-moz-focus-inner {
+    border: 0;
+  }
+
 
 /* 🔄 Prevent persistent focus from animations */
 input,

@@ -153,17 +153,20 @@
     </button>
   </div>
 
-  <!-- Main Guess Button -->
-  <div class="main-guess-button-container">
-    <button
-      class="guess-phrase-button {purchasePending ? 'pending' : ''} {guessModeActive && !guessComplete ? 'exit-mode' : ''} {guessComplete ? 'guess-complete' : ''}"
-      on:click={handleMainButtonClick}
-      disabled={noGuessesLeft && !purchasePending}
-      aria-label={buttonLabel}
-    >
-      {buttonLabel}
-    </button>
-  </div>
+<!-- Main Guess Button -->
+<div class="main-guess-button-container">
+  <button
+    class="guess-phrase-button 
+      {purchasePending ? 'pending' : ''} 
+      {guessModeActive && !guessComplete ? 'exit-mode' : ''} 
+      {guessComplete ? 'guess-complete' : ''}"
+    on:click={handleMainButtonClick}
+    disabled={noGuessesLeft && !purchasePending}
+    aria-label={buttonLabel}
+  >
+    {buttonLabel}
+  </button>
+</div>
 
   <!-- Extra Guess Button -->
   <div class="extra-guess-button-container">
@@ -227,6 +230,8 @@
     margin: 20px 0;
   }
 
+  
+
   /* Each button container is independent */
   .hint-button-container,
   .main-guess-button-container,
@@ -239,7 +244,7 @@
 
   .cost-indicator {
     position: absolute;
-    top: -30px;
+    top: -60px;
     font-size: 16px;
     font-weight: bold;
     font-family: 'VT323', sans-serif; /* Arcade-style font */
@@ -248,6 +253,9 @@
     display: inline-block; /* 🔹 Forces it to stay as a single unit */
     text-align: center; /* Centers the text */
   }
+
+  
+
 
   /* ---------------------------
      Hint Button Styles
@@ -322,14 +330,33 @@
   /* ---------------------------
      Main Guess Button Styles
   --------------------------- */
+  .guess-mode-banner {
+    font-size: .6rem;  /* 🔹 Reduce font size */
+    font-weight: 600;
+    color: orange;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 3px;  /* 🔹 Reduce padding */
+    border: 1px solid orange; /* 🔹 Reduce border thickness */
+    border-radius: 2px; /* 🔹 Smaller rounded corners */
+    background: rgba(255, 165, 0, 0.2);
+    animation: blinkingBorder 1.5s infinite;
+    max-width: 60%; /* 🔹 Ensure it doesn't stretch across the entire screen */
+    margin: 10px auto; /* 🔹 Center it */
+    margin-top: -10px;
+    margin-bottom: 40px;
+}
+
+  
   .guess-phrase-button {
     background: linear-gradient(180deg, #ff9800, #e65100); /* Gradient for depth */    color: white;
-    padding: 12px 30px;
-    min-width: 230px;
+    padding: 8px 30px;
+    min-width: 200px;
+    max-width: 300px;
     min-height: 40px;
     border: none;
     border-radius: 8px;
-    font-size: 30px;
+    font-size: 20px;
     margin-top: -30px;
     font-family: 'VT323', sans-serif; /* Arcade-style font */
     font-weight: bold;
@@ -365,11 +392,12 @@
   }
 
   /* 🔹 Blinking Green Animation for Pending */
-  .guess-phrase-button.pending {
-    background-color: green !important;
-    color: white !important;
+/* 🔹 When a purchase is pending, turn green and blink */
+.guess-phrase-button.pending {
+    background: linear-gradient(180deg, #00cc00, #008800) !important; /* Green */
+    border: 3px solid #007700 !important;
     animation: blinkGreen 1s infinite;
-  }  
+}
   .guess-phrase-button:hover {
     background-color: darkorange;
   }
@@ -559,4 +587,23 @@
       border: 3px solid #aaffff !important;
     }
   }
+
+  .message-box {
+    position: fixed;  /* Ensures it stays in place even when scrolling */
+    top: 50%;  /* Moves it down 50% of the screen */
+    left: 50%;  /* Centers it horizontally */
+    transform: translate(-50%, -50%);  /* Centers it exactly */
+    background: rgba(255, 0, 0, 0.85); /* Slight transparency for a clean look */
+    color: white;
+    padding: 12px 20px;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    z-index: 1000; /* Ensures it appears above everything */
+    max-width: 80%; /* Prevents it from being too wide */
+    text-transform: uppercase; /* Makes it stand out */
+}
+
 </style>
