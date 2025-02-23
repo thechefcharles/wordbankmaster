@@ -225,36 +225,50 @@
   --------------------------- */
   .phrase-container {
     display: flex;
+    grid-template-columns: repeat(auto-fit, minmax(1fr, 1fr)); /* Responsive columns */
     flex-wrap: wrap;
+    width: 100%; /* Full viewport width */
+    max-width: 100vw; /* Ensure it never exceeds viewport */
+    padding: 0; /* Remove any padding */
+    margin: 0 auto; /* Remove extra margins */
+    gap: 1px; /* Minimize space between boxes */
     justify-content: center;
-    gap: 10px;
-    margin: 10px 0;
-    max-width: 100%;
+    align-items: center;
     box-sizing: border-box;
     overflow-x: hidden;
+    text-align: center;
   }
   .word {
     display: flex;
-    gap: 2px;
+    gap: 0px;
     flex-wrap: wrap;
     justify-content: center;
+    align-items: center;
     margin-right: 15px;
+    text-align: center;
   }
   .letter-box {
     width: 50px;
     height: 50px;
+    padding: 0px;
+    flex-grow: 1;
+    max-width: 50px; /* Prevents it from getting too big */
+    height: auto; /* Adjust height automatically */
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid #333;
+    text-align: center;
+    border: 3px solid #453d3d;
     background-color: #fff;
     font-size: 24px;
     font-weight: bold;
     border-radius: 5px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.3);
     word-break: break-word;
     overflow-wrap: break-word;
     color: black;
+    background: linear-gradient(145deg, #dfe6e9, #ffffff);
+
   }
   .letter-box.locked {
     color: black !important;
@@ -264,6 +278,14 @@
     border: 3px solid orange !important;
     color: black !important;
   }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    overflow-x: hidden;
+}
+
 
   /* ---------------------------
      Guess Mode Styling
@@ -283,9 +305,9 @@
   --------------------------- */
   @media (max-width: 480px) {
     .letter-box {
-      width: 35px;
+      width: 25px;
       height: 50px;
-      font-size: 18px;
+      font-size: 25px;
     }
   }
 

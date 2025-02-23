@@ -128,7 +128,7 @@
 ----------------------------- -->
 {#if guessModeActive}
   <div class="guess-mode-banner">
-    Fill every phrase box to submit.<br />
+    Fill entire phrase to submit.<br />
     Correct guesses remain!
   </div>
 {/if}
@@ -141,7 +141,7 @@
   <!-- Hint Button -->
   <div class="hint-button-container">
     {#if showHintCost}
-      <div class="cost-indicator">-$150</div>
+      <div class="cost-indicator">(-$150)</div>
     {/if}
     <button 
       class="hint-button {fundsLow ? 'disabled-purchase' : ''} {hintPending ? 'pending' : ''}"
@@ -216,6 +216,8 @@
 {/if}
 
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
   /* Overall container for independent button control */
   .buttons-container {
     display: flex;
@@ -237,25 +239,34 @@
 
   .cost-indicator {
     position: absolute;
-    top: -20px;
+    top: -30px;
     font-size: 16px;
     font-weight: bold;
+    font-family: 'VT323', sans-serif; /* Arcade-style font */
     color: red;
+    white-space: nowrap; /* 🔹 Prevents text from breaking into a new line */
+    display: inline-block; /* 🔹 Forces it to stay as a single unit */
+    text-align: center; /* Centers the text */
   }
 
   /* ---------------------------
      Hint Button Styles
   --------------------------- */
   .hint-button {
-    width: 40px;
-    height: 40px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     border: none;
     cursor: pointer;
+    margin-top: -30px;
     color: #fff;
     font-weight: bold;
     text-align: center;
-    font-size: 8px;
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    font-size: 10px;
+    font-family: 'VT323', sans-serif; /* Arcade-style font */
     text-transform: uppercase;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     box-sizing: border-box;
@@ -277,15 +288,17 @@
      Extra Guess Button Styles
   --------------------------- */
   .buy-guess-button {
-    width: 40px;
-    height: 40px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
+    margin-top: -30px;
     border: none;
     cursor: pointer;
     color: #fff;
     font-weight: bold;
     text-align: center;
-    font-size: 8px;
+    font-size: 10px;
+    font-family: 'VT323', sans-serif; /* Arcade-style font */
     text-transform: uppercase;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     box-sizing: border-box;
@@ -295,7 +308,6 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    text-align: center;
   }
   .buy-guess-button:hover {
     transform: translateY(-2px);
@@ -311,20 +323,53 @@
      Main Guess Button Styles
   --------------------------- */
   .guess-phrase-button {
-    background-color: orange;
-    color: white;
+    background: linear-gradient(180deg, #ff9800, #e65100); /* Gradient for depth */    color: white;
     padding: 12px 30px;
     min-width: 230px;
     min-height: 40px;
     border: none;
-    border-radius: 5px;
-    font-size: 14px;
+    border-radius: 8px;
+    font-size: 30px;
+    margin-top: -30px;
+    font-family: 'VT323', sans-serif; /* Arcade-style font */
     font-weight: bold;
     cursor: pointer;
     text-transform: uppercase;
     transition: background-color 0.3s, transform 0.2s;
     box-sizing: border-box;
+    /* 🔹 3D Border and Shadow */
+    border: 3px solid #ff6f00;
+    box-shadow:
+      inset 2px 2px 5px rgba(255, 255, 255, 0.3), /* 🔹 Inner highlight */
+      3px 3px 8px rgba(0, 0, 0, 0.6), /* 🔹 Outer shadow */
+      5px 5px 12px rgba(0, 0, 0, 0.4); /* 🔹 Soft depth shadow */
   }
+
+  /* 🔹 Hover Effect - Slight Lift */
+  .guess-phrase-button:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(180deg, #ffa726, #ef6c00);
+    box-shadow:
+      inset 2px 2px 6px rgba(255, 255, 255, 0.5), /* 🔹 Stronger inner glow */
+      3px 3px 10px rgba(0, 0, 0, 0.8),
+      6px 6px 16px rgba(0, 0, 0, 0.5);
+  }
+
+  /* 🔹 Pressed Effect - Button Looks "Pressed In" */
+  .guess-phrase-button:active {
+    transform: translateY(2px);
+    background: linear-gradient(180deg, #e65100, #bf360c);
+    box-shadow:
+      inset -2px -2px 6px rgba(0, 0, 0, 0.6), /* 🔹 Darker inner shadow */
+      1px 1px 4px rgba(0, 0, 0, 0.5);
+  }
+
+  /* 🔹 Blinking Green Animation for Pending */
+  .guess-phrase-button.pending {
+    background-color: green !important;
+    color: white !important;
+    animation: blinkGreen 1s infinite;
+  }  
   .guess-phrase-button:hover {
     background-color: darkorange;
   }
@@ -346,14 +391,14 @@
       0 0 3px #66aaff,
       0 0 5px #3388ff,
       0 0 7px rgba(195, 199, 205, 0.5);
-    border: 3px solid #b8bdc6;
+    border: 1px solid #b8bdc6;
   }
   100% {
     box-shadow:
       0 0 4px #4488ff,
       0 0 7px #0055bb,
       0 0 9px rgba(0, 85, 187, 0.7);
-    border: 3px solid #a4abb4;
+    border: 1px solid #a4abb4;
   }
 }
 
@@ -451,11 +496,34 @@
   :global(body.dark-mode) .hint-button,
   :global(body.dark-mode) .buy-guess-button {
     background-color: #007bff !important;
+    border: 3px solid #ff8f00;
+    box-shadow:
+      inset 2px 2px 6px rgba(255, 255, 255, 0.2),
+      3px 3px 10px rgba(0, 0, 0, 0.7),
+      6px 6px 16px rgba(0, 0, 0, 0.5);
     color: white !important;
     border: none !important;
   }
+  /* 🔹 Dark Mode Hover Effect */
+  :global(body.dark-mode) .guess-phrase-button:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(180deg, #ffcc80, #ff9800);
+    box-shadow:
+      inset 2px 2px 5px rgba(255, 255, 255, 0.3),
+      3px 3px 14px rgba(0, 0, 0, 0.9),
+      6px 6px 18px rgba(0, 0, 0, 0.6);
+  }
+
+  /* 🔹 Dark Mode Pressed Effect */
+  :global(body.dark-mode) .guess-phrase-button:active {
+    transform: translateY(2px);
+    background: linear-gradient(180deg, #e65100, #bf360c);
+    box-shadow:
+      inset -2px -2px 6px rgba(0, 0, 0, 0.8),
+      1px 1px 5px rgba(0, 0, 0, 0.6);
+  }
   :global(body.dark-mode) .guess-phrase-button {
-    background-color: orange !important;
+    background: linear-gradient(180deg, #ffa726, #e65100);
     color: white !important;
     border: none !important;
   }

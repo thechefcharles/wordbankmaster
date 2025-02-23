@@ -33,6 +33,11 @@
 
     @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
     @import url('https://fonts.googleapis.com/css2?family=Russo+One&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
 
     /* Container is sized for a single digit */
     .slot-container {
@@ -48,8 +53,8 @@
       height: 40px;
       line-height: 40px;
       text-align: center;
-      font-size: 1rem;
-      font-family: 'Russo One', sans-serif;
+      font-size: 2rem;
+      font-family: 'VT323', sans-serif; /* Arcade-style font */
     }
   </style>
   

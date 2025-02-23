@@ -22,6 +22,12 @@
   const row2 = ['A','S','D','F','G','H','J','K','L'];
   const row3 = ['Z','X','C','V','B','N','M'];
 
+  $: disabledKeys = Object.keys(letterCosts).filter(letter => 
+    letterCosts[letter] > $gameStore.bankroll || 
+    $gameStore.incorrectLetters.includes(letter)  // 🔹 Keep incorrect letters blurred
+);
+
+
   /**
    * handleLetterClick
    * Depending on the game state, either inputs a guess letter or selects a letter for purchase.
@@ -109,42 +115,41 @@
   <div class="keyboard-row">
     {#each row1 as letter}
       <button
-        class="key { 
-          $gameStore.selectedPurchase?.type === 'letter' &&
-          $gameStore.selectedPurchase.value === letter &&
-          $gameStore.gameState === 'purchase_pending'
-            ? 'pending'
-            : $gameStore.lockedLetters?.[letter]
-              ? 'purchased'
-              : $gameStore.incorrectLetters.includes(letter)
-                ? 'incorrect'
-                : ''
-        }"
+        class="key {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''} 
+                {$gameStore.incorrectLetters.includes(letter) ? 'incorrect' : ''}
+                 $gameStore.selectedPurchase?.type === 'letter' &&
+                  $gameStore.selectedPurchase.value === letter &&
+                  $gameStore.gameState === 'purchase_pending'
+                    ? 'pending'
+                    : $gameStore.lockedLetters?.[letter]
+                      ? 'purchased'
+                      : $gameStore.incorrectLetters.includes(letter)
+                        ? 'incorrect'
+                        : ''
+                }"
         on:click={() => handleLetterClick(letter)}
       >
         <div class="letter">{letter}</div>
         <div class="price">${letterCosts[letter]}</div>
       </button>
     {/each}
-    {#if $gameStore.gameState === 'guess_mode'}
-    {/if}
   </div>
 
   <!-- Row 2: A - L -->
   <div class="keyboard-row">
     {#each row2 as letter}
       <button
-        class="key { 
-          $gameStore.selectedPurchase?.type === 'letter' &&
-          $gameStore.selectedPurchase.value === letter &&
-          $gameStore.gameState === 'purchase_pending'
-            ? 'pending'
-            : $gameStore.lockedLetters?.[letter]
-              ? 'purchased'
-              : $gameStore.incorrectLetters.includes(letter)
-                ? 'incorrect'
-                : ''
-        }"
+        class="key {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''} 
+                { $gameStore.selectedPurchase?.type === 'letter' &&
+                  $gameStore.selectedPurchase.value === letter &&
+                  $gameStore.gameState === 'purchase_pending'
+                    ? 'pending'
+                    : $gameStore.lockedLetters?.[letter]
+                      ? 'purchased'
+                      : $gameStore.incorrectLetters.includes(letter)
+                        ? 'incorrect'
+                        : ''
+                }"
         on:click={() => handleLetterClick(letter)}
       >
         <div class="letter">{letter}</div>
@@ -153,34 +158,34 @@
     {/each}
   </div>
 
-<!-- Row 3: Z - M (Plus Delete Button in Guess Mode) -->
-<div class="keyboard-row">
-  {#each row3 as letter}
-    <button
-      class="key { 
-        $gameStore.selectedPurchase?.type === 'letter' &&
-        $gameStore.selectedPurchase.value === letter &&
-        $gameStore.gameState === 'purchase_pending'
-          ? 'pending'
-          : $gameStore.lockedLetters?.[letter]
-            ? 'purchased'
-            : $gameStore.incorrectLetters.includes(letter)
-              ? 'incorrect'
-              : ''
-      }"
-      on:click={() => handleLetterClick(letter)}
-    >
-      <div class="letter">{letter}</div>
-      <div class="price">${letterCosts[letter]}</div>
-    </button>
-  {/each}
+  <!-- Row 3: Z - M (Plus Delete Button in Guess Mode) -->
+  <div class="keyboard-row">
+    {#each row3 as letter}
+      <button
+        class="key {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''} 
+                { $gameStore.selectedPurchase?.type === 'letter' &&
+                  $gameStore.selectedPurchase.value === letter &&
+                  $gameStore.gameState === 'purchase_pending'
+                    ? 'pending'
+                    : $gameStore.lockedLetters?.[letter]
+                      ? 'purchased'
+                      : $gameStore.incorrectLetters.includes(letter)
+                        ? 'incorrect'
+                        : ''
+                }"
+        on:click={() => handleLetterClick(letter)}
+      >
+        <div class="letter">{letter}</div>
+        <div class="price">${letterCosts[letter]}</div>
+      </button>
+    {/each}
 
-  {#if $gameStore.gameState === 'guess_mode'}
-    <button class="key delete" on:click={deleteGuessLetter}>
-      <div class="letter">Del</div>
-    </button>
-  {/if}
-</div>
+    {#if $gameStore.gameState === 'guess_mode'}
+      <button class="key delete" on:click={deleteGuessLetter}>
+        <div class="letter">Del</div>
+      </button>
+    {/if}
+  </div>
 </div>
 
 <style>
@@ -305,4 +310,22 @@
     color: white !important;
     animation: blink 1s infinite;
   }
+
+  /* 🔹 Apply blur effect to unaffordable letters */
+  .key.incorrect,
+  .key.disabled {
+    filter: blur(2px);  /* 🔹 Blur effect */
+    opacity: 0.5;       /* 🔹 Make slightly faded */
+    pointer-events: none; /* 🔹 Prevent clicking */
+    transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+/* 🔹 Remove blur when in guess mode */
+body.guess-mode .key.incorrect,
+body.guess-mode .key.disabled {
+    filter: none !important;
+    opacity: 1 !important;
+    pointer-events: all;
+}
+
 </style>

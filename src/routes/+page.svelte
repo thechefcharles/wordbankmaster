@@ -108,14 +108,20 @@ $: if (browser) {
 
 <style>
   @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+
+
 
   /* Main container styling */
   main {
     max-width: 600px;
     margin: 0 auto;
     text-align: center;
-    font-family: 'VT323', sans-serif;
-    padding: 10px;
+    font-family: 'Orbitron', sans-serif;
+    padding: 8px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -123,8 +129,8 @@ $: if (browser) {
 
   /* Category text styling */
   .category {
-    font-size: 1.2rem;
-    margin-top: -150px;
+    font-size: 1.0rem;
+    margin-top: -140px;
     margin-bottom: 0;
     font-weight: bold;
   }
@@ -171,6 +177,7 @@ $: if (browser) {
     display: block;
     margin: -50px auto -60px;
     padding-bottom: 0;
+    align-self: center;
   }
   .logo-container {
     display: flex;
