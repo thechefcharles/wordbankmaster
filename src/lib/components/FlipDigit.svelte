@@ -29,10 +29,15 @@
   </div>
   
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Oxanium:wght@400;700&display=swap');
+
+    @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Russo+One&display=swap');
+
     /* Container is sized for a single digit */
     .slot-container {
       overflow: hidden;
-      width: 30px;
+      width: 15px;
       height: 40px;
     }
     .reel {
@@ -43,8 +48,8 @@
       height: 40px;
       line-height: 40px;
       text-align: center;
-      font-size: 1.2rem;
-      font-family: 'Orbitron', sans-serif;
+      font-size: 1rem;
+      font-family: 'Russo One', sans-serif;
     }
   </style>
   

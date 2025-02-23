@@ -376,7 +376,9 @@
   .guess-phrase-button {
     background-color: orange;
     color: white;
-    padding: 10px 20px;
+    padding: 12px 30px;
+    min-width: 180px;
+    min-height: 60px; /* Set a wider minimum width */
     border: none;
     border-radius: 5px;
     font-size: 14px;
@@ -385,6 +387,7 @@
     text-transform: uppercase;
     transition: background-color 0.3s, transform 0.2s;
     box-sizing: border-box;
+    margin-top: 100px;
   }
   .guess-phrase-button:hover {
     background-color: darkorange;

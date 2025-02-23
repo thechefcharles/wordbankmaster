@@ -12,23 +12,49 @@
   import GameButtons from '$lib/components/GameButtons.svelte';
   import FlipDigit from '$lib/components/FlipDigit.svelte';
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
+  
 
   // On mount: add dark mode (could be updated later based on user settings) 
-  onMount(() => {
-    document.body.classList.add('dark-mode');
-    fetchRandomGame(); // Fetch a new puzzle on load
+onMount(() => {
+  // 🌙 Ensure dark mode is applied on page load
+  document.body.classList.add('dark-mode');
+
+  // 🎯 Fetch a new puzzle on load
+  fetchRandomGame();
+
+  // 🔥 Remove focus from buttons when clicked
+  document.addEventListener('click', (event) => {
+    if (event.target.tagName === 'BUTTON') {
+      event.target.blur();
+    }
+  });
+});
+
+onMount(() => {
+  document.addEventListener('mousedown', (event) => {
+    if (event.target.tagName === 'BUTTON') {
+      event.target.blur();
+    }
   });
 
-  // Reactive subscriptions from the game store
-  $: currentGame = $gameStore;
-  // Derive the bankroll and split it into individual digits for display
-  $: bankroll = currentGame.bankroll || 0;
-  $: digits = String(bankroll).split('');
+  document.addEventListener('touchstart', (event) => {
+    if (event.target.tagName === 'BUTTON') {
+      event.target.blur();
+    }
+  });
+});
 
-  // When in the browser, update the document body class based on the game state
-  $: if (browser) {
-    document.body.classList.toggle('guess-mode', currentGame.gameState === 'guess_mode');
-  }
+
+
+// 🔄 Reactive subscriptions from the game store
+$: currentGame = $gameStore;
+$: bankroll = currentGame.bankroll || 0;
+$: digits = String(bankroll).split('');
+
+// 🔄 When in the browser, update the body class for guess mode
+$: if (browser) {
+  document.body.classList.toggle('guess-mode', currentGame.gameState === 'guess_mode');
+}
 </script>
 
 <main>
@@ -81,12 +107,14 @@
 </main>
 
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
   /* Main container styling */
   main {
     max-width: 600px;
     margin: 0 auto;
     text-align: center;
-    font-family: sans-serif;
+    font-family: 'VT323', sans-serif;
     padding: 10px;
     display: flex;
     flex-direction: column;
@@ -116,27 +144,22 @@
   }
 
   /* Bankroll container and box styling */
-  .bankroll-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    margin: 10px auto 0;
-  }
   .bankroll-box {
-    padding: 5px 10px;
-    font-size: 1.5rem;
-    font-family: 'Orbitron', sans-serif;
+    padding: 2px 5px;
+    font-size: 1.4rem; /* Slightly larger for arcade feel */
+    font-family: 'VT323', sans-serif; /* Arcade-style font */
     color: #fff;
     background: linear-gradient(45deg, #2e7d32, #66bb6a);
     border: 3px solid #1b5e20;
-    border-radius: 8px;
+    border-radius: 4px;
     text-align: center;
     box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
     display: inline-flex;
     justify-content: center;
     align-items: center;
-  }
+    letter-spacing: 1px; /* Adds a slight retro spacing */
+    margin-top: 50px;
+  }  
   .currency {
     margin-right: 4px;
   }
@@ -222,4 +245,46 @@
     background: #222;
     color: white;
   }
+  button:focus,
+button:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* 🔄 Fix for Chrome/Safari Mobile Persistent Highlight */
+button:focus-visible {
+  outline: none !important;
+}
+/* Remove button focus on all browsers */
+/* 🔄 Remove focus outlines and fix unwanted highlights */
+button:focus,
+button:active {
+  outline: none !important;
+  box-shadow: none !important;
+  background: inherit !important;
+}
+
+/* 🔄 Ensure focus never persists */
+button:focus-visible {
+  outline: none !important;
+}
+
+/* 🔄 Disable Safari/Chrome tap highlights */
+button {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* 🔄 Prevent persistent focus from animations */
+input,
+textarea,
+button,
+select {
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
 </style>

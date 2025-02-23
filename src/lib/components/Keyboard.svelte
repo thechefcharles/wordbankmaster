@@ -127,9 +127,6 @@
       </button>
     {/each}
     {#if $gameStore.gameState === 'guess_mode'}
-      <button class="key delete" on:click={deleteGuessLetter}>
-        <div class="letter">Del</div>
-      </button>
     {/if}
   </div>
 
@@ -156,28 +153,34 @@
     {/each}
   </div>
 
-  <!-- Row 3: Z - M -->
-  <div class="keyboard-row">
-    {#each row3 as letter}
-      <button
-        class="key { 
-          $gameStore.selectedPurchase?.type === 'letter' &&
-          $gameStore.selectedPurchase.value === letter &&
-          $gameStore.gameState === 'purchase_pending'
-            ? 'pending'
-            : $gameStore.lockedLetters?.[letter]
-              ? 'purchased'
-              : $gameStore.incorrectLetters.includes(letter)
-                ? 'incorrect'
-                : ''
-        }"
-        on:click={() => handleLetterClick(letter)}
-      >
-        <div class="letter">{letter}</div>
-        <div class="price">${letterCosts[letter]}</div>
-      </button>
-    {/each}
-  </div>
+<!-- Row 3: Z - M (Plus Delete Button in Guess Mode) -->
+<div class="keyboard-row">
+  {#each row3 as letter}
+    <button
+      class="key { 
+        $gameStore.selectedPurchase?.type === 'letter' &&
+        $gameStore.selectedPurchase.value === letter &&
+        $gameStore.gameState === 'purchase_pending'
+          ? 'pending'
+          : $gameStore.lockedLetters?.[letter]
+            ? 'purchased'
+            : $gameStore.incorrectLetters.includes(letter)
+              ? 'incorrect'
+              : ''
+      }"
+      on:click={() => handleLetterClick(letter)}
+    >
+      <div class="letter">{letter}</div>
+      <div class="price">${letterCosts[letter]}</div>
+    </button>
+  {/each}
+
+  {#if $gameStore.gameState === 'guess_mode'}
+    <button class="key delete" on:click={deleteGuessLetter}>
+      <div class="letter">Del</div>
+    </button>
+  {/if}
+</div>
 </div>
 
 <style>
