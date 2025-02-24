@@ -10,8 +10,7 @@
     submitGuess
   } from '$lib/stores/GameStore.js';
 
-  let showHowToPlay = false;
-  let darkMode = false;
+  let darkMode = false; // ✅ Ensure it's declared
 
   // Reactive derivations from the game store
   $: purchasePending = !!$gameStore.selectedPurchase;
@@ -178,48 +177,6 @@
   </div>
 </div>
 
-<div class="top-buttons">
-  <!-- ❓ How to Play Button -->
-  <button class="how-to-play-button" on:click={() => showHowToPlay = true} aria-label="How to Play Instructions">
-    ❓
-  </button>
-
-  <!-- 🌙 Dark Mode Toggle -->
-  <button class="dark-mode-button" on:click={toggleDarkMode} aria-label="Toggle Dark Mode">
-    {darkMode ? "☀️" : "🌙"}
-  </button>
-</div>
-
-{#if showHowToPlay}
-  <div class="modal-overlay" role="dialog" aria-modal="true">
-    <div class="modal-content">
-      <!-- 🔴 Close Button -->
-      <button class="close-btn" on:click={() => showHowToPlay = false} aria-label="Close How to Play">❌</button>
-
-      <h2 class="modal-title">📜 How to Play</h2>
-      
-      <p class="intro-text">
-        💰 <b>Start with $1000.</b> Use it wisely to <b>buy letters, get hints, and guess the phrase!</b>
-      </p>
-
-      <h3>🎯 Goal</h3>
-      <p>Solve the phrase <b>before running out of money!</b></p>
-
-      <h3>🕹️ Gameplay</h3>
-      <ul class="modal-list">
-        <li>🔤 <b>Buy Letters:</b> Click/tap letters to purchase.</li>
-        <li>⏎ <b>Confirm:</b> Press Enter to submit purchases or guesses.</li>
-        <li>🔄 <b>Guess Mode:</b> Press Space to toggle Guess Mode.</li>
-        <li>💡 <b>Hint ($150):</b> Reveals a random letter.</li>
-        <li>🎟️ <b>Extra Guess ($150):</b> Buy another shot.</li>
-      </ul>
-
-      <p class="modal-footer">
-        <b>Think smart, spend wisely, and guess like a pro! 🚀</b>
-      </p>
-    </div>
-  </div>
-{/if}
 
 <style>
   @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
@@ -264,7 +221,8 @@
     border-radius: 50%;
     border: none;
     cursor: pointer;
-    margin-top: -10px;
+    margin-top: 130px;
+    margin-right: 10px;
     color: #fff;
     font-weight: bold;
     text-align: center;
@@ -297,7 +255,8 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    margin-top: -10px;
+    margin-top: 130px;
+    margin-left: 10px;
     border: none;
     cursor: pointer;
     color: #fff;
@@ -332,11 +291,11 @@
     background: linear-gradient(180deg, #ff9800, #e65100); /* Gradient for depth */    color: white;
     padding: 6px 15px;
     width: 230px;
-    min-height: 40px;
+    min-height: 50px;
     border: none;
     border-radius: 8px;
     font-size: 25px;
-    margin-top: -10px;
+    margin-top: 130px;
     font-family: 'VT323', sans-serif; /* Arcade-style font */
     font-weight: bold;
     cursor: pointer;
@@ -368,6 +327,7 @@
     box-shadow:
       inset -2px -2px 6px rgba(0, 0, 0, 0.6), /* 🔹 Darker inner shadow */
       1px 1px 4px rgba(0, 0, 0, 0.5);
+      
   }
 
   /* 🔹 Blinking Green Animation for Pending */
@@ -383,6 +343,7 @@
   }
   .guess-phrase-button:active {
     transform: scale(0.98);
+    
   }
   .guess-phrase-button.pending {
     background-color: green !important;
@@ -436,148 +397,6 @@
     filter: blur(.8px);
     pointer-events: none;
   }
-
-  /* ---------------------------
-     Top Buttons & Modal Styles
-  --------------------------- */
-/* 🔹 Style the Top Buttons */
-.top-buttons {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  right: 10px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 10px;
-  z-index: 1000;
-}
-
-/* ❓ How to Play Button */
-.how-to-play-button {
-  background: transparent;
-  border: none;
-  font-size: 28px;
-  cursor: pointer;
-  color: white;
-  transition: transform 0.2s ease-in-out;
-}
-
-.how-to-play-button:hover {
-  transform: scale(1.2);
-}
-
-/* 🌙 Dark Mode Toggle */
-.dark-mode-button {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-}
-
-/* 🖥️ Modal Overlay */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.75);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-/* 📜 Modal Content */
-.modal-content {
-  background: linear-gradient(135deg, #222, #333);
-  padding: 20px;
-  border-radius: 10px;
-  width: 90%;
-  max-width: 400px;
-  text-align: center;
-  box-shadow: 0 4px 10px rgba(0, 255, 0, 0.3);
-  animation: slideIn 0.3s ease-out;
-  border: 3px solid limegreen;
-  position: relative;
-}
-
-/* ❌ Close Button */
-.close-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: red;
-  color: white;
-  font-size: 18px;
-  font-weight: bold;
-  border: none;
-  cursor: pointer;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  text-align: center;
-  transition: background 0.3s;
-}
-
-.close-btn:hover {
-  background: darkred;
-}
-
-/* 📜 Title */
-.modal-title {
-  font-size: 24px;
-  color: limegreen;
-  font-family: 'Orbitron', sans-serif;
-  text-transform: uppercase;
-  text-shadow: 0 0 10px limegreen;
-  margin-bottom: 10px;
-}
-
-/* 🔹 Intro Text */
-.intro-text {
-  font-size: 16px;
-  color: white;
-  margin-bottom: 10px;
-}
-
-/* 🕹️ List */
-.modal-list {
-  list-style-type: none;
-  padding: 0;
-  text-align: left;
-}
-
-.modal-list li {
-  font-size: 16px;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 8px;
-  margin-bottom: 5px;
-  border-radius: 5px;
-  text-shadow: 0px 0px 5px rgba(255, 255, 255, 0.4);
-}
-
-/* 🚀 Footer */
-.modal-footer {
-  font-size: 14px;
-  font-weight: bold;
-  color: white;
-  padding: 10px;
-  text-shadow: 0 0 5px rgba(255, 255, 255, 0.4);
-}
-
-/* 🎬 Animations */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideIn {
-  from { transform: translateY(-20px); }
-  to { transform: translateY(0); }
-}
 
   /* ---------------------------
      Dark Mode Overrides
@@ -648,5 +467,20 @@
       border: 3px solid #aaffff !important;
     }
   }
+
+  /* 🔹 Exit Guess Mode Button Turns Red */
+.guess-phrase-button.exit-mode {
+    background: linear-gradient(180deg, #ff4444, #cc0000); /* Red gradient */
+    color: white !important;
+    border: 3px solid darkred !important;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+/* 🔹 Press Effect */
+.guess-phrase-button.exit-mode:active {
+    background: linear-gradient(180deg, #cc0000, #990000);
+    transform: scale(0.95);
+}
+
   
 </style>

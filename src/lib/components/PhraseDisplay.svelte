@@ -9,7 +9,7 @@
   // Reactive: current phrase from game store
   $: phrase = $gameStore.phrase || "";
   // Maximum characters per row (for hyphenation/line breaks)
-  let maxLettersPerRow = 10;
+  let maxLettersPerRow = 12;
 
   /**
    * getFormattedPhrase
@@ -217,7 +217,7 @@
     100% { transform: translateX(0) scale(1); }
   }
   .shake {
-    animation: shake 1s ease-in-out;
+    animation: shake 2s ease-in-out;
   }
 
   /* ---------------------------

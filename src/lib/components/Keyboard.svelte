@@ -194,9 +194,9 @@
     transform: translateX(-50%);
     width: 100%;
     max-width: 600px;
-    background-color: #f9f9f9;
+    box-shadow: none !important; /* ❌ Removes any shadow */
+    background: transparent !important; /* ❌ Ensures no background issue */
     padding: 10px;
-    border-top: 2px solid #ccc;
     display: flex;
     flex-direction: column;
     gap: 5px;
@@ -262,16 +262,25 @@
     background-color: green;
     color: white;
     cursor: default;
+    filter: blur(.8px); /* Apply a subtle blur */
+    opacity: 0.7; /* Make slightly faded */
+    pointer-events: none; /* Prevent clicking */
+    transition: filter 0.3s ease, opacity 0.3s ease;
   }
   .pending {
     background-color: blue !important;
     color: white !important;
     animation: blink 1s infinite;
+  
   }
   .incorrect {
     background-color: red;
     color: white;
     cursor: default;
+    filter: blur(.8px); /* Apply a subtle blur */
+    opacity: 0.7; /* Make slightly faded */
+    pointer-events: none; /* Prevent clicking */
+    transition: filter 0.3s ease, opacity 0.3s ease;
   }
 
   /* Blinking animation for pending keys */
@@ -307,7 +316,6 @@
   }
 
   /* 🔹 Apply blur effect to unaffordable letters */
-  .key.incorrect,
   .key.disabled {
     filter: blur(.8px);  /* 🔹 Blur effect */
     opacity: 0.5;       /* 🔹 Make slightly faded */
@@ -321,6 +329,18 @@ body.guess-mode .key.disabled {
     filter: none !important;
     opacity: 1 !important;
     pointer-events: all;
+}
+/* 🔹 Light up keys that are NOT purchased, incorrect, or disabled */
+.key:not(.purchased):not(.incorrect):not(.disabled) {
+    box-shadow: 0px 0px 8px rgba(0, 255, 180, 0.6); /* Initial blue-green glow */
+    animation: subtleGlow 2s infinite alternate ease-in-out;
+}
+
+/* 🔹 Smooth Blue-Green Glow Animation */
+@keyframes subtleGlow {
+    0% { box-shadow: 0px 0px 6px rgba(0, 150, 255, 0.5); } /* Soft blue */
+    50% { box-shadow: 0px 0px 10px rgba(0, 255, 180, 0.6); } /* Mix between blue & green */
+    100% { box-shadow: 0px 0px 8px rgba(0, 255, 120, 0.5); } /* Soft green */
 }
 
 </style>
