@@ -330,5 +330,17 @@ body.guess-mode .key.disabled {
     opacity: 1 !important;
     pointer-events: all;
 }
+/* 🔹 Light up keys that are NOT purchased, incorrect, or disabled */
+.key:not(.purchased):not(.incorrect):not(.disabled) {
+    box-shadow: 0px 0px 8px rgba(0, 255, 180, 0.6); /* Initial blue-green glow */
+    animation: subtleGlow 2s infinite alternate ease-in-out;
+}
+
+/* 🔹 Smooth Blue-Green Glow Animation */
+@keyframes subtleGlow {
+    0% { box-shadow: 0px 0px 6px rgba(0, 150, 255, 0.5); } /* Soft blue */
+    50% { box-shadow: 0px 0px 10px rgba(0, 255, 180, 0.6); } /* Mix between blue & green */
+    100% { box-shadow: 0px 0px 8px rgba(0, 255, 120, 0.5); } /* Soft green */
+}
 
 </style>

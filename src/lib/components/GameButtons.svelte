@@ -368,6 +368,7 @@
     box-shadow:
       inset -2px -2px 6px rgba(0, 0, 0, 0.6), /* 🔹 Darker inner shadow */
       1px 1px 4px rgba(0, 0, 0, 0.5);
+      
   }
 
   /* 🔹 Blinking Green Animation for Pending */
@@ -383,6 +384,7 @@
   }
   .guess-phrase-button:active {
     transform: scale(0.98);
+    
   }
   .guess-phrase-button.pending {
     background-color: green !important;
@@ -648,5 +650,20 @@
       border: 3px solid #aaffff !important;
     }
   }
+
+  /* 🔹 Exit Guess Mode Button Turns Red */
+.guess-phrase-button.exit-mode {
+    background: linear-gradient(180deg, #ff4444, #cc0000); /* Red gradient */
+    color: white !important;
+    border: 3px solid darkred !important;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+/* 🔹 Press Effect */
+.guess-phrase-button.exit-mode:active {
+    background: linear-gradient(180deg, #cc0000, #990000);
+    transform: scale(0.95);
+}
+
   
 </style>
