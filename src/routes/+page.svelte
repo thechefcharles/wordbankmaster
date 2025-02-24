@@ -16,47 +16,39 @@
   let showHowToPlay = false;
   let darkMode = false;
 
-  // 🌙 Load dark mode preference from localStorage
-  onMount(() => {
-    darkMode = localStorage.getItem('darkMode') === 'true';
+  // ✅ Apply Dark Mode from localStorage
+  function applyDarkMode() {
     document.body.classList.toggle('dark-mode', darkMode);
-    fetchRandomGame(); // Ensure a new game is fetched on mount
-  });
+  }
 
+  // ✅ Toggle Dark Mode & Save Preference
   function toggleDarkMode() {
     darkMode = !darkMode;
-    document.body.classList.toggle('dark-mode', darkMode);
     localStorage.setItem('darkMode', darkMode);
+    applyDarkMode(); // Apply instantly
   }
-  
 
-  // On mount: add dark mode (could be updated later based on user settings) 
-onMount(() => {
-  // 🌙 Ensure dark mode is applied on page load
-  document.body.classList.add('dark-mode');
+  // ✅ Initialize on Mount
+  onMount(() => {
+    if (browser) {
+      darkMode = localStorage.getItem('darkMode') === 'true';
+      applyDarkMode();
+    }
+    fetchRandomGame(); // Load new game on mount
 
+    // 🔥 Remove button focus on click/touch/mousedown
+    document.addEventListener('click', removeButtonFocus, true);
+    document.addEventListener('mousedown', removeButtonFocus, true);
+    document.addEventListener('touchstart', removeButtonFocus, true);
+  });
 
-  // 🔥 Remove focus from buttons when clicked
-  document.addEventListener('click', (event) => {
+  // ✅ Function to Remove Button Focus
+  function removeButtonFocus(event) {
     if (event.target.tagName === 'BUTTON') {
       event.target.blur();
     }
-  });
-});
+  }
 
-onMount(() => {
-  document.addEventListener('mousedown', (event) => {
-    if (event.target.tagName === 'BUTTON') {
-      event.target.blur();
-    }
-  });
-
-  document.addEventListener('touchstart', (event) => {
-    if (event.target.tagName === 'BUTTON') {
-      event.target.blur();
-    }
-  });
-});
 
 
 
