@@ -396,9 +396,6 @@
   }
 
   /* ---------------------------
-     Top Buttons & Modal Styles
-  --------------------------- */
-  /* ---------------------------
      Dark Mode Overrides
   --------------------------- */
   :global(body.dark-mode) .hint-button,
