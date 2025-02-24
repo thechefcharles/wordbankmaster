@@ -188,9 +188,9 @@ $: if (browser) {
 
   /* Category text styling */
   .category {
-    font-size: 1.0rem;
-    margin-top: -140px;
-    margin-bottom: 0;
+    font-size: .8rem;
+    margin-top: -120px;
+    margin-bottom: -20px;
     font-weight: bold;
   }
 
@@ -204,7 +204,7 @@ $: if (browser) {
   .keyboard-section,
   .buttons-section {
     width: 100%;
-    padding: 5px;
+    padding: 0px;
   }
 
   /* Reset button hidden */
@@ -214,24 +214,62 @@ $: if (browser) {
 
   /* Bankroll container and box styling */
   .bankroll-box {
-    padding: 2px 5px;
-    font-size: 1.4rem; /* Slightly larger for arcade feel */
-    font-family: 'VT323', sans-serif; /* Arcade-style font */
+    padding: 10px 15px;
+    font-size: 1.8rem; /* Slightly larger for emphasis */
+    font-family: 'Orbitron', sans-serif; /* Futuristic arcade font */
     color: #fff;
-    background: linear-gradient(45deg, #2e7d32, #66bb6a);
-    border: 3px solid #1b5e20;
-    border-radius: 4px;
+    background: linear-gradient(135deg, rgba(50, 150, 50, 0.8), rgba(30, 100, 30, 0.7)); 
+    border: 3px solid rgba(255, 255, 255, 0.4); /* Subtle glowing border */
+    border-radius: 12px;
     text-align: center;
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.4), 0 0 5px rgba(0, 100, 0, 0.6) inset; /* Glowing effect */
     display: inline-flex;
     justify-content: center;
     align-items: center;
-    letter-spacing: 1px; /* Adds a slight retro spacing */
-    margin-top: 20px;
-  }  
-  .currency {
-    margin-right: 4px;
-  }
+    letter-spacing: 1.5px; /* Spaced-out numbers */
+    backdrop-filter: blur(5px); /* Slight blur for a cool effect */
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    position: relative;
+}
+
+/* 💰 Animated Glow Effect */
+.bankroll-box:hover {
+    transform: scale(1.05); /* Slight hover effect */
+    box-shadow: 0 0 25px rgba(0, 255, 0, 0.8), 0 0 10px rgba(0, 150, 0, 0.7) inset;
+}
+
+/* 💰 Cool Inner Glow */
+.bankroll-box::before {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    border-radius: 12px;
+    box-shadow: 0 0 12px rgba(0, 255, 0, 0.5) inset;
+    opacity: 0.5;
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* ✨ Subtle Animated Border Effect */
+@keyframes bankrollGlow {
+    0% { box-shadow: 0 0 8px rgba(0, 255, 0, 0.5); }
+    50% { box-shadow: 0 0 12px rgba(0, 255, 0, 0.7); }
+    100% { box-shadow: 0 0 8px rgba(0, 255, 0, 0.5); }
+}
+.bankroll-box {
+    animation: bankrollGlow 2.5s infinite alternate ease-in-out;
+}
+
+/* 💲 Currency Symbol */
+.currency {
+    font-size: 1.5rem;
+    margin-right: 6px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.8);
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
 
   .bankroll-container {
   position: absolute;
@@ -255,7 +293,7 @@ $: if (browser) {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-top: -50px;
+    margin-top: -10px;
     margin-bottom: 0;
   }
 
@@ -366,7 +404,7 @@ $: if (browser) {
   .icon-button {
     background: transparent;
     border: none;
-    font-size: 30px;
+    font-size: 20px;
     cursor: pointer;
     color: rgba(255, 255, 255, 0.75);
     transition: color 0.3s ease, transform 0.2s ease, opacity 0.3s ease;
@@ -383,19 +421,18 @@ $: if (browser) {
 
  /* 📜 Modal Overlay */
  .modal-overlay {
-    position: fixed;
+    position: fixed; /* Keeps it in place */
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.75);
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.85); /* Dark overlay to block visibility */
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1000;
-    animation: fadeIn 0.3s ease-in-out;
-  }
-
+    z-index: 9999; /* Make sure it's the highest */
+    backdrop-filter: blur(5px); /* Optional: adds a cool blur effect */
+}
   /* 📜 Modal Content - Adjusts for Light & Dark Mode */
   .modal-content {
     background: white; /* Default Light Mode Background */
@@ -419,23 +456,6 @@ $: if (browser) {
     box-shadow: 0 4px 10px rgba(0, 255, 0, 0.3);
   }
 
-  /* ❌ Close Button */
-  .close-btn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: red;
-    color: white;
-    font-size: 18px;
-    font-weight: bold;
-    border: none;
-    cursor: pointer;
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    text-align: center;
-    transition: background 0.3s;
-  }
 
   .close-btn:hover {
     background: darkred;

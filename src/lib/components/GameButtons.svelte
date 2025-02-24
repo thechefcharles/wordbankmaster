@@ -134,7 +134,7 @@
   <!-- Hint Button -->
   <div class="hint-button-container">
     {#if showHintCost}
-      <div class="cost-indicator">(-$150)</div>
+      <div class="cost-indicator">$150</div>
     {/if}
     <button 
       class="hint-button {fundsLow ? 'disabled-purchase' : ''} {hintPending ? 'pending' : ''}"
@@ -164,7 +164,7 @@
   <!-- Extra Guess Button -->
   <div class="extra-guess-button-container">
     {#if showGuessCost}
-      <div class="cost-indicator">-$150</div>
+      <div class="cost-indicator">$150</div>
     {/if}
     <button 
       class="buy-guess-button {fundsLow ? 'disabled-purchase' : ''} {guessPending ? 'pending' : ''}"
@@ -200,17 +200,28 @@
     align-items: center;
   }
 
+  @keyframes blinkColor {
+  0% { color: red; opacity: 1; } 
+  50% { color: white; opacity: 0.5; } 
+  100% { color: red; opacity: 1; } 
+
+}
+
   .cost-indicator {
     position: absolute;
-    top: -30px;
-    font-size: 16px;
+    top: 100px;
+    font-size: 20px;
     font-weight: bold;
     font-family: 'VT323', sans-serif; /* Arcade-style font */
     color: red;
     white-space: nowrap; /* 🔹 Prevents text from breaking into a new line */
     display: inline-block; /* 🔹 Forces it to stay as a single unit */
     text-align: center; /* Centers the text */
+    animation: blinkColor 1s infinite; /* 🔥 Red & White blinking effect */
   }
+  
+
+
 
   /* ---------------------------
      Hint Button Styles

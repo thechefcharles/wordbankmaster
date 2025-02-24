@@ -230,13 +230,14 @@
     width: 100%; /* Full viewport width */
     max-width: 100vw; /* Ensure it never exceeds viewport */
     padding: 0; /* Remove any padding */
-    margin: 0 auto; /* Remove extra margins */
+    margin: 0 0; /* Remove extra margins */
     gap: 1px; /* Minimize space between boxes */
     justify-content: center;
     align-items: center;
     box-sizing: border-box;
     overflow-x: hidden;
     text-align: center;
+    margin-top: 40px;
   }
   .word {
     display: flex;
@@ -258,7 +259,7 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    border: 3px solid #453d3d;
+    border: 2px solid #453d3d;
     background-color: #fff;
     font-size: 24px;
     font-weight: bold;
@@ -303,7 +304,7 @@
   --------------------------- */
   @media (max-width: 480px) {
     .letter-box {
-      width: 25px;
+      width: 28px;
       height: 50px;
       font-size: 25px;
     }
@@ -321,6 +322,9 @@
     font-size: 1.5rem;
     font-weight: bold;
     text-transform: uppercase;
+    justify-content: center;  /* Centers horizontally */
+  align-items: center;      /* Centers vertically (if needed) */
+  text-align: center;       /* Ensures text stays centered */
   }
   .phrase-line {
     hyphens: auto;
