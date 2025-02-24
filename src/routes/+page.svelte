@@ -106,7 +106,7 @@ $: if (browser) {
 <main>
   <!-- Logo -->
   <div class="logo-container">
-    <img src="/WordBank.png" alt="WordBank Logo" class="wordbank-logo" />
+    <img src="/1.png" alt="WordBank Logo" class="wordbank-logo" />
   </div>
 
   <!-- Category Display -->
@@ -210,12 +210,14 @@ $: if (browser) {
     font-size: 1.8rem; /* Slightly larger for emphasis */
     font-family: 'Orbitron', sans-serif; /* Futuristic arcade font */
     color: #fff;
-    background: linear-gradient(135deg, rgba(50, 150, 50, 0.8), rgba(30, 100, 30, 0.7)); 
+    background: linear-gradient(180deg, #d1cdcd, #858484); 
     border: 3px solid rgba(255, 255, 255, 0.4); /* Subtle glowing border */
     border-radius: 12px;
     text-align: center;
-    box-shadow: 0 0 15px rgba(0, 255, 0, 0.4), 0 0 5px rgba(0, 100, 0, 0.6) inset; /* Glowing effect */
-    display: inline-flex;
+    box-shadow: 
+        inset 2px 2px 6px rgba(255, 255, 255, 0.2),  /* Inner highlight */
+        3px 3px 8px rgba(0, 0, 0, 0.8),             /* Outer shadow */
+        5px 5px 12px rgba(0, 0, 0, 0.5);            /* Soft depth shadow */    display: inline-flex;
     justify-content: center;
     align-items: center;
     letter-spacing: 1.5px; /* Spaced-out numbers */
@@ -227,7 +229,7 @@ $: if (browser) {
 /* 💰 Animated Glow Effect */
 .bankroll-box:hover {
     transform: scale(1.05); /* Slight hover effect */
-    box-shadow: 0 0 25px rgba(0, 255, 0, 0.8), 0 0 10px rgba(0, 150, 0, 0.7) inset;
+    box-shadow: 0 0 25px rgba(251, 251, 251, 0.8), 0 0 1rgba(158, 158, 158, 0.7)0.7) inset;
 }
 
 /* 💰 Cool Inner Glow */
@@ -239,16 +241,16 @@ $: if (browser) {
     top: 0;
     left: 0;
     border-radius: 12px;
-    box-shadow: 0 0 12px rgba(0, 255, 0, 0.5) inset;
+    box-shadow: 0 0 12px rgba(251, 251, 251, 0.5) inset;
     opacity: 0.5;
     transition: opacity 0.3s ease-in-out;
 }
 
 /* ✨ Subtle Animated Border Effect */
 @keyframes bankrollGlow {
-    0% { box-shadow: 0 0 8px rgba(0, 255, 0, 0.5); }
-    50% { box-shadow: 0 0 12px rgba(0, 255, 0, 0.7); }
-    100% { box-shadow: 0 0 8px rgba(0, 255, 0, 0.5); }
+    0% { box-shadow: 0 0 8px rgba(245, 246, 245, 0.5); }
+    50% { box-shadow: 0 0 12px rgba(242, 243, 242, 0.7); }
+    100% { box-shadow: 0 0 8px rgba(239, 241, 239, 0.5); }
 }
 .bankroll-box {
     animation: bankrollGlow 2.5s infinite alternate ease-in-out;
