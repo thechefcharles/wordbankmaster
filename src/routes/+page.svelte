@@ -12,6 +12,22 @@
   import GameButtons from '$lib/components/GameButtons.svelte';
   import FlipDigit from '$lib/components/FlipDigit.svelte';
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
+
+  let showHowToPlay = false;
+  let darkMode = false;
+
+  // 🌙 Load dark mode preference from localStorage
+  onMount(() => {
+    darkMode = localStorage.getItem('darkMode') === 'true';
+    document.body.classList.toggle('dark-mode', darkMode);
+    fetchRandomGame(); // Ensure a new game is fetched on mount
+  });
+
+  function toggleDarkMode() {
+    darkMode = !darkMode;
+    document.body.classList.toggle('dark-mode', darkMode);
+    localStorage.setItem('darkMode', darkMode);
+  }
   
 
   // On mount: add dark mode (could be updated later based on user settings) 
@@ -57,6 +73,45 @@ $: if (browser) {
 }
 
 </script>
+
+<!-- 🔹 Buttons Positioned in Opposite Corners -->
+<div class="top-buttons">
+  <!-- ❓ How to Play -->
+  <button class="icon-button subtle-button" on:click={() => showHowToPlay = true}>
+    ❓
+  </button>
+
+  <!-- 🌙 Dark Mode Toggle -->
+  <button class="icon-button subtle-button" on:click={toggleDarkMode}>
+    {darkMode ? "☀️" : "🌙"}
+  </button>
+</div>
+
+<!-- 📜 How to Play Modal -->
+{#if showHowToPlay}
+  <div class="modal-overlay">
+    <div class="modal-content">
+      <button class="close-btn" on:click={() => showHowToPlay = false}>❌</button>
+
+      <h2>📜 How to Play</h2>
+      <p>💰 Start with $1000. Use it wisely to buy letters, get hints, and guess the phrase!</p>
+
+      <h3>🎯 Goal</h3>
+      <p>Solve the phrase before running out of money!</p>
+
+      <h3>🕹️ Gameplay</h3>
+      <ul>
+        <li>🔤 <b>Buy Letters:</b> Click/tap letters to purchase.</li>
+        <li>⏎ <b>Confirm:</b> Press Enter to submit purchases or guesses.</li>
+        <li>🔄 <b>Guess Mode:</b> Press Space to toggle Guess Mode.</li>
+        <li>💡 <b>Hint ($150):</b> Reveals a random letter.</li>
+        <li>🎟️ <b>Extra Guess ($150):</b> Buy another shot.</li>
+      </ul>
+
+      <p><b>Think smart, spend wisely, and guess like a pro! 🚀</b></p>
+    </div>
+  </div>
+{/if}
 
 <main>
   <!-- Logo -->
@@ -264,6 +319,155 @@ $: if (browser) {
   button:focus-visible {
   outline: none !important;
   }
+/* 🔹 Top Buttons Styling */
+.top-buttons {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    justify-content: space-between;
+    z-index: 1000;
+  }
 
+  .icon-button {
+    background: transparent;
+    border: none;
+    font-size: 30px;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.75);
+    transition: color 0.3s ease, transform 0.2s ease, opacity 0.3s ease;
+  }
 
-</style>
+  .subtle-button {
+    opacity: 0.5;
+  }
+
+  .subtle-button:hover {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+
+ /* 📜 Modal Overlay */
+ .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  /* 📜 Modal Content - Adjusts for Light & Dark Mode */
+  .modal-content {
+    background: white; /* Default Light Mode Background */
+    padding: 20px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    animation: slideIn 0.3s ease-out;
+    border: 3px solid #007bff; /* Blue border for better visibility */
+    color: black; /* Default text color */
+    position: relative;
+  }
+
+  /* 🌙 Dark Mode Overrides */
+  :global(body.dark-mode) .modal-content {
+    background: linear-gradient(135deg, #222, #333);
+    border: 3px solid limegreen;
+    color: white;
+    box-shadow: 0 4px 10px rgba(0, 255, 0, 0.3);
+  }
+
+  /* ❌ Close Button */
+  .close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: red;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    text-align: center;
+    transition: background 0.3s;
+  }
+
+  .close-btn:hover {
+    background: darkred;
+  }
+
+  /* 📜 Title */
+  .modal-title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #007bff; /* Blue for visibility in light mode */
+    text-transform: uppercase;
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+  }
+
+  /* 🔹 Intro Text */
+  .intro-text {
+    font-size: 16px;
+    color: #333;
+    margin-bottom: 10px;
+  }
+
+  /* 🕹️ List */
+  .modal-list {
+    list-style-type: none;
+    padding: 0;
+    text-align: left;
+  }
+
+  .modal-list li {
+    font-size: 16px;
+    background: rgba(0, 0, 0, 0.05);
+    padding: 8px;
+    margin-bottom: 5px;
+    border-radius: 5px;
+    text-shadow: none;
+  }
+
+  /* 🌙 Dark Mode Overrides for List */
+  :global(body.dark-mode) .modal-list li {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  /* 🚀 Footer */
+  .modal-footer {
+    font-size: 14px;
+    font-weight: bold;
+    color: black;
+    padding: 10px;
+    text-shadow: none;
+  }
+
+  /* 🌙 Dark Mode Overrides for Footer */
+  :global(body.dark-mode) .modal-footer {
+    color: white;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.4);
+  }
+
+  /* 🎬 Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideIn {
+    from { transform: translateY(-20px); }
+    to { transform: translateY(0); }
+  }
+  </style>
