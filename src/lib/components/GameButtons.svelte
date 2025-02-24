@@ -247,7 +247,7 @@
     box-sizing: border-box;
     background: radial-gradient(circle at 30% 30%, #4488ff, #0055bb 80%);
     box-shadow: 0 0 4px #0055bb, 0 0 8px #4488ff, 0 0 12px rgba(0, 85, 187, 0.9);
-    border: 3px solid #0033aa;
+    border: 2px solid #0033aa;
   }
   .hint-button:hover {
     transform: translateY(-2px);
@@ -280,7 +280,7 @@
     box-sizing: border-box;
     background: radial-gradient(circle at 30% 30%, #4488ff, #0055bb 80%);
     box-shadow: 0 0 4px #0055bb, 0 0 8px #4488ff, 0 0 12px rgba(0, 85, 187, 0.9);
-    border: 3px solid #0033aa;
+    border: 2px solid #0033aa;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -299,11 +299,11 @@
      Main Guess Button Styles
   --------------------------- */
   .guess-phrase-button {
-    background: linear-gradient(180deg, #ff9800, #e65100); /* Gradient for depth */    color: white;
+    background: linear-gradient(180deg, #46a230, #318020);   
+    color: white;
     padding: 6px 15px;
     width: 230px;
     min-height: 50px;
-    border: none;
     border-radius: 8px;
     font-size: 25px;
     margin-top: 130px;
@@ -314,41 +314,38 @@
     transition: background-color 0.3s, transform 0.2s;
     box-sizing: border-box;
     /* 🔹 3D Border and Shadow */
-    border: 3px solid #ff6f00;
+    border: 3px solid #41ae29 !important;    
     box-shadow:
       inset 2px 2px 5px rgba(255, 255, 255, 0.3), /* 🔹 Inner highlight */
       3px 3px 8px rgba(0, 0, 0, 0.6), /* 🔹 Outer shadow */
       5px 5px 12px rgba(0, 0, 0, 0.4); /* 🔹 Soft depth shadow */
   }
 
-  /* 🔹 Hover Effect - Slight Lift */
-  .guess-phrase-button:hover {
+/* 🔹 Hover Effect - Slight Lift */
+.guess-phrase-button:hover {
     transform: translateY(-2px);
-    background: linear-gradient(180deg, #ffa726, #ef6c00);
+    background: linear-gradient(180deg, #6b82f0, #4b63d2);
     box-shadow:
-      inset 2px 2px 6px rgba(255, 255, 255, 0.5), /* 🔹 Stronger inner glow */
-      3px 3px 10px rgba(0, 0, 0, 0.8),
-      6px 6px 16px rgba(0, 0, 0, 0.5);
-  }
-
-  /* 🔹 Pressed Effect - Button Looks "Pressed In" */
-  .guess-phrase-button:active {
+      inset 2px 2px 6px rgba(255, 255, 255, 0.3), /* Inner highlight */
+      3px 3px 8px rgba(0, 0, 0, 0.6), /* Outer shadow */
+      5px 5px 12px rgba(0, 0, 0, 0.4); /* Depth shadow */
+}
+/* 🔹 Pressed Effect - Button Looks "Pressed In" */
+.guess-phrase-button:active {
     transform: translateY(2px);
-    background: linear-gradient(180deg, #e65100, #bf360c);
+    background: linear-gradient(180deg, #3a52c4, #2a41a5);
     box-shadow:
-      inset -2px -2px 6px rgba(0, 0, 0, 0.6), /* 🔹 Darker inner shadow */
+      inset -2px -2px 6px rgba(0, 0, 0, 0.6), /* Darker inner shadow */
       1px 1px 4px rgba(0, 0, 0, 0.5);
-      
-  }
+}
 
   /* 🔹 Blinking Green Animation for Pending */
   .guess-phrase-button.pending {
-  background: linear-gradient(180deg, #28a745, #218838) !important;
-  color: white !important;
-  border: 3px solid #1e7e34 !important;
-  animation: blinkGreen 1s infinite;
+    background: linear-gradient(180deg, #2e7d32, #1b5e20) !important; /* Darker Green */
+    color: white !important;
+    border: 3px solid #144d17 !important;
+    animation: blinkDarkGreen 1s infinite alternate ease-in-out;
 }
-
   .guess-phrase-button:hover {
     background-color: darkorange;
   }
@@ -356,17 +353,25 @@
     transform: scale(0.98);
     
   }
-  .guess-phrase-button.pending {
-    background-color: green !important;
-    color: white !important;
-    animation: blinkGreen 1s infinite;
-  }
+/* 🔹 Dark Mode: Ensure it stays Dark Green */
+:global(body.dark-mode) .guess-phrase-button.pending {
+    background: linear-gradient(180deg, #2e7d32, #1b5e20) !important;
+    border: 3px solid #144d17 !important;
+    animation: blinkDarkGreen 1s infinite alternate ease-in-out;
+}
 
+/* 🔹 Darker Green Blinking Animation */
+@keyframes blinkDarkGreen {
+    0% { background-color: #2e7d32; }
+    50% { background-color: #1b5e20; }
+    100% { background-color: #2e7d32; }
+}
   .guess-phrase-button.guess-complete {
   background: #28a745 !important;
   color: white !important;
   border: 3px solid #1e7e34 !important;
   animation: blinkGreen 1s infinite alternate !important;
+  animation: glowGreen 1.5s infinite alternate ease-in-out;
 }
   
 
@@ -423,29 +428,29 @@
     color: white !important;
     border: none !important;
   }
-  /* 🔹 Dark Mode Hover Effect */
-  :global(body.dark-mode) .guess-phrase-button:hover {
-    transform: translateY(-2px);
-    background: linear-gradient(180deg, #ffcc80, #ff9800);
+/* 🔹 Dark Mode: Ensure It Stays Blue */
+:global(body.dark-mode) .guess-phrase-button {
+  background: linear-gradient(180deg, #46a230, #318020);
+      border: 3px solid #35aa2f !important;
+    animation: tightArcadeGlow 1.5s infinite alternate ease-in-out;
     box-shadow:
-      inset 2px 2px 5px rgba(255, 255, 255, 0.3),
-      3px 3px 14px rgba(0, 0, 0, 0.9),
-      6px 6px 18px rgba(0, 0, 0, 0.6);
-  }
+      inset 2px 2px 5px rgba(255, 255, 255, 0.3), /* 🔹 Inner highlight */
+      3px 3px 8px rgba(0, 0, 0, 0.6), /* 🔹 Outer shadow */
+      5px 5px 12px rgba(0, 0, 0, 0.4); /* 🔹 Soft depth shadow */
 
-  /* 🔹 Dark Mode Pressed Effect */
-  :global(body.dark-mode) .guess-phrase-button:active {
-    transform: translateY(2px);
-    background: linear-gradient(180deg, #e65100, #bf360c);
-    box-shadow:
-      inset -2px -2px 6px rgba(0, 0, 0, 0.8),
-      1px 1px 5px rgba(0, 0, 0, 0.6);
-  }
-  :global(body.dark-mode) .guess-phrase-button {
-    background: linear-gradient(180deg, #ffa726, #e65100);
-    color: white !important;
-    border: none !important;
-  }
+}
+
+/* 🔹 Dark Mode Hover Effect */
+:global(body.dark-mode) .guess-phrase-button:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(180deg, #6b82f0, #4b63d2);
+}
+
+/* 🔹 Dark Mode Press Effect */
+:global(body.dark-mode) .guess-phrase-button:active {
+    background: linear-gradient(180deg, #3a52c4, #2a41a5);
+}  
+  
   :global(body.dark-mode) button,
   :global(body.dark-mode) .key {
     background-color: inherit !important;
@@ -481,10 +486,11 @@
 
   /* 🔹 Exit Guess Mode Button Turns Red */
 .guess-phrase-button.exit-mode {
-    background: linear-gradient(180deg, #ff4444, #cc0000); /* Red gradient */
+    background: linear-gradient(180deg, #ff2222, #aa0000); /* Red gradient */
     color: white !important;
     border: 3px solid darkred !important;
     transition: background-color 0.3s ease, transform 0.2s ease;
+    animation: glowRed 1.5s infinite alternate ease-in-out;
 }
 
 /* 🔹 Press Effect */
@@ -493,5 +499,16 @@
     transform: scale(0.95);
 }
 
+/* 🔹 Dark Mode: Ensure It Stays Red */
+:global(body.dark-mode) .guess-phrase-button.exit-mode {
+    background: linear-gradient(180deg, #ff2222, #aa0000) !important; /* Slightly darker red for dark mode */
+    border: 3px solid #880000 !important;
+}
+
+:global(body.dark-mode) .guess-phrase-button.guess-complete {
+    background: linear-gradient(180deg, #28a745, #218838) !important;
+    animation: glowGreen 1.5s infinite alternate ease-in-out;
+    border: 3px solid #1e7e34 !important;    
+}    
   
 </style>

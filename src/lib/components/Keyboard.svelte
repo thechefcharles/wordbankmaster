@@ -233,16 +233,28 @@
     padding: 2px;
     box-sizing: border-box;
   }
-  .key.delete {
-    background-color: red;
-    color: white;
-    border: 2px solid darkred;
-  }
-  :global(body.dark-mode) .key.delete {
-    background-color: red;
-    color: white;
-    border: 2px solid darkred;
-  }
+/* 🔹 Delete Button (Match Exit Guess Mode Style) */
+.key.delete {
+    background: linear-gradient(180deg, #ff4444, #cc0000); /* Red gradient */
+    color: white !important;
+    border: 1px solid darkred !important;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+/* 🔹 Dark Mode: Ensure Delete Button Stays Red */
+:global(body.dark-mode) .key.delete {
+    background: linear-gradient(180deg, #ff2222, #aa0000) !important;
+    border: 1px solid #880000 !important;
+}
+  @keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.blinking-key {
+  animation: blink 0.8s infinite;
+}
 
   /* ---------------------------
      Letter & Price Styling
