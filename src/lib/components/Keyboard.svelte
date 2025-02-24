@@ -262,7 +262,7 @@
     background-color: green;
     color: white;
     cursor: default;
-    filter: blur(2px); /* Apply a subtle blur */
+    filter: blur(.8px); /* Apply a subtle blur */
     opacity: 0.7; /* Make slightly faded */
     pointer-events: none; /* Prevent clicking */
     transition: filter 0.3s ease, opacity 0.3s ease;
@@ -277,7 +277,7 @@
     background-color: red;
     color: white;
     cursor: default;
-    filter: blur(2px); /* Apply a subtle blur */
+    filter: blur(.8px); /* Apply a subtle blur */
     opacity: 0.7; /* Make slightly faded */
     pointer-events: none; /* Prevent clicking */
     transition: filter 0.3s ease, opacity 0.3s ease;
