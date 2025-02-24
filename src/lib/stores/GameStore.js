@@ -517,7 +517,8 @@ export function resetGame() {
   gameStore.set({
     bankroll: 1000,
     guessesRemaining: 2,
-    currentPhrase: "MICHAEL JORDAN",
+    currentPhrase: data.phrase.toUpperCase(),
+    category: data.category,
     gameState: "default",
     purchasedLetters: [],
     lockedLetters: {},

@@ -207,7 +207,7 @@ $: if (browser) {
     100% { opacity: 1; }
   }
   .banner.win {
-    font-size: 3rem;
+    font-size: 2rem;
     font-weight: 600;
     color: limegreen;
     text-transform: uppercase;
@@ -234,7 +234,7 @@ $: if (browser) {
     100% { opacity: 1; }
   }
   .banner.lose {
-    font-size: 3rem;
+    font-size: 2rem;
     font-weight: 600;
     color: red;
     text-transform: uppercase;
@@ -254,45 +254,16 @@ $: if (browser) {
     color: white;
   }
   button:focus,
-button:active {
-  outline: none !important;
-  box-shadow: none !important;
-  background: inherit !important;
-}
-/* 🔄 Fix for Chrome/Safari Mobile Persistent Highlight */
-button:focus-visible {
-  outline: none !important;
-}
-/* Remove button focus on all browsers */
-/* 🔄 Remove focus outlines and fix unwanted highlights */
-button:focus,
-button:active {
+  button:active {
   outline: none !important;
   box-shadow: none !important;
   background: inherit !important;
 }
 
-/* 🔄 Ensure focus never persists */
-button:focus-visible {
+  /* 🔄 Ensure focus never persists */
+  button:focus-visible {
   outline: none !important;
-}
+  }
 
-/* 🔄 Disable Safari/Chrome tap highlights */
-button {
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-}
-
-/* 🔄 Prevent persistent focus from animations */
-input,
-textarea,
-button,
-select {
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-}
 
 </style>

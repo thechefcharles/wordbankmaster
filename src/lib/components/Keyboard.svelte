@@ -262,16 +262,25 @@
     background-color: green;
     color: white;
     cursor: default;
+    filter: blur(2px); /* Apply a subtle blur */
+    opacity: 0.7; /* Make slightly faded */
+    pointer-events: none; /* Prevent clicking */
+    transition: filter 0.3s ease, opacity 0.3s ease;
   }
   .pending {
     background-color: blue !important;
     color: white !important;
     animation: blink 1s infinite;
+  
   }
   .incorrect {
     background-color: red;
     color: white;
     cursor: default;
+    filter: blur(2px); /* Apply a subtle blur */
+    opacity: 0.7; /* Make slightly faded */
+    pointer-events: none; /* Prevent clicking */
+    transition: filter 0.3s ease, opacity 0.3s ease;
   }
 
   /* Blinking animation for pending keys */
@@ -307,7 +316,6 @@
   }
 
   /* 🔹 Apply blur effect to unaffordable letters */
-  .key.incorrect,
   .key.disabled {
     filter: blur(.8px);  /* 🔹 Blur effect */
     opacity: 0.5;       /* 🔹 Make slightly faded */
