@@ -194,9 +194,9 @@
     transform: translateX(-50%);
     width: 100%;
     max-width: 600px;
-    background-color: #f9f9f9;
+    box-shadow: none !important; /* ❌ Removes any shadow */
+    background: transparent !important; /* ❌ Ensures no background issue */
     padding: 10px;
-    border-top: 2px solid #ccc;
     display: flex;
     flex-direction: column;
     gap: 5px;

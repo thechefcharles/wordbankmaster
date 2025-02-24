@@ -35,8 +35,6 @@ onMount(() => {
   // 🌙 Ensure dark mode is applied on page load
   document.body.classList.add('dark-mode');
 
-  // 🎯 Fetch a new puzzle on load
-  fetchRandomGame();
 
   // 🔥 Remove focus from buttons when clicked
   document.addEventListener('click', (event) => {
@@ -127,6 +125,8 @@ $: if (browser) {
     <PhraseDisplay />
   </section>
 
+<!-- New Fixed Container -->
+<div class="bankroll-game-buttons-container">
   <!-- Bankroll Display -->
   <section class="stats-section">
     <div class="bankroll-container">
@@ -138,6 +138,13 @@ $: if (browser) {
       </div>
     </div>
   </section>
+
+  <!-- Game Buttons Section -->
+  <section class="buttons-section">
+    <GameButtons />
+  </section>
+</div>
+
 
   <!-- Keyboard Section -->
   <section class="keyboard-section">
@@ -151,10 +158,6 @@ $: if (browser) {
     <div class="banner lose">Bankrupt!</div>
   {/if}
 
-  <!-- Game Buttons Section -->
-  <section class="buttons-section">
-    <GameButtons />
-  </section>
 
   <!-- Hidden Reset Button (for debugging/testing) -->
   <button class="reset-button hidden" on:click={fetchRandomGame}>
@@ -191,6 +194,10 @@ $: if (browser) {
     font-weight: bold;
   }
 
+
+  
+
+
   /* Section styling */
   .phrase-section,
   .stats-section,
@@ -226,6 +233,15 @@ $: if (browser) {
     margin-right: 4px;
   }
 
+  .bankroll-container {
+  position: absolute;
+  bottom: 130px; /* Moves bankroll down */
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+  
+
   /* Logo styling */
   .wordbank-logo {
     width: 380px;
@@ -242,6 +258,23 @@ $: if (browser) {
     margin-top: -50px;
     margin-bottom: 0;
   }
+
+
+  .bankroll-game-buttons-container {
+  position: fixed;
+  bottom: 160px; /* Adjust this so it sits above the keyboard */
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column; /* Stack bankroll and buttons vertically */
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: 10px;
+  z-index: 1000; /* Ensure it stays above other elements */
+}
+
+
 
   /* Global overrides for touch and overflow */
   :global(html, body) {

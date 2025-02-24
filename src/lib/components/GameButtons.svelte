@@ -10,6 +10,7 @@
     submitGuess
   } from '$lib/stores/GameStore.js';
 
+  let darkMode = false; // ✅ Ensure it's declared
 
   // Reactive derivations from the game store
   $: purchasePending = !!$gameStore.selectedPurchase;
@@ -220,7 +221,8 @@
     border-radius: 50%;
     border: none;
     cursor: pointer;
-    margin-top: -10px;
+    margin-top: 130px;
+    margin-right: 10px;
     color: #fff;
     font-weight: bold;
     text-align: center;
@@ -253,7 +255,8 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    margin-top: -10px;
+    margin-top: 130px;
+    margin-left: 10px;
     border: none;
     cursor: pointer;
     color: #fff;
@@ -288,11 +291,11 @@
     background: linear-gradient(180deg, #ff9800, #e65100); /* Gradient for depth */    color: white;
     padding: 6px 15px;
     width: 230px;
-    min-height: 40px;
+    min-height: 50px;
     border: none;
     border-radius: 8px;
     font-size: 25px;
-    margin-top: -10px;
+    margin-top: 130px;
     font-family: 'VT323', sans-serif; /* Arcade-style font */
     font-weight: bold;
     cursor: pointer;
