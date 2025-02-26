@@ -224,6 +224,7 @@ $: if (browser) {
     backdrop-filter: blur(5px); /* Slight blur for a cool effect */
     transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
     position: relative;
+    top: 30px;
 }
 
 /* 💰 Animated Glow Effect */
