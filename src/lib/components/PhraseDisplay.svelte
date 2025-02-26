@@ -276,9 +276,9 @@
     font-weight: bold;
   }
   .letter-box.active {
-    border: 3px solid orange !important;
+    border: 3px solid #41ae29 !important;  /* Same green as main guess button */
     color: black !important;
-  }
+}
 
   html, body {
     margin: 0;

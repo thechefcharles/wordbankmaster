@@ -42,11 +42,10 @@
 
   // Dynamic label for the main action button
   $: buttonLabel = purchasePending
-    ? "Confirm Purchase"
+    ? "Confirm"
     : guessModeActive
-      ? (guessComplete ? "Submit Guess" : "Exit Guess Mode")
-      : `Guess (${$gameStore.guessesRemaining})`;
-
+      ? (guessComplete ? "Submit" : "Cancel")
+      : "Solve";
   // ----------------------------
   // EVENT HANDLERS
   // ----------------------------
@@ -59,7 +58,9 @@
       if (guessComplete) {
         submitGuess();
       } else {
-        gameStore.update(state => ({ ...state, gameState: "default", guessedLetters: {} }));
+        gameStore.update(state => ({ ...state, gameState: "default", guessedLetters: {},
+        selectedPurchase: null, 
+      }));
       }
       return;
     }
@@ -131,57 +132,89 @@
 {/if}
 
 <div class="buttons-container">
-  <!-- Hint Button -->
+  
+  <!-- 🔹 Hint Button (Glows Only When Selected) -->
   <div class="hint-button-container">
     {#if showHintCost}
       <div class="cost-indicator">$150</div>
     {/if}
     <button 
-      class="hint-button {fundsLow ? 'disabled-purchase' : ''} {hintPending ? 'pending' : ''}"
+      class="hint-button {fundsLow ? 'disabled-purchase' : ''} {hintPending ? 'glow' : ''}"
       on:click={toggleHintPurchase}
       disabled={fundsLow}
       aria-label="Buy a hint for $150"
     >
-      Hint
+      Bank Letter
     </button>
   </div>
 
-<!-- Main Guess Button -->
-<div class="main-guess-button-container">
-  <button
-    class="guess-phrase-button 
-      {purchasePending ? 'pending' : ''} 
-      {guessModeActive && !guessComplete ? 'exit-mode' : ''} 
-      {guessComplete ? 'guess-complete' : ''}"
-    on:click={handleMainButtonClick}
-    disabled={noGuessesLeft && !purchasePending}
-    aria-label={buttonLabel}
-  >
-    {buttonLabel}
-  </button>
-</div>
+  <!-- 🔹 Solve Button (Blurs When No Guesses & Not in Purchase Mode) -->
+  <div class="main-guess-button-container">
+    <button
+      class="guess-phrase-button 
+        {purchasePending ? 'pending' : ''} 
+        {guessModeActive && !guessComplete ? 'exit-mode' : ''} 
+        {guessComplete ? 'guess-complete' : ''} 
+        {noGuessesLeft && !purchasePending ? 'disabled-purchase' : ''}"
+      on:click={handleMainButtonClick}
+      disabled={noGuessesLeft && !purchasePending}
+      aria-label={buttonLabel}
+    >
+      {buttonLabel}
+    </button>
+  </div>
 
-  <!-- Extra Guess Button -->
+  <!-- 🔹 Extra Guess Button (Always Visible, Blurred When Guesses > 0) -->
   <div class="extra-guess-button-container">
     {#if showGuessCost}
       <div class="cost-indicator">$150</div>
     {/if}
     <button 
-      class="buy-guess-button {fundsLow ? 'disabled-purchase' : ''} {guessPending ? 'pending' : ''}"
+      class="buy-guess-button 
+        {fundsLow || !noGuessesLeft ? 'disabled-purchase' : ''} 
+        {guessPending ? 'glow' : ''}"
       on:click={toggleGuessPurchase}
-      disabled={fundsLow}
+      disabled={fundsLow || !noGuessesLeft}
       aria-label="Buy an extra guess for $150"
     >
-      Buy Guess
+      +1
     </button>
   </div>
+
 </div>
 
 
 <style>
   @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
 
-  /* Overall container for independent button control */
+  /* ---------------------------
+     Additional New Effects
+  --------------------------- */
+
+/* 🔹 Intense Green Glow Effect (Applies Only When Button is Selected for Purchase) */
+@keyframes softGlow {
+  0% { box-shadow: 0 0 8px #ffffff, 0 0 16px #318020, 0 0 24px #207b09; }
+  50% { box-shadow: 0 0 12px #ffffff, 0 0 20px #46a230, 0 0 28px #14860a; }
+  100% { box-shadow: 0 0 8px #ffffff, 0 0 16px #46a230, 0 0 24px #46a230; }
+}
+
+/* 🔹 Apply Intense Green Glow Animation When Selected */
+.hint-button.glow,
+.buy-guess-button.glow {
+  animation: softGlow 0.3s infinite alternate ease-in-out; /* Faster flicker */
+  border: 3px outset #0d3e01 !important;
+}
+
+  /* 🔹 Disabled Purchase (Blurred Out) */
+  .disabled-purchase {
+    opacity: 0.5;
+    filter: blur(1px);
+    pointer-events: none;
+  }
+
+  /* ---------------------------
+     Overall Layout & Container Styles
+  --------------------------- */
   .buttons-container {
     display: flex;
     justify-content: center;
@@ -190,7 +223,6 @@
     margin: 20px 0;
   }
 
-  /* Each button container is independent */
   .hint-button-container,
   .main-guess-button-container,
   .extra-guess-button-container {
@@ -201,11 +233,10 @@
   }
 
   @keyframes blinkColor {
-  0% { color: red; opacity: 1; } 
-  50% { color: white; opacity: 0.5; } 
-  100% { color: red; opacity: 1; } 
-
-}
+    0% { color: red; opacity: 1; } 
+    50% { color: white; opacity: 0.5; } 
+    100% { color: red; opacity: 1; } 
+  }
 
   .cost-indicator {
     position: absolute;
@@ -214,26 +245,22 @@
     font-weight: bold;
     font-family: 'VT323', sans-serif; /* Arcade-style font */
     color: red;
-    white-space: nowrap; /* 🔹 Prevents text from breaking into a new line */
-    display: inline-block; /* 🔹 Forces it to stay as a single unit */
-    text-align: center; /* Centers the text */
-    animation: blinkColor 1s infinite; /* 🔥 Red & White blinking effect */
+    white-space: nowrap;
+    display: inline-block;
+    text-align: center;
+    animation: blinkColor 1s infinite;
   }
-  
-
-
 
   /* ---------------------------
      Hint Button Styles
   --------------------------- */
   .hint-button {
-    width: 40px;
-    height: 40px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
-    border: none;
     cursor: pointer;
     margin-top: 130px;
-    margin-right: 10px;
+    margin-right: 0px;
     color: #fff;
     font-weight: bold;
     text-align: center;
@@ -241,13 +268,11 @@
     display: flex;
     justify-content: center;
     font-size: 10px;
-    font-family: 'VT323', sans-serif; /* Arcade-style font */
+    font-family: 'VT323', sans-serif;
     text-transform: uppercase;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     box-sizing: border-box;
     background: radial-gradient(circle at 30% 30%, #4488ff, #0055bb 80%);
-    box-shadow: 0 0 4px #0055bb, 0 0 8px #4488ff, 0 0 12px rgba(0, 85, 187, 0.9);
-    border: 2px solid #0033aa;
   }
   .hint-button:hover {
     transform: translateY(-2px);
@@ -255,32 +280,26 @@
   .hint-button:active {
     transform: translateY(2px);
   }
-  .hint-button.pending {
-    animation: tightArcadeGlow 0.3s infinite alternate ease-in-out;
-  }
 
   /* ---------------------------
      Extra Guess Button Styles
   --------------------------- */
   .buy-guess-button {
-    width: 40px;
-    height: 40px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
     margin-top: 130px;
-    margin-left: 10px;
-    border: none;
+    margin-left: 0px;
     cursor: pointer;
     color: #fff;
     font-weight: bold;
     text-align: center;
-    font-size: 10px;
-    font-family: 'VT323', sans-serif; /* Arcade-style font */
+    font-size: 20px;
+    font-family: 'VT323', sans-serif;
     text-transform: uppercase;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     box-sizing: border-box;
     background: radial-gradient(circle at 30% 30%, #4488ff, #0055bb 80%);
-    box-shadow: 0 0 4px #0055bb, 0 0 8px #4488ff, 0 0 12px rgba(0, 85, 187, 0.9);
-    border: 2px solid #0033aa;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -295,6 +314,13 @@
     animation: tightArcadeGlow 0.3s infinite alternate ease-in-out;
   }
 
+  /* 🔹 Intense Blinking Animation for Buy Guess Button */
+  @keyframes intenseBlink {
+    0% { opacity: 1; box-shadow: 0 0 8px #ffffff, 0 0 16px #ff3333; }
+    50% { opacity: 0.4; box-shadow: 0 0 4px #ffffff, 0 0 8px #ff6666; }
+    100% { opacity: 1; box-shadow: 0 0 8px #ffffff, 0 0 16px #ff3333; }
+  }
+
   /* ---------------------------
      Main Guess Button Styles
   --------------------------- */
@@ -307,98 +333,86 @@
     border-radius: 8px;
     font-size: 25px;
     margin-top: 130px;
-    font-family: 'VT323', sans-serif; /* Arcade-style font */
+    font-family: 'VT323', sans-serif;
     font-weight: bold;
     cursor: pointer;
     text-transform: uppercase;
     transition: background-color 0.3s, transform 0.2s;
     box-sizing: border-box;
-    /* 🔹 3D Border and Shadow */
-    border: 3px solid #41ae29 !important;    
+    border: 3px solid #2e9417 !important;
     box-shadow:
-      inset 2px 2px 5px rgba(255, 255, 255, 0.3), /* 🔹 Inner highlight */
-      3px 3px 8px rgba(0, 0, 0, 0.6), /* 🔹 Outer shadow */
-      5px 5px 12px rgba(0, 0, 0, 0.4); /* 🔹 Soft depth shadow */
+      inset 2px 2px 5px rgba(255, 255, 255, 0.3),
+      3px 3px 8px rgba(0, 0, 0, 0.6),
+      5px 5px 12px rgba(0, 0, 0, 0.4);
   }
-
-/* 🔹 Hover Effect - Slight Lift */
-.guess-phrase-button:hover {
+  .guess-phrase-button:not(.exit-mode) {
+    background: linear-gradient(180deg, #46a230, #318020) !important;
+  }
+  .guess-phrase-button.disabled-blur {
+    opacity: 0.5;
+    filter: blur(1px);
+    pointer-events: none;
+    cursor: not-allowed;
+  }
+  .guess-phrase-button:hover {
     transform: translateY(-2px);
     background: linear-gradient(180deg, #6b82f0, #4b63d2);
     box-shadow:
-      inset 2px 2px 6px rgba(255, 255, 255, 0.3), /* Inner highlight */
-      3px 3px 8px rgba(0, 0, 0, 0.6), /* Outer shadow */
-      5px 5px 12px rgba(0, 0, 0, 0.4); /* Depth shadow */
-}
-/* 🔹 Pressed Effect - Button Looks "Pressed In" */
-.guess-phrase-button:active {
+      inset 2px 2px 6px rgba(255, 255, 255, 0.3),
+      3px 3px 8px rgba(0, 0, 0, 0.6),
+      5px 5px 12px rgba(0, 0, 0, 0.4);
+  }
+  .guess-phrase-button:active {
     transform: translateY(2px);
     background: linear-gradient(180deg, #3a52c4, #2a41a5);
     box-shadow:
-      inset -2px -2px 6px rgba(0, 0, 0, 0.6), /* Darker inner shadow */
+      inset -2px -2px 6px rgba(0, 0, 0, 0.6),
       1px 1px 4px rgba(0, 0, 0, 0.5);
-}
-
-  /* 🔹 Blinking Green Animation for Pending */
+  }
   .guess-phrase-button.pending {
-    background: linear-gradient(180deg, #2e7d32, #1b5e20) !important; /* Darker Green */
+    background: linear-gradient(180deg, #2e7d32, #1b5e20) !important;
     color: white !important;
     border: 3px solid #144d17 !important;
     animation: blinkDarkGreen 1s infinite alternate ease-in-out;
-}
+  }
   .guess-phrase-button:hover {
     background-color: darkorange;
   }
   .guess-phrase-button:active {
     transform: scale(0.98);
-    
   }
-/* 🔹 Dark Mode: Ensure it stays Dark Green */
-:global(body.dark-mode) .guess-phrase-button.pending {
-    background: linear-gradient(180deg, #2e7d32, #1b5e20) !important;
-    border: 3px solid #144d17 !important;
-    animation: blinkDarkGreen 1s infinite alternate ease-in-out;
-}
-
-/* 🔹 Darker Green Blinking Animation */
-@keyframes blinkDarkGreen {
+  @keyframes blinkDarkGreen {
     0% { background-color: #2e7d32; }
     50% { background-color: #1b5e20; }
     100% { background-color: #2e7d32; }
-}
+  }
   .guess-phrase-button.guess-complete {
-  background: #28a745 !important;
-  color: white !important;
-  border: 3px solid #1e7e34 !important;
-  animation: blinkGreen 1s infinite alternate !important;
-  animation: glowGreen 1.5s infinite alternate ease-in-out;
-}
-  
+    background: #28a745 !important;
+    color: white !important;
+    border: 3px solid #1e7e34 !important;
+    animation: blinkGreen 1s infinite alternate !important;
+  }
 
   /* ---------------------------
      Animations
   --------------------------- */
   @keyframes tightArcadeGlow {
-  0% {
-    box-shadow:
-      0 0 3px #66aaff,
-      0 0 5px #3388ff,
-      0 0 7px rgba(195, 199, 205, 0.5);
-    border: 1px solid #b8bdc6;
+    0% {
+      box-shadow:
+        0 0 3px #66aaff,
+        0 0 5px #3388ff,
+        0 0 7px rgba(195, 199, 205, 0.5);
+      border: 1px solid #b8bdc6;
+    }
+    100% {
+      box-shadow:
+        0 0 4px #4488ff,
+        0 0 7px #0055bb,
+        0 0 9px rgba(0, 85, 187, 0.7);
+      border: 1px solid #a4abb4;
+    }
   }
-  100% {
-    box-shadow:
-      0 0 4px #4488ff,
-      0 0 7px #0055bb,
-      0 0 9px rgba(0, 85, 187, 0.7);
-    border: 1px solid #a4abb4;
-  }
-}
 
-/* Apply the updated animation to the hint button when pending */
-.hint-button.pending {
-  animation: tightArcadeGlow 0.3s infinite alternate ease-in-out;
-}
   @keyframes blinkGreen {
     0% { background-color: green; }
     50% { background-color: #00cc00; }
@@ -406,109 +420,35 @@
   }
 
   /* ---------------------------
-     Disabled / Purchase States
-  --------------------------- */
-  .disabled-purchase {
-    opacity: 0.7;
-    filter: blur(.8px);
-    pointer-events: none;
-  }
-
-  /* ---------------------------
      Dark Mode Overrides
   --------------------------- */
-  :global(body.dark-mode) .hint-button,
-  :global(body.dark-mode) .buy-guess-button {
-    background-color: #007bff !important;
-    border: 3px solid #ff8f00;
-    box-shadow:
-      inset 2px 2px 6px rgba(255, 255, 255, 0.2),
-      3px 3px 10px rgba(0, 0, 0, 0.7),
-      6px 6px 16px rgba(0, 0, 0, 0.5);
-    color: white !important;
-    border: none !important;
-  }
-/* 🔹 Dark Mode: Ensure It Stays Blue */
-:global(body.dark-mode) .guess-phrase-button {
-  background: linear-gradient(180deg, #46a230, #318020);
-      border: 3px solid #35aa2f !important;
-    animation: tightArcadeGlow 1.5s infinite alternate ease-in-out;
-    box-shadow:
-      inset 2px 2px 5px rgba(255, 255, 255, 0.3), /* 🔹 Inner highlight */
-      3px 3px 8px rgba(0, 0, 0, 0.6), /* 🔹 Outer shadow */
-      5px 5px 12px rgba(0, 0, 0, 0.4); /* 🔹 Soft depth shadow */
-
-}
-
-/* 🔹 Dark Mode Hover Effect */
-:global(body.dark-mode) .guess-phrase-button:hover {
-    transform: translateY(-2px);
-    background: linear-gradient(180deg, #6b82f0, #4b63d2);
-}
-
-/* 🔹 Dark Mode Press Effect */
-:global(body.dark-mode) .guess-phrase-button:active {
-    background: linear-gradient(180deg, #3a52c4, #2a41a5);
-}  
-  
-  :global(body.dark-mode) button,
-  :global(body.dark-mode) .key {
-    background-color: inherit !important;
-    color: inherit !important;
-    box-shadow: none !important;
-  }
-  :global(body.dark-mode) button.pending,
-  :global(body.dark-mode) .key.pending {
-    animation: blinkGreen 1s infinite;
-    background-color: green !important;
-    color: #fff !important;
+  :global(body.dark-mode) .guess-phrase-button {
+    background: linear-gradient(180deg, #46a230, #318020);
   }
   :global(body.dark-mode) .hint-button,
   :global(body.dark-mode) .buy-guess-button {
     background: radial-gradient(circle at 30% 30%, #66aaff, #3388ff 80%) !important;
-    box-shadow: 0 0 6px #3388ff, 0 0 10px #66aaff, 0 0 14px rgba(0, 170, 255, 0.9) !important;
     border: 3px solid #66aaff !important;
   }
-  :global(body.dark-mode) .hint-button.pending,
-  :global(body.dark-mode) .buy-guess-button.pending {
-    animation: tightArcadeGlowDark 0.3s infinite alternate ease-in-out !important;
-  }
-  @keyframes tightArcadeGlowDark {
-    0% {
-      box-shadow: 0 0 6px #aaffff, 0 0 10px #66ffff, 0 0 14px rgba(0, 170, 255, 0.8);
-      border: 3px solid #66ffff !important;
-    }
-    100% {
-      box-shadow: 0 0 8px #66aaff, 0 0 14px #3388ff, 0 0 18px rgba(0, 170, 255, 0.9);
-      border: 3px solid #aaffff !important;
-    }
-  }
 
-  /* 🔹 Exit Guess Mode Button Turns Red */
-.guess-phrase-button.exit-mode {
-    background: linear-gradient(180deg, #ff2222, #aa0000); /* Red gradient */
+  .guess-phrase-button.exit-mode {
+    background: linear-gradient(180deg, #ff2222, #aa0000);
     color: white !important;
     border: 3px solid darkred !important;
     transition: background-color 0.3s ease, transform 0.2s ease;
     animation: glowRed 1.5s infinite alternate ease-in-out;
-}
-
-/* 🔹 Press Effect */
-.guess-phrase-button.exit-mode:active {
+  }
+  .guess-phrase-button.exit-mode:active {
     background: linear-gradient(180deg, #cc0000, #990000);
     transform: scale(0.95);
-}
-
-/* 🔹 Dark Mode: Ensure It Stays Red */
-:global(body.dark-mode) .guess-phrase-button.exit-mode {
-    background: linear-gradient(180deg, #ff2222, #aa0000) !important; /* Slightly darker red for dark mode */
+  }
+  :global(body.dark-mode) .guess-phrase-button.exit-mode {
+    background: linear-gradient(180deg, #ff2222, #aa0000) !important;
     border: 3px solid #880000 !important;
-}
-
-:global(body.dark-mode) .guess-phrase-button.guess-complete {
+  }
+  :global(body.dark-mode) .guess-phrase-button.guess-complete {
     background: linear-gradient(180deg, #28a745, #218838) !important;
     animation: glowGreen 1.5s infinite alternate ease-in-out;
-    border: 3px solid #1e7e34 !important;    
-}    
-  
+    border: 3px solid #1e7e34 !important;
+  }
 </style>

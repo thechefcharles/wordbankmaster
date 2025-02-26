@@ -17,7 +17,7 @@ export const LETTER_COSTS = {
 // Initial state for the game store
 export const gameStore = writable({
   bankroll: 1000,
-  guessesRemaining: 2,
+  guessesRemaining: 1,
   category: "Person",
   currentPhrase: "MICHAEL JORDAN",
   gameState: "default", // States: "default", "purchase_pending", "guess_mode", "won", "lost"
@@ -490,7 +490,7 @@ export async function fetchRandomGame() {
 
     gameStore.set({
       bankroll: 1000,
-      guessesRemaining: 2,
+      guessesRemaining: 1,
       currentPhrase: data.phrase.toUpperCase(),
       category: data.category,
       gameState: "default",
