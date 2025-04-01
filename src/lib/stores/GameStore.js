@@ -18,6 +18,7 @@ export const LETTER_COSTS = {
 export const gameStore = writable({
   bankroll: 1000,
   guessesRemaining: 1,
+  wagerAmount: 1,   // NEW: Wager amount for solving
   category: "Person",
   currentPhrase: "MICHAEL JORDAN",
   gameState: "default", // States: "default", "purchase_pending", "guess_mode", "won", "lost"
@@ -79,15 +80,13 @@ function animateBankrollReduction(startingAmount) {
  * @returns {object} Updated state if loss condition met.
  */
 function checkLossCondition(state) {
-  const minLetterCost = Math.min(...Object.values(LETTER_COSTS));
-  const isLost = state.guessesRemaining <= 0 && state.bankroll < minLetterCost;
-  if (isLost) {
-    console.log("💀 Game Over: No guesses remaining and insufficient bankroll.");
+  if (state.bankroll < 1) {
+    console.log("💀 Game Over: Bankroll is zero.");
     animateBankrollReduction(state.bankroll);
     return {
       ...state,
       gameState: "lost",
-      guessesRemaining: 0,
+      // Optionally reveal the full phrase on game over:
       guessedLetters: Object.fromEntries(
         state.currentPhrase.split('').map((ch, i) => [i, ch])
       )
@@ -173,6 +172,13 @@ export function selectExtraGuess() {
       selectedPurchase: { type: 'extra_guess' }
     };
   });
+}
+
+export function setWager(amount) {
+  gameStore.update(state => ({
+    ...state,
+    wagerAmount: Math.max(1, Math.min(amount, state.bankroll))
+  }));
 }
 
 /**
@@ -398,23 +404,22 @@ export function submitGuess() {
       if (phrase[i] === ' ') continue;
       if (state.purchasedLetters[i] === phrase[i]) continue;
       if (!state.guessedLetters[i]) {
-        console.log("Guess submission aborted: not all guess slots are filled.");
+        console.log("Guess submission aborted: not all slots are filled.");
         return state;
       }
     }
-    if (state.guessesRemaining <= 0) {
-      console.log("No guesses remaining.");
-      return state;
-    }
-
+    
+    // Retrieve the wager amount; default to 1 if unset
+    const wager = state.wagerAmount || 1;
+    
     let newGuessed = { ...state.guessedLetters };
     let newPurchased = [...state.purchasedLetters];
     let newLockedLetters = { ...state.lockedLetters };
     let newShakenLetters = new Set(state.shakenLetters || []);
     let correctIndexes = [];
     let allCorrect = true;
-
-    // Validate each guess
+    
+    // Validate the guess
     for (let i = 0; i < phrase.length; i++) {
       if (phrase[i] === ' ') continue;
       if (newPurchased[i] === phrase[i]) continue;
@@ -426,8 +431,7 @@ export function submitGuess() {
         allCorrect = false;
       }
     }
-
-    // Update locked letters: lock a letter if all instances are correctly guessed/purchased.
+    
     const distinctLetters = [...new Set(phrase.replace(/\s/g, ''))];
     distinctLetters.forEach(letter => {
       const indices = [];
@@ -436,45 +440,38 @@ export function submitGuess() {
       }
       newLockedLetters[letter] = indices.every(idx => newPurchased[idx] === letter);
     });
-
+    
     correctIndexes.forEach(idx => newShakenLetters.add(idx));
-    const newGuessesRemaining = Math.max(state.guessesRemaining - 1, 0);
     const win = phrase.split('').every((ch, i) => ch === ' ' || newPurchased[i] === ch);
-
+    
+    // Apply wager: if correct, win wager; if not, lose wager
+    const bankrollChange = (allCorrect || win) ? wager : -wager;
+    const newBankroll = state.bankroll + bankrollChange;
+    
+    const newState = {
+      ...state,
+      gameState: (allCorrect || win) ? "won" : "default",
+      guessedLetters: {}, // Reset after guess submission
+      purchasedLetters: newPurchased,
+      lockedLetters: newLockedLetters,
+      shakenLetters: Array.from(newShakenLetters),
+      bankroll: newBankroll
+    };
+    
     if (allCorrect || win) {
-      console.log("✅ Guess submitted correctly. You win!");
-      return {
-        ...state,
-        gameState: "won",
-        guessedLetters: newGuessed,
-        purchasedLetters: newPurchased,
-        lockedLetters: newLockedLetters,
-        shakenLetters: Array.from(newShakenLetters),
-        guessesRemaining: newGuessesRemaining,
-      };
+      console.log("✅ Correct guess! Wager won.");
+      setTimeout(() => launchConfetti(), 300);
     } else {
-      console.log("❌ Incorrect guess. Returning to default mode.");
-      return checkLossCondition({
-        ...state,
-        gameState: "default",
-        guessedLetters: newGuessed,
-        purchasedLetters: newPurchased,
-        lockedLetters: newLockedLetters,
-        shakenLetters: Array.from(newShakenLetters),
-        guessesRemaining: newGuessesRemaining,
-      });
+      console.log("❌ Incorrect guess. Wager lost.");
     }
+    
+    return checkLossCondition(newState);
   });
 
-  // Clear feedback message after 2 seconds
   setTimeout(() => {
     gameStore.update(state => ({ ...state, message: "" }));
   }, 2000);
-
-  // Toggle extra guess pending flag post submission
-  gameStore.update(state => ({ ...state, extraGuessPending: !state.extraGuessPending }));
 }
-
 /* ================================
    Puzzle Fetch & Reset Functions
 =================================== */
@@ -501,7 +498,8 @@ export async function fetchRandomGame() {
       selectedPurchase: null,
       shakenLetters: [],
       extraGuessPending: false,
-      message: ""
+      message: "",
+      wagerAmount: 1
     });
     console.log(`Game loaded: ${data.phrase} - ${data.category}`);
   } catch (err) {
@@ -527,7 +525,8 @@ export function resetGame() {
     guessedLetters: {},
     shakenLetters: [],
     extraGuessPending: false,
-    message: ""
+    message: "",
+    wagerAmount: 1
   });
   console.log("Game reset.");
 }

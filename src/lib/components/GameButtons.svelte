@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import {
     gameStore,
     selectHint,
@@ -10,9 +11,11 @@
     submitGuess
   } from '$lib/stores/GameStore.js';
 
-  let darkMode = false; // ✅ Ensure it's declared
+  let darkMode = false;
+  let wagerUIVisible = false;
+  let sliderWagerAmount = 0; // 🔥 Starts at 0
 
-  // Reactive derivations from the game store
+  // Derived values
   $: purchasePending = !!$gameStore.selectedPurchase;
   $: hintPending =
     $gameStore.selectedPurchase?.type === 'hint' &&
@@ -23,13 +26,15 @@
   $: showHintCost = hintPending;
   $: showGuessCost = guessPending;
 
-  // Game status flags
   $: noGuessesLeft = $gameStore.guessesRemaining === 0;
   $: guessModeActive = $gameStore.gameState === 'guess_mode';
   $: bankroll = $gameStore.bankroll;
   $: fundsLow = bankroll < 150;
 
-  // Check if all guess slots are filled in guess mode
+  $: canConfirmWager = sliderWagerAmount > 0;
+  $: wagerLabel = `Wager: $${sliderWagerAmount}`;
+  $: winningsLabel = `Win: $${sliderWagerAmount}`;
+
   $: guessComplete = guessModeActive && (() => {
     const phrase = $gameStore.currentPhrase;
     for (let i = 0; i < phrase.length; i++) {
@@ -40,12 +45,12 @@
     return true;
   })();
 
-  // Dynamic label for the main action button
   $: buttonLabel = purchasePending
     ? "Confirm"
     : guessModeActive
       ? (guessComplete ? "Submit" : "Cancel")
-      : "Solve";
+      : (!canConfirmWager && wagerUIVisible ? "Cancel" : "Solve");
+
   // ----------------------------
   // EVENT HANDLERS
   // ----------------------------
@@ -54,19 +59,41 @@
       confirmPurchase();
       return;
     }
+
     if (guessModeActive) {
       if (guessComplete) {
         submitGuess();
       } else {
-        gameStore.update(state => ({ ...state, gameState: "default", guessedLetters: {},
-        selectedPurchase: null, 
-      }));
+        gameStore.update(state => ({
+          ...state,
+          gameState: "default",
+          guessedLetters: {},
+          selectedPurchase: null
+        }));
       }
       return;
     }
-    if (!purchasePending && !guessModeActive) {
-      enterGuessMode();
+
+    if (!wagerUIVisible) {
+      wagerUIVisible = true;
+      sliderWagerAmount = 0;
+      return;
     }
+
+    if (!canConfirmWager) {
+      wagerUIVisible = false; // Cancel if slider untouched
+      return;
+    }
+
+    // ✅ Store wager and enter guess mode
+    gameStore.update(state => ({
+      ...state,
+      gameState: "guess_mode",
+      wagerAmount: sliderWagerAmount,
+      selectedPurchase: null,
+      guessedLetters: {}
+    }));
+    wagerUIVisible = false;
   }
 
   function toggleHintPurchase() {
@@ -95,9 +122,6 @@
     localStorage.setItem('darkMode', darkMode);
   }
 
-  // ----------------------------
-  // GLOBAL KEY LISTENER
-  // ----------------------------
   onMount(() => {
     darkMode = localStorage.getItem('darkMode') === 'true';
     document.body.classList.toggle('dark-mode', darkMode);
@@ -105,15 +129,21 @@
     const onKeyDown = (event) => {
       if (event.key === 'Enter') {
         event.preventDefault();
-        if ($gameStore.selectedPurchase) return; // Do nothing if a purchase is pending
+
+        if ($gameStore.selectedPurchase) return;
+
         if ($gameStore.gameState === "guess_mode") {
           if (guessComplete) {
             submitGuess();
           } else {
-            gameStore.update(state => ({ ...state, gameState: "default", guessedLetters: {} }));
+            gameStore.update(state => ({
+              ...state,
+              gameState: "default",
+              guessedLetters: {}
+            }));
           }
         } else {
-          enterGuessMode();
+          handleMainButtonClick();
         }
       }
     };
@@ -122,7 +152,6 @@
     return () => window.removeEventListener('keydown', onKeyDown);
   });
 </script>
-
 <!-- ----------------------------
      UI RENDERING
 ----------------------------- -->
@@ -132,8 +161,29 @@
 {/if}
 
 <div class="buttons-container">
-  
-  <!-- 🔹 Hint Button (Glows Only When Selected) -->
+
+  <!-- ✅ Wager Slider (Appears When Solve Button is Clicked First) -->
+  {#if wagerUIVisible}
+  <div class="wager-ui fade-in">
+    <label for="wager" class="wager-label">{wagerLabel}</label>
+    <input
+      id="wager"
+      type="range"
+      min="0"
+      max={$gameStore.bankroll}
+      bind:value={sliderWagerAmount}
+      class="wager-slider"
+    />
+    <div class="wager-summary">
+      <span class="wager-note">Available: ${$gameStore.bankroll}</span>
+      {#if sliderWagerAmount > 0}
+        <span class="winnings-note">{winningsLabel}</span>
+      {/if}
+    </div>
+  </div>
+{/if}
+
+  <!-- 🔹 Hint Button -->
   <div class="hint-button-container">
     {#if showHintCost}
       <div class="cost-indicator">$150</div>
@@ -148,23 +198,24 @@
     </button>
   </div>
 
-  <!-- 🔹 Solve Button (Blurs When No Guesses & Not in Purchase Mode) -->
+  <!-- 🔹 Solve Button -->
   <div class="main-guess-button-container">
     <button
-      class="guess-phrase-button 
-        {purchasePending ? 'pending' : ''} 
-        {guessModeActive && !guessComplete ? 'exit-mode' : ''} 
-        {guessComplete ? 'guess-complete' : ''} 
-        {noGuessesLeft && !purchasePending ? 'disabled-purchase' : ''}"
-      on:click={handleMainButtonClick}
-      disabled={noGuessesLeft && !purchasePending}
-      aria-label={buttonLabel}
-    >
-      {buttonLabel}
-    </button>
-  </div>
+    class="guess-phrase-button 
+      {purchasePending ? 'pending' : ''} 
+      {guessModeActive && !guessComplete ? 'exit-mode' : ''} 
+      {guessComplete ? 'guess-complete' : ''} 
+      {!canConfirmWager && wagerUIVisible ? 'exit-mode' : ''} 
+      {noGuessesLeft && !purchasePending ? 'disabled-purchase' : ''}"
+    on:click={handleMainButtonClick}
+    disabled={noGuessesLeft && !purchasePending}
+    aria-label={buttonLabel}
+  >
+    {buttonLabel}
+  </button>
+    </div>
 
-  <!-- 🔹 Extra Guess Button (Always Visible, Blurred When Guesses > 0) -->
+  <!-- 🔹 Extra Guess Button -->
   <div class="extra-guess-button-container">
     {#if showGuessCost}
       <div class="cost-indicator">$150</div>
@@ -392,6 +443,72 @@
     border: 3px solid #1e7e34 !important;
     animation: blinkGreen 1s infinite alternate !important;
   }
+
+  .wager-ui {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: -80px;
+  margin-bottom: 120px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.wager-label {
+  font-size: 22px;
+  margin-bottom: 6px;
+  font-family: 'VT323', monospace;
+  color: #fff;
+}
+
+.wager-slider {
+  width: 200px;
+  accent-color: #46a230;
+}
+
+.wager-note {
+  font-size: 14px;
+  margin-top: 4px;
+  color: #ccc;
+  font-family: 'VT323', monospace;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.bankroll-slider-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.static-bankroll-display {
+  font-family: 'VT323', monospace;
+  font-size: 28px;
+  color: #46a230;
+  text-shadow: 1px 1px #000;
+}
+
+.wager-slider {
+  width: 300px;
+  margin-top: 10px;
+  accent-color: #5a73ea;
+}
+
+.wager-value-display {
+  font-family: 'VT323', monospace;
+  font-size: 20px;
+  color: #fff;
+  margin-top: 5px;
+}
+
 
   /* ---------------------------
      Animations
