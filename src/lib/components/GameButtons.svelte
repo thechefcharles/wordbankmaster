@@ -1,5 +1,6 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
+  import { get } from 'svelte/store';
   import {
     gameStore,
     selectHint,
@@ -10,9 +11,14 @@
     submitGuess
   } from '$lib/stores/GameStore.js';
 
-  let darkMode = false; // ✅ Ensure it's declared
+  export let wagerUIVisible;
+  export let sliderWagerAmount;
 
-  // Reactive derivations from the game store
+  const dispatch = createEventDispatcher();
+
+  let darkMode = false;
+
+  // Derived values
   $: purchasePending = !!$gameStore.selectedPurchase;
   $: hintPending =
     $gameStore.selectedPurchase?.type === 'hint' &&
@@ -23,13 +29,15 @@
   $: showHintCost = hintPending;
   $: showGuessCost = guessPending;
 
-  // Game status flags
   $: noGuessesLeft = $gameStore.guessesRemaining === 0;
   $: guessModeActive = $gameStore.gameState === 'guess_mode';
   $: bankroll = $gameStore.bankroll;
   $: fundsLow = bankroll < 150;
 
-  // Check if all guess slots are filled in guess mode
+  $: canConfirmWager = sliderWagerAmount > 0;
+  $: wagerLabel = `Wager: $${sliderWagerAmount}`;
+  $: winningsLabel = `Win: $${sliderWagerAmount}`;
+
   $: guessComplete = guessModeActive && (() => {
     const phrase = $gameStore.currentPhrase;
     for (let i = 0; i < phrase.length; i++) {
@@ -40,12 +48,12 @@
     return true;
   })();
 
-  // Dynamic label for the main action button
   $: buttonLabel = purchasePending
     ? "Confirm"
     : guessModeActive
       ? (guessComplete ? "Submit" : "Cancel")
-      : "Solve";
+      : (!canConfirmWager && wagerUIVisible ? "Cancel" : "Solve");
+
   // ----------------------------
   // EVENT HANDLERS
   // ----------------------------
@@ -54,22 +62,51 @@
       confirmPurchase();
       return;
     }
+
     if (guessModeActive) {
       if (guessComplete) {
         submitGuess();
       } else {
-        gameStore.update(state => ({ ...state, gameState: "default", guessedLetters: {},
-        selectedPurchase: null, 
-      }));
+        gameStore.update(state => ({
+          ...state,
+          gameState: "default",
+          guessedLetters: {},
+          selectedPurchase: null
+        }));
       }
       return;
     }
-    if (!purchasePending && !guessModeActive) {
-      enterGuessMode();
+
+    if (!wagerUIVisible) {
+      dispatch('setWagerUIVisible', true);
+      dispatch('setSliderWagerAmount', 0);
+      return;
     }
+
+    if (!canConfirmWager) {
+      dispatch('setWagerUIVisible', false);
+      dispatch('setSliderWagerAmount', 0);
+      return;
+    }
+
+    // ✅ Store wager and enter guess mode
+    gameStore.update(state => ({
+      ...state,
+      gameState: "guess_mode",
+      wagerAmount: sliderWagerAmount,
+      selectedPurchase: null,
+      guessedLetters: {}
+    }));
+    dispatch('setWagerUIVisible', false);
+  }
+
+  function cancelWagerMode() {
+    dispatch('setWagerUIVisible', false);
+    dispatch('setSliderWagerAmount', 0);
   }
 
   function toggleHintPurchase() {
+    cancelWagerMode();
     gameStore.update(state => {
       if (state.selectedPurchase?.type === "hint") {
         return { ...state, selectedPurchase: null, gameState: "default" };
@@ -80,6 +117,7 @@
   }
 
   function toggleGuessPurchase() {
+    cancelWagerMode();
     gameStore.update(state => {
       if (state.selectedPurchase?.type === "extra_guess") {
         return { ...state, selectedPurchase: null, gameState: "default" };
@@ -95,9 +133,6 @@
     localStorage.setItem('darkMode', darkMode);
   }
 
-  // ----------------------------
-  // GLOBAL KEY LISTENER
-  // ----------------------------
   onMount(() => {
     darkMode = localStorage.getItem('darkMode') === 'true';
     document.body.classList.toggle('dark-mode', darkMode);
@@ -105,15 +140,21 @@
     const onKeyDown = (event) => {
       if (event.key === 'Enter') {
         event.preventDefault();
-        if ($gameStore.selectedPurchase) return; // Do nothing if a purchase is pending
+
+        if ($gameStore.selectedPurchase) return;
+
         if ($gameStore.gameState === "guess_mode") {
           if (guessComplete) {
             submitGuess();
           } else {
-            gameStore.update(state => ({ ...state, gameState: "default", guessedLetters: {} }));
+            gameStore.update(state => ({
+              ...state,
+              gameState: "default",
+              guessedLetters: {}
+            }));
           }
         } else {
-          enterGuessMode();
+          handleMainButtonClick();
         }
       }
     };
@@ -122,7 +163,6 @@
     return () => window.removeEventListener('keydown', onKeyDown);
   });
 </script>
-
 <!-- ----------------------------
      UI RENDERING
 ----------------------------- -->
@@ -132,8 +172,38 @@
 {/if}
 
 <div class="buttons-container">
-  
-  <!-- 🔹 Hint Button (Glows Only When Selected) -->
+
+<!-- ✅ Wager Slider (Appears When Solve Button is Clicked First) -->
+<!-- ✅ Wager Section UI -->
+{#if wagerUIVisible}
+  <div class="wager-ui fade-in slider-overlay">
+    
+    <!-- 🏷️ Fix this: use a unique class -->
+    <div class="wager-static-label">Wager Amount</div>
+    
+    <!-- 💲 Dynamic wager display -->
+    <div class="wager-value-display">{wagerLabel}</div>
+    
+    <!-- 🎚️ Slider control -->
+    <input
+      id="wager"
+      type="range"
+      min="0"
+      max={$gameStore.bankroll}
+      bind:value={sliderWagerAmount}
+      class="wager-slider"
+    />
+
+    <div class="wager-summary">
+      <span class="wager-note">Available: ${$gameStore.bankroll}</span>
+      {#if sliderWagerAmount > 0}
+        <span class="winnings-note">{winningsLabel}</span>
+      {/if}
+    </div>
+  </div>
+{/if}
+
+  <!-- 🔹 Hint Button -->
   <div class="hint-button-container">
     {#if showHintCost}
       <div class="cost-indicator">$150</div>
@@ -148,38 +218,51 @@
     </button>
   </div>
 
-  <!-- 🔹 Solve Button (Blurs When No Guesses & Not in Purchase Mode) -->
+  <!-- 🔹 Solve Button -->
+<!-- 🔄 Dual Confirm/Cancel Buttons when a purchase is selected -->
+{#if purchasePending || (wagerUIVisible && canConfirmWager)}
+  <div class="dual-button-container">
+    <button
+      class="cancel-button"
+      on:click={() => {
+        if (purchasePending) {
+          gameStore.update(state => ({
+            ...state,
+            selectedPurchase: null,
+            gameState: "default"
+          }));
+        } else {
+          dispatch('setWagerUIVisible', false);
+          dispatch('setSliderWagerAmount', 0);
+        }
+      }}
+    >
+      Cancel
+    </button>
+
+    <button
+      class="confirm-button"
+      on:click={purchasePending ? confirmPurchase : handleMainButtonClick}
+    >
+      Confirm
+    </button>
+  </div>
+{:else}
   <div class="main-guess-button-container">
     <button
       class="guess-phrase-button 
-        {purchasePending ? 'pending' : ''} 
         {guessModeActive && !guessComplete ? 'exit-mode' : ''} 
         {guessComplete ? 'guess-complete' : ''} 
-        {noGuessesLeft && !purchasePending ? 'disabled-purchase' : ''}"
+        {!canConfirmWager && wagerUIVisible ? 'exit-mode' : ''} 
+        {noGuessesLeft ? 'disabled-purchase' : ''}"
       on:click={handleMainButtonClick}
-      disabled={noGuessesLeft && !purchasePending}
+      disabled={noGuessesLeft}
       aria-label={buttonLabel}
     >
       {buttonLabel}
     </button>
   </div>
-
-  <!-- 🔹 Extra Guess Button (Always Visible, Blurred When Guesses > 0) -->
-  <div class="extra-guess-button-container">
-    {#if showGuessCost}
-      <div class="cost-indicator">$150</div>
-    {/if}
-    <button 
-      class="buy-guess-button 
-        {fundsLow || !noGuessesLeft ? 'disabled-purchase' : ''} 
-        {guessPending ? 'glow' : ''}"
-      on:click={toggleGuessPurchase}
-      disabled={fundsLow || !noGuessesLeft}
-      aria-label="Buy an extra guess for $150"
-    >
-      +1
-    </button>
-  </div>
+{/if}
 
 </div>
 
@@ -216,12 +299,13 @@
      Overall Layout & Container Styles
   --------------------------- */
   .buttons-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 20px;
-    margin: 20px 0;
-  }
+  position: relative; /* ✅ NEW: Enables absolute positioning inside */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin: 20px 0;
+}
 
   .hint-button-container,
   .main-guess-button-container,
@@ -250,6 +334,13 @@
     text-align: center;
     animation: blinkColor 1s infinite;
   }
+  .slider-overlay {
+  position: absolute;
+  top: -140px; /* Adjust this value to sit right above your bankroll */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
 
   /* ---------------------------
      Hint Button Styles
@@ -393,6 +484,88 @@
     animation: blinkGreen 1s infinite alternate !important;
   }
 
+  .wager-ui {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: -80px;
+  margin-bottom: 120px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.wager-label {
+  font-size: 22px;
+  margin-bottom: 6px;
+  font-family: 'VT323', monospace;
+  color: #fff;
+}
+
+.wager-value-display {
+  font-size: 18px;
+  font-family: 'VT323', monospace;
+  color: #db0f0f;
+  margin-bottom: 8px;
+}
+
+.wager-slider {
+  width: 200px;
+  accent-color: #46a230;
+}
+
+.wager-note {
+  font-size: 14px;
+  margin-top: 4px;
+  color: #ccc;
+  font-family: 'VT323', monospace;
+}
+
+.wager-static-label {
+  font-size: 16px;
+  font-weight: bold;
+  font-family: 'VT323', monospace;
+  color: #9a1e1e;
+  margin-bottom: 4px;
+}
+
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.bankroll-slider-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.static-bankroll-display {
+  font-family: 'VT323', monospace;
+  font-size: 28px;
+  color: #46a230;
+  text-shadow: 1px 1px #000;
+}
+
+.wager-slider {
+  width: 300px;
+  margin-top: 10px;
+  accent-color: #5a73ea;
+}
+
+.wager-value-display {
+  font-family: 'VT323', monospace;
+  font-size: 20px;
+  color: #fff;
+  margin-top: 5px;
+}
+
+
   /* ---------------------------
      Animations
   --------------------------- */
@@ -418,6 +591,72 @@
     50% { background-color: #00cc00; }
     100% { background-color: green; }
   }
+
+  .dual-button-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-top: 130px;
+}
+
+@keyframes pulseGlow {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 16px rgba(0, 255, 0, 0.9);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+  }
+}
+
+.confirm-button {
+  background: linear-gradient(180deg, #46a230, #318020);
+  color: white;
+  font-size: 22px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-family: 'VT323', monospace;
+  border: 2px solid #2e9417;
+  cursor: pointer;
+  animation: pulseGlow 1s infinite;
+  transition: transform 0.2s ease;
+}
+.confirm-button:hover {
+  transform: scale(1.08);
+}
+
+.cancel-button {
+  background: linear-gradient(180deg, #aa0000, #660000);
+  color: white;
+  font-size: 22px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-family: 'VT323', monospace;
+  border: 2px solid darkred;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.cancel-button:hover {
+  transform: scale(1.08);
+}
+
+.confirm-button {
+  background: linear-gradient(180deg, #28a745, #218838);
+  color: white;
+  border: 3px solid #1e7e34;
+}
+
+.confirm-button:hover {
+  background: linear-gradient(180deg, #45c362, #2f9f4a);
+  transform: translateY(-2px);
+}
+
 
   /* ---------------------------
      Dark Mode Overrides

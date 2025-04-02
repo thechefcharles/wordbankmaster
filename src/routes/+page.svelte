@@ -11,57 +11,77 @@
   import Keyboard from '$lib/components/Keyboard.svelte';
   import GameButtons from '$lib/components/GameButtons.svelte';
   import FlipDigit from '$lib/components/FlipDigit.svelte';
-  import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
+  import Auth from '$lib/components/Auth.svelte'; // ✅ NEW: Login component
+  import { supabase } from '$lib/supabaseClient';
 
+  import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
+  import { user } from '$lib/stores/userStore.js';
+
+  export let data;
   let showHowToPlay = false;
   let darkMode = false;
+  let wagerUIVisible = false;
+  let sliderWagerAmount = 0;
+  
+  let nextPuzzleAvailable = false;
+  // 🟢 Show Next Puzzle button if the game is won
+  $: nextPuzzleAvailable = currentGame.gameState === 'won' || currentGame.gameState === 'lost';
 
-  // ✅ Apply Dark Mode from localStorage
+  // ✅ Sync the logged-in user from load() into the user store
+  $: if (data?.user) {
+    user.set(data.user);
+  }
+
+  // ✅ Watch user store and determine if logged in
+  let loggedIn = false;
+  $: $user && $user.id ? loggedIn = true : loggedIn = false;
+
   function applyDarkMode() {
     document.body.classList.toggle('dark-mode', darkMode);
   }
 
-  // ✅ Toggle Dark Mode & Save Preference
   function toggleDarkMode() {
     darkMode = !darkMode;
     localStorage.setItem('darkMode', darkMode);
-    applyDarkMode(); // Apply instantly
+    applyDarkMode();
   }
 
-  // ✅ Initialize on Mount
   onMount(() => {
     if (browser) {
       darkMode = localStorage.getItem('darkMode') === 'true';
       applyDarkMode();
     }
-    fetchRandomGame(); // Load new game on mount
 
-    // 🔥 Remove button focus on click/touch/mousedown
+    if (loggedIn) {
+      fetchRandomGame(); // ✅ Load puzzle only when logged in
+    }
+
+    // 🔥 Remove focus ring from buttons
     document.addEventListener('click', removeButtonFocus, true);
     document.addEventListener('mousedown', removeButtonFocus, true);
     document.addEventListener('touchstart', removeButtonFocus, true);
   });
 
-  // ✅ Function to Remove Button Focus
   function removeButtonFocus(event) {
     if (event.target.tagName === 'BUTTON') {
       event.target.blur();
     }
   }
 
+  // ✅ Reactive game state
+  $: currentGame = $gameStore;
+  $: bankroll = currentGame.bankroll || 0;
+  $: digits = String(bankroll).split('');
 
-
-
-// 🔄 Reactive subscriptions from the game store
-$: currentGame = $gameStore;
-$: bankroll = currentGame.bankroll || 0;
-$: digits = String(bankroll).split('');
-
-// 🔄 When in the browser, update the body class for guess mode
-$: if (browser) {
-  document.body.classList.toggle('guess-mode', currentGame.gameState === 'guess_mode');
+  // ✅ Add class when in guess mode
+  $: if (browser) {
+    document.body.classList.toggle('guess-mode', currentGame.gameState === 'guess_mode');
+  }
+  async function handleLogout() {
+  await supabase.auth.signOut();       // Logs out of Supabase
+  user.set(null);                      // Clears the user store
+  location.reload();                   // Reloads page to show Auth screen
 }
-
 </script>
 
 <!-- 🔹 Buttons Positioned in Opposite Corners -->
@@ -75,6 +95,13 @@ $: if (browser) {
   <button class="icon-button subtle-button" on:click={toggleDarkMode}>
     {darkMode ? "☀️" : "🌙"}
   </button>
+<!-- 🚪 Logout -->
+{#if loggedIn}
+  <button class="icon-button subtle-button" on:click={handleLogout}>
+    🚪
+  </button>
+{/if}
+
 </div>
 
 <!-- 📜 How to Play Modal -->
@@ -104,57 +131,70 @@ $: if (browser) {
 {/if}
 
 <main>
-  <!-- Logo -->
-  <div class="logo-container">
-    <img src="/1.png" alt="WordBank Logo" class="wordbank-logo" />
-  </div>
-
-  <!-- Category Display -->
-  <p class="category">{currentGame.category} 🌍</p>
-
-  <!-- Phrase Display Section -->
-  <section class="phrase-section">
-    <PhraseDisplay />
-  </section>
-
-<!-- New Fixed Container -->
-<div class="bankroll-game-buttons-container">
-  <!-- Bankroll Display -->
-  <section class="stats-section">
-    <div class="bankroll-container">
-      <div class="bankroll-box">
-        <span class="currency">$</span>
-        {#each digits as d}
-          <FlipDigit digit={+d} />
-        {/each}
-      </div>
+  {#if !loggedIn}
+    <!-- 🔐 Login Screen -->
+    <div class="auth-screen">
+      <Auth />
     </div>
-  </section>
+  {:else}
+    <!-- ✅ GAME UI (Only visible when logged in) -->
 
-  <!-- Game Buttons Section -->
-  <section class="buttons-section">
-    <GameButtons />
-  </section>
-</div>
+    <!-- Logo -->
+    <div class="logo-container">
+      <img src="/1.png" alt="WordBank Logo" class="wordbank-logo" />
+    </div>
 
+    <!-- Category Display -->
+    <p class="category">{currentGame.category} 🌍</p>
 
-  <!-- Keyboard Section -->
-  <section class="keyboard-section">
-    <Keyboard />
-  </section>
+    <!-- Phrase Display Section -->
+    <section class="phrase-section">
+      <PhraseDisplay />
+    </section>
 
-  <!-- Win/Loss Banner -->
-  {#if currentGame.gameState === "won"}
-    <div class="banner win">Winner!</div>
-  {:else if currentGame.gameState === "lost"}
-    <div class="banner lose">Bankrupt!</div>
+    <!-- Bankroll + Game Buttons Container -->
+    <div class="bankroll-game-buttons-container">
+      <!-- 💰 Bankroll Display -->
+      <section class="stats-section">
+        <div class="bankroll-container">
+          <div class="bankroll-box">
+            <span class="currency">$</span>
+            {#each digits as d}
+              <FlipDigit digit={+d} />
+            {/each}
+          </div>
+        </div>
+      </section>
+
+      <!-- 🎮 Game Buttons -->
+      <section class="buttons-section">
+        <GameButtons
+        bind:wagerUIVisible
+        bind:sliderWagerAmount
+        disabled={nextPuzzleAvailable}
+          on:setWagerUIVisible={(e) => wagerUIVisible = e.detail}
+          on:setSliderWagerAmount={(e) => sliderWagerAmount = e.detail}
+        />
+      </section>
+    </div>
+
+    <!-- ⌨️ Keyboard Section -->
+    <section class="keyboard-section">
+      <Keyboard
+        disabled={nextPuzzleAvailable}
+        on:letterSelected={() => wagerUIVisible = false}
+      />
+    </section>
+
+    <!-- 🏆 Win/Loss Banner -->
+    {#if currentGame.gameState === "won"}
+      <div class="banner win">Winner!</div>
+      <button class="next-puzzle-button" on:click={fetchRandomGame}>🎉 Next Puzzle</button>
+    {:else if currentGame.gameState === "lost"}
+      <div class="banner lose">Bankrupt!</div>
+      <button class="next-puzzle-button" on:click={fetchRandomGame}>🔄 Play Again</button>
+    {/if}
   {/if}
-
-
-  <!-- Hidden Reset Button (for debugging/testing) -->
-  <button class="reset-button hidden" on:click={fetchRandomGame}>
-    Reset Game
-  </button>
 </main>
 
 <style>
@@ -443,6 +483,15 @@ $: if (browser) {
     position: relative;
   }
 
+  .auth-screen {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 85vh;
+  padding: 1rem;
+}
+
+
   /* 🌙 Dark Mode Overrides */
   :global(body.dark-mode) .modal-content {
     background: linear-gradient(135deg, #222, #333);
@@ -518,4 +567,27 @@ $: if (browser) {
     from { transform: translateY(-20px); }
     to { transform: translateY(0); }
   }
+
+  .next-puzzle-button {
+  margin-top: 12px;
+  background-color: limegreen;
+  color: white;
+  font-weight: bold;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  animation: pulse 1s infinite alternate;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.08); }
+}
+
+.next-puzzle-button:hover {
+  background-color: green;
+}
+
   </style>

@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte'; // ✅ Added dispatcher import
   import {
     gameStore,
     selectLetter,
@@ -10,32 +10,32 @@
     enterGuessMode
   } from '$lib/stores/GameStore.js';
 
-  // Define letter costs for display purposes (mirrors GameStore constants)
+  // ✅ Create dispatcher to emit events to parent
+  const dispatch = createEventDispatcher();
+
+  // Define letter costs for display purposes
   const letterCosts = {
     Q: 30, W: 50, E: 140, R: 120, T: 120, Y: 60, U: 80, I: 110, O: 90, P: 80,
     A: 130, S: 120, D: 80, F: 60, G: 70, H: 70, J: 30, K: 50, L: 80,
     Z: 40, X: 40, C: 80, V: 50, B: 60, N: 100, M: 70
   };
 
-  // Define rows for a QWERTY layout
   const row1 = ['Q','W','E','R','T','Y','U','I','O','P'];
   const row2 = ['A','S','D','F','G','H','J','K','L'];
   const row3 = ['Z','X','C','V','B','N','M'];
-  
 
-  $: disabledKeys = Object.keys(letterCosts).filter(letter => 
-    letterCosts[letter] > $gameStore.bankroll || 
-    $gameStore.incorrectLetters.includes(letter)  // 🔹 Keep incorrect letters blurred
-);
-
+  // 🔹 Disable unaffordable or incorrect keys
+  $: disabledKeys = Object.keys(letterCosts).filter(letter =>
+    letterCosts[letter] > $gameStore.bankroll ||
+    $gameStore.incorrectLetters.includes(letter)
+  );
 
   /**
-   * handleLetterClick
-   * Depending on the game state, either inputs a guess letter or selects a letter for purchase.
-   *
-   * @param {string} letter - The letter clicked.
+   * 🔹 Letter click logic for both guess mode and purchase mode.
+   * 🔸 Also emits a custom event to parent to cancel wager UI.
    */
   function handleLetterClick(letter) {
+    dispatch('letterSelected'); // ✅ Notify parent to hide slider
     if ($gameStore.gameState === 'guess_mode') {
       inputGuessLetter(letter);
     } else {
@@ -44,36 +44,30 @@
   }
 
   /**
-   * Global keyboard handler for Enter, Backspace/Delete, Space, and letter keys.
-   *
-   * Prevents default browser behavior and maps keys to game actions.
+   * 🔹 Global key handling for accessibility and flow.
    */
   function handleKeyDown(event) {
     event.preventDefault();
     const key = event.key.toUpperCase();
 
     gameStore.update(state => {
-      // ENTER: Confirm purchase or submit guess/enter guess mode
       if (event.key === 'Enter') {
         if (state.selectedPurchase) {
           confirmPurchase();
           return { ...state, gameState: "default" };
         }
         if (state.gameState === "guess_mode") {
-          // If guess is complete, submit; otherwise, exit guess mode.
           return state.guessedLetters &&
             Object.keys(state.guessedLetters).length === state.currentPhrase.replace(/\s/g, '').length
               ? submitGuess()
               : { ...state, gameState: "default", guessedLetters: {} };
         }
-        // If not in guess mode, enter guess mode.
         if (!state.selectedPurchase && state.gameState !== "guess_mode") {
           return { ...state, gameState: "guess_mode", guessedLetters: {} };
         }
         return state;
       }
 
-      // BACKSPACE / DELETE: Remove last guessed letter in guess mode
       if (event.key === 'Backspace' || event.key === 'Delete') {
         if (state.gameState === "guess_mode") {
           deleteGuessLetter();
@@ -81,14 +75,13 @@
         return state;
       }
 
-      // SPACEBAR: Toggle guess mode
       if (event.key === ' ' || event.code === 'Space') {
         enterGuessMode();
         return state;
       }
 
-      // Letter keys: Either input as guess or select for purchase.
       if (/^[A-Z]$/.test(key)) {
+        dispatch('letterSelected'); // ✅ Notify parent on keyboard letter
         if (state.gameState === "guess_mode") {
           inputGuessLetter(key);
         } else {
@@ -96,14 +89,13 @@
         }
         return state;
       }
+
       return state;
     });
 
-    // Remove focus from active element after key press to avoid unwanted focus styling
     document.activeElement.blur();
   }
 
-  // Set up a global keydown listener on mount.
   onMount(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
