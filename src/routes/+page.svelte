@@ -256,7 +256,7 @@
     text-align: center;
     box-shadow: 
         inset 2px 2px 6px rgba(255, 255, 255, 0.2),  /* Inner highlight */
-        3px 3px 8px rgba(0, 0, 0, 0.8),             /* Outer shadow */
+        3px 3px 8px rgba(0, 0, 0, 0.742),             /* Outer shadow */
         5px 5px 12px rgba(0, 0, 0, 0.5);            /* Soft depth shadow */    display: inline-flex;
     justify-content: center;
     align-items: center;
