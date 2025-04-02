@@ -1,6 +1,6 @@
 // GameStore.js
 import { writable } from 'svelte/store';
-import { supabase } from '$lib/supabase.js';
+import { supabase } from '$lib/supabaseClient.js';
 import confetti from 'canvas-confetti';
 
 /* ================================

@@ -173,10 +173,18 @@
 
 <div class="buttons-container">
 
-  <!-- ✅ Wager Slider (Appears When Solve Button is Clicked First) -->
-  {#if wagerUIVisible}
-  <div class="wager-ui fade-in">
-    <label for="wager" class="wager-label">{wagerLabel}</label>
+<!-- ✅ Wager Slider (Appears When Solve Button is Clicked First) -->
+<!-- ✅ Wager Section UI -->
+{#if wagerUIVisible}
+  <div class="wager-ui fade-in slider-overlay">
+    
+    <!-- 🏷️ Fix this: use a unique class -->
+    <div class="wager-static-label">Wager Amount</div>
+    
+    <!-- 💲 Dynamic wager display -->
+    <div class="wager-value-display">{wagerLabel}</div>
+    
+    <!-- 🎚️ Slider control -->
     <input
       id="wager"
       type="range"
@@ -185,6 +193,7 @@
       bind:value={sliderWagerAmount}
       class="wager-slider"
     />
+
     <div class="wager-summary">
       <span class="wager-note">Available: ${$gameStore.bankroll}</span>
       {#if sliderWagerAmount > 0}
@@ -223,8 +232,8 @@
             gameState: "default"
           }));
         } else {
-          wagerUIVisible = false;
-          sliderWagerAmount = 0;
+          dispatch('setWagerUIVisible', false);
+          dispatch('setSliderWagerAmount', 0);
         }
       }}
     >
@@ -290,12 +299,13 @@
      Overall Layout & Container Styles
   --------------------------- */
   .buttons-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 20px;
-    margin: 20px 0;
-  }
+  position: relative; /* ✅ NEW: Enables absolute positioning inside */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin: 20px 0;
+}
 
   .hint-button-container,
   .main-guess-button-container,
@@ -324,6 +334,13 @@
     text-align: center;
     animation: blinkColor 1s infinite;
   }
+  .slider-overlay {
+  position: absolute;
+  top: -140px; /* Adjust this value to sit right above your bankroll */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
 
   /* ---------------------------
      Hint Button Styles
@@ -483,6 +500,13 @@
   color: #fff;
 }
 
+.wager-value-display {
+  font-size: 18px;
+  font-family: 'VT323', monospace;
+  color: #db0f0f;
+  margin-bottom: 8px;
+}
+
 .wager-slider {
   width: 200px;
   accent-color: #46a230;
@@ -494,6 +518,15 @@
   color: #ccc;
   font-family: 'VT323', monospace;
 }
+
+.wager-static-label {
+  font-size: 16px;
+  font-weight: bold;
+  font-family: 'VT323', monospace;
+  color: #9a1e1e;
+  margin-bottom: 4px;
+}
+
 
 @keyframes fadeIn {
   from {
