@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
   import { get } from 'svelte/store';
   import {
     gameStore,
@@ -11,9 +11,12 @@
     submitGuess
   } from '$lib/stores/GameStore.js';
 
+  export let wagerUIVisible;
+  export let sliderWagerAmount;
+
+  const dispatch = createEventDispatcher();
+
   let darkMode = false;
-  let wagerUIVisible = false;
-  let sliderWagerAmount = 0; // 🔥 Starts at 0
 
   // Derived values
   $: purchasePending = !!$gameStore.selectedPurchase;
@@ -75,13 +78,14 @@
     }
 
     if (!wagerUIVisible) {
-      wagerUIVisible = true;
-      sliderWagerAmount = 0;
+      dispatch('setWagerUIVisible', true);
+      dispatch('setSliderWagerAmount', 0);
       return;
     }
 
     if (!canConfirmWager) {
-      wagerUIVisible = false; // Cancel if slider untouched
+      dispatch('setWagerUIVisible', false);
+      dispatch('setSliderWagerAmount', 0);
       return;
     }
 
@@ -93,10 +97,16 @@
       selectedPurchase: null,
       guessedLetters: {}
     }));
-    wagerUIVisible = false;
+    dispatch('setWagerUIVisible', false);
+  }
+
+  function cancelWagerMode() {
+    dispatch('setWagerUIVisible', false);
+    dispatch('setSliderWagerAmount', 0);
   }
 
   function toggleHintPurchase() {
+    cancelWagerMode();
     gameStore.update(state => {
       if (state.selectedPurchase?.type === "hint") {
         return { ...state, selectedPurchase: null, gameState: "default" };
@@ -107,6 +117,7 @@
   }
 
   function toggleGuessPurchase() {
+    cancelWagerMode();
     gameStore.update(state => {
       if (state.selectedPurchase?.type === "extra_guess") {
         return { ...state, selectedPurchase: null, gameState: "default" };
@@ -199,38 +210,50 @@
   </div>
 
   <!-- 🔹 Solve Button -->
-  <div class="main-guess-button-container">
+<!-- 🔄 Dual Confirm/Cancel Buttons when a purchase is selected -->
+{#if purchasePending || (wagerUIVisible && canConfirmWager)}
+  <div class="dual-button-container">
     <button
-    class="guess-phrase-button 
-      {purchasePending ? 'pending' : ''} 
-      {guessModeActive && !guessComplete ? 'exit-mode' : ''} 
-      {guessComplete ? 'guess-complete' : ''} 
-      {!canConfirmWager && wagerUIVisible ? 'exit-mode' : ''} 
-      {noGuessesLeft && !purchasePending ? 'disabled-purchase' : ''}"
-    on:click={handleMainButtonClick}
-    disabled={noGuessesLeft && !purchasePending}
-    aria-label={buttonLabel}
-  >
-    {buttonLabel}
-  </button>
-    </div>
-
-  <!-- 🔹 Extra Guess Button -->
-  <div class="extra-guess-button-container">
-    {#if showGuessCost}
-      <div class="cost-indicator">$150</div>
-    {/if}
-    <button 
-      class="buy-guess-button 
-        {fundsLow || !noGuessesLeft ? 'disabled-purchase' : ''} 
-        {guessPending ? 'glow' : ''}"
-      on:click={toggleGuessPurchase}
-      disabled={fundsLow || !noGuessesLeft}
-      aria-label="Buy an extra guess for $150"
+      class="cancel-button"
+      on:click={() => {
+        if (purchasePending) {
+          gameStore.update(state => ({
+            ...state,
+            selectedPurchase: null,
+            gameState: "default"
+          }));
+        } else {
+          wagerUIVisible = false;
+          sliderWagerAmount = 0;
+        }
+      }}
     >
-      +1
+      Cancel
+    </button>
+
+    <button
+      class="confirm-button"
+      on:click={purchasePending ? confirmPurchase : handleMainButtonClick}
+    >
+      Confirm
     </button>
   </div>
+{:else}
+  <div class="main-guess-button-container">
+    <button
+      class="guess-phrase-button 
+        {guessModeActive && !guessComplete ? 'exit-mode' : ''} 
+        {guessComplete ? 'guess-complete' : ''} 
+        {!canConfirmWager && wagerUIVisible ? 'exit-mode' : ''} 
+        {noGuessesLeft ? 'disabled-purchase' : ''}"
+      on:click={handleMainButtonClick}
+      disabled={noGuessesLeft}
+      aria-label={buttonLabel}
+    >
+      {buttonLabel}
+    </button>
+  </div>
+{/if}
 
 </div>
 
@@ -535,6 +558,72 @@
     50% { background-color: #00cc00; }
     100% { background-color: green; }
   }
+
+  .dual-button-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-top: 130px;
+}
+
+@keyframes pulseGlow {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 16px rgba(0, 255, 0, 0.9);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+  }
+}
+
+.confirm-button {
+  background: linear-gradient(180deg, #46a230, #318020);
+  color: white;
+  font-size: 22px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-family: 'VT323', monospace;
+  border: 2px solid #2e9417;
+  cursor: pointer;
+  animation: pulseGlow 1s infinite;
+  transition: transform 0.2s ease;
+}
+.confirm-button:hover {
+  transform: scale(1.08);
+}
+
+.cancel-button {
+  background: linear-gradient(180deg, #aa0000, #660000);
+  color: white;
+  font-size: 22px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-family: 'VT323', monospace;
+  border: 2px solid darkred;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.cancel-button:hover {
+  transform: scale(1.08);
+}
+
+.confirm-button {
+  background: linear-gradient(180deg, #28a745, #218838);
+  color: white;
+  border: 3px solid #1e7e34;
+}
+
+.confirm-button:hover {
+  background: linear-gradient(180deg, #45c362, #2f9f4a);
+  transform: translateY(-2px);
+}
+
 
   /* ---------------------------
      Dark Mode Overrides

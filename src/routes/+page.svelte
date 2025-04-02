@@ -15,6 +15,9 @@
 
   let showHowToPlay = false;
   let darkMode = false;
+  let wagerUIVisible = false;
+  let sliderWagerAmount = 0;
+
 
   // ✅ Apply Dark Mode from localStorage
   function applyDarkMode() {
@@ -133,15 +136,20 @@ $: if (browser) {
 
   <!-- Game Buttons Section -->
   <section class="buttons-section">
-    <GameButtons />
-  </section>
+    <GameButtons
+    {wagerUIVisible}
+    {sliderWagerAmount}
+    on:setWagerUIVisible={(e) => wagerUIVisible = e.detail}
+    on:setSliderWagerAmount={(e) => sliderWagerAmount = e.detail}
+  />
+    </section>
 </div>
 
 
   <!-- Keyboard Section -->
   <section class="keyboard-section">
-    <Keyboard />
-  </section>
+    <Keyboard on:letterSelected={() => wagerUIVisible = false} />
+    </section>
 
   <!-- Win/Loss Banner -->
   {#if currentGame.gameState === "won"}
