@@ -72,11 +72,15 @@
   }
 
   function onPhraseRevealComplete() {
-    if (!hasTriggeredModal && ['won', 'lost'].includes($gameStore.gameState)) {
+  if (!hasTriggeredModal && ['won', 'lost'].includes($gameStore.gameState)) {
+    hasTriggeredModal = true;
+
+    // ✅ Delay to allow animation/confetti to finish
+    setTimeout(() => {
       showResultModal = true;
-      hasTriggeredModal = true;
-    }
+    }, 1000); // You can adjust this for your timing
   }
+}
 </script>
 
   

@@ -3,12 +3,12 @@
   import { onDestroy, createEventDispatcher } from 'svelte';
 
   // ==========================
-  // 📤 Event Dispatcher
+  // 📤 Setup Event Dispatcher
   // ==========================
   const dispatch = createEventDispatcher();
 
   // ==========================
-  // 🧠 Phrase Formatting
+  // 🧠 Format the Phrase
   // ==========================
   $: phrase = $gameStore.phrase || "";
   let maxLettersPerRow = 12;
@@ -34,7 +34,7 @@
   $: formattedPhrase = getFormattedPhrase(phrase);
 
   // ==========================
-  // 💢 Shake Animation
+  // 💢 Handle Shake Animations
   // ==========================
   let shakeIndexes = new Set();
   let lastProcessedShakes = [];
@@ -55,7 +55,7 @@
   }
 
   // ==========================
-  // 🔢 Global Index Utility
+  // 🔢 Global Index Helper
   // ==========================
   function getGlobalIndex(wordIndex, letterIndex) {
     const words = $gameStore.currentPhrase.split(' ');
@@ -67,7 +67,7 @@
   }
 
   // ==========================
-  // 💀 Phrase Reveal (on Loss)
+  // 🧠 Reveal Animation (Loss)
   // ==========================
   let revealInterval;
   let revealed = [];
@@ -76,15 +76,15 @@
     if (revealed.length === 0) {
       const fullPhrase = $gameStore.currentPhrase;
       let i = 0;
+
       revealInterval = setInterval(() => {
         revealed[i] = fullPhrase[i];
         revealed = [...revealed];
         i++;
 
-        // ✅ Dispatch reveal complete when done
         if (i >= fullPhrase.length) {
           clearInterval(revealInterval);
-          dispatch('revealComplete');
+          dispatch('revealComplete'); // ✅ Modal shows after phrase fills
         }
       }, 300);
     }
@@ -93,12 +93,21 @@
     clearInterval(revealInterval);
   }
 
+  // ==========================
+  // 🎉 Dispatch on Win
+  // ==========================
+  $: if ($gameStore.gameState === 'won') {
+    setTimeout(() => {
+      dispatch('revealComplete');
+    }, 500); // Optional short delay after "Winner!" banner/confetti
+  }
+
   onDestroy(() => {
     clearInterval(revealInterval);
   });
 
   // ==========================
-  // 🎯 Active Guess Index
+  // 🎯 Guess Mode Active Slot
   // ==========================
   $: activeGuessIndex =
     $gameStore.gameState === 'guess_mode'
