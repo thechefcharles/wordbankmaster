@@ -24,14 +24,21 @@
   let wagerUIVisible = false;
   let sliderWagerAmount = 0;
   let showResultModal = false;
-
   let hasTriggeredModal = false;
 
+  // ✅ Set user if passed from load function (SSR)
   $: if (data?.user) user.set(data.user);
+
+  // ✅ Reactive auth state and game state
   $: loggedIn = !!$user?.id;
   $: bankroll = $gameStore.bankroll || 0;
   $: digits = String(bankroll).split('');
   $: nextPuzzleAvailable = $gameStore.gameState === 'won' || $gameStore.gameState === 'lost';
+
+  // ✅ Fetch game immediately after login
+  $: if (loggedIn && $gameStore.phrase === '') {
+    fetchRandomGame();
+  }
 
   function applyDarkMode() {
     document.body.classList.toggle('dark-mode', darkMode);
@@ -48,7 +55,8 @@
       darkMode = localStorage.getItem('darkMode') === 'true';
       applyDarkMode();
     }
-    if (loggedIn) fetchRandomGame();
+
+    // ✅ Removed fetchRandomGame from here — handled in reactive block now
     ['click', 'mousedown', 'touchstart'].forEach(event =>
       document.addEventListener(event, removeButtonFocus, true)
     );
@@ -72,15 +80,15 @@
   }
 
   function onPhraseRevealComplete() {
-  if (!hasTriggeredModal && ['won', 'lost'].includes($gameStore.gameState)) {
-    hasTriggeredModal = true;
+    if (!hasTriggeredModal && ['won', 'lost'].includes($gameStore.gameState)) {
+      hasTriggeredModal = true;
 
-    // ✅ Delay to allow animation/confetti to finish
-    setTimeout(() => {
-      showResultModal = true;
-    }, 1000); // You can adjust this for your timing
+      // ✅ Delay to allow animation/confetti to finish
+      setTimeout(() => {
+        showResultModal = true;
+      }, 1000);
+    }
   }
-}
 </script>
 
   

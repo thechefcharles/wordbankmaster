@@ -1,77 +1,85 @@
 <script>
-    import { supabase } from '$lib/supabaseClient';
-    import { user } from '$lib/stores/userStore.js';
-  
-    let email = '';
-    let password = '';
-    let loading = false;
-    let errorMsg = '';
-    let isLogin = true;
-  
-    async function handleAuth() {
-  loading = true;
-  errorMsg = '';
+  import { supabase } from '$lib/supabaseClient';
+  import { user, userProfile } from '$lib/stores/userStore.js';
+  import { fetchRandomGame } from '$lib/stores/GameStore.js'; // ✅ ADDED
 
-  if (!email || !password) {
-    errorMsg = 'Email and password are required.';
-    loading = false;
-    return;
-  }
+  let email = '';
+  let password = '';
+  let errorMsg = '';
+  let isLoading = false;
+  let isLogin = true;
 
-  try {
-    if (isLogin) {
-      // ✅ Login format
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+  async function handleAuth() {
+    isLoading = true;
+    errorMsg = '';
 
-      console.log('Login result:', data, error);
-
-      if (error) {
-        errorMsg = error.message;
-      } else {
-        user.set(data.user);
-      }
-
-    } else {
-      // ✅ Signup format
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password
-      });
-
-      console.log('Signup result:', data, error);
-
-      if (error) {
-        errorMsg = error.message;
-      } else {
-        user.set(data.user);
-      }
+    if (!email || !password) {
+      errorMsg = 'Email and password are required.';
+      isLoading = false;
+      return;
     }
 
-  } catch (err) {
-    errorMsg = err.message || 'An unexpected error occurred.';
-  }
+    try {
+      let authResponse;
 
-  loading = false;
-}
-  </script>
-  
+      if (isLogin) {
+        authResponse = await supabase.auth.signInWithPassword({ email, password });
+      } else {
+        authResponse = await supabase.auth.signUp({ email, password });
+      }
+
+      const { data, error } = authResponse;
+
+      if (error) {
+        errorMsg = error.message;
+      } else {
+        user.set(data.user);
+
+        // On signup, initialize profile in DB
+        if (!isLogin) {
+          await supabase.from('profiles').insert({
+            id: data.user.id,
+            bankroll: 1000,
+            games_played: 0,
+            games_won: 0
+          });
+        }
+
+        // Fetch profile either way
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profile) userProfile.set(profile);
+
+        // ✅ FETCH A PUZZLE IMMEDIATELY AFTER AUTH
+        await fetchRandomGame();
+      }
+    } catch (err) {
+      errorMsg = err.message || 'Unexpected error occurred.';
+    }
+
+    isLoading = false;
+  }
+</script>
+
+<div class="auth-container">
   <div class="auth-box">
     <h2>{isLogin ? 'Login' : 'Sign Up'} to Play</h2>
-  
+
     <input type="email" bind:value={email} placeholder="Email" />
     <input type="password" bind:value={password} placeholder="Password" />
-  
-    <button on:click={handleAuth} disabled={loading}>
-      {loading ? 'Loading...' : (isLogin ? 'Login' : 'Sign Up')}
+
+    <button on:click={handleAuth} disabled={isLoading}>
+      {isLoading ? 'Loading...' : (isLogin ? 'Login' : 'Sign Up')}
     </button>
-  
+
     {#if errorMsg}
-      <div class="error">{errorMsg}</div>
+      <div class="error-text">{errorMsg}</div>
     {/if}
-  
+
     <p class="toggle-mode">
       {isLogin ? "Don't have an account?" : 'Already have an account?'}
       <a href="#" on:click={() => isLogin = !isLogin}>
@@ -79,59 +87,90 @@
       </a>
     </p>
   </div>
-  
-  <style>
-    .auth-box {
-      background: white;
-      padding: 30px;
-      border-radius: 10px;
-      max-width: 400px;
-      width: 100%;
-      text-align: center;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    }
-  
-    input {
-      display: block;
-      width: 100%;
-      padding: 10px;
-      margin: 12px 0;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
-  
-    button {
-      background-color: #46a230;
-      color: white;
-      font-weight: bold;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-  
-    button:hover {
-      background-color: #3b8c26;
-    }
-  
-    .error {
-      color: red;
-      margin-top: 10px;
-      font-weight: bold;
-    }
-  
-    .toggle-mode {
-      margin-top: 15px;
-      font-size: 14px;
-    }
-  
-    .toggle-mode a {
-      color: #007bff;
-      cursor: pointer;
-      margin-left: 6px;
-      text-decoration: underline;
-    }
-  </style>
-  
+</div>
+
+<style>
+  .auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    padding: 16px;
+  }
+
+  .auth-box {
+    background-color: white;
+    padding: 24px 32px;
+    border-radius: 12px;
+    box-shadow: 0 0 16px rgba(0, 0, 0, 0.15);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+  }
+
+  input {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin: 12px 0;
+    font-size: 1rem;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    background-color: white;
+    color: black;
+  }
+
+  button {
+    padding: 10px;
+    font-size: 1rem;
+    background-color: limegreen;
+    color: white;
+    border: none;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .toggle-mode {
+    margin-top: 15px;
+    font-size: 0.9rem;
+    color: black;
+  }
+
+  .toggle-mode a {
+    color: #007bff;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  .error-text {
+    color: red;
+    margin-top: 10px;
+  }
+
+  :global(body.dark-mode) .auth-box {
+    background-color: #222;
+  }
+
+  :global(body.dark-mode) .auth-box h2,
+  :global(body.dark-mode) .toggle-mode,
+  :global(body.dark-mode) .error-text {
+    color: white;
+  }
+
+  :global(body.dark-mode) input {
+    background-color: #333;
+    color: white;
+    border: 2px solid #666;
+  }
+
+  :global(body.dark-mode) .toggle-mode a {
+    color: #4da3ff;
+  }
+</style>
