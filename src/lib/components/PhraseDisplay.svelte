@@ -1,30 +1,24 @@
 <script>
   import { gameStore } from '$lib/stores/GameStore.js';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, createEventDispatcher } from 'svelte';
 
-  // ----------------------------
-  // PHRASE FORMATTING
-  // ----------------------------
+  // ==========================
+  // 📤 Event Dispatcher
+  // ==========================
+  const dispatch = createEventDispatcher();
 
-  // Reactive: current phrase from game store
+  // ==========================
+  // 🧠 Phrase Formatting
+  // ==========================
   $: phrase = $gameStore.phrase || "";
-  // Maximum characters per row (for hyphenation/line breaks)
   let maxLettersPerRow = 12;
 
-  /**
-   * getFormattedPhrase
-   * Splits the phrase into rows with hyphenation if needed.
-   *
-   * @param {string} phrase - The current phrase.
-   * @returns {string[]} Array of formatted rows.
-   */
   function getFormattedPhrase(phrase) {
     const words = phrase.split(" ");
     const formattedRows = [];
     let currentRow = "";
 
     for (const word of words) {
-      // +1 for space between words
       if (currentRow.length + word.length + (currentRow ? 1 : 0) > maxLettersPerRow) {
         if (currentRow) formattedRows.push(currentRow + "-");
         currentRow = word;
@@ -32,35 +26,27 @@
         currentRow += (currentRow ? " " : "") + word;
       }
     }
+
     if (currentRow) formattedRows.push(currentRow);
     return formattedRows;
   }
 
-  // Reactive: derive formatted phrase for display
   $: formattedPhrase = getFormattedPhrase(phrase);
 
-  // ----------------------------
-  // SHAKE ANIMATION HANDLING
-  // ----------------------------
+  // ==========================
+  // 💢 Shake Animation
+  // ==========================
   let shakeIndexes = new Set();
   let lastProcessedShakes = [];
 
-  /**
-   * triggerShake
-   * Activates the shake animation for specified letter indexes.
-   *
-   * @param {number[]} indexes - Array of letter indexes to shake.
-   */
   function triggerShake(indexes) {
     shakeIndexes = new Set(indexes);
     setTimeout(() => {
       shakeIndexes.clear();
-      // Reset shakenLetters in the store after animation completes
       gameStore.update(state => ({ ...state, shakenLetters: [] }));
     }, 1000);
   }
 
-  // Watch for changes in shakenLetters from the store
   $: if ($gameStore.shakenLetters?.length > 0) {
     if (JSON.stringify($gameStore.shakenLetters) !== JSON.stringify(lastProcessedShakes)) {
       triggerShake([...$gameStore.shakenLetters]);
@@ -68,77 +54,70 @@
     }
   }
 
-  // ----------------------------
-  // GLOBAL INDEX CALCULATION
-  // ----------------------------
-  /**
-   * getGlobalIndex
-   * Converts (wordIndex, letterIndex) into a global index within the phrase.
-   *
-   * @param {number} wordIndex - Index of the word.
-   * @param {number} letterIndex - Index of the letter within the word.
-   * @returns {number} Global index in the full phrase.
-   */
+  // ==========================
+  // 🔢 Global Index Utility
+  // ==========================
   function getGlobalIndex(wordIndex, letterIndex) {
     const words = $gameStore.currentPhrase.split(' ');
     let offset = 0;
     for (let i = 0; i < wordIndex; i++) {
-      offset += words[i].length + 1; // include space
+      offset += words[i].length + 1;
     }
     return offset + letterIndex;
   }
 
-  // ----------------------------
-  // PHRASE REVEAL (LOSS MODE)
-  // ----------------------------
+  // ==========================
+  // 💀 Phrase Reveal (on Loss)
+  // ==========================
   let revealInterval;
   let revealed = [];
 
-  // Reactive: if game is lost, gradually reveal the entire phrase letter by letter
   $: if ($gameStore.gameState === 'lost') {
     if (revealed.length === 0) {
       const fullPhrase = $gameStore.currentPhrase;
       let i = 0;
       revealInterval = setInterval(() => {
         revealed[i] = fullPhrase[i];
-        // Force reactivity by creating a new array
         revealed = [...revealed];
         i++;
-        if (i >= fullPhrase.length) clearInterval(revealInterval);
+
+        // ✅ Dispatch reveal complete when done
+        if (i >= fullPhrase.length) {
+          clearInterval(revealInterval);
+          dispatch('revealComplete');
+        }
       }, 300);
     }
   } else {
-    // Reset reveal state when not lost
     revealed = [];
     clearInterval(revealInterval);
   }
 
-  // Clean up interval on component destruction
   onDestroy(() => {
     clearInterval(revealInterval);
   });
 
-  // ----------------------------
-  // ACTIVE GUESS SLOT CALCULATION
-  // ----------------------------
-  /**
-   * Determine the next editable index for guess mode.
-   * Returns the first index that hasn't been guessed, or the last one if all are filled.
-   */
+  // ==========================
+  // 🎯 Active Guess Index
+  // ==========================
   $: activeGuessIndex =
     $gameStore.gameState === 'guess_mode'
       ? (() => {
-          const fullPhrase = $gameStore.currentPhrase;
+          const phrase = $gameStore.currentPhrase;
           const editableIndices = [];
-          for (let i = 0; i < fullPhrase.length; i++) {
-            if (fullPhrase[i] === ' ') continue;
-            if ($gameStore.purchasedLetters[i] === fullPhrase[i]) continue;
+
+          for (let i = 0; i < phrase.length; i++) {
+            if (phrase[i] === ' ') continue;
+            if ($gameStore.purchasedLetters[i] === phrase[i]) continue;
             editableIndices.push(i);
           }
+
           if (editableIndices.length === 0) return -1;
+
           for (const idx of editableIndices) {
             if (!$gameStore.guessedLetters[idx]) return idx;
           }
+
           return editableIndices[editableIndices.length - 1];
         })()
       : -1;

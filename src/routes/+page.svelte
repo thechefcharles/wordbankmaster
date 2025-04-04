@@ -5,37 +5,59 @@
 </svelte:head>
 
 <script>
+  // ==========================
+  // 📦 Imports
+  // ==========================
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
   import Keyboard from '$lib/components/Keyboard.svelte';
   import GameButtons from '$lib/components/GameButtons.svelte';
   import FlipDigit from '$lib/components/FlipDigit.svelte';
-  import Auth from '$lib/components/Auth.svelte'; // ✅ NEW: Login component
+  import Auth from '$lib/components/Auth.svelte';
   import { supabase } from '$lib/supabaseClient';
-
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
   import { user } from '$lib/stores/userStore.js';
 
+  // ==========================
+  // 📊 Reactive & Local State
+  // ==========================
   export let data;
+
   let showHowToPlay = false;
   let darkMode = false;
   let wagerUIVisible = false;
   let sliderWagerAmount = 0;
-  
-  let nextPuzzleAvailable = false;
-  // 🟢 Show Next Puzzle button if the game is won
-  $: nextPuzzleAvailable = currentGame.gameState === 'won' || currentGame.gameState === 'lost';
+  let showResultModal = false;
 
-  // ✅ Sync the logged-in user from load() into the user store
+  let loggedIn = false;
+  let nextPuzzleAvailable = false;
+
+  // ==========================
+  // 🔁 Sync User from `load()`
+  // ==========================
   $: if (data?.user) {
     user.set(data.user);
   }
 
-  // ✅ Watch user store and determine if logged in
-  let loggedIn = false;
-  $: $user && $user.id ? loggedIn = true : loggedIn = false;
+  $: loggedIn = !!$user?.id;
+  $: currentGame = $gameStore;
+  $: bankroll = currentGame.bankroll || 0;
+  $: digits = String(bankroll).split('');
+  $: nextPuzzleAvailable = currentGame.gameState === 'won' || currentGame.gameState === 'lost';
 
+  // UPDATED: Only show modal when entering win/loss state
+  let previousGameState;
+  $: if (currentGame.gameState !== previousGameState) {
+    if (currentGame.gameState === 'won' || currentGame.gameState === 'lost') {
+      showResultModal = true;
+    }
+    previousGameState = currentGame.gameState;
+  }
+
+  // ==========================
+  // 🌓 Dark Mode Handling
+  // ==========================
   function applyDarkMode() {
     document.body.classList.toggle('dark-mode', darkMode);
   }
@@ -46,6 +68,9 @@
     applyDarkMode();
   }
 
+  // ==========================
+  // 🧠 Lifecycle
+  // ==========================
   onMount(() => {
     if (browser) {
       darkMode = localStorage.getItem('darkMode') === 'true';
@@ -53,13 +78,13 @@
     }
 
     if (loggedIn) {
-      fetchRandomGame(); // ✅ Load puzzle only when logged in
+      fetchRandomGame();
     }
 
-    // 🔥 Remove focus ring from buttons
-    document.addEventListener('click', removeButtonFocus, true);
-    document.addEventListener('mousedown', removeButtonFocus, true);
-    document.addEventListener('touchstart', removeButtonFocus, true);
+    // 💡 Accessibility: remove focus ring on buttons
+    ['click', 'mousedown', 'touchstart'].forEach(event =>
+      document.addEventListener(event, removeButtonFocus, true)
+    );
   });
 
   function removeButtonFocus(event) {
@@ -68,23 +93,17 @@
     }
   }
 
-  // ✅ Reactive game state
-  $: currentGame = $gameStore;
-  $: bankroll = currentGame.bankroll || 0;
-  $: digits = String(bankroll).split('');
-
-  // ✅ Add class when in guess mode
-  $: if (browser) {
-    document.body.classList.toggle('guess-mode', currentGame.gameState === 'guess_mode');
-  }
+  // ==========================
+  // 🚪 Logout
+  // ==========================
   async function handleLogout() {
-  await supabase.auth.signOut();       // Logs out of Supabase
-  user.set(null);                      // Clears the user store
-  location.reload();                   // Reloads page to show Auth screen
-}
+    await supabase.auth.signOut();
+    user.set(null);
+    location.reload(); // Show Auth screen again
+  }
 </script>
-
-<!-- 🔹 Buttons Positioned in Opposite Corners -->
+  
+<!-- 🔹 Top Control Buttons -->
 <div class="top-buttons">
   <!-- ❓ How to Play -->
   <button class="icon-button subtle-button" on:click={() => showHowToPlay = true}>
@@ -93,15 +112,15 @@
 
   <!-- 🌙 Dark Mode Toggle -->
   <button class="icon-button subtle-button" on:click={toggleDarkMode}>
-    {darkMode ? "☀️" : "🌙"}
+    {darkMode ? '☀️' : '🌙'}
   </button>
-<!-- 🚪 Logout -->
-{#if loggedIn}
-  <button class="icon-button subtle-button" on:click={handleLogout}>
-    🚪
-  </button>
-{/if}
 
+  <!-- 🚪 Logout -->
+  {#if loggedIn}
+    <button class="icon-button subtle-button" on:click={handleLogout}>
+      🚪
+    </button>
+  {/if}
 </div>
 
 <!-- 📜 How to Play Modal -->
@@ -118,14 +137,14 @@
 
       <h3>🕹️ Gameplay</h3>
       <ul>
-        <li>🔤 <b>Buy Letters:</b> Click/tap letters to purchase.</li>
+        <li>🔤 <b>Buy Letters:</b> Click or tap letters to purchase.</li>
         <li>⏎ <b>Confirm:</b> Press Enter to submit purchases or guesses.</li>
-        <li>🔄 <b>Guess Mode:</b> Press Space to toggle Guess Mode.</li>
-        <li>💡 <b>Hint ($150):</b> Reveals a random letter.</li>
-        <li>🎟️ <b>Extra Guess ($150):</b> Buy another shot.</li>
+        <li>🔄 <b>Guess Mode:</b> Press Spacebar to toggle Guess Mode.</li>
+        <li>💡 <b>Hint ($150):</b> Reveals one random letter in the phrase.</li>
+        <li>🎟️ <b>Extra Guess ($150):</b> Buy another guess attempt.</li>
       </ul>
 
-      <p><b>Think smart, spend wisely, and guess like a pro! 🚀</b></p>
+      <p><strong>Think smart, spend wisely, and guess like a pro! 🚀</strong></p>
     </div>
   </div>
 {/if}
@@ -137,69 +156,69 @@
       <Auth />
     </div>
   {:else}
-    <!-- ✅ GAME UI (Only visible when logged in) -->
+    <!-- ✅ GAME UI (Visible only when logged in) -->
 
-    <!-- Logo -->
+    <!-- 🧠 Game Logo -->
     <div class="logo-container">
       <img src="/1.png" alt="WordBank Logo" class="wordbank-logo" />
     </div>
 
-    <!-- Category Display -->
+    <!-- 🌍 Category Tag -->
     <p class="category">{currentGame.category} 🌍</p>
 
-    <!-- Phrase Display Section -->
+    <!-- 🔤 Phrase Display -->
     <section class="phrase-section">
-      <PhraseDisplay />
-    </section>
+      <PhraseDisplay on:revealComplete={() => showResultModal = true} />
+      </section>
 
-<!-- Bankroll + Game Buttons Container -->
-<div class="bankroll-game-buttons-container">
-  <!-- 💰 Bankroll Display -->
-  <section class="stats-section">
-    <div class="bankroll-container">
-      <div class="bankroll-box">
-        <span class="currency">$</span>
-        {#each digits as d}
-          <FlipDigit digit={+d} />
-        {/each}
-      </div>
-    </div>
-  </section>
-
-  <!-- 🎚️ Wager Slider UI -->
-  {#if wagerUIVisible}
-    <div class="wager-ui">
-      <div class="wager-row">
-        <div class="wager-label">
-          Wager<br /><span class="wager-amount">${sliderWagerAmount}</span>
+    <!-- 💰 Bankroll + 🎮 Game Buttons Container -->
+    <div class="bankroll-game-buttons-container">
+      <!-- 💰 Bankroll Display -->
+      <section class="stats-section">
+        <div class="bankroll-container">
+          <div class="bankroll-box">
+            <span class="currency">$</span>
+            {#each digits as d}
+              <FlipDigit digit={+d} />
+            {/each}
+          </div>
         </div>
-        
-        <input
-          type="range"
-          min="0"
-          max={$gameStore.bankroll}
-          bind:value={sliderWagerAmount}
-          class="wager-slider"
+      </section>
+
+      <!-- 🎚️ Wager Slider -->
+      {#if wagerUIVisible}
+        <div class="wager-ui">
+          <div class="wager-row">
+            <div class="wager-label">
+              Wager<br /><span class="wager-amount">${sliderWagerAmount}</span>
+            </div>
+            
+            <input
+              type="range"
+              min="0"
+              max={$gameStore.bankroll}
+              bind:value={sliderWagerAmount}
+              class="wager-slider"
+            />
+            
+            <div class="wager-label">
+              To Win<br /><span class="wager-amount">${sliderWagerAmount * 2}</span>
+            </div>
+          </div>
+        </div>
+      {/if}
+
+      <!-- 🎮 Solve / Cancel Buttons -->
+      <section class="buttons-section">
+        <GameButtons
+          bind:wagerUIVisible
+          bind:sliderWagerAmount
+          disabled={nextPuzzleAvailable}
+          on:setWagerUIVisible={(e) => wagerUIVisible = e.detail}
+          on:setSliderWagerAmount={(e) => sliderWagerAmount = e.detail}
         />
-        
-        <div class="wager-label">
-          To Win<br /><span class="wager-amount">${sliderWagerAmount * 2}</span>
-        </div>
-      </div>
+      </section>
     </div>
-  {/if}
-
-  <!-- 🎮 Game Buttons (Solve/Cancel/etc.) -->
-  <section class="buttons-section">
-    <GameButtons
-      bind:wagerUIVisible
-      bind:sliderWagerAmount
-      disabled={nextPuzzleAvailable}
-      on:setWagerUIVisible={(e) => wagerUIVisible = e.detail}
-      on:setSliderWagerAmount={(e) => sliderWagerAmount = e.detail}
-    />
-  </section>
-</div>
 
     <!-- ⌨️ Keyboard Section -->
     <section class="keyboard-section">
@@ -209,13 +228,39 @@
       />
     </section>
 
-    <!-- 🏆 Win/Loss Banner -->
+    <!-- 🏆 Game Outcome Banner -->
     {#if currentGame.gameState === "won"}
       <div class="banner win">Winner!</div>
-      <button class="next-puzzle-button" on:click={fetchRandomGame}>🎉 Next Puzzle</button>
+      {#if !showResultModal}
+        {@html ''} <!-- Modal will be triggered below -->
+      {/if}
     {:else if currentGame.gameState === "lost"}
       <div class="banner lose">Bankrupt!</div>
-      <button class="next-puzzle-button" on:click={fetchRandomGame}>🔄 Play Again</button>
+      {#if !showResultModal}
+        {@html ''} <!-- Modal will be triggered below -->
+      {/if}
+    {/if}
+
+    <!-- 🎯 Result Modal -->
+    {#if showResultModal}
+      <div class="modal-overlay">
+        <div class="modal-content">
+          <h2>{currentGame.gameState === 'won' ? '🎉 You Win!' : '💀 Game Over'}</h2>
+          <p>{currentGame.gameState === 'won'
+            ? 'Great job! Want to try the next one?'
+            : 'You ran out of cash. Want to try again?'}</p>
+
+          <div style="margin-top: 16px;">
+            <button class="next-puzzle-button" on:click={() => {
+              showResultModal = false;
+              gameStore.update((state) => ({ ...state, gameState: null })); // 🧼 Clear old state
+              fetchRandomGame();
+            }}>
+                                      {currentGame.gameState === 'won' ? 'Next Puzzle' : 'Play Again'}
+            </button>
+          </div>
+        </div>
+      </div>
     {/if}
   {/if}
 </main>
@@ -226,10 +271,6 @@
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
 
-
-
-
-  /* Main container styling */
   main {
     max-width: 600px;
     margin: 0 auto;
@@ -241,7 +282,6 @@
     align-items: center;
   }
 
-  /* Category text styling */
   .category {
     font-size: .8rem;
     margin-top: -120px;
@@ -249,11 +289,6 @@
     font-weight: bold;
   }
 
-
-  
-
-
-  /* Section styling */
   .phrase-section,
   .stats-section,
   .keyboard-section,
@@ -262,42 +297,36 @@
     padding: 0px;
   }
 
-  /* Reset button hidden */
   .reset-button.hidden {
     display: none;
   }
 
-  /* Bankroll container and box styling */
   .bankroll-box {
     padding: 10px 15px;
-    font-size: 1.8rem; /* Slightly larger for emphasis */
-    font-family: 'Orbitron', sans-serif; /* Futuristic arcade font */
+    font-size: 1.8rem;
+    font-family: 'Orbitron', sans-serif;
     color: #fff;
-    background: linear-gradient(180deg, #d1cdcd, #858484); 
-    border: 3px solid rgba(255, 255, 255, 0.4); /* Subtle glowing border */
+    background: linear-gradient(180deg, #d1cdcd, #858484);
+    border: 3px solid rgba(255, 255, 255, 0.4);
     border-radius: 12px;
     text-align: center;
-    box-shadow: 
-        inset 2px 2px 6px rgba(255, 255, 255, 0.2),  /* Inner highlight */
-        3px 3px 8px rgba(0, 0, 0, 0.742),             /* Outer shadow */
-        5px 5px 12px rgba(0, 0, 0, 0.5);            /* Soft depth shadow */    display: inline-flex;
+    box-shadow: inset 2px 2px 6px rgba(255, 255, 255, 0.2), 3px 3px 8px rgba(0, 0, 0, 0.742), 5px 5px 12px rgba(0, 0, 0, 0.5);
+    display: inline-flex;
     justify-content: center;
     align-items: center;
-    letter-spacing: 1.5px; /* Spaced-out numbers */
-    backdrop-filter: blur(5px); /* Slight blur for a cool effect */
+    letter-spacing: 1.5px;
+    backdrop-filter: blur(5px);
     transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
     position: relative;
     top: 30px;
-}
+  }
 
-/* 💰 Animated Glow Effect */
-.bankroll-box:hover {
-    transform: scale(1.05); /* Slight hover effect */
-    box-shadow: 0 0 25px rgba(251, 251, 251, 0.8), 0 0 1rgba(158, 158, 158, 0.7)0.7) inset;
-}
+  .bankroll-box:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(251, 251, 251, 0.8), 0 0 10px rgba(158, 158, 158, 0.7) inset;
+  }
 
-/* 💰 Cool Inner Glow */
-.bankroll-box::before {
+  .bankroll-box::before {
     content: "";
     position: absolute;
     width: 100%;
@@ -308,37 +337,33 @@
     box-shadow: 0 0 12px rgba(251, 251, 251, 0.5) inset;
     opacity: 0.5;
     transition: opacity 0.3s ease-in-out;
-}
+  }
 
-/* ✨ Subtle Animated Border Effect */
-@keyframes bankrollGlow {
+  @keyframes bankrollGlow {
     0% { box-shadow: 0 0 8px rgba(245, 246, 245, 0.5); }
     50% { box-shadow: 0 0 12px rgba(242, 243, 242, 0.7); }
     100% { box-shadow: 0 0 8px rgba(239, 241, 239, 0.5); }
-}
-.bankroll-box {
-    animation: bankrollGlow 2.5s infinite alternate ease-in-out;
-}
+  }
 
-/* 💲 Currency Symbol */
-.currency {
+  .bankroll-box {
+    animation: bankrollGlow 2.5s infinite alternate ease-in-out;
+  }
+
+  .currency {
     font-size: 1.5rem;
     margin-right: 6px;
     font-weight: bold;
     color: rgba(255, 255, 255, 0.8);
     text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
-}
+  }
 
   .bankroll-container {
-  position: absolute;
-  bottom: 170px; /* Moves bankroll down */
-  left: 50%;
-  transform: translateX(-50%);
-}
+    position: absolute;
+    bottom: 170px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
 
-  
-
-  /* Logo styling */
   .wordbank-logo {
     width: 380px;
     height: auto;
@@ -347,6 +372,7 @@
     padding-bottom: 0;
     align-self: center;
   }
+
   .logo-container {
     display: flex;
     justify-content: center;
@@ -355,41 +381,38 @@
     margin-bottom: 0;
   }
 
-
   .bankroll-game-buttons-container {
-  position: fixed;
-  bottom: 160px; /* Adjust this so it sits above the keyboard */
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column; /* Stack bankroll and buttons vertically */
-  align-items: center;
-  gap: 10px;
-  padding: 12px 18px;
-  border-radius: 10px;
-  z-index: 1000; /* Ensure it stays above other elements */
-}
+    position: fixed;
+    bottom: 160px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    border-radius: 10px;
+    z-index: 1000;
+  }
 
-
-
-  /* Global overrides for touch and overflow */
   :global(html, body) {
     overflow-x: hidden;
     touch-action: manipulation;
   }
 
-  /* Win Banner Animations */
   @keyframes winPulse {
     0%, 100% { transform: scale(1) rotate(0deg); text-shadow: 0px 0px 10px green; }
     25% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px limegreen; }
     50% { transform: scale(1.5) rotate(-3deg); text-shadow: 0px 0px 30px limegreen; }
     75% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px green; }
   }
+
   @keyframes winFlash {
     0% { opacity: 1; }
     50% { opacity: 0.2; }
     100% { opacity: 1; }
   }
+
   .banner.win {
     font-size: 2rem;
     font-weight: 600;
@@ -405,18 +428,19 @@
     animation: winPulse 1.5s infinite, winFlash 0.5s infinite;
   }
 
-  /* Game Over Banner Animations */
   @keyframes gameOverPulse {
     0%, 100% { transform: scale(1) rotate(0deg); text-shadow: 0px 0px 10px red; }
     25% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px red; }
     50% { transform: scale(1.5) rotate(-3deg); text-shadow: 0px 0px 30px red; }
     75% { transform: scale(1.2) rotate(3deg); text-shadow: 0px 0px 20px red; }
   }
+
   @keyframes gameOverFlash {
     0% { opacity: 1; }
     50% { opacity: 0.2; }
     100% { opacity: 1; }
   }
+
   .banner.lose {
     font-size: 2rem;
     font-weight: 600;
@@ -432,24 +456,23 @@
     animation: gameOverPulse 1.5s infinite, gameOverFlash 0.5s infinite;
   }
 
-  /* Dark mode overrides */
   :global(body.dark-mode) {
     background: #222;
     color: white;
   }
+
   button:focus,
   button:active {
-  outline: none !important;
-  box-shadow: none !important;
-  background: inherit !important;
-}
-
-  /* 🔄 Ensure focus never persists */
-  button:focus-visible {
-  outline: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: inherit !important;
   }
-/* 🔹 Top Buttons Styling */
-.top-buttons {
+
+  button:focus-visible {
+    outline: none !important;
+  }
+
+  .top-buttons {
     position: fixed;
     top: 12px;
     left: 12px;
@@ -477,23 +500,22 @@
     transform: scale(1.15);
   }
 
- /* 📜 Modal Overlay */
- .modal-overlay {
-    position: fixed; /* Keeps it in place */
+  .modal-overlay {
+    position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.85); /* Dark overlay to block visibility */
+    background: rgba(0, 0, 0, 0.85);
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 9999; /* Make sure it's the highest */
-    backdrop-filter: blur(5px); /* Optional: adds a cool blur effect */
-}
-  /* 📜 Modal Content - Adjusts for Light & Dark Mode */
+    z-index: 9999;
+    backdrop-filter: blur(5px);
+  }
+
   .modal-content {
-    background: white; /* Default Light Mode Background */
+    background: white;
     padding: 20px;
     border-radius: 10px;
     width: 90%;
@@ -501,21 +523,11 @@
     text-align: center;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
     animation: slideIn 0.3s ease-out;
-    border: 3px solid #007bff; /* Blue border for better visibility */
-    color: black; /* Default text color */
+    border: 3px solid #007bff;
+    color: black;
     position: relative;
   }
 
-  .auth-screen {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 85vh;
-  padding: 1rem;
-}
-
-
-  /* 🌙 Dark Mode Overrides */
   :global(body.dark-mode) .modal-content {
     background: linear-gradient(135deg, #222, #333);
     border: 3px solid limegreen;
@@ -523,28 +535,24 @@
     box-shadow: 0 4px 10px rgba(0, 255, 0, 0.3);
   }
 
-
   .close-btn:hover {
     background: darkred;
   }
 
-  /* 📜 Title */
   .modal-title {
     font-size: 24px;
     font-weight: bold;
-    color: #007bff; /* Blue for visibility in light mode */
+    color: #007bff;
     text-transform: uppercase;
     text-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
   }
 
-  /* 🔹 Intro Text */
   .intro-text {
     font-size: 16px;
     color: #333;
     margin-bottom: 10px;
   }
 
-  /* 🕹️ List */
   .modal-list {
     list-style-type: none;
     padding: 0;
@@ -560,12 +568,10 @@
     text-shadow: none;
   }
 
-  /* 🌙 Dark Mode Overrides for List */
   :global(body.dark-mode) .modal-list li {
     background: rgba(255, 255, 255, 0.1);
   }
 
-  /* 🚀 Footer */
   .modal-footer {
     font-size: 14px;
     font-weight: bold;
@@ -574,13 +580,11 @@
     text-shadow: none;
   }
 
-  /* 🌙 Dark Mode Overrides for Footer */
   :global(body.dark-mode) .modal-footer {
     color: white;
     text-shadow: 0 0 5px rgba(255, 255, 255, 0.4);
   }
 
-  /* 🎬 Animations */
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -592,91 +596,88 @@
   }
 
   .next-puzzle-button {
-  margin-top: 12px;
-  background-color: limegreen;
-  color: white;
-  font-weight: bold;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 1rem;
-  cursor: pointer;
-  animation: pulse 1s infinite alternate;
-}
+    margin-top: 12px;
+    background-color: limegreen;
+    color: white;
+    font-weight: bold;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    animation: pulse 1s infinite alternate;
+  }
 
-@keyframes pulse {
-  0% { transform: scale(1); }
-  100% { transform: scale(1.08); }
-}
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.08); }
+  }
 
-.next-puzzle-button:hover {
-  background-color: green;
-}
+  .next-puzzle-button:hover {
+    background-color: green;
+  }
 
-.wager-ui {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  max-width: 300px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.1);
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 60px;
-}
+  .wager-ui {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    max-width: 300px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 60px;
+  }
 
-.wager-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  width: 100%;
-}
+  .wager-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+  }
 
-.wager-label {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 0.8rem;
-  color: #222;
-  text-align: center;
-  width: 70px;
-}
+  .wager-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem;
+    color: #222;
+    text-align: center;
+    width: 70px;
+  }
 
-.wager-amount {
-  display: block;
-  font-size: 1rem;
-  font-weight: bold;
-}
+  .wager-amount {
+    display: block;
+    font-size: 1rem;
+    font-weight: bold;
+  }
 
-.wager-slider {
-  flex: 1;
-  height: 8px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: #ccc;
-  border-radius: 4px;
-  outline: none;
-}
+  .wager-slider {
+    flex: 1;
+    height: 8px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #ccc;
+    border-radius: 4px;
+    outline: none;
+  }
 
-.wager-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
-  background: limegreen;
-  border-radius: 50%;
-  cursor: pointer;
-  box-shadow: 0 0 5px lime;
-}
+  .wager-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    background: limegreen;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 5px lime;
+  }
 
-.wager-slider::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  background: limegreen;
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-
-
-  </style>
+  .wager-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: limegreen;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+</style>
