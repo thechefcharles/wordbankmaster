@@ -5,23 +5,18 @@
 </svelte:head>
 
 <script>
-  // ==========================
-  // 📦 Imports
-  // ==========================
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
+  import { supabase } from '$lib/supabaseClient';
+  import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
+  import { user } from '$lib/stores/userStore.js';
+
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
   import Keyboard from '$lib/components/Keyboard.svelte';
   import GameButtons from '$lib/components/GameButtons.svelte';
   import FlipDigit from '$lib/components/FlipDigit.svelte';
   import Auth from '$lib/components/Auth.svelte';
-  import { supabase } from '$lib/supabaseClient';
-  import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
-  import { user } from '$lib/stores/userStore.js';
 
-  // ==========================
-  // 📊 Reactive & Local State
-  // ==========================
   export let data;
 
   let showHowToPlay = false;
@@ -30,34 +25,14 @@
   let sliderWagerAmount = 0;
   let showResultModal = false;
 
-  let loggedIn = false;
-  let nextPuzzleAvailable = false;
+  let hasTriggeredModal = false;
 
-  // ==========================
-  // 🔁 Sync User from `load()`
-  // ==========================
-  $: if (data?.user) {
-    user.set(data.user);
-  }
-
+  $: if (data?.user) user.set(data.user);
   $: loggedIn = !!$user?.id;
-  $: currentGame = $gameStore;
-  $: bankroll = currentGame.bankroll || 0;
+  $: bankroll = $gameStore.bankroll || 0;
   $: digits = String(bankroll).split('');
-  $: nextPuzzleAvailable = currentGame.gameState === 'won' || currentGame.gameState === 'lost';
+  $: nextPuzzleAvailable = $gameStore.gameState === 'won' || $gameStore.gameState === 'lost';
 
-  // UPDATED: Only show modal when entering win/loss state
-  let previousGameState;
-  $: if (currentGame.gameState !== previousGameState) {
-    if (currentGame.gameState === 'won' || currentGame.gameState === 'lost') {
-      showResultModal = true;
-    }
-    previousGameState = currentGame.gameState;
-  }
-
-  // ==========================
-  // 🌓 Dark Mode Handling
-  // ==========================
   function applyDarkMode() {
     document.body.classList.toggle('dark-mode', darkMode);
   }
@@ -68,40 +43,42 @@
     applyDarkMode();
   }
 
-  // ==========================
-  // 🧠 Lifecycle
-  // ==========================
   onMount(() => {
     if (browser) {
       darkMode = localStorage.getItem('darkMode') === 'true';
       applyDarkMode();
     }
-
-    if (loggedIn) {
-      fetchRandomGame();
-    }
-
-    // 💡 Accessibility: remove focus ring on buttons
+    if (loggedIn) fetchRandomGame();
     ['click', 'mousedown', 'touchstart'].forEach(event =>
       document.addEventListener(event, removeButtonFocus, true)
     );
   });
 
   function removeButtonFocus(event) {
-    if (event.target.tagName === 'BUTTON') {
-      event.target.blur();
-    }
+    if (event.target.tagName === 'BUTTON') event.target.blur();
   }
 
-  // ==========================
-  // 🚪 Logout
-  // ==========================
   async function handleLogout() {
     await supabase.auth.signOut();
     user.set(null);
-    location.reload(); // Show Auth screen again
+    location.reload();
+  }
+
+  function handlePlayAgain() {
+    showResultModal = false;
+    hasTriggeredModal = false;
+    gameStore.update(state => ({ ...state, gameState: null }));
+    fetchRandomGame();
+  }
+
+  function onPhraseRevealComplete() {
+    if (!hasTriggeredModal && ['won', 'lost'].includes($gameStore.gameState)) {
+      showResultModal = true;
+      hasTriggeredModal = true;
+    }
   }
 </script>
+
   
 <!-- 🔹 Top Control Buttons -->
 <div class="top-buttons">
@@ -164,13 +141,12 @@
     </div>
 
     <!-- 🌍 Category Tag -->
-    <p class="category">{currentGame.category} 🌍</p>
+    <p class="category">{$gameStore.category} 🌍</p>
 
-    <!-- 🔤 Phrase Display -->
-    <section class="phrase-section">
-      <PhraseDisplay on:revealComplete={() => showResultModal = true} />
-      </section>
-
+<!-- 🔤 Phrase Display -->
+<section class="phrase-section">
+  <PhraseDisplay on:revealComplete={onPhraseRevealComplete} />
+</section>
     <!-- 💰 Bankroll + 🎮 Game Buttons Container -->
     <div class="bankroll-game-buttons-container">
       <!-- 💰 Bankroll Display -->
@@ -229,40 +205,36 @@
     </section>
 
     <!-- 🏆 Game Outcome Banner -->
-    {#if currentGame.gameState === "won"}
-      <div class="banner win">Winner!</div>
+    {#if $gameStore.gameState === "won"}
+          <div class="banner win">Winner!</div>
       {#if !showResultModal}
         {@html ''} <!-- Modal will be triggered below -->
       {/if}
-    {:else if currentGame.gameState === "lost"}
-      <div class="banner lose">Bankrupt!</div>
+      {:else if $gameStore.gameState === "lost"}
+            <div class="banner lose">Bankrupt!</div>
       {#if !showResultModal}
         {@html ''} <!-- Modal will be triggered below -->
       {/if}
     {/if}
 
     <!-- 🎯 Result Modal -->
-    {#if showResultModal}
-      <div class="modal-overlay">
-        <div class="modal-content">
-          <h2>{currentGame.gameState === 'won' ? '🎉 You Win!' : '💀 Game Over'}</h2>
-          <p>{currentGame.gameState === 'won'
-            ? 'Great job! Want to try the next one?'
-            : 'You ran out of cash. Want to try again?'}</p>
-
-          <div style="margin-top: 16px;">
-            <button class="next-puzzle-button" on:click={() => {
-              showResultModal = false;
-              gameStore.update((state) => ({ ...state, gameState: null })); // 🧼 Clear old state
-              fetchRandomGame();
-            }}>
-                                      {currentGame.gameState === 'won' ? 'Next Puzzle' : 'Play Again'}
-            </button>
-          </div>
+    {#if showResultModal && ['won', 'lost'].includes($gameStore.gameState)}
+    <div class="modal-overlay">
+      <div class="modal-content">
+        <h2>{$gameStore.gameState === 'won' ? '🎉 You Win!' : '💀 Game Over'}</h2>
+        <p>{$gameStore.gameState === 'won'
+          ? 'Great job! Want to try the next one?'
+          : 'You ran out of cash. Want to try again?'}</p>
+  
+        <div style="margin-top: 16px;">
+          <button class="next-puzzle-button" on:click={handlePlayAgain}>
+            {$gameStore.gameState === 'won' ? 'Next Puzzle' : 'Play Again'}
+          </button>
         </div>
       </div>
-    {/if}
+    </div>
   {/if}
+    {/if}
 </main>
 
 <style>
@@ -501,18 +473,18 @@
   }
 
   .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.85);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-    backdrop-filter: blur(5px);
-  }
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.3); /* 🌘 Semi-transparent black */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  /* Removed blur so puzzle stays sharp */
+}
 
   .modal-content {
     background: white;
