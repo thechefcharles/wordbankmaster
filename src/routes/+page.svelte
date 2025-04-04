@@ -164,14 +164,33 @@
             {/each}
           </div>
         </div>
-      </section>
+
+        <!-- 🎚️ Wager Slider UI (Moved here from GameButtons) -->
+        {#if wagerUIVisible}
+        <div class="wager-ui">
+          <div class="wager-static-label">Wager Amount</div>
+          <div class="wager-value-display">${sliderWagerAmount}</div>
+      
+          <input
+            type="range"
+            min="0"
+            max={$gameStore.bankroll}
+            bind:value={sliderWagerAmount}
+            class="wager-slider"
+          />
+      
+          <div class="wager-static-label">To Win</div>
+          <div class="wager-value-display">${sliderWagerAmount * 2}</div>
+        </div>
+      {/if}
+            </section>
 
       <!-- 🎮 Game Buttons -->
       <section class="buttons-section">
         <GameButtons
-        bind:wagerUIVisible
-        bind:sliderWagerAmount
-        disabled={nextPuzzleAvailable}
+          bind:wagerUIVisible
+          bind:sliderWagerAmount
+          disabled={nextPuzzleAvailable}
           on:setWagerUIVisible={(e) => wagerUIVisible = e.detail}
           on:setSliderWagerAmount={(e) => sliderWagerAmount = e.detail}
         />
@@ -589,5 +608,7 @@
 .next-puzzle-button:hover {
   background-color: green;
 }
+
+
 
   </style>

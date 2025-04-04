@@ -4,7 +4,6 @@
   import {
     gameStore,
     selectHint,
-    selectExtraGuess,
     enterGuessMode,
     deleteGuessLetter,
     confirmPurchase,
@@ -23,12 +22,8 @@
   $: hintPending =
     $gameStore.selectedPurchase?.type === 'hint' &&
     $gameStore.gameState === 'purchase_pending';
-  $: guessPending =
-    $gameStore.selectedPurchase?.type === 'extra_guess' &&
-    $gameStore.gameState === 'purchase_pending';
   $: showHintCost = hintPending;
-  $: showGuessCost = guessPending;
-
+  
   $: noGuessesLeft = $gameStore.guessesRemaining === 0;
   $: guessModeActive = $gameStore.gameState === 'guess_mode';
   $: bankroll = $gameStore.bankroll;
@@ -116,16 +111,6 @@
     setTimeout(() => document.activeElement.blur(), 0);
   }
 
-  function toggleGuessPurchase() {
-    cancelWagerMode();
-    gameStore.update(state => {
-      if (state.selectedPurchase?.type === "extra_guess") {
-        return { ...state, selectedPurchase: null, gameState: "default" };
-      }
-      return { ...state, selectedPurchase: { type: "extra_guess" }, gameState: "purchase_pending" };
-    });
-    setTimeout(() => document.activeElement.blur(), 0);
-  }
 
   function toggleDarkMode() {
     darkMode = !darkMode;
@@ -171,56 +156,8 @@
   <div class="message-box">{$gameStore.message}</div>
 {/if}
 
-<div class="buttons-container">
-
-<!-- ✅ Wager Slider (Appears When Solve Button is Clicked First) -->
-<!-- ✅ Wager Section UI -->
-{#if wagerUIVisible}
-  <div class="wager-ui fade-in slider-overlay">
-    
-    <!-- 🏷️ Fix this: use a unique class -->
-    <div class="wager-static-label">Wager Amount</div>
-    
-    <!-- 💲 Dynamic wager display -->
-    <div class="wager-value-display">{wagerLabel}</div>
-    
-    <!-- 🎚️ Slider control -->
-    <input
-      id="wager"
-      type="range"
-      min="0"
-      max={$gameStore.bankroll}
-      bind:value={sliderWagerAmount}
-      class="wager-slider"
-    />
-
-    <div class="wager-summary">
-      <span class="wager-note">Available: ${$gameStore.bankroll}</span>
-      {#if sliderWagerAmount > 0}
-        <span class="winnings-note">{winningsLabel}</span>
-      {/if}
-    </div>
-  </div>
-{/if}
-
-  <!-- 🔹 Hint Button -->
-  <div class="hint-button-container">
-    {#if showHintCost}
-      <div class="cost-indicator">$150</div>
-    {/if}
-    <button 
-      class="hint-button {fundsLow ? 'disabled-purchase' : ''} {hintPending ? 'glow' : ''}"
-      on:click={toggleHintPurchase}
-      disabled={fundsLow}
-      aria-label="Buy a hint for $150"
-    >
-      Bank Letter
-    </button>
-  </div>
-
-  <!-- 🔹 Solve Button -->
-<!-- 🔄 Dual Confirm/Cancel Buttons when a purchase is selected -->
 {#if purchasePending || (wagerUIVisible && canConfirmWager)}
+  <!-- 🔄 Dual Confirm/Cancel Buttons -->
   <div class="dual-button-container">
     <button
       class="cancel-button"
@@ -248,23 +185,40 @@
     </button>
   </div>
 {:else}
-  <div class="main-guess-button-container">
-    <button
-      class="guess-phrase-button 
-        {guessModeActive && !guessComplete ? 'exit-mode' : ''} 
-        {guessComplete ? 'guess-complete' : ''} 
-        {!canConfirmWager && wagerUIVisible ? 'exit-mode' : ''} 
-        {noGuessesLeft ? 'disabled-purchase' : ''}"
-      on:click={handleMainButtonClick}
-      disabled={noGuessesLeft}
-      aria-label={buttonLabel}
-    >
-      {buttonLabel}
-    </button>
+  <!-- 🟩 Hint + Solve Buttons Row -->
+  <div class="button-row-container">
+    <!-- 🔹 Hint Button -->
+    <div class="hint-button-container">
+      {#if showHintCost}
+        <div class="cost-indicator">$150</div>
+      {/if}
+      <button 
+        class="hint-button {fundsLow ? 'disabled-purchase' : ''} {hintPending ? 'glow' : ''}"
+        on:click={toggleHintPurchase}
+        disabled={fundsLow}
+        aria-label="Buy a hint for $150"
+      >
+        Bank Letter
+      </button>
+    </div>
+
+    <!-- 🔹 Solve Button -->
+    <div class="main-guess-button-container">
+      <button
+        class="guess-phrase-button 
+          {guessModeActive && !guessComplete ? 'exit-mode' : ''} 
+          {guessComplete ? 'guess-complete' : ''} 
+          {!canConfirmWager && wagerUIVisible ? 'exit-mode' : ''} 
+          {noGuessesLeft ? 'disabled-purchase' : ''}"
+        on:click={handleMainButtonClick}
+        disabled={noGuessesLeft}
+        aria-label={buttonLabel}
+      >
+        {buttonLabel}
+      </button>
+    </div>
   </div>
 {/if}
-
-</div>
 
 
 <style>
@@ -308,13 +262,30 @@
 }
 
   .hint-button-container,
-  .main-guess-button-container,
   .extra-guess-button-container {
     position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
   }
+
+  .main-guess-button-container {
+  position: fixed;           /* ✅ Fixes it in place */
+  bottom: 50px;              /* ✅ Adjust as needed for visibility above the keyboard */
+  left: 50%;                 /* ✅ Center horizontally */
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;              /* ✅ Keep it above everything */
+}
+
+@media (max-width: 480px) {
+  .main-guess-button-container {
+    bottom: 60px;
+  }
+}
+
 
   @keyframes blinkColor {
     0% { color: red; opacity: 1; } 
@@ -334,13 +305,6 @@
     text-align: center;
     animation: blinkColor 1s infinite;
   }
-  .slider-overlay {
-  position: absolute;
-  top: -140px; /* Adjust this value to sit right above your bankroll */
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-}
 
   /* ---------------------------
      Hint Button Styles
@@ -488,8 +452,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: -80px;
-  margin-bottom: 120px;
+  margin-top: 10px; /* Not negative */
+  padding: 10px 0;
   animation: fadeIn 0.3s ease-in-out;
 }
 
@@ -526,6 +490,25 @@
   color: #9a1e1e;
   margin-bottom: 4px;
 }
+
+@media (max-width: 480px) {
+  .wager-slider {
+    width: 220px;
+  }
+
+  .wager-value-display,
+  .wager-static-label,
+  .wager-note,
+  .winnings-note {
+    font-size: 14px;
+  }
+
+  .guess-phrase-button {
+    font-size: 18px;
+    padding: 10px 14px;
+  }
+}
+
 
 
 @keyframes fadeIn {
