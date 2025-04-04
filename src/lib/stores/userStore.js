@@ -10,7 +10,7 @@ export const userProfile = writable({
   games_won: 0,
 });
 
-// 🔄 Fetch profile data from Supabases
+// 🔄 Fetch profile data from Supabase
 export async function fetchUserProfile(userId) {
   const { data, error } = await supabase
     .from('profiles')
