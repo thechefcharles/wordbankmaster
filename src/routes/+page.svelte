@@ -152,50 +152,54 @@
       <PhraseDisplay />
     </section>
 
-    <!-- Bankroll + Game Buttons Container -->
-    <div class="bankroll-game-buttons-container">
-      <!-- 💰 Bankroll Display -->
-      <section class="stats-section">
-        <div class="bankroll-container">
-          <div class="bankroll-box">
-            <span class="currency">$</span>
-            {#each digits as d}
-              <FlipDigit digit={+d} />
-            {/each}
-          </div>
-        </div>
-
-        <!-- 🎚️ Wager Slider UI (Moved here from GameButtons) -->
-        {#if wagerUIVisible}
-        <div class="wager-ui">
-          <div class="wager-static-label">Wager Amount</div>
-          <div class="wager-value-display">${sliderWagerAmount}</div>
-      
-          <input
-            type="range"
-            min="0"
-            max={$gameStore.bankroll}
-            bind:value={sliderWagerAmount}
-            class="wager-slider"
-          />
-      
-          <div class="wager-static-label">To Win</div>
-          <div class="wager-value-display">${sliderWagerAmount * 2}</div>
-        </div>
-      {/if}
-            </section>
-
-      <!-- 🎮 Game Buttons -->
-      <section class="buttons-section">
-        <GameButtons
-          bind:wagerUIVisible
-          bind:sliderWagerAmount
-          disabled={nextPuzzleAvailable}
-          on:setWagerUIVisible={(e) => wagerUIVisible = e.detail}
-          on:setSliderWagerAmount={(e) => sliderWagerAmount = e.detail}
-        />
-      </section>
+<!-- Bankroll + Game Buttons Container -->
+<div class="bankroll-game-buttons-container">
+  <!-- 💰 Bankroll Display -->
+  <section class="stats-section">
+    <div class="bankroll-container">
+      <div class="bankroll-box">
+        <span class="currency">$</span>
+        {#each digits as d}
+          <FlipDigit digit={+d} />
+        {/each}
+      </div>
     </div>
+  </section>
+
+  <!-- 🎚️ Wager Slider UI -->
+  {#if wagerUIVisible}
+    <div class="wager-ui">
+      <div class="wager-row">
+        <div class="wager-label">
+          Wager<br /><span class="wager-amount">${sliderWagerAmount}</span>
+        </div>
+        
+        <input
+          type="range"
+          min="0"
+          max={$gameStore.bankroll}
+          bind:value={sliderWagerAmount}
+          class="wager-slider"
+        />
+        
+        <div class="wager-label">
+          To Win<br /><span class="wager-amount">${sliderWagerAmount * 2}</span>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- 🎮 Game Buttons (Solve/Cancel/etc.) -->
+  <section class="buttons-section">
+    <GameButtons
+      bind:wagerUIVisible
+      bind:sliderWagerAmount
+      disabled={nextPuzzleAvailable}
+      on:setWagerUIVisible={(e) => wagerUIVisible = e.detail}
+      on:setSliderWagerAmount={(e) => sliderWagerAmount = e.detail}
+    />
+  </section>
+</div>
 
     <!-- ⌨️ Keyboard Section -->
     <section class="keyboard-section">
@@ -327,7 +331,7 @@
 
   .bankroll-container {
   position: absolute;
-  bottom: 130px; /* Moves bankroll down */
+  bottom: 170px; /* Moves bankroll down */
   left: 50%;
   transform: translateX(-50%);
 }
@@ -607,6 +611,70 @@
 
 .next-puzzle-button:hover {
   background-color: green;
+}
+
+.wager-ui {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 300px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 60px;
+}
+
+.wager-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
+.wager-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  color: #222;
+  text-align: center;
+  width: 70px;
+}
+
+.wager-amount {
+  display: block;
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+.wager-slider {
+  flex: 1;
+  height: 8px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: #ccc;
+  border-radius: 4px;
+  outline: none;
+}
+
+.wager-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  background: limegreen;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 5px lime;
+}
+
+.wager-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: limegreen;
+  border-radius: 50%;
+  cursor: pointer;
 }
 
 
