@@ -9,7 +9,7 @@
   import { browser } from '$app/environment';
   import { supabase } from '$lib/supabaseClient';
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
-  import { user } from '$lib/stores/userStore.js';
+  import { user, userProfile, fetchUserProfile } from '$lib/stores/userStore.js';
 
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
   import Keyboard from '$lib/components/Keyboard.svelte';
@@ -26,69 +26,120 @@
   let showResultModal = false;
   let hasTriggeredModal = false;
 
-  // ✅ Set user if passed from load function (SSR)
-  $: if (data?.user) user.set(data.user);
+  // Ensure profile loading and set bankroll properly
+  async function loadUserProfile(userId) {
+  try {
+    const { data: profile, error } = await fetchUserProfile(userId);
 
-  // ✅ Reactive auth state and game state
+    if (error) {
+      console.error("Error fetching profile:", error.message);
+      return;
+    }
+
+    if (profile) {
+      userProfile.set(profile);
+
+      // Make sure to update the game store with the latest bankroll
+      gameStore.update(state => ({
+        ...state,
+        bankroll: profile.bankroll || 1000  // Default to 1000 if no bankroll is found
+      }));
+    }
+  } catch (err) {
+    console.error("Error loading user profile:", err.message);
+  }
+}
+
+  onMount(async () => {
+    try {
+      // Get session on mount
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        user.set(session.user); // Set user in store
+
+        // Load the user profile once session is verified
+        await loadUserProfile(session.user.id);
+
+        // Once profile is loaded, fetch the game (ensure bankroll is set)
+        fetchRandomGame();
+      } else {
+        console.log("No user session found");
+      }
+    } catch (error) {
+      console.error("Error during session/profile fetch:", error.message);
+    }
+  });
+
+  // Reactive block to check if user data is passed via SSR (server-side rendering)
+  $: if (data?.user) {
+    user.set(data.user); // Set user data from SSR
+    loadUserProfile(data.user.id); // Fetch and update profile
+  }
+
+  // Reactive statements to monitor auth state and game state
   $: loggedIn = !!$user?.id;
   $: bankroll = $gameStore.bankroll || 0;
   $: digits = String(bankroll).split('');
   $: nextPuzzleAvailable = $gameStore.gameState === 'won' || $gameStore.gameState === 'lost';
 
-  // ✅ Fetch game immediately after login
+  // Fetch a new game if logged in and there's no current phrase
   $: if (loggedIn && $gameStore.currentPhrase === '') {
-  fetchRandomGame();
-}
-
-  function applyDarkMode() {
-    document.body.classList.toggle('dark-mode', darkMode);
+    fetchRandomGame();
   }
 
-  function toggleDarkMode() {
+  // Dark mode functions
+  const applyDarkMode = () => {
+    document.body.classList.toggle('dark-mode', darkMode);
+  };
+
+  const toggleDarkMode = () => {
     darkMode = !darkMode;
     localStorage.setItem('darkMode', darkMode);
     applyDarkMode();
-  }
+  };
 
+  // On mount, check for dark mode in local storage
   onMount(() => {
     if (browser) {
       darkMode = localStorage.getItem('darkMode') === 'true';
       applyDarkMode();
     }
 
-    // ✅ Removed fetchRandomGame from here — handled in reactive block now
+    // Remove button focus on click/tap
     ['click', 'mousedown', 'touchstart'].forEach(event =>
       document.addEventListener(event, removeButtonFocus, true)
     );
   });
 
-  function removeButtonFocus(event) {
+  const removeButtonFocus = (event) => {
     if (event.target.tagName === 'BUTTON') event.target.blur();
-  }
+  };
 
-  async function handleLogout() {
+  // Logout function
+  const handleLogout = async () => {
     await supabase.auth.signOut();
-    user.set(null);
-    location.reload();
-  }
+    user.set(null);  // Clear the user store
+    location.reload();  // Reload the page to reflect changes
+  };
 
-  function handlePlayAgain() {
+  // Handle playing again after winning/losing
+  const handlePlayAgain = () => {
     showResultModal = false;
     hasTriggeredModal = false;
     gameStore.update(state => ({ ...state, gameState: null }));
     fetchRandomGame();
-  }
+  };
 
-  function onPhraseRevealComplete() {
+  // Show result modal after game ends
+  const onPhraseRevealComplete = () => {
     if (!hasTriggeredModal && ['won', 'lost'].includes($gameStore.gameState)) {
       hasTriggeredModal = true;
-
-      // ✅ Delay to allow animation/confetti to finish
       setTimeout(() => {
         showResultModal = true;
       }, 1000);
     }
-  }
+  };
 </script>
 
   

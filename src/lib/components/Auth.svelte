@@ -1,18 +1,25 @@
 <script>
   import { supabase } from '$lib/supabaseClient';
   import { user, userProfile } from '$lib/stores/userStore.js';
-  import { fetchRandomGame } from '$lib/stores/GameStore.js'; // ✅ ADDED
+  import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
 
+  // ============================
+  // 🧾 Local State
+  // ============================
   let email = '';
   let password = '';
   let errorMsg = '';
   let isLoading = false;
   let isLogin = true;
 
+  // ============================
+  // 🔐 Handle Auth (Login / Signup)
+  // ============================
   async function handleAuth() {
     isLoading = true;
-    errorMsg = '';
+    errorMsg = '';  // Clear previous error messages
 
+    // Validate input
     if (!email || !password) {
       errorMsg = 'Email and password are required.';
       isLoading = false;
@@ -21,47 +28,96 @@
 
     try {
       let authResponse;
+      const authData = { email, password };
 
+      // Perform login or signup based on isLogin flag
       if (isLogin) {
-        authResponse = await supabase.auth.signInWithPassword({ email, password });
+        authResponse = await supabase.auth.signInWithPassword(authData);
       } else {
-        authResponse = await supabase.auth.signUp({ email, password });
+        authResponse = await supabase.auth.signUp(authData);
       }
 
       const { data, error } = authResponse;
 
       if (error) {
         errorMsg = error.message;
-      } else {
-        user.set(data.user);
-
-        // On signup, initialize profile in DB
-        if (!isLogin) {
-          await supabase.from('profiles').insert({
-            id: data.user.id,
-            bankroll: 1000,
-            games_played: 0,
-            games_won: 0
-          });
-        }
-
-        // Fetch profile either way
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
-
-        if (profile) userProfile.set(profile);
-
-        // ✅ FETCH A PUZZLE IMMEDIATELY AFTER AUTH
-        await fetchRandomGame();
+        isLoading = false;
+        return;
       }
+
+      // ✅ Save authenticated user to store
+      user.set(data.user);
+
+      // If new signup, create user profile if not already exists
+      if (!isLogin) {
+        await handleNewUserProfile(data.user.id);
+      }
+
+      // ✅ Fetch user profile after login/signup
+      await loadUserProfile(data.user.id);
+
+      // ✅ Fetch a random puzzle after successful login/signup
+      await fetchRandomGame();
+
     } catch (err) {
       errorMsg = err.message || 'Unexpected error occurred.';
     }
 
     isLoading = false;
+  }
+
+  // Function to handle new user profile creation
+  async function handleNewUserProfile(userId) {
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (profileError && profileError.code === 'PGRST116') {
+      // If profile not found, create a new profile
+      const { error: insertError } = await supabase.from('profiles').insert({
+        id: userId,
+        bankroll: 1000,
+        games_played: 0,
+        games_won: 0,
+        games_lost: 0,
+        highest_streak: 0
+      });
+
+      if (insertError) {
+        errorMsg = insertError.message;
+        isLoading = false;
+        return;
+      }
+    } else if (profileError) {
+      errorMsg = profileError.message;
+      isLoading = false;
+      return;
+    }
+  }
+
+  // Function to load user profile from database and update stores
+  async function loadUserProfile(userId) {
+    const { data: profile, error: profileErrorFetch } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (profileErrorFetch) {
+      errorMsg = profileErrorFetch.message;
+      isLoading = false;
+      return;
+    }
+
+    if (profile) {
+      userProfile.set(profile);  // Store the user profile
+      gameStore.update(state => ({
+        ...state,
+        bankroll: profile.bankroll ?? 1000  // Use profile bankroll or default to 1000
+      }));
+    }
   }
 </script>
 
@@ -82,9 +138,9 @@
 
     <p class="toggle-mode">
       {isLogin ? "Don't have an account?" : 'Already have an account?'}
-      <a href="#" on:click={() => isLogin = !isLogin}>
+      <button type="button" on:click={() => isLogin = !isLogin}>
         {isLogin ? 'Sign up here' : 'Log in here'}
-      </a>
+      </button>
     </p>
   </div>
 </div>
@@ -143,10 +199,12 @@
     color: black;
   }
 
-  .toggle-mode a {
+  .toggle-mode button {
     color: #007bff;
     text-decoration: underline;
     cursor: pointer;
+    background: none;
+    border: none;
   }
 
   .error-text {
@@ -170,7 +228,7 @@
     border: 2px solid #666;
   }
 
-  :global(body.dark-mode) .toggle-mode a {
+  :global(body.dark-mode) .toggle-mode button {
     color: #4da3ff;
   }
 </style>

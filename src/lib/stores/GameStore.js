@@ -1,8 +1,11 @@
 // src/lib/stores/GameStore.js
 
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient.js';
 import confetti from 'canvas-confetti';
+import { saveUserProfile } from '$lib/stores/userStore.js';
+import { user } from '$lib/stores/userStore.js';
+
 
 /* ================================
    Constants & Store Initialization
@@ -161,6 +164,12 @@ export function setWager(amount) {
   }));
 }
 
+// src/lib/stores/GameStore.js
+
+
+// src/lib/stores/GameStore.js
+
+
 /**
  * confirmPurchase
  * Processes the selected purchase (letter, hint, or extra guess) and updates the state.
@@ -168,14 +177,16 @@ export function setWager(amount) {
 export function confirmPurchase() {
   gameStore.update(state => {
     if (!state.selectedPurchase) return state;
+    
     const purchase = state.selectedPurchase;
     let newShakenLetters = new Set(state.shakenLetters || []);
+    let newBankroll = state.bankroll;
 
     // --- Process Letter Purchase ---
     if (purchase.type === 'letter') {
       const letter = purchase.value;
       const cost = LETTER_COSTS[letter] || 0;
-      if (state.bankroll < cost) return { ...state, selectedPurchase: null };
+      if (newBankroll < cost) return { ...state, selectedPurchase: null };
 
       const phrase = state.currentPhrase;
       let newPurchased = [...state.purchasedLetters];
@@ -189,6 +200,7 @@ export function confirmPurchase() {
           if (!newShakenLetters.has(i)) correctIndexes.push(i);
         }
       }
+
       // Add indexes for shake animation if letter is found
       if (correctIndexes.length > 0) {
         correctIndexes.forEach(idx => newShakenLetters.add(idx));
@@ -207,9 +219,13 @@ export function confirmPurchase() {
 
       // Determine if the player has won
       const win = phrase.split('').every((ch, i) => ch === ' ' || newPurchased[i] === ch);
+
+      // Update bankroll
+      newBankroll -= cost;
+
       const newState = {
         ...state,
-        bankroll: state.bankroll - cost,
+        bankroll: newBankroll,
         purchasedLetters: newPurchased,
         incorrectLetters: newIncorrect,
         lockedLetters: newLockedLetters,
@@ -218,17 +234,22 @@ export function confirmPurchase() {
         gameState: win ? "won" : "default"
       };
 
+      // Save updated bankroll to Supabase
+      const currentUser = get(user);  // Get the current user from the store
+      saveUserProfile({ id: currentUser.id, bankroll: newBankroll });  // Correctly access the user id
+
       if (win) {
         setTimeout(() => launchConfetti(), 300);
       }
+
       return checkLossCondition(newState);
     }
+
     // --- Process Hint Purchase ---
     else if (purchase.type === 'hint') {
       const cost = 150;
-      if (state.bankroll < cost) {
-        return { ...state, selectedPurchase: null, gameState: "default" };
-      }
+      if (newBankroll < cost) return { ...state, selectedPurchase: null, gameState: "default" };
+
       const phrase = state.currentPhrase;
       const unrevealedIndices = phrase.split('').reduce((acc, ch, i) => {
         if (ch !== ' ' && !state.purchasedLetters[i]) acc.push(i);
@@ -248,20 +269,28 @@ export function confirmPurchase() {
       }, []);
       newLockedLetters[letter] = indices.every(idx => newPurchased[idx] === letter);
 
+      // Update bankroll
+      newBankroll -= cost;
+
       const newState = {
         ...state,
-        bankroll: state.bankroll - cost,
+        bankroll: newBankroll,
         purchasedLetters: newPurchased,
         lockedLetters: newLockedLetters,
         selectedPurchase: null,
         gameState: "default"
       };
+
+      // Save updated bankroll to Supabase
+      const currentUser = get(user);  // Get the current user from the store
+      saveUserProfile({ id: currentUser.id, bankroll: newBankroll });  // Correctly access the user id
+
       return checkLossCondition(newState);
     }
+
     return state;
   });
 }
-
 /* ================================
    Guess Mode Functions
 =============================================== */
@@ -446,8 +475,10 @@ export async function fetchRandomGame() {
     const { data, error } = await supabase.rpc('get_random_puzzle').single();
     if (error) throw error;
 
+    const currentBankroll = get(gameStore).bankroll; // ✅ grab current bankroll
+
     gameStore.set({
-      bankroll: 1000,
+      bankroll: currentBankroll, // ✅ keep the value from user profile
       wagerAmount: 1,
       category: data.category,
       currentPhrase: data.phrase.toUpperCase(),
@@ -463,10 +494,9 @@ export async function fetchRandomGame() {
 
     console.log(`✅ New game loaded: ${data.phrase} [${data.category}]`);
   } catch (err) {
-    console.error('❌ Error fetching puzzle from Supabase:', err.message);
+    console.error('❌ Error fetching puzzle:', err.message);
   }
 }
-
 /**
  * resetGame
  * Alias for fetching a fresh puzzle from the database.

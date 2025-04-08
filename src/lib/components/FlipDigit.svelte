@@ -1,24 +1,22 @@
 <script>
   export let digit = 0;
 
-  let currentDigit = digit;
   const digitHeight = 40;
+  let currentDigit = digit;
+  let reelStyle = `transform: translateY(-${digit * digitHeight}px);`;
 
-  // Style for the reel animation
-  let reelStyle = `transform: translateY(-${currentDigit * digitHeight}px);`;
-
-  // Animate when digit changes
+  // 🔄 Trigger animation when digit changes
   $: if (digit !== currentDigit) {
     const fullReelHeight = 10 * digitHeight;
-    const targetOffset = 2 * fullReelHeight + (digit * digitHeight);
+    const animatedOffset = 2 * fullReelHeight + digit * digitHeight;
 
-    // Animate the transition with bounce
+    // 🎞️ Animate to simulate spinning reel
     reelStyle = `
-      transform: translateY(-${targetOffset}px);
+      transform: translateY(-${animatedOffset}px);
       transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     `;
 
-    // Reset position after animation completes (looped look)
+    // 🧼 Reset style for looped look after animation
     setTimeout(() => {
       currentDigit = digit;
       reelStyle = `transform: translateY(-${digit * digitHeight}px); transition: none;`;
@@ -26,7 +24,7 @@
   }
 </script>
 
-<!-- Reel Display -->
+<!-- 🎰 Slot Reel Display -->
 <div class="slot-container">
   <div class="reel" style={reelStyle}>
     {#each Array(20) as _, i}

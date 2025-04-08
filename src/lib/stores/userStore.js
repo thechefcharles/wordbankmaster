@@ -13,12 +13,18 @@ export const userProfile = writable({
   games_won: 0
 });
 
+// src/lib/stores/userStore.js
+
+// src/lib/stores/userStore.js
+
 /**
- * 🔄 Fetch user profile from Supabase
+ * Fetch user profile from Supabase
  * @param {string} userId - Supabase user ID
  * @returns {Promise<{ data: object, error: object }>}
  */
 export async function fetchUserProfile(userId) {
+  console.log("Fetching profile for userId:", userId);  // Log the userId to check if it's correct
+
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -27,12 +33,17 @@ export async function fetchUserProfile(userId) {
 
   if (error) {
     console.error("❌ Failed to fetch profile:", error.message);
-  } else {
-    userProfile.set(data);
-    console.log("✅ Profile loaded:", data);
+    return { data: null, error };
   }
 
-  return { data, error };
+  if (!data) {
+    console.error("❌ No profile found for user:", userId);
+    return { data: null, error: new Error("No profile found.") };
+  }
+
+  console.log("✅ Profile loaded:", data);  // Log the fetched data to ensure the profile is correct
+  userProfile.set(data);  // Store the user profile
+  return { data, error: null };
 }
 
 /**
@@ -41,6 +52,8 @@ export async function fetchUserProfile(userId) {
  * @returns {Promise<object>} error if any
  */
 export async function saveUserProfile(updatedProfile) {
+  console.log('Saving updated profile:', updatedProfile); // Log the profile to ensure it contains updated data
+
   const { error } = await supabase
     .from('profiles')
     .update(updatedProfile)
@@ -48,10 +61,9 @@ export async function saveUserProfile(updatedProfile) {
 
   if (error) {
     console.error("❌ Failed to save profile:", error.message);
+    return error;  // Return the error if it occurred
   } else {
-    userProfile.set(updatedProfile);
-    console.log("✅ Profile updated:", updatedProfile);
+    console.log("✅ Profile updated:", updatedProfile); // Log success
+    return null;  // Return null if there were no errors
   }
-
-  return error;
 }
