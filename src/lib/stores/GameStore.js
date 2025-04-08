@@ -84,18 +84,27 @@ function checkLossCondition(state) {
   if (state.bankroll < 1) {
     console.log("💀 Game Over: Bankroll is zero.");
     animateBankrollReduction(state.bankroll);
-    return {
+
+    const newState = {
       ...state,
       gameState: "lost",
-      // Optionally reveal the full phrase on game over:
       guessedLetters: Object.fromEntries(
         state.currentPhrase.split('').map((ch, i) => [i, ch])
-      )
+      ),
+      bankroll: 1000 // ✅ Reset bankroll on loss
     };
+
+    // ✅ Immediately save new bankroll to Supabase
+    const currentUser = get(user);
+    if (currentUser?.id) {
+      saveUserProfile({ id: currentUser.id, bankroll: 1000 });
+    }
+
+    return newState;
   }
+
   return state;
 }
-
 /* ================================
    Purchase Mode Functions
 =================================== */
@@ -382,46 +391,49 @@ export function deleteGuessLetter() {
 
 /**
  * submitGuess
- * Validates the guess, updates game state, and provides feedback.
+ * Validates the user's full guess, updates the game state,
+ * adjusts the bankroll, and saves it to Supabase.
+ * Also hides the wager slider after submitting.
  */
 export function submitGuess() {
   gameStore.update(state => {
     if (state.gameState !== "guess_mode") return state;
-    
+
     const phrase = state.currentPhrase;
-    // Ensure all non-space positions are filled
+
+    // 🔍 Abort if not all guess slots are filled
     for (let i = 0; i < phrase.length; i++) {
       if (phrase[i] === ' ') continue;
       if (state.purchasedLetters[i] === phrase[i]) continue;
       if (!state.guessedLetters[i]) {
-        console.log("Guess submission aborted: not all slots are filled.");
+        console.log("⛔ Guess aborted: not all slots are filled.");
         return state;
       }
     }
-    
-    // Retrieve the wager amount; default to 1 if unset
+
     const wager = state.wagerAmount || 1;
-    
-    let newGuessed = { ...state.guessedLetters };
-    let newPurchased = [...state.purchasedLetters];
-    let newLockedLetters = { ...state.lockedLetters };
-    let newShakenLetters = new Set(state.shakenLetters || []);
-    let correctIndexes = [];
+    const newGuessed = { ...state.guessedLetters };
+    const newPurchased = [...state.purchasedLetters];
+    const newLockedLetters = { ...state.lockedLetters };
+    const newShakenLetters = new Set(state.shakenLetters || []);
+    const correctIndexes = [];
     let allCorrect = true;
-    
-    // Validate the guess
+
+    // ✅ Validate each guessed letter
     for (let i = 0; i < phrase.length; i++) {
       if (phrase[i] === ' ') continue;
       if (newPurchased[i] === phrase[i]) continue;
+
       if (newGuessed[i] === phrase[i]) {
         newPurchased[i] = phrase[i];
         correctIndexes.push(i);
       } else {
-        delete newGuessed[i];
+        delete newGuessed[i]; // remove incorrect guess
         allCorrect = false;
       }
     }
-    
+
+    // 🔐 Update locked letters
     const distinctLetters = [...new Set(phrase.replace(/\s/g, ''))];
     distinctLetters.forEach(letter => {
       const indices = [];
@@ -430,37 +442,50 @@ export function submitGuess() {
       }
       newLockedLetters[letter] = indices.every(idx => newPurchased[idx] === letter);
     });
-    
+
+    // 💥 Shake correct letters
     correctIndexes.forEach(idx => newShakenLetters.add(idx));
+
     const win = phrase.split('').every((ch, i) => ch === ' ' || newPurchased[i] === ch);
-    
-    // Apply wager: if correct, win wager; if not, lose wager
     const bankrollChange = (allCorrect || win) ? wager : -wager;
     const newBankroll = state.bankroll + bankrollChange;
-    
+
     const newState = {
       ...state,
       gameState: (allCorrect || win) ? "won" : "default",
-      guessedLetters: {}, // Reset after guess submission
+      guessedLetters: {},
       purchasedLetters: newPurchased,
       lockedLetters: newLockedLetters,
       shakenLetters: Array.from(newShakenLetters),
       bankroll: newBankroll
     };
-    
+
+    // 💾 Save bankroll to Supabase
+    const currentUser = get(user);
+    if (currentUser?.id) {
+      saveUserProfile({ id: currentUser.id, bankroll: newBankroll });
+    }
+
     if (allCorrect || win) {
       console.log("✅ Correct guess! Wager won.");
       setTimeout(() => launchConfetti(), 300);
     } else {
       console.log("❌ Incorrect guess. Wager lost.");
     }
-    
+
     return checkLossCondition(newState);
   });
 
+  // ✅ Clear feedback message after 2s
   setTimeout(() => {
     gameStore.update(state => ({ ...state, message: "" }));
   }, 2000);
+
+  // ✅ Hide the wager slider after guess is submitted
+  setTimeout(() => {
+    const event = new CustomEvent('setWagerUIVisible', { detail: false });
+    window.dispatchEvent(event);
+  }, 100); // small delay for smoother transition
 }
 /* ================================
    Puzzle Fetch & Reset Functions
