@@ -9,7 +9,7 @@
   import { browser } from '$app/environment';
   import { supabase } from '$lib/supabaseClient';
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
-  import { user } from '$lib/stores/userStore.js';
+  import { user, userProfile, fetchUserProfile } from '$lib/stores/userStore.js';
 
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
   import Keyboard from '$lib/components/Keyboard.svelte';
@@ -26,69 +26,120 @@
   let showResultModal = false;
   let hasTriggeredModal = false;
 
-  // ✅ Set user if passed from load function (SSR)
-  $: if (data?.user) user.set(data.user);
+  // Ensure profile loading and set bankroll properly
+  async function loadUserProfile(userId) {
+  try {
+    const { data: profile, error } = await fetchUserProfile(userId);
 
-  // ✅ Reactive auth state and game state
+    if (error) {
+      console.error("Error fetching profile:", error.message);
+      return;
+    }
+
+    if (profile) {
+      userProfile.set(profile);
+
+      // Make sure to update the game store with the latest bankroll
+      gameStore.update(state => ({
+        ...state,
+        bankroll: profile.bankroll || 1000  // Default to 1000 if no bankroll is found
+      }));
+    }
+  } catch (err) {
+    console.error("Error loading user profile:", err.message);
+  }
+}
+
+  onMount(async () => {
+    try {
+      // Get session on mount
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        user.set(session.user); // Set user in store
+
+        // Load the user profile once session is verified
+        await loadUserProfile(session.user.id);
+
+        // Once profile is loaded, fetch the game (ensure bankroll is set)
+        fetchRandomGame();
+      } else {
+        console.log("No user session found");
+      }
+    } catch (error) {
+      console.error("Error during session/profile fetch:", error.message);
+    }
+  });
+
+  // Reactive block to check if user data is passed via SSR (server-side rendering)
+  $: if (data?.user) {
+    user.set(data.user); // Set user data from SSR
+    loadUserProfile(data.user.id); // Fetch and update profile
+  }
+
+  // Reactive statements to monitor auth state and game state
   $: loggedIn = !!$user?.id;
   $: bankroll = $gameStore.bankroll || 0;
   $: digits = String(bankroll).split('');
   $: nextPuzzleAvailable = $gameStore.gameState === 'won' || $gameStore.gameState === 'lost';
 
-  // ✅ Fetch game immediately after login
-  $: if (loggedIn && $gameStore.phrase === '') {
+  // Fetch a new game if logged in and there's no current phrase
+  $: if (loggedIn && $gameStore.currentPhrase === '') {
     fetchRandomGame();
   }
 
-  function applyDarkMode() {
+  // Dark mode functions
+  const applyDarkMode = () => {
     document.body.classList.toggle('dark-mode', darkMode);
-  }
+  };
 
-  function toggleDarkMode() {
+  const toggleDarkMode = () => {
     darkMode = !darkMode;
     localStorage.setItem('darkMode', darkMode);
     applyDarkMode();
-  }
+  };
 
+  // On mount, check for dark mode in local storage
   onMount(() => {
     if (browser) {
       darkMode = localStorage.getItem('darkMode') === 'true';
       applyDarkMode();
     }
 
-    // ✅ Removed fetchRandomGame from here — handled in reactive block now
+    // Remove button focus on click/tap
     ['click', 'mousedown', 'touchstart'].forEach(event =>
       document.addEventListener(event, removeButtonFocus, true)
     );
   });
 
-  function removeButtonFocus(event) {
+  const removeButtonFocus = (event) => {
     if (event.target.tagName === 'BUTTON') event.target.blur();
-  }
+  };
 
-  async function handleLogout() {
+  // Logout function
+  const handleLogout = async () => {
     await supabase.auth.signOut();
-    user.set(null);
-    location.reload();
-  }
+    user.set(null);  // Clear the user store
+    location.reload();  // Reload the page to reflect changes
+  };
 
-  function handlePlayAgain() {
+  // Handle playing again after winning/losing
+  const handlePlayAgain = () => {
     showResultModal = false;
     hasTriggeredModal = false;
     gameStore.update(state => ({ ...state, gameState: null }));
     fetchRandomGame();
-  }
+  };
 
-  function onPhraseRevealComplete() {
+  // Show result modal after game ends
+  const onPhraseRevealComplete = () => {
     if (!hasTriggeredModal && ['won', 'lost'].includes($gameStore.gameState)) {
       hasTriggeredModal = true;
-
-      // ✅ Delay to allow animation/confetti to finish
       setTimeout(() => {
         showResultModal = true;
       }, 1000);
     }
-  }
+  };
 </script>
 
   
@@ -159,54 +210,52 @@
 <section class="phrase-section">
   <PhraseDisplay on:revealComplete={onPhraseRevealComplete} />
 </section>
-    <!-- 💰 Bankroll + 🎮 Game Buttons Container -->
-    <div class="bankroll-game-buttons-container">
-      <!-- 💰 Bankroll Display -->
-      <section class="stats-section">
-        <div class="bankroll-container">
-          <div class="bankroll-box">
-            <span class="currency">$</span>
-            {#each digits as d}
-              <FlipDigit digit={+d} />
-            {/each}
-          </div>
-        </div>
-      </section>
-
-      <!-- 🎚️ Wager Slider -->
-      {#if wagerUIVisible}
-        <div class="wager-ui">
-          <div class="wager-row">
-            <div class="wager-label">
-              Wager<br /><span class="wager-amount">${sliderWagerAmount}</span>
-            </div>
-            
-            <input
-              type="range"
-              min="0"
-              max={$gameStore.bankroll}
-              bind:value={sliderWagerAmount}
-              class="wager-slider"
-            />
-            
-            <div class="wager-label">
-              To Win<br /><span class="wager-amount">${sliderWagerAmount * 2}</span>
-            </div>
-          </div>
-        </div>
-      {/if}
-
-      <!-- 🎮 Solve / Cancel Buttons -->
-      <section class="buttons-section">
-        <GameButtons
-          bind:wagerUIVisible
-          bind:sliderWagerAmount
-          disabled={nextPuzzleAvailable}
-          on:setWagerUIVisible={(e) => wagerUIVisible = e.detail}
-          on:setSliderWagerAmount={(e) => sliderWagerAmount = e.detail}
-        />
-      </section>
+<!-- 💰 Bankroll Display -->
+<section class="stats-section">
+  <div class="bankroll-container">
+    <div class="bankroll-box">
+      <span class="currency">$</span>
+      {#each digits as d}
+        <FlipDigit digit={+d} />
+      {/each}
     </div>
+  </div>
+</section>
+
+<!-- 🎚️ Wager Slider -->
+{#if wagerUIVisible}
+  <div class="wager-ui">
+    <div class="wager-row">
+      <div class="wager-label">
+        Wager<br /><span class="wager-amount">${sliderWagerAmount}</span>
+      </div>
+      
+      <input
+      type="range"
+      min="0"
+      max={$gameStore.bankroll}
+      step="1" 
+      bind:value={sliderWagerAmount}
+      class="wager-slider"
+    />
+          
+      <div class="wager-label">
+        To Win<br /><span class="wager-amount">${sliderWagerAmount * 2}</span>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- 🎮 Solve / Cancel Buttons -->
+<section class="buttons-section">
+  <GameButtons
+    bind:wagerUIVisible
+    bind:sliderWagerAmount
+    disabled={nextPuzzleAvailable}
+    on:setWagerUIVisible={(e) => wagerUIVisible = e.detail}
+    on:setSliderWagerAmount={(e) => sliderWagerAmount = e.detail}
+  />
+</section>
 
     <!-- ⌨️ Keyboard Section -->
     <section class="keyboard-section">
@@ -268,7 +317,7 @@
 
   .category {
     font-size: .8rem;
-    margin-top: -120px;
+    margin-top: -140px;
     margin-bottom: -20px;
     font-weight: bold;
   }
@@ -285,68 +334,56 @@
     display: none;
   }
 
-  .bankroll-box {
-    padding: 10px 15px;
-    font-size: 1.8rem;
-    font-family: 'Orbitron', sans-serif;
-    color: #fff;
-    background: linear-gradient(180deg, #d1cdcd, #858484);
-    border: 3px solid rgba(255, 255, 255, 0.4);
-    border-radius: 12px;
-    text-align: center;
-    box-shadow: inset 2px 2px 6px rgba(255, 255, 255, 0.2), 3px 3px 8px rgba(0, 0, 0, 0.742), 5px 5px 12px rgba(0, 0, 0, 0.5);
-    display: inline-flex;
-    justify-content: center;
-    align-items: center;
-    letter-spacing: 1.5px;
-    backdrop-filter: blur(5px);
-    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
-    position: relative;
-    top: 30px;
-  }
-
-  .bankroll-box:hover {
-    transform: scale(1.05);
-    box-shadow: 0 0 25px rgba(251, 251, 251, 0.8), 0 0 10px rgba(158, 158, 158, 0.7) inset;
-  }
-
-  .bankroll-box::before {
-    content: "";
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
-    border-radius: 12px;
-    box-shadow: 0 0 12px rgba(251, 251, 251, 0.5) inset;
-    opacity: 0.5;
-    transition: opacity 0.3s ease-in-out;
-  }
-
-  @keyframes bankrollGlow {
-    0% { box-shadow: 0 0 8px rgba(245, 246, 245, 0.5); }
-    50% { box-shadow: 0 0 12px rgba(242, 243, 242, 0.7); }
-    100% { box-shadow: 0 0 8px rgba(239, 241, 239, 0.5); }
-  }
-
-  .bankroll-box {
-    animation: bankrollGlow 2.5s infinite alternate ease-in-out;
-  }
-
-  .currency {
-    font-size: 1.5rem;
-    margin-right: 6px;
-    font-weight: bold;
-    color: rgba(255, 255, 255, 0.8);
-    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
-  }
-
   .bankroll-container {
-    position: absolute;
-    bottom: 170px;
-    left: 50%;
-    transform: translateX(-50%);
-  }
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.bankroll-box {
+  padding: 3px 5px;
+  font-size: 0.4rem;
+  font-family: 'Orbitron', sans-serif;
+  color: #fff;
+  background: linear-gradient(180deg, #d1cdcd, #858484);
+  border: 3px solid rgba(255, 255, 255, 0.4);
+  border-radius: 12px;
+  text-align: center;
+  box-shadow:
+    inset 2px 2px 6px rgba(255, 255, 255, 0.2),
+    3px 3px 8px rgba(0, 0, 0, 0.742),
+    5px 5px 12px rgba(0, 0, 0, 0.5),
+    0 0 8px rgba(245, 246, 245, 0.5);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  letter-spacing: 1.5px;
+  backdrop-filter: blur(5px);
+  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+  animation: bankrollGlow 2.5s infinite alternate ease-in-out;
+}
+
+.bankroll-box:hover {
+  transform: scale(1.05);
+  box-shadow:
+    0 0 25px rgba(251, 251, 251, 0.8),
+    0 0 10px rgba(158, 158, 158, 0.7) inset;
+}
+
+.currency {
+  font-size: 1.0rem;
+  margin-right: 6px;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.8);
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
+@keyframes bankrollGlow {
+  0%   { box-shadow: 0 0 8px rgba(245, 246, 245, 0.5); }
+  50%  { box-shadow: 0 0 12px rgba(242, 243, 242, 0.7); }
+  100% { box-shadow: 0 0 8px rgba(239, 241, 239, 0.5); }
+}
 
   .wordbank-logo {
     width: 380px;
@@ -361,7 +398,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-top: -10px;
+    margin-top: -30px;
     margin-bottom: 0;
   }
 
@@ -602,66 +639,85 @@
   }
 
   .wager-ui {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    max-width: 300px;
-    padding: 8px 12px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.1);
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 60px;
-  }
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: fixed;
+  bottom: 245px; /* ✅ Sits just above bottom buttons */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 360px; /* ✅ Slightly slimmer */
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  gap: 8px;
+  z-index: 999;
+}
 
-  .wager-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    width: 100%;
-  }
+.wager-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
 
-  .wager-label {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 0.8rem;
-    color: #222;
-    text-align: center;
-    width: 70px;
-  }
+.wager-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  color: #222;
+  text-align: center;
+  width: 70px;
+}
 
-  .wager-amount {
-    display: block;
-    font-size: 1rem;
-    font-weight: bold;
-  }
+.wager-amount {
+  font-size: 1rem;
+  font-weight: bold;
+  display: block;
+}
 
-  .wager-slider {
-    flex: 1;
-    height: 8px;
-    -webkit-appearance: none;
-    appearance: none;
-    background: #ccc;
-    border-radius: 4px;
-    outline: none;
-  }
+.wager-slider {
+  flex: 1;
+  max-width: 260px; /* ✅ Long enough for precision */
+  height: 10px;
+  background: linear-gradient(90deg, limegreen 0%, #a8e063 100%);
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+}
 
-  .wager-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 20px;
-    height: 20px;
-    background: limegreen;
-    border-radius: 50%;
-    cursor: pointer;
-    box-shadow: 0 0 5px lime;
-  }
+/* ✅ Precision Thumb Styling */
+.wager-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  background-color: limegreen;
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(0, 255, 0, 0.8);
+  transition: transform 0.1s ease;
+}
+.wager-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
 
-  .wager-slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    background: limegreen;
-    border-radius: 50%;
-    cursor: pointer;
-  }
+.wager-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  background-color: limegreen;
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(0, 255, 0, 0.8);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.wager-slider::-moz-range-thumb:hover {
+  transform: scale(1.1);
+}
 </style>

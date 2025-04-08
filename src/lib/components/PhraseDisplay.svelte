@@ -1,41 +1,15 @@
 <script>
   import { gameStore } from '$lib/stores/GameStore.js';
   import { onDestroy, createEventDispatcher } from 'svelte';
+  import { getFormattedPhrase, getGlobalIndex } from '$lib/helpers/gameUtils.js';
 
-  // ==========================
-  // 📤 Setup Event Dispatcher
-  // ==========================
   const dispatch = createEventDispatcher();
 
-  // ==========================
-  // 🧠 Format the Phrase
-  // ==========================
-  $: phrase = $gameStore.phrase || "";
-  let maxLettersPerRow = 12;
-
-  function getFormattedPhrase(phrase) {
-    const words = phrase.split(" ");
-    const formattedRows = [];
-    let currentRow = "";
-
-    for (const word of words) {
-      if (currentRow.length + word.length + (currentRow ? 1 : 0) > maxLettersPerRow) {
-        if (currentRow) formattedRows.push(currentRow + "-");
-        currentRow = word;
-      } else {
-        currentRow += (currentRow ? " " : "") + word;
-      }
-    }
-
-    if (currentRow) formattedRows.push(currentRow);
-    return formattedRows;
-  }
-
+  // 📤 Reactive State Setup
+  $: phrase = $gameStore.currentPhrase || "";
   $: formattedPhrase = getFormattedPhrase(phrase);
 
-  // ==========================
-  // 💢 Handle Shake Animations
-  // ==========================
+  // 💢 Shake Animation
   let shakeIndexes = new Set();
   let lastProcessedShakes = [];
 
@@ -47,28 +21,13 @@
     }, 1000);
   }
 
-  $: if ($gameStore.shakenLetters?.length > 0) {
-    if (JSON.stringify($gameStore.shakenLetters) !== JSON.stringify(lastProcessedShakes)) {
-      triggerShake([...$gameStore.shakenLetters]);
-      lastProcessedShakes = [...$gameStore.shakenLetters];
-    }
+  $: if ($gameStore.shakenLetters?.length > 0 &&
+         JSON.stringify($gameStore.shakenLetters) !== JSON.stringify(lastProcessedShakes)) {
+    triggerShake([...$gameStore.shakenLetters]);
+    lastProcessedShakes = [...$gameStore.shakenLetters];
   }
 
-  // ==========================
-  // 🔢 Global Index Helper
-  // ==========================
-  function getGlobalIndex(wordIndex, letterIndex) {
-    const words = $gameStore.currentPhrase.split(' ');
-    let offset = 0;
-    for (let i = 0; i < wordIndex; i++) {
-      offset += words[i].length + 1;
-    }
-    return offset + letterIndex;
-  }
-
-  // ==========================
   // 🧠 Reveal Animation (Loss)
-  // ==========================
   let revealInterval;
   let revealed = [];
 
@@ -76,15 +35,13 @@
     if (revealed.length === 0) {
       const fullPhrase = $gameStore.currentPhrase;
       let i = 0;
-
       revealInterval = setInterval(() => {
         revealed[i] = fullPhrase[i];
         revealed = [...revealed];
         i++;
-
         if (i >= fullPhrase.length) {
           clearInterval(revealInterval);
-          dispatch('revealComplete'); // ✅ Modal shows after phrase fills
+          dispatch('revealComplete');
         }
       }, 300);
     }
@@ -93,100 +50,70 @@
     clearInterval(revealInterval);
   }
 
-  // ==========================
-  // 🎉 Dispatch on Win
-  // ==========================
   $: if ($gameStore.gameState === 'won') {
     setTimeout(() => {
       dispatch('revealComplete');
-    }, 500); // Optional short delay after "Winner!" banner/confetti
+    }, 500);
   }
 
-  onDestroy(() => {
-    clearInterval(revealInterval);
-  });
+  onDestroy(() => clearInterval(revealInterval));
 
-  // ==========================
-  // 🎯 Guess Mode Active Slot
-  // ==========================
-  $: activeGuessIndex =
-    $gameStore.gameState === 'guess_mode'
-      ? (() => {
-          const phrase = $gameStore.currentPhrase;
-          const editableIndices = [];
+  // 🎯 Active Guess Slot Logic
+  $: activeGuessIndex = $gameStore.gameState === 'guess_mode'
+    ? (() => {
+        const phrase = $gameStore.currentPhrase;
+        const editableIndices = [];
 
-          for (let i = 0; i < phrase.length; i++) {
-            if (phrase[i] === ' ') continue;
-            if ($gameStore.purchasedLetters[i] === phrase[i]) continue;
-            editableIndices.push(i);
-          }
+        for (let i = 0; i < phrase.length; i++) {
+          if (phrase[i] === ' ') continue;
+          if ($gameStore.purchasedLetters[i] === phrase[i]) continue;
+          editableIndices.push(i);
+        }
 
-          if (editableIndices.length === 0) return -1;
+        if (editableIndices.length === 0) return -1;
 
-          for (const idx of editableIndices) {
-            if (!$gameStore.guessedLetters[idx]) return idx;
-          }
+        for (const idx of editableIndices) {
+          if (!$gameStore.guessedLetters[idx]) return idx;
+        }
 
-          return editableIndices[editableIndices.length - 1];
-        })()
-      : -1;
+        return editableIndices[editableIndices.length - 1];
+      })()
+    : -1;
 </script>
 
-<!-- Display formatted phrase lines (for non-interactive preview) -->
-<div class="phrase-display">
-  {#each formattedPhrase as line}
-    <div class="phrase-line">{line}</div>
-  {/each}
-</div>
 
-<!-- Render phrase based on current game state -->
-{#if $gameStore.gameState === 'lost'}
-  <!-- Lost Mode: Gradually reveal the full phrase -->
-  <div class="phrase-container">
-    {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
-      <div class="word">
-        {#each word.split('') as letter, cIndex}
-          <span class="letter-box">
-            {revealed[getGlobalIndex(wIndex, cIndex)] ? revealed[getGlobalIndex(wIndex, cIndex)] : "_"}
-          </span>
-        {/each}
-      </div>
-    {/each}
-  </div>
-{:else if $gameStore.gameState === 'guess_mode'}
-  <!-- Guess Mode: Show purchased letters and input guesses -->
-  <div class="phrase-container">
-    {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
-      <div class="word">
-        {#each word.split('') as letter, cIndex}
-          {#if $gameStore.purchasedLetters[getGlobalIndex(wIndex, cIndex)] === letter}
-            <span class="letter-box locked {shakeIndexes.has(getGlobalIndex(wIndex, cIndex)) ? 'shake' : ''}">
-              {letter}
+<!-- Render Game Phrase -->
+<div class="phrase-container">
+  {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
+    <div class="word">
+      {#each word.split('') as letter, cIndex}
+        {#key `${wIndex}-${cIndex}`}
+          {#if $gameStore.gameState === 'lost'}
+            <span class="letter-box">
+              {revealed[getGlobalIndex(wIndex, cIndex, $gameStore.currentPhrase)] || "_"}
             </span>
+
+          {:else if $gameStore.gameState === 'guess_mode'}
+            {#if $gameStore.purchasedLetters[getGlobalIndex(wIndex, cIndex, $gameStore.currentPhrase)] === letter}
+              <span class="letter-box locked {shakeIndexes.has(getGlobalIndex(wIndex, cIndex, $gameStore.currentPhrase)) ? 'shake' : ''}">
+                {letter}
+              </span>
+            {:else}
+              <span class="letter-box {getGlobalIndex(wIndex, cIndex, $gameStore.currentPhrase) === activeGuessIndex ? 'active' : ''}">
+                {$gameStore.guessedLetters[getGlobalIndex(wIndex, cIndex, $gameStore.currentPhrase)] || ""}
+              </span>
+            {/if}
+
           {:else}
-            <span class="letter-box {getGlobalIndex(wIndex, cIndex) === activeGuessIndex ? 'active' : ''}">
-              {$gameStore.guessedLetters[getGlobalIndex(wIndex, cIndex)] || ""}
+            <span class="letter-box {shakeIndexes.has(getGlobalIndex(wIndex, cIndex, $gameStore.currentPhrase)) ? 'shake' : ''}">
+              {$gameStore.purchasedLetters[getGlobalIndex(wIndex, cIndex, $gameStore.currentPhrase)] || ""}
             </span>
           {/if}
-        {/each}
-      </div>
-    {/each}
-  </div>
-{:else}
-  <!-- Default Mode: Display only purchased letters with potential shake animation -->
-  <div class="phrase-container">
-    {#each $gameStore.currentPhrase.split(' ') as word, wIndex}
-      <div class="word">
-        {#each word.split('') as letter, cIndex}
-          <span class="letter-box {shakeIndexes.has(getGlobalIndex(wIndex, cIndex)) ? 'shake' : ''}">
-            {$gameStore.purchasedLetters[getGlobalIndex(wIndex, cIndex)] || ""}
-          </span>
-        {/each}
-      </div>
-    {/each}
-  </div>
-{/if}
-
+        {/key}
+      {/each}
+    </div>
+  {/each}
+</div>
 <style>
   /* ---------------------------
      Shake Animation for Letters

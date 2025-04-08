@@ -2,19 +2,11 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from '@sveltejs/kit';
 
-export const load = async ({ request }) => {
+export const load = async ({ cookies }) => {
   const supabase = createServerClient(
-    'https://YOUR_PROJECT_ID.supabase.co',
-    'YOUR_SUPABASE_ANON_KEY',
-    {
-      cookies: {
-        get(name) {
-          return request.headers.get('cookie')?.split('; ')
-            .find((c) => c.startsWith(`${name}=`))
-            ?.split('=')[1];
-        }
-      }
-    }
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_ANON_KEY,
+    { cookies }
   );
 
   const {

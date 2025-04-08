@@ -1,36 +1,23 @@
 <script>
-  import { onMount, createEventDispatcher } from 'svelte';
-  import { get } from 'svelte/store';
-  import {
-    gameStore,
-    confirmPurchase,
-    submitGuess
-  } from '$lib/stores/GameStore.js';
+  import { createEventDispatcher } from 'svelte';
+  import { gameStore, confirmPurchase, submitGuess } from '$lib/stores/GameStore.js';
 
   export let wagerUIVisible;
   export let sliderWagerAmount;
 
   const dispatch = createEventDispatcher();
 
-  let darkMode = false;
-
-  // Derived values
+  // Reactive state from the store
+  $: bankroll = $gameStore.bankroll;
+  $: guessModeActive = $gameStore.gameState === 'guess_mode';
   $: purchasePending = !!$gameStore.selectedPurchase;
   $: hintPending = $gameStore.selectedPurchase?.type === 'hint' && $gameStore.gameState === 'purchase_pending';
   $: showHintCost = hintPending;
-
-  $: noGuessesLeft = $gameStore.guessesRemaining === 0;
-  $: guessModeActive = $gameStore.gameState === 'guess_mode';
-  $: bankroll = $gameStore.bankroll;
   $: fundsLow = bankroll < 150;
-
   $: canConfirmWager = sliderWagerAmount > 0;
-  $: buttonLabel = purchasePending
-    ? 'Confirm'
-    : guessModeActive
-    ? (guessComplete ? 'Submit' : 'Cancel')
-    : (!canConfirmWager && wagerUIVisible ? 'Cancel' : 'Solve');
+  $: dualButtonMode = purchasePending || (wagerUIVisible && canConfirmWager);
 
+  // Check if all letters are guessed
   $: guessComplete = guessModeActive && (() => {
     const phrase = $gameStore.currentPhrase;
     for (let i = 0; i < phrase.length; i++) {
@@ -41,8 +28,22 @@
     return true;
   })();
 
-  $: dualButtonMode = purchasePending || (wagerUIVisible && canConfirmWager);
+  // Button label logic
+  $: buttonLabel = purchasePending
+    ? 'Confirm'
+    : guessModeActive
+      ? (guessComplete ? 'Submit' : 'Cancel')
+      : (!canConfirmWager && wagerUIVisible ? 'Cancel' : 'Solve');
 
+  // Build dynamic button class string
+  $: buttonClass = [
+    'guess-phrase-button',
+    guessModeActive && !guessComplete ? 'exit-mode' : '',
+    guessComplete ? 'guess-complete' : '',
+    !canConfirmWager && wagerUIVisible ? 'exit-mode' : ''
+  ].join(' ');
+
+  // Handles the main button logic
   function handleMainButtonClick() {
     if (purchasePending) {
       confirmPurchase();
@@ -85,9 +86,11 @@
     dispatch('setWagerUIVisible', false);
   }
 
+  // Hint button logic
   function toggleHintPurchase() {
     dispatch('setWagerUIVisible', false);
     dispatch('setSliderWagerAmount', 0);
+
     gameStore.update(state => {
       if (state.selectedPurchase?.type === 'hint') {
         return { ...state, selectedPurchase: null, gameState: 'default' };
@@ -102,7 +105,7 @@
 {/if}
 
 <div class="main-button-wrapper">
-  <!-- Hint -->
+  <!-- Hint Button -->
   <div class="hint-button-container">
     {#if showHintCost}
       <div class="cost-indicator">$150</div>
@@ -119,27 +122,29 @@
   <!-- Solve or Confirm/Cancel -->
   {#if dualButtonMode}
     <div class="dual-button-container">
-      <button class="cancel-button" on:click={() => {
-        dispatch('setWagerUIVisible', false);
-        dispatch('setSliderWagerAmount', 0);
-        gameStore.update(state => ({
-          ...state,
-          selectedPurchase: null,
-          gameState: 'default'
-        }));
-      }}>Cancel</button>
-      <button class="confirm-button" on:click={handleMainButtonClick}>Confirm</button>
+      <button
+        class="cancel-button"
+        on:click={() => {
+          dispatch('setWagerUIVisible', false);
+          dispatch('setSliderWagerAmount', 0);
+          gameStore.update(state => ({
+            ...state,
+            selectedPurchase: null,
+            gameState: 'default'
+          }));
+        }}
+      >
+        Cancel
+      </button>
+      <button class="confirm-button" on:click={handleMainButtonClick}>
+        Confirm
+      </button>
     </div>
   {:else}
     <div class="solve-button-container">
       <button
-        class="guess-phrase-button
-          {guessModeActive && !guessComplete ? 'exit-mode' : ''}
-          {guessComplete ? 'guess-complete' : ''}
-          {!canConfirmWager && wagerUIVisible ? 'exit-mode' : ''}
-          {noGuessesLeft ? 'disabled-purchase' : ''}"
+        class={buttonClass}
         on:click={handleMainButtonClick}
-        disabled={noGuessesLeft}
       >
         {buttonLabel}
       </button>
@@ -197,7 +202,7 @@
 --------------------------- */
 .main-button-wrapper {
   position: fixed;
-  bottom: 20px;
+  bottom: 180px;
   left: 50%;
   transform: translateX(calc(-50% - 33px)); /* 25px for hint + 8px margin */
     display: flex;
@@ -239,7 +244,7 @@
 .solve-button-container,
 .dual-button-container {
   width: 230px;
-  height: 50px;
+  height: 40px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -294,7 +299,7 @@
   font-family: 'VT323', monospace;
   font-size: 22px;
   flex: 1;
-  height: 50px;
+  height: 40px;
   border-radius: 8px;
   transition: transform 0.2s ease;
   cursor: pointer;
