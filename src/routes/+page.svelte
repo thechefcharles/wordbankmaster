@@ -792,4 +792,9 @@
   cursor: not-allowed;
 }
 
+:global(body.dark-mode) .wager-label {
+  color: white;
+}
+
+
 </style>
