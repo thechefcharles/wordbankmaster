@@ -1,4 +1,5 @@
-// GameStore.js
+// src/lib/stores/GameStore.js
+
 import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient.js';
 import confetti from 'canvas-confetti';
@@ -7,29 +8,26 @@ import confetti from 'canvas-confetti';
    Constants & Store Initialization
 =================================== */
 
-// Cost definitions for each letter
+// Letter purchase costs
 export const LETTER_COSTS = {
-  Q: 30,  W: 50,  E: 140, R: 120, T: 120, Y: 60,  U: 80,  I: 110, O: 90,  P: 80,
-  A: 130, S: 120, D: 80,  F: 60,  G: 70,  H: 70,  J: 30,  K: 50,  L: 80,
-  Z: 40,  X: 40,  C: 80,  V: 50,  B: 60,  N: 100, M: 70
+  Q: 30, W: 50, E: 140, R: 120, T: 120, Y: 60, U: 80, I: 110, O: 90, P: 80,
+  A: 130, S: 120, D: 80, F: 60, G: 70, H: 70, J: 30, K: 50, L: 80,
+  Z: 40, X: 40, C: 80, V: 50, B: 60, N: 100, M: 70
 };
 
-// Initial state for the game store
 export const gameStore = writable({
   bankroll: 1000,
-  guessesRemaining: 1,
-  wagerAmount: 1,   // NEW: Wager amount for solving
-  category: "Person",
-  currentPhrase: "MICHAEL JORDAN",
-  gameState: "default", // States: "default", "purchase_pending", "guess_mode", "won", "lost"
+  wagerAmount: 1,
+  category: '',
+  currentPhrase: '',
+  gameState: 'default', // States: "default", "purchase_pending", "guess_mode", "won", "lost"
   purchasedLetters: [],
   guessedLetters: {},
   lockedLetters: {},
   incorrectLetters: [],
   selectedPurchase: null,
   shakenLetters: [],
-  extraGuessPending: false, // Flag for extra guess purchase pending
-  message: "" // Feedback messages (e.g., incorrect guess)
+  message: ''
 });
 
 /* ================================
@@ -155,24 +153,6 @@ export function selectHint() {
   });
 }
 
-/**
- * selectExtraGuess
- * Toggles extra guess selection for purchase.
- */
-export function selectExtraGuess() {
-  gameStore.update(state => {
-    if (state.selectedPurchase && state.selectedPurchase.type === 'extra_guess') {
-      console.log("Deselecting extra guess");
-      return { ...state, selectedPurchase: null, gameState: "default" };
-    }
-    console.log("Selecting extra guess");
-    return {
-      ...state,
-      gameState: "purchase_pending",
-      selectedPurchase: { type: 'extra_guess' }
-    };
-  });
-}
 
 export function setWager(amount) {
   gameStore.update(state => ({
@@ -278,21 +258,6 @@ export function confirmPurchase() {
       };
       return checkLossCondition(newState);
     }
-    // --- Process Extra Guess Purchase ---
-    else if (purchase.type === 'extra_guess') {
-      const cost = 150;
-      if (state.bankroll < cost) {
-        return { ...state, selectedPurchase: null, gameState: "default" };
-      }
-      const newState = {
-        ...state,
-        bankroll: state.bankroll - cost,
-        guessesRemaining: state.guessesRemaining + 1,
-        selectedPurchase: null,
-        gameState: "default"
-      };
-      return checkLossCondition(newState);
-    }
     return state;
   });
 }
@@ -307,10 +272,6 @@ export function confirmPurchase() {
  */
 export function enterGuessMode() {
   gameStore.update(state => {
-    if (state.guessesRemaining <= 0) {
-      console.log("Cannot enter guess mode: no guesses remaining.");
-      return state;
-    }
     if (state.gameState === 'guess_mode') {
       console.log("Exiting guess mode.");
       return { ...state, gameState: "default", guessedLetters: {} };
@@ -478,7 +439,7 @@ export function submitGuess() {
 
 /**
  * fetchRandomGame
- * Retrieves a random puzzle using Supabase and initializes the game state.
+ * Pulls a new puzzle from the Supabase `get_random_puzzle` RPC and resets the game.
  */
 export async function fetchRandomGame() {
   try {
@@ -487,48 +448,31 @@ export async function fetchRandomGame() {
 
     gameStore.set({
       bankroll: 1000,
-      guessesRemaining: 1,
-      currentPhrase: data.phrase.toUpperCase(),
+      wagerAmount: 1,
       category: data.category,
-      gameState: "default",
+      currentPhrase: data.phrase.toUpperCase(),
+      gameState: 'default',
       purchasedLetters: [],
       guessedLetters: {},
       lockedLetters: {},
       incorrectLetters: [],
       selectedPurchase: null,
       shakenLetters: [],
-      extraGuessPending: false,
-      message: "",
-      wagerAmount: 1
+      message: ''
     });
-    console.log(`Game loaded: ${data.phrase} - ${data.category}`);
+
+    console.log(`✅ New game loaded: ${data.phrase} [${data.category}]`);
   } catch (err) {
-    console.error("Error fetching game data:", err);
+    console.error('❌ Error fetching puzzle from Supabase:', err.message);
   }
 }
 
 /**
  * resetGame
- * Resets the game state to the initial values.
+ * Alias for fetching a fresh puzzle from the database.
  */
 export function resetGame() {
-  gameStore.set({
-    bankroll: 1000,
-    guessesRemaining: 2,
-    currentPhrase: data.phrase.toUpperCase(),
-    category: data.category,
-    gameState: "default",
-    purchasedLetters: [],
-    lockedLetters: {},
-    incorrectLetters: [],
-    selectedPurchase: null,
-    guessedLetters: {},
-    shakenLetters: [],
-    extraGuessPending: false,
-    message: "",
-    wagerAmount: 1
-  });
-  console.log("Game reset.");
+  fetchRandomGame(); // Just trigger a new fetch.
 }
 
 /**

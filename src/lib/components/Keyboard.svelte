@@ -57,11 +57,9 @@
           return { ...state, gameState: "default" };
         }
         if (state.gameState === "guess_mode") {
-          return state.guessedLetters &&
-            Object.keys(state.guessedLetters).length === state.currentPhrase.replace(/\s/g, '').length
-              ? submitGuess()
-              : { ...state, gameState: "default", guessedLetters: {} };
-        }
+  submitGuess();
+  return state;
+}
         if (!state.selectedPurchase && state.gameState !== "guess_mode") {
           return { ...state, gameState: "guess_mode", guessedLetters: {} };
         }
@@ -108,6 +106,7 @@
   <div class="keyboard-row">
     {#each row1 as letter}
       <button
+      tabindex="-1"
       class="key 
       {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''} 
       {($gameStore.selectedPurchase?.type === 'letter' && 
@@ -126,6 +125,7 @@
   <div class="keyboard-row">
     {#each row2 as letter}
       <button
+      tabindex="-1"
         class="key {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''} 
                 { $gameStore.selectedPurchase?.type === 'letter' &&
                   $gameStore.selectedPurchase.value === letter &&
@@ -149,6 +149,7 @@
   <div class="keyboard-row">
     {#each row3 as letter}
       <button
+      tabindex="-1"
         class="key {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''} 
                 { $gameStore.selectedPurchase?.type === 'letter' &&
                   $gameStore.selectedPurchase.value === letter &&
@@ -168,7 +169,9 @@
     {/each}
 
     {#if $gameStore.gameState === 'guess_mode'}
-      <button class="key delete" on:click={deleteGuessLetter}>
+      <button 
+      tabindex="-1"
+      class="key delete" on:click={deleteGuessLetter}>
         <div class="letter">Del</div>
       </button>
     {/if}

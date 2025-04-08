@@ -36,9 +36,9 @@
   $: nextPuzzleAvailable = $gameStore.gameState === 'won' || $gameStore.gameState === 'lost';
 
   // ✅ Fetch game immediately after login
-  $: if (loggedIn && $gameStore.phrase === '') {
-    fetchRandomGame();
-  }
+  $: if (loggedIn && $gameStore.currentPhrase === '') {
+  fetchRandomGame();
+}
 
   function applyDarkMode() {
     document.body.classList.toggle('dark-mode', darkMode);
