@@ -7,7 +7,6 @@
 
   const dispatch = createEventDispatcher();
 
-  // ✅ Allow outside triggers to hide the slider
   onMount(() => {
     window.addEventListener('hideWagerSlider', () => {
       dispatch('setWagerUIVisible', false);
@@ -23,6 +22,8 @@
   $: showHintCost = hintPending;
   $: fundsLow = bankroll < 150;
   $: canConfirmWager = sliderWagerAmount > 0;
+  $: gameOver = $gameStore.gameState === 'won' || $gameStore.gameState === 'lost';
+  $: buttonsDisabled = gameOver;
 
   // ✅ Detect full phrase input
   $: guessComplete = guessModeActive && (() => {
@@ -35,9 +36,11 @@
     return true;
   })();
 
-  // 🔁 Button modes
-// ✅ Show dual buttons when a purchase is pending or guess is fully typed
-  $: dualButtonMode = purchasePending || (wagerUIVisible && guessComplete);
+  // 🔁 Button display modes
+  $: dualButtonMode = purchasePending
+    || (wagerUIVisible && sliderWagerAmount > 0 && !guessModeActive)
+    || (guessModeActive && guessComplete);
+
   $: guessCancelOnlyMode = guessModeActive && !guessComplete;
 
   // 🏷️ Main button label
@@ -57,45 +60,39 @@
 
   // 🎯 Main button logic
   function handleMainButtonClick() {
-  if (purchasePending) {
-    // ✅ Confirm a letter or hint purchase
-    confirmPurchase();
-    return;
+    if (purchasePending) {
+      confirmPurchase();
+      return;
+    }
+
+    if (guessModeActive && guessComplete) {
+      submitGuess();
+      dispatch('setWagerUIVisible', false);
+      dispatch('setSliderWagerAmount', 0);
+      return;
+    }
+
+    if (!wagerUIVisible) {
+      dispatch('setWagerUIVisible', true);
+      dispatch('setSliderWagerAmount', 0);
+      return;
+    }
+
+    if (!canConfirmWager) {
+      dispatch('setWagerUIVisible', false);
+      dispatch('setSliderWagerAmount', 0);
+      return;
+    }
+
+    gameStore.update(state => ({
+      ...state,
+      gameState: 'guess_mode',
+      wagerAmount: sliderWagerAmount,
+      selectedPurchase: null,
+      guessedLetters: {}
+    }));
   }
 
-  if (guessModeActive && guessComplete) {
-    // ✅ Submit full guess
-    submitGuess();
-    dispatch('setWagerUIVisible', false);
-    dispatch('setSliderWagerAmount', 0);
-    return;
-  }
-
-  // 🆑 First time clicking Solve → show slider
-  if (!wagerUIVisible) {
-    dispatch('setWagerUIVisible', true);
-    dispatch('setSliderWagerAmount', 0);
-    return;
-  }
-
-  // ⛔ Cancel wager if slider is at zero
-  if (!canConfirmWager) {
-    dispatch('setWagerUIVisible', false);
-    dispatch('setSliderWagerAmount', 0);
-    return;
-  }
-
-  // 🟢 Enter guess mode with wager (but do NOT hide slider yet)
-  gameStore.update(state => ({
-    ...state,
-    gameState: 'guess_mode',
-    wagerAmount: sliderWagerAmount,
-    selectedPurchase: null,
-    guessedLetters: {}
-  }));
-}
-
-  // 💡 Toggle hint logic
   function toggleHintPurchase() {
     dispatch('setWagerUIVisible', false);
     dispatch('setSliderWagerAmount', 0);
@@ -114,22 +111,22 @@
 {/if}
 
 <div class="main-button-wrapper">
-  <!-- 💡 Hint Button -->
   <div class="hint-button-container">
     {#if showHintCost}
-      <div class="cost-indicator">$150</div>
+      <div class="cost-indicator">
+        $150
+      </div>
     {/if}
     <button
       class="hint-button {fundsLow ? 'disabled-purchase' : ''} {hintPending ? 'glow' : ''}"
       on:click={toggleHintPurchase}
-      disabled={fundsLow}
+      disabled={fundsLow || buttonsDisabled}
     >
       Bank Letter
     </button>
   </div>
 
   {#if dualButtonMode}
-    <!-- ✅ Confirm (for purchase or guess) + Cancel buttons -->
     <div class="dual-button-container">
       <button
         class="cancel-button"
@@ -143,17 +140,21 @@
             gameState: 'default'
           }));
         }}
+        disabled={buttonsDisabled}
       >
         Cancel
       </button>
 
-      <button class="confirm-button" on:click={handleMainButtonClick}>
+      <button
+        class="confirm-button"
+        on:click={handleMainButtonClick}
+        disabled={buttonsDisabled}
+      >
         {purchasePending ? 'Confirm' : 'Submit'}
       </button>
     </div>
 
   {:else if guessCancelOnlyMode}
-    <!-- 🔴 In guess mode with incomplete input -->
     <div class="solve-button-container">
       <button
         class="guess-phrase-button exit-mode"
@@ -166,24 +167,24 @@
             gameState: 'default'
           }));
         }}
+        disabled={buttonsDisabled}
       >
         Cancel
       </button>
     </div>
 
   {:else}
-    <!-- 🔘 Default Solve Button -->
     <div class="solve-button-container">
       <button
         class={buttonClass}
         on:click={handleMainButtonClick}
+        disabled={buttonsDisabled}
       >
         {buttonLabel}
       </button>
     </div>
   {/if}
-</div> <!-- ✅ End main-button-wrapper -->
-
+</div>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
 
@@ -388,4 +389,16 @@
   background: linear-gradient(180deg, #28a745, #218838) !important;
   border: 3px solid #1e7e34 !important;
 }
+.guess-phrase-button:disabled,
+.confirm-button:disabled,
+.cancel-button:disabled {
+  opacity: 0.4;
+  filter: grayscale(100%);
+  cursor: not-allowed;
+  box-shadow: none;
+  background: #888 !important; /* Optional: solid gray background */
+  color: #eee;
+  border: 2px solid #666;
+}
+
 </style>
