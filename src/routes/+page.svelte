@@ -22,6 +22,7 @@
   let darkMode = false;
   let wagerUIVisible = false;
   let sliderWagerAmount = 0;
+  let sliderLocked = false;
   let showResultModal = false;
   let hasTriggeredModal = false;
 
@@ -78,6 +79,8 @@
   $: bankroll = $gameStore.bankroll || 0;
   $: digits = String(bankroll).split('');
   $: nextPuzzleAvailable = $gameStore.gameState === 'won' || $gameStore.gameState === 'lost';
+  $: sliderLocked = $gameStore.gameState === 'guess_mode';
+
 
   $: if (loggedIn && $gameStore.currentPhrase === '') {
     fetchRandomGame();
@@ -295,8 +298,8 @@
             step="1"
             bind:value={sliderWagerAmount}
             class="wager-slider"
-            disabled={$gameStore.gameState === 'won' || $gameStore.gameState === 'lost'}
-          />
+            disabled={sliderLocked || $gameStore.gameState === 'won' || $gameStore.gameState === 'lost'}
+            />
 
           <div class="wager-label">
             To Win<br /><span class="wager-amount">${sliderWagerAmount * 2}</span>
@@ -784,4 +787,9 @@
 .wager-slider::-moz-range-thumb:hover {
   transform: scale(1.1);
 }
+.wager-slider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 </style>
