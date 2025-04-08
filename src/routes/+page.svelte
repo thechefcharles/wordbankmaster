@@ -1,4 +1,3 @@
-<!-- +page.svelte -->
 <svelte:head>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet" />
@@ -9,13 +8,13 @@
   import { browser } from '$app/environment';
   import { supabase } from '$lib/supabaseClient';
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
-  import { user, userProfile, fetchUserProfile } from '$lib/stores/userStore.js';
-
+  import { user, userProfile, fetchUserProfile, saveUserProfile } from '$lib/stores/userStore.js';
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
   import Keyboard from '$lib/components/Keyboard.svelte';
   import GameButtons from '$lib/components/GameButtons.svelte';
   import FlipDigit from '$lib/components/FlipDigit.svelte';
   import Auth from '$lib/components/Auth.svelte';
+  import { get } from 'svelte/store';
 
   export let data;
 
@@ -26,42 +25,39 @@
   let showResultModal = false;
   let hasTriggeredModal = false;
 
-  // Ensure profile loading and set bankroll properly
+  // 🧠 Load user profile and update game store with bankroll
   async function loadUserProfile(userId) {
-  try {
-    const { data: profile, error } = await fetchUserProfile(userId);
-
-    if (error) {
-      console.error("Error fetching profile:", error.message);
-      return;
+    try {
+      const { data: profile, error } = await fetchUserProfile(userId);
+      if (error) {
+        console.error("Error fetching profile:", error.message);
+        return;
+      }
+      if (profile) {
+        userProfile.set(profile);
+        gameStore.update(state => ({
+          ...state,
+          bankroll: profile.bankroll || 1000
+        }));
+      }
+    } catch (err) {
+      console.error("Error loading user profile:", err.message);
     }
-
-    if (profile) {
-      userProfile.set(profile);
-
-      // Make sure to update the game store with the latest bankroll
-      gameStore.update(state => ({
-        ...state,
-        bankroll: profile.bankroll || 1000  // Default to 1000 if no bankroll is found
-      }));
-    }
-  } catch (err) {
-    console.error("Error loading user profile:", err.message);
   }
-}
 
+  // 🌐 On mount: verify session, load profile, sync bankroll, and fetch game
   onMount(async () => {
     try {
-      // Get session on mount
       const { data: { session } } = await supabase.auth.getSession();
-
       if (session) {
-        user.set(session.user); // Set user in store
-
-        // Load the user profile once session is verified
+        user.set(session.user);
         await loadUserProfile(session.user.id);
 
-        // Once profile is loaded, fetch the game (ensure bankroll is set)
+        // 🔄 Sync bankroll from game store to Supabase
+        const currentBankroll = get(gameStore).bankroll;
+        await saveUserProfile({ id: session.user.id, bankroll: currentBankroll });
+        console.log("🔄 Synced bankroll to Supabase on refresh:", currentBankroll);
+
         fetchRandomGame();
       } else {
         console.log("No user session found");
@@ -71,24 +67,23 @@
     }
   });
 
-  // Reactive block to check if user data is passed via SSR (server-side rendering)
+  // SSR user fallback
   $: if (data?.user) {
-    user.set(data.user); // Set user data from SSR
-    loadUserProfile(data.user.id); // Fetch and update profile
+    user.set(data.user);
+    loadUserProfile(data.user.id);
   }
 
-  // Reactive statements to monitor auth state and game state
+  // Reactive state
   $: loggedIn = !!$user?.id;
   $: bankroll = $gameStore.bankroll || 0;
   $: digits = String(bankroll).split('');
   $: nextPuzzleAvailable = $gameStore.gameState === 'won' || $gameStore.gameState === 'lost';
 
-  // Fetch a new game if logged in and there's no current phrase
   $: if (loggedIn && $gameStore.currentPhrase === '') {
     fetchRandomGame();
   }
 
-  // Dark mode functions
+  // 🌓 Dark mode
   const applyDarkMode = () => {
     document.body.classList.toggle('dark-mode', darkMode);
   };
@@ -99,14 +94,11 @@
     applyDarkMode();
   };
 
-  // On mount, check for dark mode in local storage
   onMount(() => {
     if (browser) {
       darkMode = localStorage.getItem('darkMode') === 'true';
       applyDarkMode();
     }
-
-    // Remove button focus on click/tap
     ['click', 'mousedown', 'touchstart'].forEach(event =>
       document.addEventListener(event, removeButtonFocus, true)
     );
@@ -116,22 +108,88 @@
     if (event.target.tagName === 'BUTTON') event.target.blur();
   };
 
-  // Logout function
+  // 🔓 Logout
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    user.set(null);  // Clear the user store
-    location.reload();  // Reload the page to reflect changes
+    user.set(null);
+    location.reload();
   };
 
-  // Handle playing again after winning/losing
-  const handlePlayAgain = () => {
+  // 🔁 Reset full game after loss
+  const handlePlayAgain = async () => {
     showResultModal = false;
     hasTriggeredModal = false;
-    gameStore.update(state => ({ ...state, gameState: null }));
-    fetchRandomGame();
+
+    const newBankroll = 1000;
+    const currentUser = get(user);
+
+    if (currentUser?.id) {
+      try {
+        await saveUserProfile({ id: currentUser.id, bankroll: newBankroll });
+
+        gameStore.set({
+          bankroll: newBankroll,
+          wagerAmount: 1,
+          category: '',
+          currentPhrase: '',
+          gameState: 'default',
+          purchasedLetters: [],
+          guessedLetters: {},
+          lockedLetters: {},
+          incorrectLetters: [],
+          selectedPurchase: null,
+          shakenLetters: [],
+          message: ''
+        });
+
+        await fetchRandomGame();
+        console.log("🔁 Game successfully reset after loss.");
+      } catch (err) {
+        console.error("❌ Failed to reset game or update bankroll:", err.message);
+      }
+    } else {
+      console.warn("⚠️ No user found during Play Again.");
+    }
   };
 
-  // Show result modal after game ends
+  // ➡️ Load next puzzle after a win
+  const handleNextPuzzle = async () => {
+    showResultModal = false;
+    hasTriggeredModal = false;
+
+    const currentUser = get(user);
+    const currentBankroll = get(gameStore).bankroll;
+
+    if (currentUser?.id) {
+      try {
+        await saveUserProfile({ id: currentUser.id, bankroll: currentBankroll });
+
+        gameStore.set({
+          bankroll: currentBankroll,
+          wagerAmount: 1,
+          category: '',
+          currentPhrase: '',
+          gameState: 'default',
+          purchasedLetters: [],
+          guessedLetters: {},
+          lockedLetters: {},
+          incorrectLetters: [],
+          selectedPurchase: null,
+          shakenLetters: [],
+          message: ''
+        });
+
+        await fetchRandomGame();
+        console.log("🎯 Next puzzle loaded");
+      } catch (err) {
+        console.error("❌ Failed to load next puzzle:", err.message);
+      }
+    } else {
+      console.warn("⚠️ No user found for next puzzle");
+    }
+  };
+
+  // 🎯 Show result modal after win/loss
   const onPhraseRevealComplete = () => {
     if (!hasTriggeredModal && ['won', 'lost'].includes($gameStore.gameState)) {
       hasTriggeredModal = true;
@@ -142,7 +200,6 @@
   };
 </script>
 
-  
 <!-- 🔹 Top Control Buttons -->
 <div class="top-buttons">
   <!-- ❓ How to Play -->
@@ -203,99 +260,106 @@
       <img src="/1.png" alt="WordBank Logo" class="wordbank-logo" />
     </div>
 
-    <!-- 🌍 Category Tag -->
+    <!-- 🌍 Category Display -->
     <p class="category">{$gameStore.category} 🌍</p>
 
-<!-- 🔤 Phrase Display -->
-<section class="phrase-section">
-  <PhraseDisplay on:revealComplete={onPhraseRevealComplete} />
-</section>
-<!-- 💰 Bankroll Display -->
-<section class="stats-section">
-  <div class="bankroll-container">
-    <div class="bankroll-box">
-      <span class="currency">$</span>
-      {#each digits as d}
-        <FlipDigit digit={+d} />
-      {/each}
-    </div>
-  </div>
-</section>
+    <!-- 🔤 Phrase Display -->
+    <section class="phrase-section">
+      <PhraseDisplay on:revealComplete={onPhraseRevealComplete} />
+    </section>
 
-<!-- 🎚️ Wager Slider -->
-{#if wagerUIVisible}
-  <div class="wager-ui">
-    <div class="wager-row">
-      <div class="wager-label">
-        Wager<br /><span class="wager-amount">${sliderWagerAmount}</span>
+    <!-- 💰 Bankroll Display -->
+    <section class="stats-section">
+      <div class="bankroll-container">
+        <div class="bankroll-box">
+          <span class="currency">$</span>
+          {#each digits as d}
+            <FlipDigit digit={+d} />
+          {/each}
+        </div>
       </div>
-      
-      <input
-      type="range"
-      min="0"
-      max={$gameStore.bankroll}
-      step="1" 
-      bind:value={sliderWagerAmount}
-      class="wager-slider"
-    />
-          
-      <div class="wager-label">
-        To Win<br /><span class="wager-amount">${sliderWagerAmount * 2}</span>
-      </div>
-    </div>
-  </div>
-{/if}
+    </section>
 
-<!-- 🎮 Solve / Cancel Buttons -->
-<section class="buttons-section">
-  <GameButtons
-    bind:wagerUIVisible
-    bind:sliderWagerAmount
-    disabled={nextPuzzleAvailable}
-    on:setWagerUIVisible={(e) => wagerUIVisible = e.detail}
-    on:setSliderWagerAmount={(e) => sliderWagerAmount = e.detail}
-  />
-</section>
+    <!-- 🎚️ Wager UI -->
+    {#if wagerUIVisible}
+      <div class="wager-ui">
+        <div class="wager-row">
+          <div class="wager-label">
+            Wager<br /><span class="wager-amount">${sliderWagerAmount}</span>
+          </div>
+
+          <input
+            type="range"
+            min="0"
+            max={$gameStore.bankroll}
+            step="1"
+            bind:value={sliderWagerAmount}
+            class="wager-slider"
+            disabled={$gameStore.gameState === 'won' || $gameStore.gameState === 'lost'}
+          />
+
+          <div class="wager-label">
+            To Win<br /><span class="wager-amount">${sliderWagerAmount * 2}</span>
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    <!-- 🎮 Solve / Cancel Buttons -->
+    <section class="buttons-section">
+      <GameButtons
+        bind:wagerUIVisible
+        bind:sliderWagerAmount
+        disabled={$gameStore.gameState === 'won' || $gameStore.gameState === 'lost'}
+        on:setWagerUIVisible={(e) => wagerUIVisible = e.detail}
+        on:setSliderWagerAmount={(e) => sliderWagerAmount = e.detail}
+      />
+    </section>
 
     <!-- ⌨️ Keyboard Section -->
     <section class="keyboard-section">
       <Keyboard
-        disabled={nextPuzzleAvailable}
-        on:letterSelected={() => wagerUIVisible = false}
-      />
+        disabled={$gameStore.gameState === 'won' || $gameStore.gameState === 'lost'}
+        on:letterSelected={() => {
+          if ($gameStore.gameState !== 'guess_mode') {
+            wagerUIVisible = false;
+          }
+        }}
+              />
     </section>
 
     <!-- 🏆 Game Outcome Banner -->
     {#if $gameStore.gameState === "won"}
-          <div class="banner win">Winner!</div>
-      {#if !showResultModal}
-        {@html ''} <!-- Modal will be triggered below -->
-      {/if}
-      {:else if $gameStore.gameState === "lost"}
-            <div class="banner lose">Bankrupt!</div>
-      {#if !showResultModal}
-        {@html ''} <!-- Modal will be triggered below -->
-      {/if}
+      <div class="banner win">Winner!</div>
+    {:else if $gameStore.gameState === "lost"}
+      <div class="banner lose">Bankrupt!</div>
     {/if}
 
     <!-- 🎯 Result Modal -->
     {#if showResultModal && ['won', 'lost'].includes($gameStore.gameState)}
-    <div class="modal-overlay">
-      <div class="modal-content">
-        <h2>{$gameStore.gameState === 'won' ? '🎉 You Win!' : '💀 Game Over'}</h2>
-        <p>{$gameStore.gameState === 'won'
-          ? 'Great job! Want to try the next one?'
-          : 'You ran out of cash. Want to try again?'}</p>
-  
-        <div style="margin-top: 16px;">
-          <button class="next-puzzle-button" on:click={handlePlayAgain}>
-            {$gameStore.gameState === 'won' ? 'Next Puzzle' : 'Play Again'}
-          </button>
+      <div class="modal-overlay">
+        <div class="modal-content">
+          <h2>{$gameStore.gameState === 'won' ? '🎉 You Win!' : '💀 Game Over'}</h2>
+          <p>
+            {$gameStore.gameState === 'won'
+              ? 'Great job! Want to try the next one?'
+              : 'You ran out of cash. Want to try again?'}
+          </p>
+
+          <div style="margin-top: 16px;">
+<!-- ✅ Fixed version -->
+<button
+  class="next-puzzle-button"
+  on:click={$gameStore.gameState === 'won' ? handleNextPuzzle : handlePlayAgain}
+  disabled={!['won', 'lost'].includes($gameStore.gameState)}
+>
+  {$gameStore.gameState === 'won' ? 'Next Puzzle' : 'Play Again'}
+</button>
+          </div>
         </div>
       </div>
-    </div>
-  {/if}
     {/if}
+  {/if}
 </main>
 
 <style>

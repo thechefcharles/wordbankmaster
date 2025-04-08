@@ -1,5 +1,5 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { gameStore, confirmPurchase, submitGuess } from '$lib/stores/GameStore.js';
 
   export let wagerUIVisible;
@@ -7,7 +7,15 @@
 
   const dispatch = createEventDispatcher();
 
-  // Reactive state from the store
+  // ✅ Allow outside triggers to hide the slider
+  onMount(() => {
+    window.addEventListener('hideWagerSlider', () => {
+      dispatch('setWagerUIVisible', false);
+      dispatch('setSliderWagerAmount', 0);
+    });
+  });
+
+  // 🧠 Reactive state
   $: bankroll = $gameStore.bankroll;
   $: guessModeActive = $gameStore.gameState === 'guess_mode';
   $: purchasePending = !!$gameStore.selectedPurchase;
@@ -15,9 +23,8 @@
   $: showHintCost = hintPending;
   $: fundsLow = bankroll < 150;
   $: canConfirmWager = sliderWagerAmount > 0;
-  $: dualButtonMode = purchasePending || (wagerUIVisible && canConfirmWager);
 
-  // Check if all letters are guessed
+  // ✅ Detect full phrase input
   $: guessComplete = guessModeActive && (() => {
     const phrase = $gameStore.currentPhrase;
     for (let i = 0; i < phrase.length; i++) {
@@ -28,14 +35,19 @@
     return true;
   })();
 
-  // Button label logic
+  // 🔁 Button modes
+// ✅ Show dual buttons when a purchase is pending or guess is fully typed
+  $: dualButtonMode = purchasePending || (wagerUIVisible && guessComplete);
+  $: guessCancelOnlyMode = guessModeActive && !guessComplete;
+
+  // 🏷️ Main button label
   $: buttonLabel = purchasePending
     ? 'Confirm'
     : guessModeActive
       ? (guessComplete ? 'Submit' : 'Cancel')
       : (!canConfirmWager && wagerUIVisible ? 'Cancel' : 'Solve');
 
-  // Build dynamic button class string
+  // 🎨 Button classes
   $: buttonClass = [
     'guess-phrase-button',
     guessModeActive && !guessComplete ? 'exit-mode' : '',
@@ -43,50 +55,47 @@
     !canConfirmWager && wagerUIVisible ? 'exit-mode' : ''
   ].join(' ');
 
-  // Handles the main button logic
+  // 🎯 Main button logic
   function handleMainButtonClick() {
-    if (purchasePending) {
-      confirmPurchase();
-      return;
-    }
-
-    if (guessModeActive) {
-      if (guessComplete) {
-        submitGuess();
-      } else {
-        gameStore.update(state => ({
-          ...state,
-          gameState: 'default',
-          guessedLetters: {},
-          selectedPurchase: null
-        }));
-      }
-      return;
-    }
-
-    if (!wagerUIVisible) {
-      dispatch('setWagerUIVisible', true);
-      dispatch('setSliderWagerAmount', 0);
-      return;
-    }
-
-    if (!canConfirmWager) {
-      dispatch('setWagerUIVisible', false);
-      dispatch('setSliderWagerAmount', 0);
-      return;
-    }
-
-    gameStore.update(state => ({
-      ...state,
-      gameState: 'guess_mode',
-      wagerAmount: sliderWagerAmount,
-      selectedPurchase: null,
-      guessedLetters: {}
-    }));
-    dispatch('setWagerUIVisible', false);
+  if (purchasePending) {
+    // ✅ Confirm a letter or hint purchase
+    confirmPurchase();
+    return;
   }
 
-  // Hint button logic
+  if (guessModeActive && guessComplete) {
+    // ✅ Submit full guess
+    submitGuess();
+    dispatch('setWagerUIVisible', false);
+    dispatch('setSliderWagerAmount', 0);
+    return;
+  }
+
+  // 🆑 First time clicking Solve → show slider
+  if (!wagerUIVisible) {
+    dispatch('setWagerUIVisible', true);
+    dispatch('setSliderWagerAmount', 0);
+    return;
+  }
+
+  // ⛔ Cancel wager if slider is at zero
+  if (!canConfirmWager) {
+    dispatch('setWagerUIVisible', false);
+    dispatch('setSliderWagerAmount', 0);
+    return;
+  }
+
+  // 🟢 Enter guess mode with wager (but do NOT hide slider yet)
+  gameStore.update(state => ({
+    ...state,
+    gameState: 'guess_mode',
+    wagerAmount: sliderWagerAmount,
+    selectedPurchase: null,
+    guessedLetters: {}
+  }));
+}
+
+  // 💡 Toggle hint logic
   function toggleHintPurchase() {
     dispatch('setWagerUIVisible', false);
     dispatch('setSliderWagerAmount', 0);
@@ -105,7 +114,7 @@
 {/if}
 
 <div class="main-button-wrapper">
-  <!-- Hint Button -->
+  <!-- 💡 Hint Button -->
   <div class="hint-button-container">
     {#if showHintCost}
       <div class="cost-indicator">$150</div>
@@ -119,8 +128,8 @@
     </button>
   </div>
 
-  <!-- Solve or Confirm/Cancel -->
   {#if dualButtonMode}
+    <!-- ✅ Confirm (for purchase or guess) + Cancel buttons -->
     <div class="dual-button-container">
       <button
         class="cancel-button"
@@ -129,6 +138,7 @@
           dispatch('setSliderWagerAmount', 0);
           gameStore.update(state => ({
             ...state,
+            guessedLetters: {},
             selectedPurchase: null,
             gameState: 'default'
           }));
@@ -136,11 +146,33 @@
       >
         Cancel
       </button>
+
       <button class="confirm-button" on:click={handleMainButtonClick}>
-        Confirm
+        {purchasePending ? 'Confirm' : 'Submit'}
       </button>
     </div>
+
+  {:else if guessCancelOnlyMode}
+    <!-- 🔴 In guess mode with incomplete input -->
+    <div class="solve-button-container">
+      <button
+        class="guess-phrase-button exit-mode"
+        on:click={() => {
+          dispatch('setWagerUIVisible', false);
+          dispatch('setSliderWagerAmount', 0);
+          gameStore.update(state => ({
+            ...state,
+            guessedLetters: {},
+            gameState: 'default'
+          }));
+        }}
+      >
+        Cancel
+      </button>
+    </div>
+
   {:else}
+    <!-- 🔘 Default Solve Button -->
     <div class="solve-button-container">
       <button
         class={buttonClass}
@@ -150,7 +182,7 @@
       </button>
     </div>
   {/if}
-</div>
+</div> <!-- ✅ End main-button-wrapper -->
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
@@ -258,34 +290,45 @@
   font-size: 25px;
   font-weight: bold;
   text-transform: uppercase;
-  background: linear-gradient(180deg, #46a230, #318020);
+  background: linear-gradient(180deg, #46a230, #318020); /* Always green */
   color: white;
   border-radius: 8px;
-  border: 3px solid #2e9417;
+  border: 3px solid #2e9417; /* Green border */
   box-shadow: inset 2px 2px 5px rgba(255,255,255,0.3), 3px 3px 8px rgba(0,0,0,0.6);
   transition: background-color 0.3s, transform 0.2s;
 }
+
 .guess-phrase-button:hover {
   transform: translateY(-2px);
-  background: linear-gradient(180deg, #6b82f0, #4b63d2);
+  background: linear-gradient(180deg, #46a230, #318020); /* Keep it green on hover */
 }
+
 .guess-phrase-button:active {
   transform: translateY(2px);
-  background: linear-gradient(180deg, #3a52c4, #2a41a5);
+  background: linear-gradient(180deg, #46a230, #318020); /* Keep it green when active */
 }
+
 .guess-phrase-button.pending {
   animation: blinkDarkGreen 1s infinite;
 }
+
 .guess-phrase-button.guess-complete {
   animation: blinkGreen 1s infinite;
 }
+
 .guess-phrase-button.exit-mode {
-  background: linear-gradient(180deg, #ff2222, #aa0000);
+  background: linear-gradient(180deg, #ff2222, #aa0000); /* Red for exit mode */
   border: 3px solid darkred;
 }
+
 .guess-phrase-button.exit-mode:active {
   background: linear-gradient(180deg, #cc0000, #990000);
   transform: scale(0.95);
+}
+
+/* Dark mode adjustments */
+:global(body.dark-mode) .guess-phrase-button {
+  background: linear-gradient(180deg, #46a230, #318020); /* Keep it green in dark mode */
 }
 
 /* ---------------------------
