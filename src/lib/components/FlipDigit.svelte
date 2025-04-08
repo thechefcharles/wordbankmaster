@@ -53,7 +53,7 @@
       height: 40px;
       line-height: 40px;
       text-align: center;
-      font-size: 2rem;
+      font-size: 1.8rem;
       font-family: 'VT323', sans-serif; /* Arcade-style font */
     }
   </style>

@@ -197,7 +197,7 @@
 --------------------------- */
 .main-button-wrapper {
   position: fixed;
-  bottom: 20px;
+  bottom: 180px;
   left: 50%;
   transform: translateX(calc(-50% - 33px)); /* 25px for hint + 8px margin */
     display: flex;
@@ -239,7 +239,7 @@
 .solve-button-container,
 .dual-button-container {
   width: 230px;
-  height: 50px;
+  height: 40px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -294,7 +294,7 @@
   font-family: 'VT323', monospace;
   font-size: 22px;
   flex: 1;
-  height: 50px;
+  height: 40px;
   border-radius: 8px;
   transition: transform 0.2s ease;
   cursor: pointer;
