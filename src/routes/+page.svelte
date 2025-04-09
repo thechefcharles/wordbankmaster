@@ -26,13 +26,12 @@
   let showResultModal = false;
   let hasTriggeredModal = false;
 
-  // 🧠 Load user profile and update game store with bankroll
   async function loadUserProfile(userId) {
     try {
       const { data: profile, error } = await fetchUserProfile(userId);
       if (error) {
         console.error("Error fetching profile:", error.message);
-        return;
+        return null;
       }
       if (profile) {
         userProfile.set(profile);
@@ -40,24 +39,29 @@
           ...state,
           bankroll: profile.bankroll || 1000
         }));
+        return profile;
       }
+      return null;
     } catch (err) {
       console.error("Error loading user profile:", err.message);
+      return null;
     }
   }
 
-  // 🌐 On mount: verify session, load profile, sync bankroll, and fetch game
   onMount(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         user.set(session.user);
-        await loadUserProfile(session.user.id);
+        const profile = await loadUserProfile(session.user.id);
 
-        // 🔄 Sync bankroll from game store to Supabase
-        const currentBankroll = get(gameStore).bankroll;
-        await saveUserProfile({ id: session.user.id, bankroll: currentBankroll });
-        console.log("🔄 Synced bankroll to Supabase on refresh:", currentBankroll);
+        if (profile?.bankroll !== undefined) {
+          const currentBankroll = get(gameStore).bankroll;
+          if (profile.bankroll !== currentBankroll) {
+            await saveUserProfile({ id: session.user.id, bankroll: currentBankroll });
+            console.log("🔄 Synced bankroll to Supabase on refresh:", currentBankroll);
+          }
+        }
 
         fetchRandomGame();
       } else {
@@ -68,25 +72,20 @@
     }
   });
 
-  // SSR user fallback
   $: if (data?.user) {
     user.set(data.user);
     loadUserProfile(data.user.id);
   }
 
-  // Reactive state
   $: loggedIn = !!$user?.id;
   $: bankroll = $gameStore.bankroll || 0;
   $: digits = String(bankroll).split('');
   $: nextPuzzleAvailable = $gameStore.gameState === 'won' || $gameStore.gameState === 'lost';
   $: sliderLocked = $gameStore.gameState === 'guess_mode';
-
-
   $: if (loggedIn && $gameStore.currentPhrase === '') {
     fetchRandomGame();
   }
 
-  // 🌓 Dark mode
   const applyDarkMode = () => {
     document.body.classList.toggle('dark-mode', darkMode);
   };
@@ -111,14 +110,12 @@
     if (event.target.tagName === 'BUTTON') event.target.blur();
   };
 
-  // 🔓 Logout
   const handleLogout = async () => {
     await supabase.auth.signOut();
     user.set(null);
     location.reload();
   };
 
-  // 🔁 Reset full game after loss
   const handlePlayAgain = async () => {
     showResultModal = false;
     hasTriggeredModal = false;
@@ -155,7 +152,6 @@
     }
   };
 
-  // ➡️ Load next puzzle after a win
   const handleNextPuzzle = async () => {
     showResultModal = false;
     hasTriggeredModal = false;
@@ -192,7 +188,6 @@
     }
   };
 
-  // 🎯 Show result modal after win/loss
   const onPhraseRevealComplete = () => {
     if (!hasTriggeredModal && ['won', 'lost'].includes($gameStore.gameState)) {
       hasTriggeredModal = true;
@@ -202,7 +197,6 @@
     }
   };
 </script>
-
 <!-- 🔹 Top Control Buttons -->
 <div class="top-buttons">
   <!-- ❓ How to Play -->
