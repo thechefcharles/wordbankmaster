@@ -48,6 +48,8 @@
     }
 
     isLoading = false;
+
+    
   }
 
   // 🧾 Load profile from Supabase
@@ -72,10 +74,25 @@
       }));
     }
   }
+// 🧾 Sign In With Google
+  async function signInWithGoogle() {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google'
+  });
+
+  if (error) {
+    console.error('❌ Google Sign-In error:', error.message);
+  } else {
+    console.log('✅ Redirecting to Google login...');
+  }
+}
 </script>
 
 <div class="auth-container">
   <div class="auth-box">
+    <!-- 🟢 WordBank Logo -->
+    <img src="/1.png" alt="WordBank Logo" class="wordbank-logo" />
+
     <h2>{isLogin ? 'Login' : 'Sign Up'} to Play</h2>
 
     <input type="email" bind:value={email} placeholder="Email" />
@@ -83,6 +100,14 @@
 
     <button on:click={handleAuth} disabled={isLoading}>
       {isLoading ? 'Loading...' : (isLogin ? 'Login' : 'Sign Up')}
+    </button>
+
+    <div class="divider">or</div>
+
+    <!-- 🟥 Google Sign-In Button -->
+    <button class="google-btn" on:click={signInWithGoogle}>
+      <img src="/googlelogo.png" alt="Google icon" class="google-icon" />
+      Continue with Google
     </button>
 
     {#if errorMsg}
@@ -184,4 +209,48 @@
   :global(body.dark-mode) .toggle-mode button {
     color: #4da3ff;
   }
+  .wordbank-logo {
+  width: 280px;
+  max-width: 80%;
+  margin-bottom: 20px;
+  height: auto;
+}
+
+@media (max-width: 600px) {
+  .wordbank-logo {
+    width: 200px;
+  }
+}
+
+.google-btn {
+  background-color: #fff;
+  color: #444;
+  border: 2px solid #ccc;
+  padding: 10px;
+  width: 100%;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: background 0.2s ease;
+}
+
+.google-btn:hover {
+  background-color: #f1f1f1;
+}
+
+.google-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.divider {
+  margin: 20px 0;
+  font-size: 0.9rem;
+  color: #888;
+}
+
 </style>
