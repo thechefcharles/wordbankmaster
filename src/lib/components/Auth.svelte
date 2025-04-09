@@ -3,23 +3,17 @@
   import { user, userProfile } from '$lib/stores/userStore.js';
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
 
-  // ============================
-  // 🧾 Local State
-  // ============================
   let email = '';
   let password = '';
   let errorMsg = '';
   let isLoading = false;
   let isLogin = true;
 
-  // ============================
   // 🔐 Handle Auth (Login / Signup)
-  // ============================
   async function handleAuth() {
     isLoading = true;
-    errorMsg = '';  // Clear previous error messages
+    errorMsg = '';
 
-    // Validate input
     if (!email || !password) {
       errorMsg = 'Email and password are required.';
       isLoading = false;
@@ -27,95 +21,54 @@
     }
 
     try {
-      let authResponse;
       const authData = { email, password };
-
-      // Perform login or signup based on isLogin flag
-      if (isLogin) {
-        authResponse = await supabase.auth.signInWithPassword(authData);
-      } else {
-        authResponse = await supabase.auth.signUp(authData);
-      }
+      let authResponse = isLogin
+        ? await supabase.auth.signInWithPassword(authData)
+        : await supabase.auth.signUp(authData);
 
       const { data, error } = authResponse;
 
       if (error) {
+        console.error("❌ Error during signup or login:", error);
         errorMsg = error.message;
         isLoading = false;
         return;
       }
 
-      // ✅ Save authenticated user to store
       user.set(data.user);
 
-      // If new signup, create user profile if not already exists
-      if (!isLogin) {
-        await handleNewUserProfile(data.user.id);
-      }
-
-      // ✅ Fetch user profile after login/signup
+      // ✅ Load profile (which should be auto-created by trigger)
       await loadUserProfile(data.user.id);
 
-      // ✅ Fetch a random puzzle after successful login/signup
+      // ✅ Fetch a random puzzle
       await fetchRandomGame();
-
     } catch (err) {
+      console.error("❌ Unexpected error during auth:", err);
       errorMsg = err.message || 'Unexpected error occurred.';
     }
 
     isLoading = false;
   }
 
-  // Function to handle new user profile creation
-  async function handleNewUserProfile(userId) {
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    if (profileError && profileError.code === 'PGRST116') {
-      // If profile not found, create a new profile
-      const { error: insertError } = await supabase.from('profiles').insert({
-        id: userId,
-        bankroll: 1000,
-        games_played: 0,
-        games_won: 0,
-        games_lost: 0,
-        highest_streak: 0
-      });
-
-      if (insertError) {
-        errorMsg = insertError.message;
-        isLoading = false;
-        return;
-      }
-    } else if (profileError) {
-      errorMsg = profileError.message;
-      isLoading = false;
-      return;
-    }
-  }
-
-  // Function to load user profile from database and update stores
+  // 🧾 Load profile from Supabase
   async function loadUserProfile(userId) {
-    const { data: profile, error: profileErrorFetch } = await supabase
+    const { data: profile, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
 
-    if (profileErrorFetch) {
-      errorMsg = profileErrorFetch.message;
-      isLoading = false;
+    if (error) {
+      console.error("❌ Error fetching profile:", error.message);
+      errorMsg = error.message;
       return;
     }
 
     if (profile) {
-      userProfile.set(profile);  // Store the user profile
+      userProfile.set(profile);
       gameStore.update(state => ({
         ...state,
-        bankroll: profile.bankroll ?? 1000  // Use profile bankroll or default to 1000
+        bankroll: profile.bankroll ?? 1000
       }));
     }
   }
