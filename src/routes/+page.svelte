@@ -396,14 +396,19 @@
   }
 
   .bankroll-container {
+  position: fixed;
+  bottom: 320px; /* adjust this as needed to sit above the Solve button */
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 12px;
+  z-index: 1000;
 }
 
+
 .bankroll-box {
-  padding: 3px 5px;
+  padding: 3px 40px;
   font-size: 0.4rem;
   font-family: 'Orbitron', sans-serif;
   color: #fff;
@@ -705,14 +710,19 @@
   justify-content: center;
   align-items: center;
   position: fixed;
-  bottom: 245px; /* ✅ Sits just above bottom buttons */
+  bottom: 245px;
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
-  max-width: 360px; /* ✅ Slightly slimmer */
+  max-width: 360px;
   padding: 6px 10px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.1);
+
+  /* 🔧 NEW: Light mode border and shadow */
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #ccc;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+
   gap: 8px;
   z-index: 999;
 }
@@ -789,6 +799,13 @@
 :global(body.dark-mode) .wager-label {
   color: white;
 }
+
+:global(body.dark-mode) .wager-ui {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 255, 0, 0.2);
+}
+
 
 
 </style>
