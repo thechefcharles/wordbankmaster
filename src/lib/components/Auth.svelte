@@ -54,26 +54,29 @@
 
   // 🧾 Load profile from Supabase
   async function loadUserProfile(userId) {
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
 
-    if (error) {
-      console.error("❌ Error fetching profile:", error.message);
-      errorMsg = error.message;
-      return;
-    }
-
-    if (profile) {
-      userProfile.set(profile);
-      gameStore.update(state => ({
-        ...state,
-        bankroll: profile.bankroll ?? 1000
-      }));
-    }
+  if (error) {
+    console.error("❌ Error fetching profile:", error.message);
+    errorMsg = error.message;
+    return;
   }
+
+  if (profile) {
+    console.log("🧾 Loaded profile:", profile);
+
+    userProfile.set(profile);
+
+    gameStore.update(state => ({
+      ...state,
+      bankroll: profile.current_bankroll ?? 1000  // ✅ FIXED
+    }));
+  }
+}
 // 🧾 Sign In With Google
   async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({

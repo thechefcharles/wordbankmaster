@@ -27,50 +27,67 @@
   let hasTriggeredModal = false;
 
   async function loadUserProfile(userId) {
-    try {
-      const { data: profile, error } = await fetchUserProfile(userId);
-      if (error) {
-        console.error("Error fetching profile:", error.message);
-        return null;
-      }
-      if (profile) {
-        userProfile.set(profile);
-        gameStore.update(state => ({
-          ...state,
-          bankroll: profile.bankroll || 1000
-        }));
-        return profile;
-      }
-      return null;
-    } catch (err) {
-      console.error("Error loading user profile:", err.message);
+  try {
+    const { data: profile, error } = await fetchUserProfile(userId);
+
+    if (error) {
+      console.error("❌ Error fetching profile:", error.message);
       return null;
     }
+
+    if (!profile) {
+      console.warn(`⚠️ No profile found for user ID: ${userId}`);
+      return null;
+    }
+
+    userProfile.set(profile);
+
+    gameStore.update(state => ({
+      ...state,
+      bankroll: profile.current_bankroll ?? 1000  // ✅ fallback if null or undefined
+    }));
+
+    console.log("✅ User profile loaded and bankroll initialized");
+    return profile;
+
+  } catch (err) {
+    console.error("❌ Error loading user profile:", err.message);
+    return null;
   }
+}
 
   onMount(async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        user.set(session.user);
-        const profile = await loadUserProfile(session.user.id);
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
 
-        if (profile?.bankroll !== undefined) {
-          const currentBankroll = get(gameStore).bankroll;
-          if (profile.bankroll !== currentBankroll) {
-            await saveUserProfile({ id: session.user.id, bankroll: currentBankroll });
-            console.log("🔄 Synced bankroll to Supabase on refresh:", currentBankroll);
-          }
-        }
-
-        fetchRandomGame();
-      } else {
-        console.log("No user session found");
-      }
-    } catch (error) {
-      console.error("Error during session/profile fetch:", error.message);
+    if (!session || error) {
+      console.log("⛔ No user session found");
+      return;
     }
-  });
+
+    user.set(session.user);
+
+    const profile = await loadUserProfile(session.user.id);
+
+    if (profile?.current_bankroll !== undefined) {
+      const currentBankroll = get(gameStore).bankroll;
+
+      if (profile.current_bankroll !== currentBankroll) {
+        await saveUserProfile({
+          ...profile,
+          current_bankroll: currentBankroll
+        });
+        console.log("🔄 Synced bankroll to Supabase on refresh:", currentBankroll);
+      }
+    }
+
+    await fetchRandomGame();
+    console.log("🎮 Game initialized after login");
+    
+  } catch (err) {
+    console.error("❌ Error during session/profile fetch:", err.message);
+  }
+});
 
   $: if (data?.user) {
     user.set(data.user);

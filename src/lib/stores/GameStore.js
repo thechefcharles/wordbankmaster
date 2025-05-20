@@ -97,9 +97,9 @@ function checkLossCondition(state) {
     // ✅ Immediately save new bankroll to Supabase
     const currentUser = get(user);
     if (currentUser?.id) {
-      saveUserProfile({ id: currentUser.id, bankroll: 1000 });
+      saveUserProfile({ id: currentUser.id, current_bankroll: 1000 });
     }
-
+    
     return newState;
   }
 
@@ -245,7 +245,7 @@ export function confirmPurchase() {
 
       // Save updated bankroll to Supabase
       const currentUser = get(user);  // Get the current user from the store
-      saveUserProfile({ id: currentUser.id, bankroll: newBankroll });  // Correctly access the user id
+      saveUserProfile({ id: currentUser.id, current_bankroll: newBankroll });
 
       if (win) {
         setTimeout(() => launchConfetti(), 300);
@@ -292,7 +292,7 @@ export function confirmPurchase() {
 
       // Save updated bankroll to Supabase
       const currentUser = get(user);  // Get the current user from the store
-      saveUserProfile({ id: currentUser.id, bankroll: newBankroll });  // Correctly access the user id
+      saveUserProfile({ id: currentUser.id, current_bankroll: newBankroll });
 
       return checkLossCondition(newState);
     }
@@ -463,7 +463,7 @@ export function submitGuess() {
     // 💾 Save bankroll to Supabase
     const currentUser = get(user);
     if (currentUser?.id) {
-      saveUserProfile({ id: currentUser.id, bankroll: newBankroll });
+      saveUserProfile({ id: currentUser.id, current_bankroll: newBankroll });
     }
 
     if (allCorrect || win) {
