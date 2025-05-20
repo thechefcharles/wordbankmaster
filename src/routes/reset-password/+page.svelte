@@ -7,14 +7,16 @@
   let confirmPassword = '';
   let message = '';
   let token = '';
+  let refresh_token = '';
   let isTokenReady = false;
   let success = false;
 
   onMount(() => {
     const hash = window.location.hash;
-    const params = new URLSearchParams(hash.substring(1));
+    const params = new URLSearchParams(hash.slice(1)); // slice off the '#'
+
     token = params.get('access_token');
-    const refresh_token = params.get('refresh_token');
+    refresh_token = params.get('refresh_token');
 
     if (!token || !refresh_token) {
       message = '⛔ Invalid or missing reset token.';
@@ -26,19 +28,17 @@
       refresh_token
     }).then(({ error }) => {
       if (error) {
-        message = `❌ Failed to authenticate: ${error.message}`;
-        success = false;
+        message = `❌ Auth failed: ${error.message}`;
       } else {
         isTokenReady = true;
         message = '';
-        success = false;
       }
     });
   });
 
   async function updatePassword() {
     if (!password || !confirmPassword) {
-      message = '⚠️ Please enter and confirm your password.';
+      message = '⚠️ Please fill in both fields.';
       success = false;
       return;
     }
