@@ -2,6 +2,7 @@
   import { supabase } from '$lib/supabaseClient';
   import { user, userProfile } from '$lib/stores/userStore.js';
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
+  import { loadGameFromLocalStorage } from '$lib/stores/localGameUtils.js';
 
   let email = '';
   let password = '';
@@ -37,58 +38,63 @@
 
       user.set(data.user);
 
-      // ✅ Load profile (which should be auto-created by trigger)
+      // ✅ Load profile from Supabase
       await loadUserProfile(data.user.id);
 
-      // ✅ Fetch a random puzzle
-      await fetchRandomGame();
+      // ✅ Restore saved game or fetch a new one
+      const restored = loadGameFromLocalStorage();
+      if (!restored) {
+        await fetchRandomGame();
+      } else {
+        console.log("🔁 Game state restored after login");
+      }
+
     } catch (err) {
       console.error("❌ Unexpected error during auth:", err);
       errorMsg = err.message || 'Unexpected error occurred.';
     }
 
     isLoading = false;
-
-    
   }
 
   // 🧾 Load profile from Supabase
   async function loadUserProfile(userId) {
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
 
-  if (error) {
-    console.error("❌ Error fetching profile:", error.message);
-    errorMsg = error.message;
-    return;
+    if (error) {
+      console.error("❌ Error fetching profile:", error.message);
+      errorMsg = error.message;
+      return;
+    }
+
+    if (profile) {
+      console.log("🧾 Loaded profile:", profile);
+
+      userProfile.set(profile);
+
+      gameStore.update(state => ({
+        ...state,
+        bankroll: profile.current_bankroll ?? 1000
+      }));
+    }
   }
 
-  if (profile) {
-    console.log("🧾 Loaded profile:", profile);
-
-    userProfile.set(profile);
-
-    gameStore.update(state => ({
-      ...state,
-      bankroll: profile.current_bankroll ?? 1000  // ✅ FIXED
-    }));
-  }
-}
-// 🧾 Sign In With Google
+  // 🧾 Sign In With Google
   async function signInWithGoogle() {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google'
-  });
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google'
+    });
 
-  if (error) {
-    console.error('❌ Google Sign-In error:', error.message);
-  } else {
-    console.log('✅ Redirecting to Google login...');
+    if (error) {
+      console.error('❌ Google Sign-In error:', error.message);
+    } else {
+      console.log('✅ Redirecting to Google login...');
+    }
   }
-}
 </script>
 
 <div class="auth-container">

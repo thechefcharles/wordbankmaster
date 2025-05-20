@@ -1,14 +1,11 @@
-<svelte:head>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet" />
-</svelte:head>
-
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { browser } from '$app/environment';
   import { supabase } from '$lib/supabaseClient';
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
   import { user, userProfile, fetchUserProfile, saveUserProfile } from '$lib/stores/userStore.js';
+  import { saveGameToLocalStorage, loadGameFromLocalStorage, clearSavedGame } from '$lib/stores/localGameUtils.js';
+  import { gameWasRestored } from '$lib/stores/GameStateFlags.js';
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
   import Keyboard from '$lib/components/Keyboard.svelte';
   import GameButtons from '$lib/components/GameButtons.svelte';
@@ -25,69 +22,73 @@
   let sliderLocked = false;
   let showResultModal = false;
   let hasTriggeredModal = false;
+  let hasInitialized = false;
 
   async function loadUserProfile(userId) {
-  try {
-    const { data: profile, error } = await fetchUserProfile(userId);
+    try {
+      const { data: profile, error } = await fetchUserProfile(userId);
+      if (error) {
+        console.error("❌ Error fetching profile:", error.message);
+        return null;
+      }
 
-    if (error) {
-      console.error("❌ Error fetching profile:", error.message);
+      if (!profile) {
+        console.warn(`⚠️ No profile found for user ID: ${userId}`);
+        return null;
+      }
+
+      userProfile.set(profile);
+      gameStore.update(state => ({
+        ...state,
+        bankroll: profile.current_bankroll ?? 1000
+      }));
+
+      console.log("✅ User profile loaded and bankroll initialized");
+      return profile;
+
+    } catch (err) {
+      console.error("❌ Error loading user profile:", err.message);
       return null;
     }
-
-    if (!profile) {
-      console.warn(`⚠️ No profile found for user ID: ${userId}`);
-      return null;
-    }
-
-    userProfile.set(profile);
-
-    gameStore.update(state => ({
-      ...state,
-      bankroll: profile.current_bankroll ?? 1000  // ✅ fallback if null or undefined
-    }));
-
-    console.log("✅ User profile loaded and bankroll initialized");
-    return profile;
-
-  } catch (err) {
-    console.error("❌ Error loading user profile:", err.message);
-    return null;
   }
-}
 
   onMount(async () => {
-  try {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
 
-    if (!session || error) {
-      console.log("⛔ No user session found");
-      return;
-    }
-
-    user.set(session.user);
-
-    const profile = await loadUserProfile(session.user.id);
-
-    if (profile?.current_bankroll !== undefined) {
-      const currentBankroll = get(gameStore).bankroll;
-
-      if (profile.current_bankroll !== currentBankroll) {
-        await saveUserProfile({
-          ...profile,
-          current_bankroll: currentBankroll
-        });
-        console.log("🔄 Synced bankroll to Supabase on refresh:", currentBankroll);
+      if (!session || error) {
+        console.log("⛔ No user session found");
+        return;
       }
-    }
 
-    await fetchRandomGame();
-    console.log("🎮 Game initialized after login");
-    
-  } catch (err) {
-    console.error("❌ Error during session/profile fetch:", err.message);
-  }
-});
+      user.set(session.user);
+
+      const profile = await loadUserProfile(session.user.id);
+
+      if (profile?.current_bankroll !== undefined) {
+        const currentBankroll = get(gameStore).bankroll;
+        if (profile.current_bankroll !== currentBankroll) {
+          await saveUserProfile({ ...profile, current_bankroll: currentBankroll });
+          console.log("🔄 Synced bankroll to Supabase on refresh:", currentBankroll);
+        }
+      }
+
+      const restored = loadGameFromLocalStorage();
+      if (restored) {
+        gameWasRestored.set(true);
+        console.log("✅ Game restored from localStorage");
+      } else {
+        await fetchRandomGame();
+        console.log("📦 Loaded new puzzle (no saved game)");
+      }
+
+      await tick(); // wait for reactivity to settle
+      hasInitialized = true;
+
+    } catch (err) {
+      console.error("❌ Error during session/profile fetch:", err.message);
+    }
+  });
 
   $: if (data?.user) {
     user.set(data.user);
@@ -99,7 +100,15 @@
   $: digits = String(bankroll).split('');
   $: nextPuzzleAvailable = $gameStore.gameState === 'won' || $gameStore.gameState === 'lost';
   $: sliderLocked = $gameStore.gameState === 'guess_mode';
-  $: if (loggedIn && $gameStore.currentPhrase === '') {
+
+  // ✅ Reactive fetch only if not restored AND after init is done
+  $: if (
+    hasInitialized &&
+    loggedIn &&
+    $gameStore.currentPhrase === '' &&
+    !$gameWasRestored
+  ) {
+    console.log("🧨 Reactive block fetching new puzzle");
     fetchRandomGame();
   }
 
@@ -128,6 +137,8 @@
   };
 
   const handleLogout = async () => {
+    saveGameToLocalStorage();
+    gameWasRestored.set(false);
     await supabase.auth.signOut();
     user.set(null);
     location.reload();
@@ -140,32 +151,35 @@
     const newBankroll = 1000;
     const currentUser = get(user);
 
-    if (currentUser?.id) {
-      try {
-        await saveUserProfile({ id: currentUser.id, bankroll: newBankroll });
-
-        gameStore.set({
-          bankroll: newBankroll,
-          wagerAmount: 1,
-          category: '',
-          currentPhrase: '',
-          gameState: 'default',
-          purchasedLetters: [],
-          guessedLetters: {},
-          lockedLetters: {},
-          incorrectLetters: [],
-          selectedPurchase: null,
-          shakenLetters: [],
-          message: ''
-        });
-
-        await fetchRandomGame();
-        console.log("🔁 Game successfully reset after loss.");
-      } catch (err) {
-        console.error("❌ Failed to reset game or update bankroll:", err.message);
-      }
-    } else {
+    if (!currentUser?.id) {
       console.warn("⚠️ No user found during Play Again.");
+      return;
+    }
+
+    try {
+      await saveUserProfile({ id: currentUser.id, current_bankroll: newBankroll });
+      clearSavedGame();
+      gameWasRestored.set(false);
+
+      gameStore.set({
+        bankroll: newBankroll,
+        wagerAmount: 1,
+        category: '',
+        currentPhrase: '',
+        gameState: 'default',
+        purchasedLetters: [],
+        guessedLetters: {},
+        lockedLetters: {},
+        incorrectLetters: [],
+        selectedPurchase: null,
+        shakenLetters: [],
+        message: ''
+      });
+
+      await fetchRandomGame();
+      console.log("🔁 Game successfully reset after loss.");
+    } catch (err) {
+      console.error("❌ Failed to reset game or update bankroll:", err.message);
     }
   };
 
@@ -178,7 +192,9 @@
 
     if (currentUser?.id) {
       try {
-        await saveUserProfile({ id: currentUser.id, bankroll: currentBankroll });
+        await saveUserProfile({ id: currentUser.id, current_bankroll: currentBankroll });
+        clearSavedGame();
+        gameWasRestored.set(false);
 
         gameStore.set({
           bankroll: currentBankroll,
