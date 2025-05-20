@@ -32,7 +32,9 @@ export const gameStore = writable({
   incorrectLetters: [],
   selectedPurchase: null,
   shakenLetters: [],
-  message: ''
+  message: '',
+  subcategory: '', // 🧠 specific puzzle clue (ex: "Italian pasta dish")
+
 });
 
 /* ================================
@@ -508,14 +510,25 @@ export function submitGuess() {
 
 /**
  * fetchRandomGame
- * Pulls a new puzzle from the Supabase `get_random_puzzle` RPC,
+ * Pulls a random puzzle in the selected category from Supabase,
  * resets the game state, and saves it immediately.
+ *
+ * @param {string} category - The chosen category (e.g., "Food")
  */
-export async function fetchRandomGame() {
+export async function fetchRandomGame(category) {
   try {
-    const { data, error } = await supabase.rpc('get_random_puzzle').single();
-    if (error) throw error;
+    if (!category) {
+      throw new Error("No category provided to fetchRandomGame");
+    }
 
+    const { data, error } = await supabase
+    .rpc('get_random_puzzle_by_category', { category_text: category })
+    .maybeSingle(); // ✅ won’t throw if nothing returned
+  
+    if (error || !data) {
+      throw new Error("No puzzle found for category: " + category);
+    }
+    
     const currentBankroll = get(gameStore).bankroll;
 
     const newState = {
@@ -524,6 +537,7 @@ export async function fetchRandomGame() {
       category: data.category,
       currentPhrase: data.phrase.toUpperCase(),
       gameState: 'default',
+      subcategory: data.subcategory ?? '',
       purchasedLetters: [],
       guessedLetters: {},
       lockedLetters: {},
@@ -534,9 +548,9 @@ export async function fetchRandomGame() {
     };
 
     gameStore.set(newState);
-    saveGameToLocalStorage(); // 💾 Save puzzle immediately
+    saveGameToLocalStorage();
 
-    console.log(`✅ New game loaded and saved: ${data.phrase} [${data.category}]`);
+    console.log(`✅ New puzzle loaded: "${data.phrase}" (${data.subcategory}) in ${data.category}`);
   } catch (err) {
     console.error('❌ Error fetching puzzle:', err.message);
   }

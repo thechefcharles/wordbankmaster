@@ -3,6 +3,8 @@
   import { user, userProfile } from '$lib/stores/userStore.js';
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
   import { loadGameFromLocalStorage } from '$lib/stores/localGameUtils.js';
+  import { saveGameToLocalStorage } from '$lib/stores/localGameUtils.js';
+
 
   let email = '';
   let password = '';
@@ -10,7 +12,7 @@
   let isLoading = false;
   let isLogin = true;
 
-  // 🔐 Handle Auth (Login / Signup)
+  // 🔐 Login or Signup handler
   async function handleAuth() {
     isLoading = true;
     errorMsg = '';
@@ -22,17 +24,13 @@
     }
 
     try {
-      const authData = { email, password };
-      let authResponse = isLogin
-        ? await supabase.auth.signInWithPassword(authData)
-        : await supabase.auth.signUp(authData);
-
-      const { data, error } = authResponse;
+      const { data, error } = isLogin
+        ? await supabase.auth.signInWithPassword({ email, password })
+        : await supabase.auth.signUp({ email, password });
 
       if (error) {
-        console.error("❌ Error during signup or login:", error);
+        console.error("❌ Auth error:", error.message);
         errorMsg = error.message;
-        isLoading = false;
         return;
       }
 
@@ -41,23 +39,32 @@
       // ✅ Load profile from Supabase
       await loadUserProfile(data.user.id);
 
-      // ✅ Restore saved game or fetch a new one
+      // ✅ Restore saved game or fetch new puzzle
       const restored = loadGameFromLocalStorage();
+
       if (!restored) {
-        await fetchRandomGame();
+        const selectedCategory = localStorage.getItem('selectedCategory');
+        if (!selectedCategory) {
+          console.warn("⚠️ No category found. Redirecting...");
+          window.location.href = '/select';
+          return;
+        }
+
+        await fetchRandomGame(selectedCategory);
+        console.log("📦 New puzzle loaded in category:", selectedCategory);
       } else {
         console.log("🔁 Game state restored after login");
       }
 
     } catch (err) {
-      console.error("❌ Unexpected error during auth:", err);
+      console.error("❌ Unexpected error:", err);
       errorMsg = err.message || 'Unexpected error occurred.';
     }
 
     isLoading = false;
   }
 
-  // 🧾 Load profile from Supabase
+  // 🧾 Load user profile from Supabase
   async function loadUserProfile(userId) {
     const { data: profile, error } = await supabase
       .from('profiles')
@@ -66,33 +73,33 @@
       .single();
 
     if (error) {
-      console.error("❌ Error fetching profile:", error.message);
+      console.error("❌ Failed to fetch profile:", error.message);
       errorMsg = error.message;
       return;
     }
 
     if (profile) {
       console.log("🧾 Loaded profile:", profile);
-
       userProfile.set(profile);
 
       gameStore.update(state => ({
-        ...state,
-        bankroll: profile.current_bankroll ?? 1000
-      }));
+  ...state,
+  bankroll: profile.current_bankroll ?? 1000
+}));
+
+// 💾 Save corrected state with updated bankroll
+saveGameToLocalStorage();
     }
   }
 
-  // 🧾 Sign In With Google
+  // 🔓 Google OAuth login
   async function signInWithGoogle() {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google'
-    });
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
 
     if (error) {
-      console.error('❌ Google Sign-In error:', error.message);
+      console.error("❌ Google login error:", error.message);
     } else {
-      console.log('✅ Redirecting to Google login...');
+      console.log("✅ Redirecting to Google login...");
     }
   }
 </script>
