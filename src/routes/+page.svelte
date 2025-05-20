@@ -2,11 +2,17 @@
   import { onMount, tick } from 'svelte';
   import { browser } from '$app/environment';
   import { supabase } from '$lib/supabaseClient';
+  import { get } from 'svelte/store';
+
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
   import { user, userProfile, fetchUserProfile, saveUserProfile } from '$lib/stores/userStore.js';
-  import { saveGameToLocalStorage, loadGameFromLocalStorage, clearSavedGame } from '$lib/stores/localGameUtils.js';
+  import {
+    saveGameToLocalStorage,
+    loadGameFromLocalStorage,
+    clearSavedGame
+  } from '$lib/stores/localGameUtils.js';
   import { gameWasRestored } from '$lib/stores/GameStateFlags.js';
-  import { get } from 'svelte/store';
+
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
   import Keyboard from '$lib/components/Keyboard.svelte';
   import GameButtons from '$lib/components/GameButtons.svelte';
@@ -15,6 +21,7 @@
 
   export let data;
 
+  // UI state
   let showHowToPlay = false;
   let darkMode = false;
   let wagerUIVisible = false;
@@ -24,34 +31,30 @@
   let hasTriggeredModal = false;
   let hasInitialized = false;
 
-  // ✅ Load user profile and set bankroll
+  // ✅ Load Supabase user profile and sync bankroll
   async function loadUserProfile(userId) {
     try {
       const { data: profile, error } = await fetchUserProfile(userId);
       if (error || !profile) {
-        console.warn("⚠️ Profile load failed:", error?.message);
+        console.warn("⚠️ Failed to load profile:", error?.message);
         return null;
       }
 
       userProfile.set(profile);
       gameStore.update(state => ({
-  ...state,
-  bankroll: profile.current_bankroll ?? 1000
-}));
+        ...state,
+        bankroll: profile.current_bankroll ?? 1000
+      }));
 
-// 💾 Save corrected state with updated bankroll
-saveGameToLocalStorage();
-
-      console.log("✅ Profile and bankroll loaded");
+      console.log("✅ Profile loaded. Bankroll:", profile.current_bankroll);
       return profile;
-
     } catch (err) {
-      console.error("❌ loadUserProfile error:", err.message);
+      console.error("❌ Profile load error:", err.message);
       return null;
     }
   }
 
-  // ✅ Initial logic on mount
+  // ✅ Main logic on initial mount
   onMount(async () => {
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -62,37 +65,33 @@ saveGameToLocalStorage();
 
       user.set(session.user);
       const profile = await loadUserProfile(session.user.id);
-
-      // sync bankroll if mismatched
-      const currentBankroll = get(gameStore).bankroll;
-      if (profile && profile.current_bankroll !== currentBankroll) {
-        await saveUserProfile({ ...profile, current_bankroll: currentBankroll });
-      }
+      if (!profile) return;
 
       const restored = loadGameFromLocalStorage();
+
       if (restored) {
         gameWasRestored.set(true);
-        console.log("✅ Restored saved game");
+        console.log("🔁 Game restored from localStorage");
       } else {
-        const selectedCategory = localStorage.getItem('selectedCategory');
-        if (!selectedCategory) {
+        const category = localStorage.getItem('selectedCategory');
+        if (!category) {
           window.location.href = '/select';
           return;
         }
 
-        await fetchRandomGame(selectedCategory);
-        console.log("📦 New puzzle loaded:", selectedCategory);
+        await fetchRandomGame(category);
+        console.log("📦 Fetched new puzzle in:", category);
       }
 
-      await tick(); // let Svelte settle
+      await tick();
       hasInitialized = true;
 
     } catch (err) {
-      console.error("❌ Error in onMount:", err.message);
+      console.error("❌ Initialization error:", err.message);
     }
   });
 
-  // ✅ Reactive load fallback
+  // ✅ Reactive puzzle loader if puzzle is missing
   $: if (
     hasInitialized &&
     loggedIn &&
@@ -101,26 +100,37 @@ saveGameToLocalStorage();
   ) {
     const category = localStorage.getItem('selectedCategory');
     if (category) {
-      console.log("🧨 Fallback fetch:", category);
+      console.log("🧨 Reactive fetch triggered:", category);
       fetchRandomGame(category);
     } else {
-      console.warn("⚠️ Missing category, redirecting...");
       window.location.href = '/select';
     }
   }
 
+  // ✅ Set user from SSR if present
   $: if (data?.user) {
     user.set(data.user);
     loadUserProfile(data.user.id);
   }
 
+  // Reactive state values
   $: loggedIn = !!$user?.id;
   $: bankroll = $gameStore.bankroll || 0;
   $: digits = String(bankroll).split('');
   $: nextPuzzleAvailable = $gameStore.gameState === 'won' || $gameStore.gameState === 'lost';
   $: sliderLocked = $gameStore.gameState === 'guess_mode';
 
-  // ✅ Theme
+  // ✅ Auto-save whenever state is valid
+  $: if (
+    loggedIn &&
+    $gameStore.currentPhrase &&
+    $gameStore.category &&
+    $gameStore.purchasedLetters.length > 0
+  ) {
+    saveGameToLocalStorage();
+  }
+
+  // ✅ Dark mode init
   const applyDarkMode = () => {
     document.body.classList.toggle('dark-mode', darkMode);
   };
@@ -145,7 +155,7 @@ saveGameToLocalStorage();
     if (e.target.tagName === 'BUTTON') e.target.blur();
   };
 
-  // ✅ Log out and clear state
+  // ✅ Log out and persist game
   const handleLogout = async () => {
     saveGameToLocalStorage();
     gameWasRestored.set(false);
@@ -154,7 +164,6 @@ saveGameToLocalStorage();
     location.reload();
   };
 
-  // ✅ End game and redirect to /select
   const handlePlayAgain = async () => {
     showResultModal = false;
     hasTriggeredModal = false;
@@ -169,7 +178,6 @@ saveGameToLocalStorage();
     window.location.href = '/select';
   };
 
-  // ✅ Win and continue to new puzzle
   const handleNextPuzzle = async () => {
     showResultModal = false;
     hasTriggeredModal = false;
