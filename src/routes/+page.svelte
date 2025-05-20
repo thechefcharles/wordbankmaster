@@ -1,20 +1,17 @@
-<svelte:head>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet" />
-</svelte:head>
-
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { browser } from '$app/environment';
   import { supabase } from '$lib/supabaseClient';
   import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
   import { user, userProfile, fetchUserProfile, saveUserProfile } from '$lib/stores/userStore.js';
+  import { saveGameToLocalStorage, loadGameFromLocalStorage, clearSavedGame } from '$lib/stores/localGameUtils.js';
+  import { gameWasRestored } from '$lib/stores/GameStateFlags.js';
+  import { get } from 'svelte/store';
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
   import Keyboard from '$lib/components/Keyboard.svelte';
   import GameButtons from '$lib/components/GameButtons.svelte';
   import FlipDigit from '$lib/components/FlipDigit.svelte';
   import Auth from '$lib/components/Auth.svelte';
-  import { get } from 'svelte/store';
 
   export let data;
 
@@ -25,52 +22,92 @@
   let sliderLocked = false;
   let showResultModal = false;
   let hasTriggeredModal = false;
+  let hasInitialized = false;
 
+  // ✅ Load user profile and set bankroll
   async function loadUserProfile(userId) {
     try {
       const { data: profile, error } = await fetchUserProfile(userId);
-      if (error) {
-        console.error("Error fetching profile:", error.message);
+      if (error || !profile) {
+        console.warn("⚠️ Profile load failed:", error?.message);
         return null;
       }
-      if (profile) {
-        userProfile.set(profile);
-        gameStore.update(state => ({
-          ...state,
-          bankroll: profile.bankroll || 1000
-        }));
-        return profile;
-      }
-      return null;
+
+      userProfile.set(profile);
+      gameStore.update(state => ({
+  ...state,
+  bankroll: profile.current_bankroll ?? 1000
+}));
+
+// 💾 Save corrected state with updated bankroll
+saveGameToLocalStorage();
+
+      console.log("✅ Profile and bankroll loaded");
+      return profile;
+
     } catch (err) {
-      console.error("Error loading user profile:", err.message);
+      console.error("❌ loadUserProfile error:", err.message);
       return null;
     }
   }
 
+  // ✅ Initial logic on mount
   onMount(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        user.set(session.user);
-        const profile = await loadUserProfile(session.user.id);
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (!session || error) {
+        console.warn("⛔ No session found");
+        return;
+      }
 
-        if (profile?.bankroll !== undefined) {
-          const currentBankroll = get(gameStore).bankroll;
-          if (profile.bankroll !== currentBankroll) {
-            await saveUserProfile({ id: session.user.id, bankroll: currentBankroll });
-            console.log("🔄 Synced bankroll to Supabase on refresh:", currentBankroll);
-          }
+      user.set(session.user);
+      const profile = await loadUserProfile(session.user.id);
+
+      // sync bankroll if mismatched
+      const currentBankroll = get(gameStore).bankroll;
+      if (profile && profile.current_bankroll !== currentBankroll) {
+        await saveUserProfile({ ...profile, current_bankroll: currentBankroll });
+      }
+
+      const restored = loadGameFromLocalStorage();
+      if (restored) {
+        gameWasRestored.set(true);
+        console.log("✅ Restored saved game");
+      } else {
+        const selectedCategory = localStorage.getItem('selectedCategory');
+        if (!selectedCategory) {
+          window.location.href = '/select';
+          return;
         }
 
-        fetchRandomGame();
-      } else {
-        console.log("No user session found");
+        await fetchRandomGame(selectedCategory);
+        console.log("📦 New puzzle loaded:", selectedCategory);
       }
-    } catch (error) {
-      console.error("Error during session/profile fetch:", error.message);
+
+      await tick(); // let Svelte settle
+      hasInitialized = true;
+
+    } catch (err) {
+      console.error("❌ Error in onMount:", err.message);
     }
   });
+
+  // ✅ Reactive load fallback
+  $: if (
+    hasInitialized &&
+    loggedIn &&
+    $gameStore.currentPhrase === '' &&
+    !$gameWasRestored
+  ) {
+    const category = localStorage.getItem('selectedCategory');
+    if (category) {
+      console.log("🧨 Fallback fetch:", category);
+      fetchRandomGame(category);
+    } else {
+      console.warn("⚠️ Missing category, redirecting...");
+      window.location.href = '/select';
+    }
+  }
 
   $: if (data?.user) {
     user.set(data.user);
@@ -82,10 +119,8 @@
   $: digits = String(bankroll).split('');
   $: nextPuzzleAvailable = $gameStore.gameState === 'won' || $gameStore.gameState === 'lost';
   $: sliderLocked = $gameStore.gameState === 'guess_mode';
-  $: if (loggedIn && $gameStore.currentPhrase === '') {
-    fetchRandomGame();
-  }
 
+  // ✅ Theme
   const applyDarkMode = () => {
     document.body.classList.toggle('dark-mode', darkMode);
   };
@@ -106,86 +141,49 @@
     );
   });
 
-  const removeButtonFocus = (event) => {
-    if (event.target.tagName === 'BUTTON') event.target.blur();
+  const removeButtonFocus = (e) => {
+    if (e.target.tagName === 'BUTTON') e.target.blur();
   };
 
+  // ✅ Log out and clear state
   const handleLogout = async () => {
+    saveGameToLocalStorage();
+    gameWasRestored.set(false);
     await supabase.auth.signOut();
     user.set(null);
     location.reload();
   };
 
+  // ✅ End game and redirect to /select
   const handlePlayAgain = async () => {
     showResultModal = false;
     hasTriggeredModal = false;
 
-    const newBankroll = 1000;
     const currentUser = get(user);
+    if (!currentUser?.id) return;
 
-    if (currentUser?.id) {
-      try {
-        await saveUserProfile({ id: currentUser.id, bankroll: newBankroll });
-
-        gameStore.set({
-          bankroll: newBankroll,
-          wagerAmount: 1,
-          category: '',
-          currentPhrase: '',
-          gameState: 'default',
-          purchasedLetters: [],
-          guessedLetters: {},
-          lockedLetters: {},
-          incorrectLetters: [],
-          selectedPurchase: null,
-          shakenLetters: [],
-          message: ''
-        });
-
-        await fetchRandomGame();
-        console.log("🔁 Game successfully reset after loss.");
-      } catch (err) {
-        console.error("❌ Failed to reset game or update bankroll:", err.message);
-      }
-    } else {
-      console.warn("⚠️ No user found during Play Again.");
-    }
+    await saveUserProfile({ id: currentUser.id, current_bankroll: 1000 });
+    clearSavedGame();
+    gameWasRestored.set(false);
+    localStorage.removeItem('selectedCategory');
+    window.location.href = '/select';
   };
 
+  // ✅ Win and continue to new puzzle
   const handleNextPuzzle = async () => {
     showResultModal = false;
     hasTriggeredModal = false;
 
     const currentUser = get(user);
+    if (!currentUser?.id) return;
+
     const currentBankroll = get(gameStore).bankroll;
+    await saveUserProfile({ id: currentUser.id, current_bankroll: currentBankroll });
 
-    if (currentUser?.id) {
-      try {
-        await saveUserProfile({ id: currentUser.id, bankroll: currentBankroll });
-
-        gameStore.set({
-          bankroll: currentBankroll,
-          wagerAmount: 1,
-          category: '',
-          currentPhrase: '',
-          gameState: 'default',
-          purchasedLetters: [],
-          guessedLetters: {},
-          lockedLetters: {},
-          incorrectLetters: [],
-          selectedPurchase: null,
-          shakenLetters: [],
-          message: ''
-        });
-
-        await fetchRandomGame();
-        console.log("🎯 Next puzzle loaded");
-      } catch (err) {
-        console.error("❌ Failed to load next puzzle:", err.message);
-      }
-    } else {
-      console.warn("⚠️ No user found for next puzzle");
-    }
+    clearSavedGame();
+    gameWasRestored.set(false);
+    localStorage.removeItem('selectedCategory');
+    window.location.href = '/select';
   };
 
   const onPhraseRevealComplete = () => {
@@ -259,6 +257,10 @@
 
     <!-- 🌍 Category Display -->
     <p class="category">{$gameStore.category} 🌍</p>
+    {#if $gameStore.subcategory}
+  <p class="subcategory-hint"> {$gameStore.subcategory}</p>
+{/if}
+
 
     <!-- 🔤 Phrase Display -->
     <section class="phrase-section">
@@ -396,14 +398,19 @@
   }
 
   .bankroll-container {
+  position: fixed;
+  bottom: 320px; /* adjust this as needed to sit above the Solve button */
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 12px;
+  z-index: 1000;
 }
 
+
 .bankroll-box {
-  padding: 3px 5px;
+  padding: 3px 40px;
   font-size: 0.4rem;
   font-family: 'Orbitron', sans-serif;
   color: #fff;
@@ -705,14 +712,19 @@
   justify-content: center;
   align-items: center;
   position: fixed;
-  bottom: 245px; /* ✅ Sits just above bottom buttons */
+  bottom: 245px;
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
-  max-width: 360px; /* ✅ Slightly slimmer */
+  max-width: 360px;
   padding: 6px 10px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.1);
+
+  /* 🔧 NEW: Light mode border and shadow */
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #ccc;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+
   gap: 8px;
   z-index: 999;
 }
@@ -789,6 +801,21 @@
 :global(body.dark-mode) .wager-label {
   color: white;
 }
+
+:global(body.dark-mode) .wager-ui {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 255, 0, 0.2);
+}
+
+.subcategory-hint {
+  font-size: 1rem;
+  font-style: italic;
+  color: #999;
+  margin-bottom: 12px;
+}
+
+
 
 
 </style>

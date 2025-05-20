@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
 
 // 🧑 Authenticated Supabase user store
@@ -6,11 +6,15 @@ export const user = writable(null);
 
 // 🧾 Player profile store (stats & bankroll)
 export const userProfile = writable({
-  bankroll: 1000,
-  games_played: 0,
-  games_won: 0,
-  games_lost: 0,
-  highest_streak: 0,
+  current_bankroll: 1000,
+  total_games_played: 0,
+  total_games_won: 0,
+  total_games_lost: 0,
+  win_percentage: 0,
+  highest_cash_streak: 0,
+  most_puzzles_completed: 0,
+  total_cash_accrued: 0,
+  total_cash_spent: 0,
 });
 
 /**
@@ -28,22 +32,19 @@ export async function fetchUserProfile(userId) {
       .eq('id', userId)
       .single();
 
-    // Error handling
     if (error) {
       console.error("❌ Failed to fetch profile:", error.message);
       return { data: null, error };
     }
 
-    // If no profile found for the given userId
     if (!data) {
       const errMsg = `❌ No profile found for userId: ${userId}`;
       console.error(errMsg);
       return { data: null, error: new Error(errMsg) };
     }
 
-    // Successfully fetched profile
     console.log("✅ Profile loaded:", data);
-    userProfile.set(data);  // Update the userProfile store with the fetched data
+    userProfile.set(data);
     return { data, error: null };
   } catch (err) {
     console.error("❌ Error in fetching user profile:", err.message);
@@ -62,19 +63,49 @@ export async function saveUserProfile(updatedProfile) {
 
     const { error } = await supabase
       .from('profiles')
-      .upsert(updatedProfile); // ✅ Handles both insert and update
+      .upsert(updatedProfile);
 
-    // Error handling
     if (error) {
       console.error("❌ Failed to save profile:", error.message);
       return error;
     }
 
-    // Successfully saved the profile
     console.log("✅ Profile saved (inserted or updated):", updatedProfile);
-    return null; // No error
+    return null;
   } catch (err) {
     console.error("❌ Error in saving user profile:", err.message);
-    return err;  // Return the error if something goes wrong
+    return err;
+  }
+}
+
+/**
+ * 📊 Save daily stats (called after each puzzle or at end of session)
+ */
+export async function saveDailyStats({ puzzlesCompleted = 0, highestBankroll = 0, cashSpent = 0 }) {
+  const currentUser = get(user);
+
+  if (!currentUser?.id) {
+    console.warn('⛔ No user found when trying to save daily stats.');
+    return;
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('daily_stats')
+    .upsert({
+      user_id: currentUser.id,
+      date: today,
+      puzzles_completed: puzzlesCompleted,
+      highest_bankroll: highestBankroll,
+      cash_spent: cashSpent
+    }, {
+      onConflict: 'user_id,date'
+    });
+
+  if (error) {
+    console.error("❌ Error saving daily stats:", error.message);
+  } else {
+    console.log("✅ Daily stats saved:", data);
   }
 }

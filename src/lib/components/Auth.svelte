@@ -1,7 +1,8 @@
 <script>
   import { supabase } from '$lib/supabaseClient';
   import { user, userProfile } from '$lib/stores/userStore.js';
-  import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
+  import { gameStore } from '$lib/stores/GameStore.js';
+  import { saveGameToLocalStorage } from '$lib/stores/localGameUtils.js';
 
   let email = '';
   let password = '';
@@ -9,7 +10,10 @@
   let isLoading = false;
   let isLogin = true;
 
-  // 🔐 Handle Auth (Login / Signup)
+  let showReset = false;
+  let resetEmail = '';
+  let resetMsg = '';
+
   async function handleAuth() {
     isLoading = true;
     errorMsg = '';
@@ -21,38 +25,53 @@
     }
 
     try {
-      const authData = { email, password };
-      let authResponse = isLogin
-        ? await supabase.auth.signInWithPassword(authData)
-        : await supabase.auth.signUp(authData);
+      const { data, error } = isLogin
+        ? await supabase.auth.signInWithPassword({ email, password })
+        : await supabase.auth.signUp({ email, password });
 
-      const { data, error } = authResponse;
-
-      if (error) {
-        console.error("❌ Error during signup or login:", error);
-        errorMsg = error.message;
-        isLoading = false;
+      if (error || !data?.user?.id) {
+        errorMsg = error?.message || "Authentication failed.";
         return;
       }
 
       user.set(data.user);
 
-      // ✅ Load profile (which should be auto-created by trigger)
-      await loadUserProfile(data.user.id);
+      const profile = await loadUserProfile(data.user.id);
+      if (profile) {
+        window.location.href = '/';
+      }
 
-      // ✅ Fetch a random puzzle
-      await fetchRandomGame();
     } catch (err) {
-      console.error("❌ Unexpected error during auth:", err);
-      errorMsg = err.message || 'Unexpected error occurred.';
+      errorMsg = err.message || "Unexpected error.";
+    } finally {
+      isLoading = false;
     }
-
-    isLoading = false;
-
-    
   }
 
-  // 🧾 Load profile from Supabase
+  async function handlePasswordReset() {
+  resetMsg = '';
+
+  if (!resetEmail) {
+    resetMsg = 'Please enter your email.';
+    return;
+  }
+
+  const redirectUrl =
+    import.meta.env.DEV
+      ? 'http://localhost:5173/reset-password'
+      : 'https://wordbanksvelte1.vercel.app/reset-password';
+
+  const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+    redirectTo: redirectUrl
+  });
+
+  if (error) {
+    resetMsg = `❌ ${error.message}`;
+  } else {
+    resetMsg = '✅ Check your email to reset your password.';
+  }
+}
+
   async function loadUserProfile(userId) {
     const { data: profile, error } = await supabase
       .from('profiles')
@@ -60,32 +79,24 @@
       .eq('id', userId)
       .single();
 
-    if (error) {
-      console.error("❌ Error fetching profile:", error.message);
-      errorMsg = error.message;
-      return;
+    if (error || !profile) {
+      errorMsg = error?.message || "Profile not found.";
+      return null;
     }
 
-    if (profile) {
-      userProfile.set(profile);
-      gameStore.update(state => ({
-        ...state,
-        bankroll: profile.bankroll ?? 1000
-      }));
-    }
+    userProfile.set(profile);
+    gameStore.update(state => ({
+      ...state,
+      bankroll: profile.current_bankroll ?? 1000
+    }));
+
+    saveGameToLocalStorage();
+    return profile;
   }
-// 🧾 Sign In With Google
+
   async function signInWithGoogle() {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google'
-  });
-
-  if (error) {
-    console.error('❌ Google Sign-In error:', error.message);
-  } else {
-    console.log('✅ Redirecting to Google login...');
+    await supabase.auth.signInWithOAuth({ provider: 'google' });
   }
-}
 </script>
 
 <div class="auth-container">
@@ -93,33 +104,64 @@
     <!-- 🟢 WordBank Logo -->
     <img src="/1.png" alt="WordBank Logo" class="wordbank-logo" />
 
-    <h2>{isLogin ? 'Login' : 'Sign Up'} to Play</h2>
+    <h2>
+      {#if showReset}
+        Reset Password
+      {:else}
+        {isLogin ? 'Login' : 'Sign Up'} to Play
+      {/if}
+    </h2>
 
-    <input type="email" bind:value={email} placeholder="Email" />
-    <input type="password" bind:value={password} placeholder="Password" />
+    {#if showReset}
+      <input type="email" bind:value={resetEmail} placeholder="Your email" />
 
-    <button on:click={handleAuth} disabled={isLoading}>
-      {isLoading ? 'Loading...' : (isLogin ? 'Login' : 'Sign Up')}
-    </button>
-
-    <div class="divider">or</div>
-
-    <!-- 🟥 Google Sign-In Button -->
-    <button class="google-btn" on:click={signInWithGoogle}>
-      <img src="/googlelogo.png" alt="Google icon" class="google-icon" />
-      Continue with Google
-    </button>
-
-    {#if errorMsg}
-      <div class="error-text">{errorMsg}</div>
-    {/if}
-
-    <p class="toggle-mode">
-      {isLogin ? "Don't have an account?" : 'Already have an account?'}
-      <button type="button" on:click={() => isLogin = !isLogin}>
-        {isLogin ? 'Sign up here' : 'Log in here'}
+      <button on:click={handlePasswordReset} disabled={isLoading}>
+        {isLoading ? 'Sending...' : 'Send Reset Link'}
       </button>
-    </p>
+
+      {#if resetMsg}
+        <p class="reset-msg">{resetMsg}</p>
+      {/if}
+
+      <p class="toggle-mode">
+        <button type="button" on:click={() => showReset = false}>
+          ← Back to Login
+        </button>
+      </p>
+
+    {:else}
+      <input type="email" bind:value={email} placeholder="Email" />
+      <input type="password" bind:value={password} placeholder="Password" />
+
+      <button on:click={handleAuth} disabled={isLoading}>
+        {isLoading ? 'Loading...' : (isLogin ? 'Login' : 'Sign Up')}
+      </button>
+
+      <div class="divider">or</div>
+
+      <!-- 🟥 Google Sign-In Button -->
+      <button class="google-btn" on:click={signInWithGoogle}>
+        <img src="/googlelogo.png" alt="Google icon" class="google-icon" />
+        Continue with Google
+      </button>
+
+      {#if errorMsg}
+        <div class="error-text">{errorMsg}</div>
+      {/if}
+
+      <p class="toggle-mode">
+        <button type="button" on:click={() => showReset = true}>
+          Forgot Password?
+        </button>
+      </p>
+
+      <p class="toggle-mode">
+        {isLogin ? "Don't have an account?" : 'Already have an account?'}
+        <button type="button" on:click={() => isLogin = !isLogin}>
+          {isLogin ? 'Sign up here' : 'Log in here'}
+        </button>
+      </p>
+    {/if}
   </div>
 </div>
 
@@ -252,5 +294,28 @@
   font-size: 0.9rem;
   color: #888;
 }
+
+.reset-box {
+  margin-top: 1rem;
+}
+
+.reset-box input {
+  margin: 8px 0;
+  width: 100%;
+  padding: 10px;
+}
+
+.reset-box button {
+  background-color: dodgerblue;
+  margin-top: 8px;
+  padding: 10px;
+}
+
+.reset-msg {
+  font-size: 0.9rem;
+  color: #444;
+  margin-top: 6px;
+}
+
 
 </style>
