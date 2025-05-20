@@ -13,13 +13,17 @@
 
   onMount(() => {
     const hash = window.location.hash;
-    const params = new URLSearchParams(hash.slice(1)); // slice off the '#'
+    const params = new URLSearchParams(hash.slice(1));
 
     token = params.get('access_token');
     refresh_token = params.get('refresh_token');
 
+    console.log("🔍 Parsed access_token:", token);
+    console.log("🔍 Parsed refresh_token:", refresh_token);
+
     if (!token || !refresh_token) {
       message = '⛔ Invalid or missing reset token.';
+      console.warn(message);
       return;
     }
 
@@ -29,9 +33,11 @@
     }).then(({ error }) => {
       if (error) {
         message = `❌ Auth failed: ${error.message}`;
+        console.error("❌ setSession error:", error.message);
       } else {
         isTokenReady = true;
         message = '';
+        console.log("✅ Supabase session restored.");
       }
     });
   });
@@ -49,14 +55,17 @@
       return;
     }
 
+    console.log("🔐 Attempting password update...");
     const { error } = await supabase.auth.updateUser({ password });
 
     if (error) {
       message = `❌ ${error.message}`;
       success = false;
+      console.error("❌ Password update error:", error.message);
     } else {
       message = '✅ Password updated! Redirecting...';
       success = true;
+      console.log("✅ Password update successful.");
       setTimeout(() => goto('/'), 2000);
     }
   }
