@@ -5,6 +5,8 @@
 /**
  * Returns a formatted version of the phrase.
  * Example: breaks long phrases into multiple lines, formats case, etc.
+ * @param {string} phrase
+ * @param {number} [maxPerLine=14]
  */
 export function getFormattedPhrase(phrase, maxPerLine = 14) {
     if (!phrase) return [];
@@ -32,6 +34,9 @@ export function getFormattedPhrase(phrase, maxPerLine = 14) {
   /**
    * Converts a 2D word/letter index (wordIndex and charIndex)
    * into the correct global index of the full phrase string.
+   * @param {number} wordIndex
+   * @param {number} charIndex
+   * @param {string} phrase
    */
   export function getGlobalIndex(wordIndex, charIndex, phrase) {
     const words = phrase.split(' ');

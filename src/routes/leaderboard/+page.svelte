@@ -1,19 +1,26 @@
 <script>
+  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import {
     fetchDailyLeaderboard,
     fetchArcadeLeaderboard
   } from '$lib/stores/statsStore.js';
+
+  /** @typedef {{ rank?: number, display_name?: string, bankroll_left?: number, current_streak?: number, highest_streak?: number, total_played?: number, win_rate?: number }} DailyRow */
+  /** @typedef {{ rank?: number, display_name?: string, current_bankroll?: number, highest_bankroll?: number, current_streak?: number, highest_streak?: number, total_played?: number, win_rate?: number }} ArcadeRow */
 
   /** @type {'daily' | 'arcade'} */
   let mode = $state('daily');
   let dailyPeriod = $state('daily');
   /** @type {'bankroll' | 'streak' | 'highest_streak' | 'puzzles' | 'win_pct'} */
   let dailyOrderBy = $state('bankroll');
+  /** @type {DailyRow[]} */
   let dailyData = $state([]);
   let arcadePeriod = $state('all');
   /** @type {'bankroll' | 'highest_bankroll' | 'streak' | 'highest_streak' | 'puzzles' | 'win_pct'} */
   let arcadeOrderBy = $state('bankroll');
+  /** @type {ArcadeRow[]} */
   let arcadeData = $state([]);
   let loading = $state(true);
   let error = $state('');
@@ -59,6 +66,13 @@
     if (mode === 'arcade' && (arcadePeriod || arcadeOrderBy)) {
       loadArcade();
     }
+  });
+
+  // Open in daily tab when coming from daily finish (?mode=daily)
+  onMount(() => {
+    const modeParam = typeof window !== 'undefined' && $page.url.searchParams.get('mode');
+    if (modeParam === 'daily') mode = 'daily';
+    else if (modeParam === 'arcade') mode = 'arcade';
   });
 
   /** @param {unknown} n */
@@ -128,7 +142,7 @@
     </div>
   {/if}
 
-  <button class="back-btn" onclick={() => goto('/')}>← Back to Game</button>
+  <button class="back-btn" onclick={() => goto('/')}>← Return to main menu</button>
 
   {#if loading}
     <p class="loading">Loading...</p>
@@ -153,7 +167,7 @@
           </thead>
           <tbody>
             {#each dailyData as row}
-              <tr class={row.rank <= 3 ? 'top-three' : ''}>
+              <tr class={(row.rank ?? 0) <= 3 ? 'top-three' : ''}>
                 <td class="rank">
                   {#if row.rank === 1}🥇
                   {:else if row.rank === 2}🥈
@@ -192,7 +206,7 @@
           </thead>
           <tbody>
             {#each arcadeData as row}
-              <tr class={row.rank <= 3 ? 'top-three' : ''}>
+              <tr class={(row.rank ?? 0) <= 3 ? 'top-three' : ''}>
                 <td class="rank">
                   {#if row.rank === 1}🥇
                   {:else if row.rank === 2}🥈

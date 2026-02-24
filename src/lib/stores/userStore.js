@@ -1,10 +1,17 @@
 import { writable, get } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
 
+/**
+ * @typedef {{ id: string, [key: string]: unknown }} AppUser
+ * @typedef {{ id?: string, current_bankroll?: number, arcade_bankroll?: number, [key: string]: unknown }} ProfileData
+ */
+
 // 🧑 Authenticated Supabase user store
-export const user = writable(null);
+/** @type {import('svelte/store').Writable<AppUser | null>} */
+export const user = writable(/** @type {AppUser | null} */ (null));
 
 // 🧾 Player profile store (stats & bankroll)
+/** @type {import('svelte/store').Writable<ProfileData>} */
 export const userProfile = writable({
   current_bankroll: 1000,
   total_games_played: 0,
@@ -20,7 +27,7 @@ export const userProfile = writable({
 /**
  * 📥 Fetch the user profile from Supabase by userId
  * @param {string} userId - Supabase user ID
- * @returns {Promise<{ data: object, error: object }>} - User profile data or error
+ * @returns {Promise<{ data: ProfileData | null, error: Error | { message?: string } | null }>} - User profile data or error
  */
 export async function fetchUserProfile(userId) {
   try {
@@ -47,15 +54,15 @@ export async function fetchUserProfile(userId) {
     userProfile.set(data);
     return { data, error: null };
   } catch (err) {
-    console.error("❌ Error in fetching user profile:", err.message);
-    return { data: null, error: err };
+    console.error("❌ Error in fetching user profile:", err instanceof Error ? err.message : String(err));
+    return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
   }
 }
 
 /**
  * 💾 Save (insert or update) user profile data to Supabase
- * @param {object} updatedProfile - Updated profile object to insert or update
- * @returns {Promise<null | object>} - Returns error if any occurs during saving
+ * @param {ProfileData & { id: string }} updatedProfile - Updated profile object to insert or update
+ * @returns {Promise<null | Error | { message?: string }>} - Returns error if any occurs during saving
  */
 export async function saveUserProfile(updatedProfile) {
   try {
@@ -73,8 +80,8 @@ export async function saveUserProfile(updatedProfile) {
     console.log("✅ Profile saved (inserted or updated):", updatedProfile);
     return null;
   } catch (err) {
-    console.error("❌ Error in saving user profile:", err.message);
-    return err;
+    console.error("❌ Error in saving user profile:", err instanceof Error ? err.message : String(err));
+    return err instanceof Error ? err : new Error(String(err));
   }
 }
 

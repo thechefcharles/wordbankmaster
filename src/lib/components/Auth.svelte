@@ -34,7 +34,7 @@
         return;
       }
 
-      user.set(data.user);
+      user.set(/** @type {{ id: string }} */ (data.user));
 
       const profile = await loadUserProfile(data.user.id);
       if (profile) {
@@ -42,7 +42,7 @@
       }
 
     } catch (err) {
-      errorMsg = err.message || "Unexpected error.";
+      errorMsg = (err instanceof Error ? err.message : String(err)) || "Unexpected error.";
     } finally {
       isLoading = false;
     }
@@ -72,6 +72,7 @@
   }
 }
 
+  /** @param {string} userId */
   async function loadUserProfile(userId) {
     const { data: profile, error } = await supabase
       .from('profiles')
@@ -299,22 +300,6 @@
   margin: 20px 0;
   font-size: 0.9rem;
   color: #888;
-}
-
-.reset-box {
-  margin-top: 1rem;
-}
-
-.reset-box input {
-  margin: 8px 0;
-  width: 100%;
-  padding: 10px;
-}
-
-.reset-box button {
-  background-color: dodgerblue;
-  margin-top: 8px;
-  padding: 10px;
 }
 
 .reset-msg {

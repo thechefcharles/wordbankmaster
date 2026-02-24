@@ -72,6 +72,7 @@ export function saveGameToLocalStorage() {
       }
   
       parsed.gameMode = parsed.gameMode === 'practice' ? 'arcade' : (parsed.gameMode || 'arcade');
+      parsed.guessesRemaining = typeof parsed.guessesRemaining === 'number' ? parsed.guessesRemaining : 2;
       gameStore.set(parsed);
       console.log(`✅ Game state restored for user ${userId}:`, parsed);
       return true;
@@ -83,6 +84,27 @@ export function saveGameToLocalStorage() {
     }
   }
   
+  /**
+   * 📋 Peek at saved game without restoring (for menu labels: Resume daily/arcade)
+   * @param {string} userId
+   * @returns {{ gameMode: string, gameState: string } | null}
+   */
+  export function getSavedGameInfo(userId) {
+    if (!userId) return null;
+    const key = `wordbank_game_state_${userId}`;
+    const saved = localStorage.getItem(key);
+    if (!saved) return null;
+    try {
+      const parsed = JSON.parse(saved);
+      if (!parsed || typeof parsed.currentPhrase !== 'string' || !parsed.currentPhrase.trim()) return null;
+      const gameMode = parsed.gameMode === 'practice' ? 'arcade' : (parsed.gameMode || 'arcade');
+      const gameState = parsed.gameState || 'default';
+      return { gameMode, gameState };
+    } catch {
+      return null;
+    }
+  }
+
   /**
    * 🧹 Clear saved game from localStorage (scoped by user ID)
    */

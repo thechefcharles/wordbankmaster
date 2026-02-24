@@ -1,9 +1,11 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import { gameStore, confirmPurchase, submitGuess } from '$lib/stores/GameStore.js';
+  import { gameStore, confirmPurchase, submitGuess, selectExtraGuess } from '$lib/stores/GameStore.js';
 
-  export let wagerUIVisible;
-  export let sliderWagerAmount;
+  /** @type {boolean} */
+  export let wagerUIVisible = false;
+  /** @type {number} */
+  export let sliderWagerAmount = 0;
 
   const dispatch = createEventDispatcher();
 
@@ -21,7 +23,11 @@
   $: purchasePending = !!$gameStore.selectedPurchase;
   $: hintPending = $gameStore.selectedPurchase?.type === 'hint' && $gameStore.gameState === 'purchase_pending';
   $: showHintCost = hintPending;
+  $: extraGuessPending = $gameStore.selectedPurchase?.type === 'extra_guess' && $gameStore.gameState === 'purchase_pending';
+  $: showExtraGuessCost = extraGuessPending;
+  $: guessesRemaining = $gameStore.guessesRemaining ?? 2;
   $: fundsLow = bankroll < 150;
+  $: noGuessesLeft = guessesRemaining <= 0;
   $: canConfirmWager = sliderWagerAmount > 0;
   $: gameOver = $gameStore.gameState === 'won' || $gameStore.gameState === 'lost';
   $: buttonsDisabled = gameOver;
@@ -74,6 +80,10 @@
     }
 
     if (isDailyMode) {
+      if (noGuessesLeft) {
+        gameStore.update(s => ({ ...s, message: 'Buy another guess ($150)' }));
+        return;
+      }
       gameStore.update(state => ({
         ...state,
         gameState: 'guess_mode',
@@ -96,6 +106,11 @@
       return;
     }
 
+    if (noGuessesLeft) {
+      gameStore.update(s => ({ ...s, message: 'Buy another guess ($150)' }));
+      return;
+    }
+
     gameStore.update(state => ({
       ...state,
       gameState: 'guess_mode',
@@ -115,6 +130,12 @@
       }
       return { ...state, selectedPurchase: { type: 'hint' }, gameState: 'purchase_pending' };
     });
+  }
+
+  function toggleExtraGuessPurchase() {
+    dispatch('setWagerUIVisible', false);
+    dispatch('setSliderWagerAmount', 0);
+    selectExtraGuess();
   }
 </script>
 
@@ -196,6 +217,20 @@
       </button>
     </div>
   {/if}
+
+  <div class="guesses-button-container">
+    {#if showExtraGuessCost}
+      <div class="cost-indicator">$150</div>
+    {/if}
+    <button
+      class="guesses-button {fundsLow ? 'disabled-purchase' : ''} {extraGuessPending ? 'glow' : ''}"
+      on:click={toggleExtraGuessPurchase}
+      disabled={fundsLow || buttonsDisabled}
+      title="Guesses: {guessesRemaining}. $150 for another."
+    >
+      Guesses<br /><span class="guesses-count">{guessesRemaining}</span>
+    </button>
+  </div>
 </div>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
@@ -249,7 +284,7 @@
   position: fixed;
   bottom: 132px;
   left: 50%;
-  transform: translateX(calc(-50% - 28px)); /* hint + margin */
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -282,6 +317,41 @@
 .hint-button:hover { transform: translateY(-2px); }
 .hint-button:active { transform: translateY(2px); }
 .hint-button.glow { animation: softGlow 0.3s infinite alternate ease-in-out; border: 3px outset #0d3e01 !important; }
+
+/* ---------------------------
+   Guesses Button (blue, right of Solve)
+--------------------------- */
+.guesses-button-container {
+  position: relative;
+}
+.guesses-button {
+  width: 52px;
+  height: 40px;
+  border-radius: 8px;
+  background: radial-gradient(circle at 30% 30%, #4488ff, #0055bb 80%);
+  color: #fff;
+  font-family: 'VT323', sans-serif;
+  font-size: 14px;
+  font-weight: bold;
+  border: 2px solid #2266cc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+.guesses-button .guesses-count {
+  font-size: 18px;
+  display: block;
+}
+.guesses-button:hover { transform: translateY(-2px); }
+.guesses-button:active { transform: translateY(2px); }
+.guesses-button.glow {
+  box-shadow: 0 0 12px rgba(68, 136, 255, 0.8);
+  border-color: #66aaff;
+}
 
 /* ---------------------------
    Solve / Submit / Cancel Button

@@ -20,6 +20,7 @@ export const load = async ({ cookies }) => {
         set(name, value, options) {
           cookies.set(name, value, {
             ...options,
+            path: '/',
             httpOnly: true,
             sameSite: 'lax',
             secure: import.meta.env.PROD, // false in dev so cookies persist on http://localhost
@@ -28,6 +29,7 @@ export const load = async ({ cookies }) => {
         remove(name, options) {
           cookies.delete(name, {
             ...options,
+            path: '/',
             httpOnly: true,
             sameSite: 'lax',
             secure: import.meta.env.PROD,

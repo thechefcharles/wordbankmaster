@@ -10,9 +10,11 @@
   import {
     saveGameToLocalStorage,
     loadGameFromLocalStorage,
-    clearSavedGame
+    clearSavedGame,
+    getSavedGameInfo
   } from '$lib/stores/localGameUtils.js';
   import { gameWasRestored } from '$lib/stores/GameStateFlags.js';
+  import { goto } from '$app/navigation';
 
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
   import Keyboard from '$lib/components/Keyboard.svelte';
@@ -25,21 +27,30 @@
   // UI state
   let showHowToPlay = false;
   let darkMode = false;
+  /** @type {boolean} */
   let wagerUIVisible = false;
+  /** @type {number} */
   let sliderWagerAmount = 0;
   let sliderLocked = false;
   let showResultModal = false;
   let hasTriggeredModal = false;
   let hasInitialized = false;
+  /** @type {string | null} */
   let initError = null; // 🔍 Diagnostic: what failed during init
-  let dailyAlreadyPlayed = false;
+  /** Show main menu (Daily / Arcade / Leaderboard / My account) when true; game when false */
+  let showMainMenu = false;
+  /** When showing menu: can we show "Resume daily" / "Resume arcade"? */
+  let savedGameInfo = /** @type {{ gameMode: string, gameState: string } | null} */ (null);
+  /** When showing menu: has user already played daily today? */
+  let menuDailyPlayed = false;
 
   // ✅ Load Supabase user profile and sync bankroll (creates profile if missing)
+  /** @param {string} userId */
   async function loadUserProfile(userId) {
     try {
       const { data: profile, error } = await fetchUserProfile(userId);
       if (error || !profile) {
-        console.warn("⚠️ Failed to load profile:", error?.message);
+        console.warn("⚠️ Failed to load profile:", error?.message ?? error);
         // Auto-create profile for new users (no profile row yet)
         const createError = await saveUserProfile({ id: userId, arcade_bankroll: 1000 });
         if (createError) {
@@ -55,15 +66,15 @@
       }
 
       userProfile.set(profile);
-        gameStore.update(state => ({
+      gameStore.update(state => ({
         ...state,
         bankroll: profile.arcade_bankroll ?? 1000
       }));
 
-      console.log("✅ Profile loaded. Bankroll:", profile.current_bankroll);
+      console.log("✅ Profile loaded. Bankroll:", profile.current_bankroll ?? profile.arcade_bankroll);
       return profile;
     } catch (err) {
-      console.error("❌ Profile load error:", err.message);
+      console.error("❌ Profile load error:", err instanceof Error ? err.message : String(err));
       return null;
     }
   }
@@ -79,7 +90,7 @@
         return;
       }
 
-      user.set(session.user);
+      user.set(/** @type {{ id: string }} */ (session.user));
       const profile = await loadUserProfile(session.user.id);
       if (!profile) {
         initError = "Profile failed to load or create. Check Supabase profiles table and RLS policies.";
@@ -87,40 +98,32 @@
         return;
       }
 
-      const restored = loadGameFromLocalStorage();
+      const peek = getSavedGameInfo(session.user.id);
+      const inProgress = peek && peek.gameState !== 'won' && peek.gameState !== 'lost';
 
-      if (restored) {
-        gameWasRestored.set(true);
-        console.log("🔁 Game restored from localStorage");
-      } else {
-        const gameMode = localStorage.getItem('gameMode') || 'daily';
-        if (gameMode === 'practice') localStorage.setItem('gameMode', 'arcade');
-        if (gameMode === 'daily') {
-          const played = await hasPlayedDailyToday(session.user.id);
-          if (played) {
-            dailyAlreadyPlayed = true;
-            console.log("⏳ Already played daily today");
-          } else {
-            const ok = await fetchDailyGame();
-            if (!ok) {
-              initError = "Daily puzzle failed to load. Check Supabase RPC 'get_todays_puzzle'.";
-              console.warn("⛔", initError);
-            } else {
-              console.log("📦 Fetched daily puzzle");
-            }
-          }
+      if (inProgress) {
+        const restored = loadGameFromLocalStorage();
+        if (restored) {
+          gameWasRestored.set(true);
+          showMainMenu = false;
+          console.log("🔁 Game restored from localStorage");
         } else {
-          const category = localStorage.getItem('selectedCategory');
-          if (!category) {
-            window.location.href = '/select';
-            return;
-          }
+          showMainMenu = true;
+          savedGameInfo = peek;
+          menuDailyPlayed = await hasPlayedDailyToday(session.user.id);
+        }
+      } else {
+        showMainMenu = true;
+        savedGameInfo = peek;
+        menuDailyPlayed = await hasPlayedDailyToday(session.user.id);
+        // If they just came from /select with a category, start arcade instead of showing menu
+        const mode = localStorage.getItem('gameMode');
+        const category = localStorage.getItem('selectedCategory');
+        if (mode === 'arcade' && category) {
           const ok = await fetchRandomGame(category);
-          if (!ok) {
-            initError = "Arcade puzzle failed to load. Check Supabase RPC 'get_random_puzzle_by_category'.";
-            console.warn("⛔", initError);
-          } else {
-            console.log("📦 Fetched arcade puzzle in:", category);
+          if (ok) {
+            showMainMenu = false;
+            hasInitialized = true;
           }
         }
       }
@@ -129,18 +132,18 @@
       hasInitialized = true;
 
     } catch (err) {
-      initError = "Init error: " + (err?.message || String(err));
+      initError = "Init error: " + (err instanceof Error ? err.message : String(err));
       console.error("❌", initError);
     }
   });
 
-  // ✅ Reactive puzzle loader if puzzle is missing
+  // ✅ Reactive puzzle loader if puzzle is missing (skip when showing main menu)
   $: if (
     hasInitialized &&
     loggedIn &&
+    !showMainMenu &&
     $gameStore.currentPhrase === '' &&
-    !$gameWasRestored &&
-    !dailyAlreadyPlayed
+    !$gameWasRestored
   ) {
     const gameMode = localStorage.getItem('gameMode') || 'daily';
     if (gameMode === 'daily') {
@@ -154,14 +157,14 @@
           if (!ok) initError = "Arcade puzzle failed to load.";
         });
       } else {
-        window.location.href = '/select';
+        window.location.href = '/select/arcade';
       }
     }
   }
 
   // ✅ Set user from SSR if present (profile load happens once in onMount)
   $: if (data?.user) {
-    user.set(data.user);
+    user.set(/** @type {{ id: string }} */ (data.user));
   }
 
   // Reactive state values
@@ -188,7 +191,7 @@
 
   const toggleDarkMode = () => {
     darkMode = !darkMode;
-    localStorage.setItem('darkMode', darkMode);
+    localStorage.setItem('darkMode', String(darkMode));
     applyDarkMode();
   };
 
@@ -202,8 +205,9 @@
     );
   });
 
+  /** @param {Event} e */
   const removeButtonFocus = (e) => {
-    if (e.target.tagName === 'BUTTON') e.target.blur();
+    if (e.target && /** @type {HTMLElement} */ (e.target).tagName === 'BUTTON') /** @type {HTMLButtonElement} */ (e.target).blur();
   };
 
   // ✅ Log out and persist game
@@ -215,6 +219,66 @@
     location.reload();
   };
 
+  /** Start daily: resume if in progress, else show "already played" or fetch new daily */
+  async function handleMenuDaily() {
+    const currentUser = get(user);
+    if (!currentUser?.id) return;
+    if (savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost') {
+      loadGameFromLocalStorage();
+      gameWasRestored.set(true);
+      showMainMenu = false;
+      return;
+    }
+    if (menuDailyPlayed) {
+      showStreakMessage = true;
+      return;
+    }
+    localStorage.setItem('gameMode', 'daily');
+    const ok = await fetchDailyGame();
+    if (ok) {
+      hasInitialized = true;
+      showMainMenu = false;
+    } else {
+      initError = "Daily puzzle failed to load.";
+    }
+  }
+
+  /** Start or resume arcade: resume from save or go to arcade category select */
+  function handleMenuArcade() {
+    if (savedGameInfo?.gameMode === 'arcade' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost') {
+      loadGameFromLocalStorage();
+      gameWasRestored.set(true);
+      showMainMenu = false;
+      return;
+    }
+    goto('/select/arcade');
+  }
+
+  function handleMenuLeaderboard() {
+    goto('/leaderboard');
+  }
+
+  /** Return to main menu from game (saves and refreshes menu state) */
+  function goToMainMenu() {
+    const currentUser = get(user);
+    if (!currentUser?.id) return;
+    saveGameToLocalStorage();
+    savedGameInfo = getSavedGameInfo(currentUser.id);
+    showMainMenu = true;
+  }
+
+  let showMyAccount = false;
+  let showStreakMessage = false;
+  function handleMenuMyAccount() {
+    showMyAccount = true;
+  }
+  /** @param {KeyboardEvent} e */
+  function handleEscape(e) {
+    if (e.key !== 'Escape') return;
+    if (showMyAccount) showMyAccount = false;
+    if (showStreakMessage) showStreakMessage = false;
+  }
+
   const handlePlayAgain = async () => {
     showResultModal = false;
     hasTriggeredModal = false;
@@ -222,13 +286,18 @@
     const currentUser = get(user);
     if (!currentUser?.id) return;
 
-    if (get(gameStore).gameMode === 'arcade') {
+    const store = get(gameStore);
+    if (store.gameMode === 'arcade') {
       await saveUserProfile({ id: currentUser.id, arcade_bankroll: 1000 });
     }
     clearSavedGame();
     gameWasRestored.set(false);
     localStorage.removeItem('selectedCategory');
-    window.location.href = '/select';
+    if (store.gameMode === 'arcade') {
+      goto('/select/arcade');
+    } else {
+      goto('/leaderboard?mode=daily');
+    }
   };
 
   const handleNextPuzzle = async () => {
@@ -246,7 +315,11 @@
     clearSavedGame();
     gameWasRestored.set(false);
     localStorage.removeItem('selectedCategory');
-    window.location.href = '/select';
+    if (store.gameMode === 'arcade') {
+      goto('/select/arcade');
+    } else {
+      goto('/leaderboard?mode=daily');
+    }
   };
 
   const onPhraseRevealComplete = () => {
@@ -258,12 +331,20 @@
     }
   };
 </script>
+<svelte:window on:keydown={handleEscape} />
 <!-- 🔹 Top Control Buttons -->
 <div class="top-buttons">
   <!-- ❓ How to Play -->
   <button class="icon-button subtle-button" on:click={() => showHowToPlay = true}>
     ❓
   </button>
+
+  <!-- ☰ Main menu (only when in a puzzle) -->
+  {#if loggedIn && !showMainMenu}
+    <button class="icon-button subtle-button" title="Main menu" on:click={goToMainMenu}>
+      ☰
+    </button>
+  {/if}
 
   <!-- 🏆 Leaderboard -->
   {#if loggedIn}
@@ -319,13 +400,66 @@
     <div class="auth-screen">
       <Auth />
     </div>
-  {:else if dailyAlreadyPlayed}
-    <!-- ⏳ Already played daily today -->
-    <div class="daily-already-played">
-      <h2>📅 You've already played today's daily!</h2>
-      <p>Come back tomorrow for a new puzzle.</p>
-      <a href="/select" class="practice-link">Play Arcade Mode →</a>
+  {:else if showMainMenu}
+    <!-- 🏠 Main Menu (after sign-in) -->
+    <div class="main-menu">
+      <div class="logo-container">
+        <img src="/1.png" alt="WordBank Logo" class="wordbank-logo" />
+      </div>
+      <h1 class="main-menu-title">Main Menu</h1>
+      <div class="main-menu-buttons">
+        <button
+          class="main-menu-btn"
+          class:disabled={menuDailyPlayed && !(savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost')}
+          on:click={handleMenuDaily}
+        >
+          {#if savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost'}
+            Resume Daily Puzzle
+          {:else}
+            Daily Puzzle
+          {/if}
+        </button>
+        <button class="main-menu-btn" on:click={handleMenuArcade}>
+          {#if savedGameInfo?.gameMode === 'arcade' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost'}
+            Resume Arcade Mode
+          {:else}
+            Arcade Mode
+          {/if}
+        </button>
+        <button class="main-menu-btn" on:click={handleMenuLeaderboard}>
+          Leaderboard
+        </button>
+        <button class="main-menu-btn" on:click={handleMenuMyAccount}>
+          My Account
+        </button>
+      </div>
     </div>
+    <!-- Streak message (when Daily is disabled and user taps it) -->
+    {#if showStreakMessage}
+      <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Come back tomorrow">
+        <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showStreakMessage = false}></button>
+        <div class="modal-content main-menu-modal">
+          <button class="close-btn" on:click={() => showStreakMessage = false}>❌</button>
+          <h2>Come Back Tomorrow</h2>
+          <p class="streak-message">Come back tomorrow to continue your streak!</p>
+          <button class="main-menu-btn" on:click={() => showStreakMessage = false}>OK</button>
+        </div>
+      </div>
+    {/if}
+    <!-- My Account modal -->
+    {#if showMyAccount}
+      <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="My Account">
+        <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showMyAccount = false}></button>
+        <div class="modal-content main-menu-modal">
+          <button class="close-btn" on:click={() => showMyAccount = false}>❌</button>
+          <h2>My Account</h2>
+          {#if $user?.email}
+            <p class="account-email">{$user.email}</p>
+          {/if}
+          <button class="main-menu-btn" on:click={() => { showMyAccount = false; handleLogout(); }}>Log Out</button>
+        </div>
+      </div>
+    {/if}
   {:else}
     <!-- ✅ GAME UI (Visible only when logged in) -->
 
@@ -404,22 +538,20 @@
       <GameButtons
         bind:wagerUIVisible
         bind:sliderWagerAmount
-        disabled={$gameStore.gameState === 'won' || $gameStore.gameState === 'lost'}
         on:setWagerUIVisible={(e) => wagerUIVisible = e.detail}
         on:setSliderWagerAmount={(e) => sliderWagerAmount = e.detail}
       />
     </section>
 
-    <!-- ⌨️ Keyboard Section -->
+    <!-- ⌨️ Keyboard Section (keyboard disables itself via gameStore state) -->
     <section class="keyboard-section">
       <Keyboard
-        disabled={$gameStore.gameState === 'won' || $gameStore.gameState === 'lost'}
         on:letterSelected={() => {
           if ($gameStore.gameState !== 'guess_mode') {
             wagerUIVisible = false;
           }
         }}
-              />
+      />
     </section>
 
     <!-- 🏆 Game Outcome Banner -->
@@ -512,10 +644,6 @@
     padding: 0;
   }
 
-  .reset-button.hidden {
-    display: none;
-  }
-
   .diagnostic-banner {
     background: #ffebee;
     border: 2px solid #c62828;
@@ -546,31 +674,89 @@
     background: #b71c1c;
   }
 
-  .daily-already-played {
-    padding: 3rem 2rem;
+  /* Main menu (after sign-in) – same blue/green as game (hint + Solve) */
+  .main-menu {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+    gap: 1.5rem;
+  }
+  .main-menu .logo-container {
+    margin-top: 0;
+  }
+  .main-menu-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+    color: #0055bb;
+    text-shadow: 0 0 8px rgba(68, 136, 255, 0.4);
+  }
+  .main-menu-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+    max-width: 320px;
+  }
+  .main-menu-btn {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    padding: 0.9rem 1.25rem;
+    border-radius: 10px;
+    border: 2px solid #2e9417;
+    background: linear-gradient(180deg, #46a230, #318020);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: inset 1px 1px 4px rgba(255, 255, 255, 0.3), 2px 2px 6px rgba(0, 0, 0, 0.6);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .main-menu-btn:hover:not(:disabled):not(.disabled) {
+    transform: translateY(-2px);
+    background: linear-gradient(180deg, #4cb038, #368828);
+    box-shadow: inset 1px 1px 4px rgba(255, 255, 255, 0.35), 2px 2px 8px rgba(0, 0, 0, 0.5);
+  }
+  .main-menu-btn:disabled,
+  .main-menu-btn.disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background: linear-gradient(180deg, #6b6b6b, #4a4a4a);
+    border-color: #555;
+  }
+  .main-menu-modal {
     text-align: center;
   }
-  .daily-already-played h2 {
-    color: limegreen;
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
+  .main-menu-modal .main-menu-btn {
+    margin-top: 1rem;
   }
-  .daily-already-played p {
-    color: #666;
-    margin-bottom: 1.5rem;
+  .streak-message {
+    margin: 1rem 0 0 0;
+    font-size: 1.05rem;
+    color: #333;
   }
-  .practice-link {
-    display: inline-block;
-    padding: 0.75rem 1.5rem;
-    background: limegreen;
-    color: white;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: bold;
+  .account-email {
+    font-size: 0.95rem;
+    color: #888;
+    margin: 0.5rem 0 0 0;
   }
-  .practice-link:hover {
-    background: #45a049;
+  :global(body.dark-mode) .main-menu-title {
+    color: #66aaff;
+    text-shadow: 0 0 10px rgba(102, 170, 255, 0.5);
   }
+  :global(body.dark-mode) .main-menu-btn {
+    background: linear-gradient(180deg, #46a230, #318020);
+    border-color: #2e9417;
+  }
+  :global(body.dark-mode) .main-menu-btn:hover:not(:disabled):not(.disabled) {
+    background: linear-gradient(180deg, #4cb038, #368828);
+  }
+  :global(body.dark-mode) .main-menu-btn:disabled,
+  :global(body.dark-mode) .main-menu-btn.disabled {
+    background: linear-gradient(180deg, #5a5a5a, #3d3d3d);
+    border-color: #555;
+  }
+
   :global(body.dark-mode) .diagnostic-banner {
     background: rgba(255, 80, 80, 0.2);
     border-color: #ef5350;
@@ -652,20 +838,6 @@
     margin-bottom: 0;
   }
 
-  .bankroll-game-buttons-container {
-    position: fixed;
-    bottom: 118px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    z-index: 1000;
-  }
-
   :global(html, body) {
     overflow-x: hidden;
     touch-action: manipulation;
@@ -690,6 +862,7 @@
     color: limegreen;
     text-transform: uppercase;
     background: linear-gradient(45deg, green, limegreen);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     text-align: center;
@@ -718,6 +891,7 @@
     color: red;
     text-transform: uppercase;
     background: linear-gradient(45deg, red, black);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     text-align: center;
@@ -757,15 +931,19 @@
     background: transparent;
     border: none;
     text-decoration: none;
-    color: inherit;
     font-size: 20px;
     cursor: pointer;
-    color: rgba(255, 255, 255, 0.75);
+    color: rgba(0, 0, 0, 0.85);
     transition: color 0.3s ease, transform 0.2s ease, opacity 0.3s ease;
   }
 
+  :global(body.dark-mode) .icon-button,
+  :global(body.dark-mode) a.icon-button {
+    color: rgba(255, 255, 255, 0.95);
+  }
+
   .subtle-button {
-    opacity: 0.5;
+    opacity: 0.9;
   }
 
   .subtle-button:hover {
@@ -785,7 +963,14 @@
   align-items: center;
   z-index: 9999;
   /* Removed blur so puzzle stays sharp */
-}
+  }
+  .modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
 
   .modal-content {
     background: white;
@@ -799,6 +984,7 @@
     border: 3px solid #007bff;
     color: black;
     position: relative;
+    z-index: 1;
   }
 
   :global(body.dark-mode) .modal-content {
@@ -810,52 +996,6 @@
 
   .close-btn:hover {
     background: darkred;
-  }
-
-  .modal-title {
-    font-size: 24px;
-    font-weight: bold;
-    color: #007bff;
-    text-transform: uppercase;
-    text-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
-  }
-
-  .intro-text {
-    font-size: 16px;
-    color: #333;
-    margin-bottom: 10px;
-  }
-
-  .modal-list {
-    list-style-type: none;
-    padding: 0;
-    text-align: left;
-  }
-
-  .modal-list li {
-    font-size: 16px;
-    background: rgba(0, 0, 0, 0.05);
-    padding: 8px;
-    margin-bottom: 5px;
-    border-radius: 5px;
-    text-shadow: none;
-  }
-
-  :global(body.dark-mode) .modal-list li {
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .modal-footer {
-    font-size: 14px;
-    font-weight: bold;
-    color: black;
-    padding: 10px;
-    text-shadow: none;
-  }
-
-  :global(body.dark-mode) .modal-footer {
-    color: white;
-    text-shadow: 0 0 5px rgba(255, 255, 255, 0.4);
   }
 
   @keyframes fadeIn {
