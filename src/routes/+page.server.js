@@ -14,16 +14,16 @@ export const load = async ({ cookies }) => {
           cookies.set(name, value, {
             ...options,
             httpOnly: true,
-            sameSite: 'Lax',
-            secure: true,
+            sameSite: 'lax',
+            secure: import.meta.env.PROD, // false in dev so cookies persist on http://localhost
           });
         },
         remove(name, options) {
           cookies.delete(name, {
             ...options,
             httpOnly: true,
-            sameSite: 'Lax',
-            secure: true,
+            sameSite: 'lax',
+            secure: import.meta.env.PROD,
           });
         }
       }

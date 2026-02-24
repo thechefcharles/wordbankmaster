@@ -95,7 +95,13 @@
   }
 
   async function signInWithGoogle() {
-    await supabase.auth.signInWithOAuth({ provider: 'google' });
+    const redirectUrl = import.meta.env.DEV
+      ? 'http://localhost:5173/auth/callback'
+      : 'https://wordbanksvelte1.vercel.app/auth/callback';
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: redirectUrl }
+    });
   }
 </script>
 

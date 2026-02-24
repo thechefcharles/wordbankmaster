@@ -30,14 +30,26 @@
   let showResultModal = false;
   let hasTriggeredModal = false;
   let hasInitialized = false;
+  let initError = null; // 🔍 Diagnostic: what failed during init
 
-  // ✅ Load Supabase user profile and sync bankroll
+  // ✅ Load Supabase user profile and sync bankroll (creates profile if missing)
   async function loadUserProfile(userId) {
     try {
       const { data: profile, error } = await fetchUserProfile(userId);
       if (error || !profile) {
         console.warn("⚠️ Failed to load profile:", error?.message);
-        return null;
+        // Auto-create profile for new users (no profile row yet)
+        const createError = await saveUserProfile({ id: userId, current_bankroll: 1000 });
+        if (createError) {
+          console.error("❌ Failed to create profile:", createError);
+          return null;
+        }
+        const { data: newProfile } = await fetchUserProfile(userId);
+        if (!newProfile) return null;
+        userProfile.set(newProfile);
+        gameStore.update(state => ({ ...state, bankroll: 1000 }));
+        console.log("✅ Profile created. Bankroll: 1000");
+        return newProfile;
       }
 
       userProfile.set(profile);
@@ -56,16 +68,22 @@
 
   // ✅ Main logic on initial mount
   onMount(async () => {
+    initError = null;
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
       if (!session || error) {
-        console.warn("⛔ No session found");
+        initError = "No session (session: " + (session ? "yes" : "no") + ", error: " + (error?.message || "none") + ")";
+        console.warn("⛔", initError);
         return;
       }
 
       user.set(session.user);
       const profile = await loadUserProfile(session.user.id);
-      if (!profile) return;
+      if (!profile) {
+        initError = "Profile failed to load or create. Check Supabase profiles table and RLS policies.";
+        console.warn("⛔", initError);
+        return;
+      }
 
       const restored = loadGameFromLocalStorage();
 
@@ -79,15 +97,21 @@
           return;
         }
 
-        await fetchRandomGame(category);
-        console.log("📦 Fetched new puzzle in:", category);
+        const ok = await fetchRandomGame(category);
+        if (!ok) {
+          initError = "Puzzle fetch failed. Check Supabase RPC 'get_random_puzzle_by_category' and Network tab.";
+          console.warn("⛔", initError);
+        } else {
+          console.log("📦 Fetched new puzzle in:", category);
+        }
       }
 
       await tick();
       hasInitialized = true;
 
     } catch (err) {
-      console.error("❌ Initialization error:", err.message);
+      initError = "Init error: " + (err?.message || String(err));
+      console.error("❌", initError);
     }
   });
 
@@ -101,16 +125,17 @@
     const category = localStorage.getItem('selectedCategory');
     if (category) {
       console.log("🧨 Reactive fetch triggered:", category);
-      fetchRandomGame(category);
+      fetchRandomGame(category).then((ok) => {
+        if (!ok) initError = "Puzzle fetch failed. Check Supabase RPC and Network tab.";
+      });
     } else {
       window.location.href = '/select';
     }
   }
 
-  // ✅ Set user from SSR if present
+  // ✅ Set user from SSR if present (profile load happens once in onMount)
   $: if (data?.user) {
     user.set(data.user);
-    loadUserProfile(data.user.id);
   }
 
   // Reactive state values
@@ -263,6 +288,22 @@
       <img src="/1.png" alt="WordBank Logo" class="wordbank-logo" />
     </div>
 
+    <!-- 🔍 Diagnostic banner (shows when init failed) -->
+    {#if initError}
+      <div class="diagnostic-banner">
+        <strong>⚠️ Diagnostic:</strong> {initError}
+        <br />
+        <small>Open DevTools (F12) → Console for details.</small>
+        <button class="diagnostic-retry" on:click={() => { initError = null; location.reload(); }}>
+          Retry
+        </button>
+      </div>
+    {:else if loggedIn && hasInitialized && !$gameStore.currentPhrase && !$gameWasRestored}
+      <div class="diagnostic-banner info">
+        Loading puzzle… If this persists, check Console (F12).
+      </div>
+    {/if}
+
     <!-- 🌍 Category Display -->
     <p class="category">{$gameStore.category} 🌍</p>
     {#if $gameStore.subcategory}
@@ -403,6 +444,46 @@
 
   .reset-button.hidden {
     display: none;
+  }
+
+  .diagnostic-banner {
+    background: #ffebee;
+    border: 2px solid #c62828;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 12px 0;
+    text-align: left;
+    font-size: 0.9rem;
+    color: #b71c1c;
+    max-width: 100%;
+  }
+  .diagnostic-banner.info {
+    background: #e3f2fd;
+    border-color: #1976d2;
+    color: #0d47a1;
+  }
+  .diagnostic-retry {
+    margin-top: 8px;
+    padding: 6px 12px;
+    background: #c62828;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  .diagnostic-retry:hover {
+    background: #b71c1c;
+  }
+  :global(body.dark-mode) .diagnostic-banner {
+    background: rgba(255, 80, 80, 0.2);
+    border-color: #ef5350;
+    color: #ffcdd2;
+  }
+  :global(body.dark-mode) .diagnostic-banner.info {
+    background: rgba(33, 150, 243, 0.2);
+    border-color: #42a5f5;
+    color: #90caf9;
   }
 
   .bankroll-container {
