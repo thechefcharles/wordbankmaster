@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
+  import { get } from 'svelte/store';
   import {
     gameStore,
     selectLetter,
@@ -52,55 +53,76 @@
   }
 
   /**
-   * 🔹 Global key handling for accessibility and flow.
+   * 🔹 Global key handling: letters, Enter (submit), ESC (cancel), Backspace, Space.
    */
   function handleKeyDown(event: KeyboardEvent): void {
-    event.preventDefault();
+    const state = get(gameStore);
+    const gameOver = state.gameState === 'won' || state.gameState === 'lost';
     const key = event.key.toUpperCase();
 
-    gameStore.update(state => {
-      if (event.key === 'Enter') {
-        if (state.selectedPurchase) {
-          confirmPurchase();
-          return { ...state, gameState: "default" };
-        }
-        if (state.gameState === "guess_mode") {
-  submitGuess();
-  return state;
-}
-        if (!state.selectedPurchase && state.gameState !== "guess_mode") {
-          return { ...state, gameState: "guess_mode", guessedLetters: {} };
-        }
-        return state;
-      }
-
-      if (event.key === 'Backspace' || event.key === 'Delete') {
-        if (state.gameState === "guess_mode") {
-          deleteGuessLetter();
-        }
-        return state;
-      }
-
-      if (event.key === ' ' || event.code === 'Space') {
+    // ESC – Cancel: exit guess mode, clear purchase, hide wager
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      if (state.gameState === 'guess_mode') {
         enterGuessMode();
-        return state;
+        window.dispatchEvent(new CustomEvent('hideWagerSlider'));
+      } else if (state.selectedPurchase) {
+        gameStore.update(s => ({ ...s, selectedPurchase: null, gameState: 'default' }));
+      } else {
+        window.dispatchEvent(new CustomEvent('hideWagerSlider'));
       }
+      const active = document.activeElement;
+      if (active && active instanceof HTMLElement) active.blur();
+      return;
+    }
 
-      if (/^[A-Z]$/.test(key)) {
-        dispatch('letterSelected'); // ✅ Notify parent on keyboard letter
-        if (state.gameState === "guess_mode") {
-          inputGuessLetter(key);
-        } else {
-          selectLetter(key);
-        }
-        return state;
+    if (gameOver) return; // Don't handle letters/Enter when game is over
+
+    // Enter – Submit guess, confirm purchase, or enter guess mode
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (state.selectedPurchase) {
+        confirmPurchase();
+      } else if (state.gameState === 'guess_mode') {
+        submitGuess();
+      } else if (!state.selectedPurchase && state.gameState !== 'guess_mode') {
+        gameStore.update(s => ({ ...s, gameState: 'guess_mode', selectedPurchase: null, guessedLetters: {} }));
       }
+      const active = document.activeElement;
+      if (active && active instanceof HTMLElement) active.blur();
+      return;
+    }
 
-      return state;
-    });
+    // Backspace / Delete – Remove last guess letter
+    if (event.key === 'Backspace' || event.key === 'Delete') {
+      if (state.gameState === 'guess_mode') {
+        event.preventDefault();
+        deleteGuessLetter();
+      }
+      return;
+    }
 
-    const active = document.activeElement;
-    if (active && active instanceof HTMLElement) active.blur();
+    // Space – Toggle guess mode
+    if (event.key === ' ' || event.code === 'Space') {
+      event.preventDefault();
+      enterGuessMode();
+      const active = document.activeElement;
+      if (active && active instanceof HTMLElement) active.blur();
+      return;
+    }
+
+    // A–Z – Select letter (purchase or guess)
+    if (/^[A-Z]$/.test(key)) {
+      event.preventDefault();
+      dispatch('letterSelected');
+      if (state.gameState === 'guess_mode') {
+        inputGuessLetter(key);
+      } else {
+        selectLetter(key);
+      }
+      const active = document.activeElement;
+      if (active && active instanceof HTMLElement) active.blur();
+    }
   }
 
   onMount(() => {
