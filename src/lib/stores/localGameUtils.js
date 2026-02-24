@@ -71,6 +71,7 @@ export function saveGameToLocalStorage() {
         return false;
       }
   
+      parsed.gameMode = parsed.gameMode === 'practice' ? 'arcade' : (parsed.gameMode || 'arcade');
       gameStore.set(parsed);
       console.log(`✅ Game state restored for user ${userId}:`, parsed);
       return true;

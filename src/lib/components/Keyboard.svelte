@@ -191,10 +191,10 @@
     max-width: 600px;
     box-shadow: none !important; /* ❌ Removes any shadow */
     background: transparent !important; /* ❌ Ensures no background issue */
-    padding: 10px;
+    padding: 6px;
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 3px;
     z-index: 1000;
   }
   .keyboard-row {
@@ -204,7 +204,7 @@
     flex-wrap: nowrap;
   }
   body {
-    padding-bottom: 200px; /* Ensure space for the keyboard */
+    padding-bottom: 132px; /* Space for keyboard */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -214,9 +214,9 @@
      Key Styles
   --------------------------- */
   .key {
-    width: 70px;
-    height: 50px;
-    font-size: 14px;
+    width: 56px;
+    height: 40px;
+    font-size: 12px;
     font-weight: bold;
     border: 2px solid black;
     background-color: white;
@@ -259,7 +259,7 @@
   }
   .price {
     line-height: 1;
-    font-size: 10px;
+    font-size: 9px;
   }
 
   /* ---------------------------

@@ -6,9 +6,15 @@ export const GET = async ({ url, cookies }) => {
   const next = url.searchParams.get('next') ?? '/';
 
   if (code) {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Missing Supabase env vars on Vercel');
+      return redirect(303, '/');
+    }
     const supabase = createServerClient(
-      import.meta.env.VITE_SUPABASE_URL,
-      import.meta.env.VITE_SUPABASE_ANON_KEY,
+      supabaseUrl,
+      supabaseAnonKey,
       {
         cookies: {
           get(name) {

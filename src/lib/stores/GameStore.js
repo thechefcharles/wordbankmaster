@@ -6,6 +6,7 @@ import confetti from 'canvas-confetti';
 import { saveUserProfile } from '$lib/stores/userStore.js';
 import { user } from '$lib/stores/userStore.js';
 import { saveGameToLocalStorage } from '$lib/stores/localGameUtils.js';
+import { recordDailyResult, recordArcadeResult } from '$lib/stores/statsStore.js';
 
 
 
@@ -33,8 +34,8 @@ export const gameStore = writable({
   selectedPurchase: null,
   shakenLetters: [],
   message: '',
-  subcategory: '', // 🧠 specific puzzle clue (ex: "Italian pasta dish")
-
+  subcategory: '',
+  gameMode: 'daily' // 'daily' | 'arcade'
 });
 
 /* ================================
@@ -108,7 +109,11 @@ function checkLossCondition(state) {
   // 💾 Save to Supabase
   const currentUser = get(user);
   if (currentUser?.id) {
-    saveUserProfile({ id: currentUser.id, current_bankroll: resetBankroll });
+    if (state.gameMode === 'daily') {
+      recordDailyResult(currentUser.id, false, 0);
+    } else {
+      recordArcadeResult(currentUser.id, false, 0);
+    }
   }
 
   // 💾 Save to localStorage
@@ -259,12 +264,19 @@ export function confirmPurchase() {
       };
 
       const currentUser = get(user);
-      if (currentUser?.id) {
-        saveUserProfile({ id: currentUser.id, current_bankroll: newBankroll });
+      if (currentUser?.id && state.gameMode === 'arcade') {
+        saveUserProfile({ id: currentUser.id, arcade_bankroll: newBankroll });
       }
 
       finalState = checkLossCondition(newState);
 
+      if (win) {
+        const u = get(user);
+        if (u?.id) {
+          if (state.gameMode === 'daily') recordDailyResult(u.id, true, newBankroll);
+          else recordArcadeResult(u.id, true, newBankroll);
+        }
+      }
       if (win) {
         setTimeout(() => launchConfetti(), 300);
       }
@@ -307,8 +319,8 @@ export function confirmPurchase() {
       };
 
       const currentUser = get(user);
-      if (currentUser?.id) {
-        saveUserProfile({ id: currentUser.id, current_bankroll: newBankroll });
+      if (currentUser?.id && state.gameMode === 'arcade') {
+        saveUserProfile({ id: currentUser.id, arcade_bankroll: newBankroll });
       }
 
       finalState = checkLossCondition(newState);
@@ -421,7 +433,7 @@ export function submitGuess() {
     if (state.gameState !== "guess_mode") return state;
 
     const phrase = state.currentPhrase;
-    const wager = state.wagerAmount || 1;
+    const wager = state.gameMode === 'daily' ? 0 : (state.wagerAmount || 1);
 
     // 🔍 Abort if any guess slot is empty
     for (let i = 0; i < phrase.length; i++) {
@@ -471,7 +483,9 @@ export function submitGuess() {
     const win =
       phrase.length > 0 &&
       phrase.split('').every((ch, i) => ch === ' ' || newPurchased[i] === ch);
-    const bankrollChange = (allCorrect || win) ? wager : -wager;
+    const bankrollChange = state.gameMode === 'daily'
+      ? 0
+      : ((allCorrect || win) ? wager : -wager);
     const newBankroll = state.bankroll + bankrollChange;
 
     const newState = {
@@ -484,16 +498,21 @@ export function submitGuess() {
       bankroll: newBankroll
     };
 
-    // 💾 Sync to Supabase
+    // 💾 Sync to Supabase (arcade: persist during play; final save via recordArcadeResult on win)
     const currentUser = get(user);
-    if (currentUser?.id) {
-      saveUserProfile({ id: currentUser.id, current_bankroll: newBankroll });
+    if (currentUser?.id && state.gameMode === 'arcade') {
+      saveUserProfile({ id: currentUser.id, arcade_bankroll: newBankroll });
     }
 
     // 💾 Save to localStorage
     saveGameToLocalStorage();
 
     if (allCorrect || win) {
+      const u = get(user);
+      if (u?.id) {
+        if (state.gameMode === 'daily') recordDailyResult(u.id, true, newBankroll);
+        else recordArcadeResult(u.id, true, newBankroll);
+      }
       console.log("✅ Correct guess! Wager won.");
       setTimeout(() => launchConfetti(), 300);
     } else {
@@ -544,14 +563,18 @@ export async function fetchRandomGame(category) {
       return false;
     }
     
-    const currentBankroll = get(gameStore).bankroll;
+    const { data: profile } = await supabase.from('profiles').select('arcade_bankroll').eq('id', get(user)?.id).maybeSingle();
+    const arcadeBankroll = profile?.arcade_bankroll ?? 1000;
+    const startingBankroll = arcadeBankroll > 0 ? arcadeBankroll : 1000;
 
     const newState = {
-      bankroll: currentBankroll,
+      ...get(gameStore),
+      bankroll: startingBankroll,
       wagerAmount: 1,
       category: data.category,
       currentPhrase: data.phrase.toUpperCase(),
       gameState: 'default',
+      gameMode: 'arcade',
       subcategory: data.subcategory ?? '',
       purchasedLetters: [],
       guessedLetters: {},
@@ -565,10 +588,49 @@ export async function fetchRandomGame(category) {
     gameStore.set(newState);
     saveGameToLocalStorage();
 
-    console.log(`✅ New puzzle loaded: "${data.phrase}" (${data.subcategory}) in ${data.category}`);
+    console.log(`✅ Arcade puzzle loaded: "${data.phrase}" (${data.subcategory}) in ${data.category}`);
     return true;
   } catch (err) {
     console.error('❌ Error fetching puzzle:', err.message);
+    return false;
+  }
+}
+
+/**
+ * fetchDailyGame - Fetches today's daily puzzle (same for everyone). Always starts with $1000.
+ */
+export async function fetchDailyGame() {
+  try {
+    const { data, error } = await supabase.rpc('get_todays_puzzle').maybeSingle();
+    if (error || !data) {
+      console.error('❌ Error fetching daily puzzle:', error);
+      return false;
+    }
+
+    const newState = {
+      ...get(gameStore),
+      bankroll: 1000,
+      wagerAmount: 1,
+      category: data.category,
+      currentPhrase: data.phrase.toUpperCase(),
+      gameState: 'default',
+      gameMode: 'daily',
+      subcategory: data.subcategory ?? '',
+      purchasedLetters: [],
+      guessedLetters: {},
+      lockedLetters: {},
+      incorrectLetters: [],
+      selectedPurchase: null,
+      shakenLetters: [],
+      message: ''
+    };
+
+    gameStore.set(newState);
+    saveGameToLocalStorage();
+    console.log(`✅ Daily puzzle loaded: "${data.phrase}"`);
+    return true;
+  } catch (err) {
+    console.error('❌ Error fetching daily puzzle:', err.message);
     return false;
   }
 }
