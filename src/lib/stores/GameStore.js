@@ -206,6 +206,9 @@ export function confirmPurchase() {
     let newBankroll = state.bankroll;
     let newShakenLetters = new Set(state.shakenLetters || []);
 
+    // Bail if no puzzle loaded (prevents bogus purchases and auto-win)
+    if (!phrase || phrase.trim().length === 0) return state;
+
     // === Handle Letter Purchase ===
     if (purchase.type === 'letter') {
       const letter = purchase.value;
@@ -235,9 +238,13 @@ export function confirmPurchase() {
         if (ch === letter) acc.push(i);
         return acc;
       }, []);
-      newLockedLetters[letter] = indices.every(idx => newPurchased[idx] === letter);
+      // Only set true when letter is in phrase; [].every() returns true (vacuous), which wrongly turned wrong letters green
+      newLockedLetters[letter] = indices.length > 0 && indices.every(idx => newPurchased[idx] === letter);
 
-      const win = phrase.split('').every((ch, i) => ch === ' ' || newPurchased[i] === ch);
+      // Guard: empty phrase must not count as win ([].every returns true vacuously)
+      const win =
+        phrase.length > 0 &&
+        phrase.split('').every((ch, i) => ch === ' ' || newPurchased[i] === ch);
       newBankroll -= cost;
 
       const newState = {
@@ -460,7 +467,10 @@ export function submitGuess() {
     // 💥 Shake animation
     correctIndexes.forEach(idx => newShakenLetters.add(idx));
 
-    const win = phrase.split('').every((ch, i) => ch === ' ' || newPurchased[i] === ch);
+    // Guard: empty phrase must not count as win
+    const win =
+      phrase.length > 0 &&
+      phrase.split('').every((ch, i) => ch === ' ' || newPurchased[i] === ch);
     const bankrollChange = (allCorrect || win) ? wager : -wager;
     const newBankroll = state.bankroll + bankrollChange;
 
@@ -525,8 +535,13 @@ export async function fetchRandomGame(category) {
     .rpc('get_random_puzzle_by_category', { category_text: category })
     .maybeSingle(); // ✅ won’t throw if nothing returned
   
-    if (error || !data) {
-      throw new Error("No puzzle found for category: " + category);
+    if (error) {
+      console.error('❌ Supabase RPC error:', error.message, error);
+      return false;
+    }
+    if (!data) {
+      console.error('❌ No puzzle returned for category:', category);
+      return false;
     }
     
     const currentBankroll = get(gameStore).bankroll;
@@ -551,8 +566,10 @@ export async function fetchRandomGame(category) {
     saveGameToLocalStorage();
 
     console.log(`✅ New puzzle loaded: "${data.phrase}" (${data.subcategory}) in ${data.category}`);
+    return true;
   } catch (err) {
     console.error('❌ Error fetching puzzle:', err.message);
+    return false;
   }
 }
 

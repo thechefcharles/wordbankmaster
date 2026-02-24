@@ -164,27 +164,27 @@
     text-align: center;
   }
   .letter-box {
-    width: 50px;
-    height: 50px;
-    padding: 0px;
-    flex-grow: 1;
-    max-width: 50px; /* Prevents it from getting too big */
-    height: auto; /* Adjust height automatically */
+    width: 48px;
+    min-width: 48px;
+    height: 52px;
+    min-height: 52px;
+    padding: 0;
+    flex-shrink: 0; /* Prevent collapse when empty */
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
     border: 2px solid #453d3d;
-    background-color: #fff;
+    background: linear-gradient(145deg, #dfe6e9, #ffffff);
     font-size: 24px;
     font-weight: bold;
-    border-radius: 5px;
-    box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.3);
-    word-break: break-word;
-    overflow-wrap: break-word;
+    border-radius: 8px;
+    box-shadow:
+      inset 2px 2px 4px rgba(255, 255, 255, 0.8),
+      2px 2px 4px rgba(0, 0, 0, 0.2),
+      0 0 0 1px rgba(0, 0, 0, 0.05);
     color: black;
-    background: linear-gradient(145deg, #dfe6e9, #ffffff);
-
+    box-sizing: border-box;
   }
   .letter-box.locked {
     color: black !important;
@@ -219,9 +219,11 @@
   --------------------------- */
   @media (max-width: 480px) {
     .letter-box {
-      width: 28px;
-      height: 50px;
-      font-size: 25px;
+      width: 36px;
+      min-width: 36px;
+      height: 44px;
+      min-height: 44px;
+      font-size: 20px;
     }
   }
 
