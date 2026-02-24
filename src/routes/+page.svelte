@@ -210,9 +210,9 @@
     if (e.target && /** @type {HTMLElement} */ (e.target).tagName === 'BUTTON') /** @type {HTMLButtonElement} */ (e.target).blur();
   };
 
-  // ✅ Log out and persist game
+  // ✅ Log out: clear saved game so next login always shows main menu
   const handleLogout = async () => {
-    saveGameToLocalStorage();
+    clearSavedGame();
     gameWasRestored.set(false);
     await supabase.auth.signOut();
     user.set(null);
@@ -400,6 +400,9 @@
     <div class="auth-screen">
       <Auth />
     </div>
+  {:else if !hasInitialized}
+    <!-- ⏳ Loading (prevents flash of game UI / diagnostic before we know menu vs game) -->
+    <div class="init-loading">Loading…</div>
   {:else if showMainMenu}
     <!-- 🏠 Main Menu (after sign-in) -->
     <div class="main-menu">
@@ -672,6 +675,15 @@
   }
   .diagnostic-retry:hover {
     background: #b71c1c;
+  }
+
+  .init-loading {
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: #666;
   }
 
   /* Main menu (after sign-in) – same blue/green as game (hint + Solve) */
