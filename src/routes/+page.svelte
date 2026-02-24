@@ -747,12 +747,12 @@
     color: inherit;
     font-size: 20px;
     cursor: pointer;
-    color: rgba(255, 255, 255, 0.75);
+    color: rgba(255, 255, 255, 0.95);
     transition: color 0.3s ease, transform 0.2s ease, opacity 0.3s ease;
   }
 
   .subtle-button {
-    opacity: 0.5;
+    opacity: 0.9;
   }
 
   .subtle-button:hover {
