@@ -15,8 +15,8 @@
     const hash = window.location.hash;
     const params = new URLSearchParams(hash.slice(1));
 
-    token = params.get('access_token');
-    refresh_token = params.get('refresh_token');
+    token = params.get('access_token') ?? '';
+    refresh_token = params.get('refresh_token') ?? '';
 
     console.log("🔍 Parsed access_token:", token);
     console.log("🔍 Parsed refresh_token:", refresh_token);

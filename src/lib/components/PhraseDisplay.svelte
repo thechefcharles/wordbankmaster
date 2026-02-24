@@ -11,8 +11,10 @@
 
   // 💢 Shake Animation
   let shakeIndexes = new Set();
+  /** @type {number[]} */
   let lastProcessedShakes = [];
 
+  /** @param {number[]} indexes */
   function triggerShake(indexes) {
     shakeIndexes = new Set(indexes);
     setTimeout(() => {
@@ -28,7 +30,9 @@
   }
 
   // 🧠 Reveal Animation (Loss)
+  /** @type {ReturnType<typeof setInterval> | undefined} */
   let revealInterval;
+  /** @type {string[]} */
   let revealed = [];
 
   $: if ($gameStore.gameState === 'lost') {
@@ -193,14 +197,6 @@
     color: black !important;
 }
 
-  html, body {
-    margin: 0;
-    padding: 0;
-    width: 100vw;
-    overflow-x: hidden;
-}
-
-
   /* ---------------------------
      Guess Mode Styling
   --------------------------- */
@@ -226,28 +222,5 @@
     .phrase-container {
       margin: 16px 0 10px 0;
     }
-  }
-
-  /* ---------------------------
-     Formatted Phrase Preview
-  --------------------------- */
-  .phrase-display {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    margin-bottom: 10px;
-    font-size: 1.5rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    justify-content: center;  /* Centers horizontally */
-  align-items: center;      /* Centers vertically (if needed) */
-  text-align: center;       /* Ensures text stays centered */
-  }
-  .phrase-line {
-    hyphens: auto;
-    -webkit-hyphens: auto;
-    -moz-hyphens: auto;
-    word-break: break-word;
   }
 </style>

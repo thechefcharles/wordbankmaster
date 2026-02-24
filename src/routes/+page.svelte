@@ -25,21 +25,25 @@
   // UI state
   let showHowToPlay = false;
   let darkMode = false;
+  /** @type {boolean} */
   let wagerUIVisible = false;
+  /** @type {number} */
   let sliderWagerAmount = 0;
   let sliderLocked = false;
   let showResultModal = false;
   let hasTriggeredModal = false;
   let hasInitialized = false;
+  /** @type {string | null} */
   let initError = null; // 🔍 Diagnostic: what failed during init
   let dailyAlreadyPlayed = false;
 
   // ✅ Load Supabase user profile and sync bankroll (creates profile if missing)
+  /** @param {string} userId */
   async function loadUserProfile(userId) {
     try {
       const { data: profile, error } = await fetchUserProfile(userId);
       if (error || !profile) {
-        console.warn("⚠️ Failed to load profile:", error?.message);
+        console.warn("⚠️ Failed to load profile:", error?.message ?? error);
         // Auto-create profile for new users (no profile row yet)
         const createError = await saveUserProfile({ id: userId, arcade_bankroll: 1000 });
         if (createError) {
@@ -55,15 +59,15 @@
       }
 
       userProfile.set(profile);
-        gameStore.update(state => ({
+      gameStore.update(state => ({
         ...state,
         bankroll: profile.arcade_bankroll ?? 1000
       }));
 
-      console.log("✅ Profile loaded. Bankroll:", profile.current_bankroll);
+      console.log("✅ Profile loaded. Bankroll:", profile.current_bankroll ?? profile.arcade_bankroll);
       return profile;
     } catch (err) {
-      console.error("❌ Profile load error:", err.message);
+      console.error("❌ Profile load error:", err instanceof Error ? err.message : String(err));
       return null;
     }
   }
@@ -79,7 +83,7 @@
         return;
       }
 
-      user.set(session.user);
+      user.set(/** @type {{ id: string }} */ (session.user));
       const profile = await loadUserProfile(session.user.id);
       if (!profile) {
         initError = "Profile failed to load or create. Check Supabase profiles table and RLS policies.";
@@ -129,7 +133,7 @@
       hasInitialized = true;
 
     } catch (err) {
-      initError = "Init error: " + (err?.message || String(err));
+      initError = "Init error: " + (err instanceof Error ? err.message : String(err));
       console.error("❌", initError);
     }
   });
@@ -161,7 +165,7 @@
 
   // ✅ Set user from SSR if present (profile load happens once in onMount)
   $: if (data?.user) {
-    user.set(data.user);
+    user.set(/** @type {{ id: string }} */ (data.user));
   }
 
   // Reactive state values
@@ -188,7 +192,7 @@
 
   const toggleDarkMode = () => {
     darkMode = !darkMode;
-    localStorage.setItem('darkMode', darkMode);
+    localStorage.setItem('darkMode', String(darkMode));
     applyDarkMode();
   };
 
@@ -202,8 +206,9 @@
     );
   });
 
+  /** @param {Event} e */
   const removeButtonFocus = (e) => {
-    if (e.target.tagName === 'BUTTON') e.target.blur();
+    if (e.target && /** @type {HTMLElement} */ (e.target).tagName === 'BUTTON') /** @type {HTMLButtonElement} */ (e.target).blur();
   };
 
   // ✅ Log out and persist game
@@ -404,22 +409,20 @@
       <GameButtons
         bind:wagerUIVisible
         bind:sliderWagerAmount
-        disabled={$gameStore.gameState === 'won' || $gameStore.gameState === 'lost'}
         on:setWagerUIVisible={(e) => wagerUIVisible = e.detail}
         on:setSliderWagerAmount={(e) => sliderWagerAmount = e.detail}
       />
     </section>
 
-    <!-- ⌨️ Keyboard Section -->
+    <!-- ⌨️ Keyboard Section (keyboard disables itself via gameStore state) -->
     <section class="keyboard-section">
       <Keyboard
-        disabled={$gameStore.gameState === 'won' || $gameStore.gameState === 'lost'}
         on:letterSelected={() => {
           if ($gameStore.gameState !== 'guess_mode') {
             wagerUIVisible = false;
           }
         }}
-              />
+      />
     </section>
 
     <!-- 🏆 Game Outcome Banner -->
@@ -510,10 +513,6 @@
   .buttons-section {
     width: 100%;
     padding: 0;
-  }
-
-  .reset-button.hidden {
-    display: none;
   }
 
   .diagnostic-banner {
@@ -652,20 +651,6 @@
     margin-bottom: 0;
   }
 
-  .bankroll-game-buttons-container {
-    position: fixed;
-    bottom: 118px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    z-index: 1000;
-  }
-
   :global(html, body) {
     overflow-x: hidden;
     touch-action: manipulation;
@@ -690,6 +675,7 @@
     color: limegreen;
     text-transform: uppercase;
     background: linear-gradient(45deg, green, limegreen);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     text-align: center;
@@ -718,6 +704,7 @@
     color: red;
     text-transform: uppercase;
     background: linear-gradient(45deg, red, black);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     text-align: center;
@@ -810,52 +797,6 @@
 
   .close-btn:hover {
     background: darkred;
-  }
-
-  .modal-title {
-    font-size: 24px;
-    font-weight: bold;
-    color: #007bff;
-    text-transform: uppercase;
-    text-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
-  }
-
-  .intro-text {
-    font-size: 16px;
-    color: #333;
-    margin-bottom: 10px;
-  }
-
-  .modal-list {
-    list-style-type: none;
-    padding: 0;
-    text-align: left;
-  }
-
-  .modal-list li {
-    font-size: 16px;
-    background: rgba(0, 0, 0, 0.05);
-    padding: 8px;
-    margin-bottom: 5px;
-    border-radius: 5px;
-    text-shadow: none;
-  }
-
-  :global(body.dark-mode) .modal-list li {
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .modal-footer {
-    font-size: 14px;
-    font-weight: bold;
-    color: black;
-    padding: 10px;
-    text-shadow: none;
-  }
-
-  :global(body.dark-mode) .modal-footer {
-    color: white;
-    text-shadow: 0 0 5px rgba(255, 255, 255, 0.4);
   }
 
   @keyframes fadeIn {

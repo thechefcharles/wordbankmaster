@@ -2,8 +2,10 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { gameStore, confirmPurchase, submitGuess } from '$lib/stores/GameStore.js';
 
-  export let wagerUIVisible;
-  export let sliderWagerAmount;
+  /** @type {boolean} */
+  export let wagerUIVisible = false;
+  /** @type {number} */
+  export let sliderWagerAmount = 0;
 
   const dispatch = createEventDispatcher();
 

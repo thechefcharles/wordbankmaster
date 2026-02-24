@@ -8,20 +8,48 @@ import { user } from '$lib/stores/userStore.js';
 import { saveGameToLocalStorage } from '$lib/stores/localGameUtils.js';
 import { recordDailyResult, recordArcadeResult } from '$lib/stores/statsStore.js';
 
+/* ================================
+   Types (JSDoc for checkJs)
+=================================== */
+/**
+ * @typedef {{ type: string, value?: string }} SelectedPurchase
+ * @typedef {{ [key: string]: unknown }} LockedLetters
+ * @typedef {{ [key: number]: string }} GuessedLetters
+ */
 
+/**
+ * @typedef {{
+ *   bankroll: number,
+ *   wagerAmount: number,
+ *   category: string,
+ *   currentPhrase: string,
+ *   gameState: string,
+ *   purchasedLetters: string[],
+ *   guessedLetters: GuessedLetters,
+ *   lockedLetters: LockedLetters,
+ *   incorrectLetters: string[],
+ *   selectedPurchase: SelectedPurchase | null,
+ *   shakenLetters: number[],
+ *   message: string,
+ *   subcategory: string,
+ *   gameMode: string
+ * }} GameState
+ */
 
 /* ================================
    Constants & Store Initialization
 =================================== */
 
 // Letter purchase costs
+/** @type {Record<string, number>} */
 export const LETTER_COSTS = {
   Q: 30, W: 50, E: 140, R: 120, T: 120, Y: 60, U: 80, I: 110, O: 90, P: 80,
   A: 130, S: 120, D: 80, F: 60, G: 70, H: 70, J: 30, K: 50, L: 80,
   Z: 40, X: 40, C: 80, V: 50, B: 60, N: 100, M: 70
 };
 
-export const gameStore = writable({
+/** @type {import('svelte/store').Writable<GameState>} */
+export const gameStore = writable(/** @type {GameState} */ ({
   bankroll: 1000,
   wagerAmount: 1,
   category: '',
@@ -36,7 +64,7 @@ export const gameStore = writable({
   message: '',
   subcategory: '',
   gameMode: 'daily' // 'daily' | 'arcade'
-});
+}));
 
 /* ================================
    Utility Functions
@@ -83,8 +111,8 @@ function animateBankrollReduction(startingAmount) {
  * Ends the game if bankroll hits zero, reveals the phrase,
  * resets bankroll to 1000, and syncs state locally and remotely.
  *
- * @param {object} state - The current game state
- * @returns {object} Updated state if loss occurred, otherwise original state
+ * @param {GameState} state - The current game state
+ * @returns {GameState} Updated state if loss occurred, otherwise original state
  */
 function checkLossCondition(state) {
   if (state.bankroll >= 1) return state;
@@ -94,7 +122,7 @@ function checkLossCondition(state) {
 
   // Reveal the full phrase
   const fullReveal = Object.fromEntries(
-    state.currentPhrase.split('').map((ch, i) => [i, ch])
+    state.currentPhrase.split('').map((/** @type {string} */ ch, /** @type {number} */ i) => [i, ch])
   );
 
   const resetBankroll = 1000;
@@ -133,7 +161,7 @@ function checkLossCondition(state) {
  * @param {string} letter - The letter to select.
  */
 export function selectLetter(letter) {
-  gameStore.update(state => {
+  gameStore.update(/** @param {GameState} state */ (state) => {
     const cost = LETTER_COSTS[letter] || 0;
     if (state.bankroll < cost) {
       console.log(`Insufficient funds to purchase letter ${letter}`);
@@ -183,6 +211,7 @@ export function selectHint() {
 }
 
 
+/** @param {number} amount */
 export function setWager(amount) {
   gameStore.update(state => ({
     ...state,
@@ -203,7 +232,7 @@ export function setWager(amount) {
 export function confirmPurchase() {
   let finalState;
 
-  gameStore.update(state => {
+  gameStore.update(/** @param {GameState} state */ (state) => {
     const purchase = state.selectedPurchase;
     if (!purchase) return state;
 
@@ -216,11 +245,13 @@ export function confirmPurchase() {
 
     // === Handle Letter Purchase ===
     if (purchase.type === 'letter') {
-      const letter = purchase.value;
+      const letter = purchase.value ?? '';
       const cost = LETTER_COSTS[letter] || 0;
       if (newBankroll < cost) return { ...state, selectedPurchase: null };
 
+      /** @type {string[]} */
       const newPurchased = [...state.purchasedLetters];
+      /** @type {string[]} */
       const newIncorrect = [...state.incorrectLetters];
       const correctIndexes = [];
 
@@ -239,7 +270,8 @@ export function confirmPurchase() {
       }
 
       const newLockedLetters = { ...state.lockedLetters };
-      const indices = phrase.split('').reduce((acc, ch, i) => {
+      /** @type {number[]} */
+      const indices = phrase.split('').reduce((/** @type {number[]} */ acc, ch, i) => {
         if (ch === letter) acc.push(i);
         return acc;
       }, []);
@@ -289,7 +321,8 @@ export function confirmPurchase() {
       const cost = 150;
       if (newBankroll < cost) return { ...state, selectedPurchase: null, gameState: "default" };
 
-      const unrevealedIndices = phrase.split('').reduce((acc, ch, i) => {
+      /** @type {number[]} */
+      const unrevealedIndices = phrase.split('').reduce((/** @type {number[]} */ acc, ch, i) => {
         if (ch !== ' ' && !state.purchasedLetters[i]) acc.push(i);
         return acc;
       }, []);
@@ -297,10 +330,12 @@ export function confirmPurchase() {
 
       const randomIndex = unrevealedIndices[Math.floor(Math.random() * unrevealedIndices.length)];
       const letter = phrase[randomIndex];
+      /** @type {string[]} */
       const newPurchased = [...state.purchasedLetters];
       newPurchased[randomIndex] = letter;
 
-      const indices = phrase.split('').reduce((acc, ch, i) => {
+      /** @type {number[]} */
+      const indices = phrase.split('').reduce((/** @type {number[]} */ acc, ch, i) => {
         if (ch === letter) acc.push(i);
         return acc;
       }, []);
@@ -357,7 +392,7 @@ export function enterGuessMode() {
  * getEditableIndices
  * Returns indices in the phrase that are editable (non-space and not already purchased).
  *
- * @param {object} state - The current game state.
+ * @param {GameState} state - The current game state.
  * @returns {number[]} Array of editable indices.
  */
 function getEditableIndices(state) {
@@ -429,7 +464,7 @@ export function deleteGuessLetter() {
  * syncs to Supabase, and hides wager slider.
  */
 export function submitGuess() {
-  gameStore.update(state => {
+  gameStore.update(/** @param {GameState} state */ (state) => {
     if (state.gameState !== "guess_mode") return state;
 
     const phrase = state.currentPhrase;
@@ -446,6 +481,7 @@ export function submitGuess() {
     }
 
     const newGuessed = { ...state.guessedLetters };
+    /** @type {string[]} */
     const newPurchased = [...state.purchasedLetters];
     const newLockedLetters = { ...state.lockedLetters };
     const newShakenLetters = new Set(state.shakenLetters || []);
@@ -562,20 +598,23 @@ export async function fetchRandomGame(category) {
       console.error('❌ No puzzle returned for category:', category);
       return false;
     }
-    
+
+    /** @type {{ category?: string, phrase?: string, subcategory?: string }} */
+    const puzzle = data;
+
     const { data: profile } = await supabase.from('profiles').select('arcade_bankroll').eq('id', get(user)?.id).maybeSingle();
     const arcadeBankroll = profile?.arcade_bankroll ?? 1000;
     const startingBankroll = arcadeBankroll > 0 ? arcadeBankroll : 1000;
 
-    const newState = {
+    const newState = /** @type {GameState} */ ({
       ...get(gameStore),
       bankroll: startingBankroll,
       wagerAmount: 1,
-      category: data.category,
-      currentPhrase: data.phrase.toUpperCase(),
+      category: puzzle.category ?? '',
+      currentPhrase: (puzzle.phrase ?? '').toUpperCase(),
       gameState: 'default',
       gameMode: 'arcade',
-      subcategory: data.subcategory ?? '',
+      subcategory: puzzle.subcategory ?? '',
       purchasedLetters: [],
       guessedLetters: {},
       lockedLetters: {},
@@ -583,15 +622,15 @@ export async function fetchRandomGame(category) {
       selectedPurchase: null,
       shakenLetters: [],
       message: ''
-    };
+    });
 
     gameStore.set(newState);
     saveGameToLocalStorage();
 
-    console.log(`✅ Arcade puzzle loaded: "${data.phrase}" (${data.subcategory}) in ${data.category}`);
+    console.log(`✅ Arcade puzzle loaded: "${puzzle.phrase}" (${puzzle.subcategory}) in ${puzzle.category}`);
     return true;
   } catch (err) {
-    console.error('❌ Error fetching puzzle:', err.message);
+    console.error('❌ Error fetching puzzle:', err instanceof Error ? err.message : String(err));
     return false;
   }
 }
@@ -607,15 +646,18 @@ export async function fetchDailyGame() {
       return false;
     }
 
-    const newState = {
+    /** @type {{ category?: string, phrase?: string, subcategory?: string }} */
+    const puzzle = data;
+
+    const newState = /** @type {GameState} */ ({
       ...get(gameStore),
       bankroll: 1000,
       wagerAmount: 1,
-      category: data.category,
-      currentPhrase: data.phrase.toUpperCase(),
+      category: puzzle.category ?? '',
+      currentPhrase: (puzzle.phrase ?? '').toUpperCase(),
       gameState: 'default',
       gameMode: 'daily',
-      subcategory: data.subcategory ?? '',
+      subcategory: puzzle.subcategory ?? '',
       purchasedLetters: [],
       guessedLetters: {},
       lockedLetters: {},
@@ -623,24 +665,26 @@ export async function fetchDailyGame() {
       selectedPurchase: null,
       shakenLetters: [],
       message: ''
-    };
+    });
 
     gameStore.set(newState);
     saveGameToLocalStorage();
-    console.log(`✅ Daily puzzle loaded: "${data.phrase}"`);
+    console.log(`✅ Daily puzzle loaded: "${puzzle.phrase}"`);
     return true;
   } catch (err) {
-    console.error('❌ Error fetching daily puzzle:', err.message);
+    console.error('❌ Error fetching daily puzzle:', err instanceof Error ? err.message : String(err));
     return false;
   }
 }
 
 /**
  * resetGame
- * Fetches a brand new puzzle from the database.
+ * Fetches a brand new puzzle from the database (uses current category from store for arcade).
  */
 export function resetGame() {
-  fetchRandomGame();
+  const state = get(gameStore);
+  const category = (state && state.category) ? state.category : 'General';
+  fetchRandomGame(category);
 }
 
 /**

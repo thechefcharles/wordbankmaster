@@ -19,7 +19,7 @@
 
   onMount(async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    user.set(session?.user ?? null);
+    user.set(session?.user ? /** @type {{ id: string }} */ (session.user) : null);
     if (session?.user?.id) {
       status = await getDailyStatus(session.user.id);
     }
@@ -33,6 +33,7 @@
     goto('/');
   }
 
+  /** @param {string} category */
   function selectArcade(category) {
     localStorage.setItem('gameMode', 'arcade');
     localStorage.setItem('selectedCategory', category);

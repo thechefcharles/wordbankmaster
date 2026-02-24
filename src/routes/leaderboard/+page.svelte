@@ -5,15 +5,20 @@
     fetchArcadeLeaderboard
   } from '$lib/stores/statsStore.js';
 
+  /** @typedef {{ rank?: number, display_name?: string, bankroll_left?: number, current_streak?: number, highest_streak?: number, total_played?: number, win_rate?: number }} DailyRow */
+  /** @typedef {{ rank?: number, display_name?: string, current_bankroll?: number, highest_bankroll?: number, current_streak?: number, highest_streak?: number, total_played?: number, win_rate?: number }} ArcadeRow */
+
   /** @type {'daily' | 'arcade'} */
   let mode = $state('daily');
   let dailyPeriod = $state('daily');
   /** @type {'bankroll' | 'streak' | 'highest_streak' | 'puzzles' | 'win_pct'} */
   let dailyOrderBy = $state('bankroll');
+  /** @type {DailyRow[]} */
   let dailyData = $state([]);
   let arcadePeriod = $state('all');
   /** @type {'bankroll' | 'highest_bankroll' | 'streak' | 'highest_streak' | 'puzzles' | 'win_pct'} */
   let arcadeOrderBy = $state('bankroll');
+  /** @type {ArcadeRow[]} */
   let arcadeData = $state([]);
   let loading = $state(true);
   let error = $state('');
@@ -153,7 +158,7 @@
           </thead>
           <tbody>
             {#each dailyData as row}
-              <tr class={row.rank <= 3 ? 'top-three' : ''}>
+              <tr class={(row.rank ?? 0) <= 3 ? 'top-three' : ''}>
                 <td class="rank">
                   {#if row.rank === 1}🥇
                   {:else if row.rank === 2}🥈
@@ -192,7 +197,7 @@
           </thead>
           <tbody>
             {#each arcadeData as row}
-              <tr class={row.rank <= 3 ? 'top-three' : ''}>
+              <tr class={(row.rank ?? 0) <= 3 ? 'top-three' : ''}>
                 <td class="rank">
                   {#if row.rank === 1}🥇
                   {:else if row.rank === 2}🥈

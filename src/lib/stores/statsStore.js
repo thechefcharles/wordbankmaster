@@ -10,15 +10,18 @@ export async function fetchTodaysPuzzle() {
     return null;
   }
   if (!data) return null;
+  /** @type {{ phrase?: string, category?: string, subcategory?: string }} */
+  const puzzle = data;
   return {
-    phrase: data.phrase,
-    category: data.category,
-    subcategory: data.subcategory ?? ''
+    phrase: puzzle.phrase,
+    category: puzzle.category,
+    subcategory: puzzle.subcategory ?? ''
   };
 }
 
 /**
  * Check if user has already played the daily puzzle today
+ * @param {string} userId
  */
 export async function hasPlayedDailyToday(userId) {
   const { data, error } = await supabase.rpc('has_played_daily_today', {
@@ -33,6 +36,7 @@ export async function hasPlayedDailyToday(userId) {
 
 /**
  * Get daily status and bankrolls for select page
+ * @param {string} userId
  */
 export async function getDailyStatus(userId) {
   const { data, error } = await supabase.rpc('get_daily_status', {
@@ -87,6 +91,9 @@ export async function fetchArcadeLeaderboard(period = 'all', orderBy = 'bankroll
 
 /**
  * Record arcade game result (call when arcade game ends - won or lost)
+ * @param {string} userId
+ * @param {boolean} won
+ * @param {number} bankrollLeft
  */
 export async function recordArcadeResult(userId, won, bankrollLeft) {
   const { error } = await supabase.rpc('record_arcade_result', {
@@ -101,6 +108,9 @@ export async function recordArcadeResult(userId, won, bankrollLeft) {
 
 /**
  * Record daily game result (call when daily game ends - won or lost)
+ * @param {string} userId
+ * @param {boolean} won
+ * @param {number} bankrollLeft
  */
 export async function recordDailyResult(userId, won, bankrollLeft) {
   const { error } = await supabase.rpc('record_daily_result', {

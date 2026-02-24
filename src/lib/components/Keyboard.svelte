@@ -1,5 +1,5 @@
-<script>
-  import { onMount, createEventDispatcher } from 'svelte'; // ✅ Added dispatcher import
+<script lang="ts">
+  import { onMount, createEventDispatcher } from 'svelte';
   import {
     gameStore,
     selectLetter,
@@ -10,31 +10,39 @@
     enterGuessMode
   } from '$lib/stores/GameStore.js';
 
-  // ✅ Create dispatcher to emit events to parent
   const dispatch = createEventDispatcher();
 
-  // Define letter costs for display purposes
-  const letterCosts = {
+  type LetterCosts = Record<string, number>;
+  const letterCosts: LetterCosts = {
     Q: 30, W: 50, E: 140, R: 120, T: 120, Y: 60, U: 80, I: 110, O: 90, P: 80,
     A: 130, S: 120, D: 80, F: 60, G: 70, H: 70, J: 30, K: 50, L: 80,
     Z: 40, X: 40, C: 80, V: 50, B: 60, N: 100, M: 70
   };
 
-  const row1 = ['Q','W','E','R','T','Y','U','I','O','P'];
-  const row2 = ['A','S','D','F','G','H','J','K','L'];
-  const row3 = ['Z','X','C','V','B','N','M'];
+  const row1: string[] = ['Q','W','E','R','T','Y','U','I','O','P'];
+  const row2: string[] = ['A','S','D','F','G','H','J','K','L'];
+  const row3: string[] = ['Z','X','C','V','B','N','M'];
+
+  type SelectedPurchase = { type: string; value?: string } | null;
+  type LockedLetters = Record<string, unknown>;
+  let selectedPurchase: SelectedPurchase = null;
+  let lockedLetters: LockedLetters = {};
+  let incorrectLetters: string[] = [];
+  $: selectedPurchase = $gameStore.selectedPurchase as SelectedPurchase;
+  $: lockedLetters = ($gameStore.lockedLetters || {}) as LockedLetters;
+  $: incorrectLetters = ($gameStore.incorrectLetters || []) as string[];
 
   // 🔹 Disable unaffordable or incorrect keys
-  $: disabledKeys = Object.keys(letterCosts).filter(letter =>
-    letterCosts[letter] > $gameStore.bankroll ||
-    $gameStore.incorrectLetters.includes(letter)
+  $: disabledKeys = Object.keys(letterCosts).filter((letter: string) =>
+    (letterCosts[letter] ?? 0) > $gameStore.bankroll ||
+    incorrectLetters.includes(letter)
   );
 
   /**
    * 🔹 Letter click logic for both guess mode and purchase mode.
    * 🔸 Also emits a custom event to parent to cancel wager UI.
    */
-  function handleLetterClick(letter) {
+  function handleLetterClick(letter: string): void {
     dispatch('letterSelected'); // ✅ Notify parent to hide slider
     if ($gameStore.gameState === 'guess_mode') {
       inputGuessLetter(letter);
@@ -46,7 +54,7 @@
   /**
    * 🔹 Global key handling for accessibility and flow.
    */
-  function handleKeyDown(event) {
+  function handleKeyDown(event: KeyboardEvent): void {
     event.preventDefault();
     const key = event.key.toUpperCase();
 
@@ -91,7 +99,8 @@
       return state;
     });
 
-    document.activeElement.blur();
+    const active = document.activeElement;
+    if (active && active instanceof HTMLElement) active.blur();
   }
 
   onMount(() => {
@@ -109,14 +118,15 @@
       tabindex="-1"
       class="key 
       {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''} 
-      {($gameStore.selectedPurchase?.type === 'letter' && 
-        $gameStore.selectedPurchase.value === letter && 
+      {(selectedPurchase?.type === 'letter' && 
+        selectedPurchase.value === letter && 
         $gameStore.gameState === 'purchase_pending') ? 'pending' : ''}
-      {($gameStore.lockedLetters?.[letter]) ? 'purchased' : ''}
-      {($gameStore.incorrectLetters.includes(letter)) ? 'incorrect' : ''}"        on:click={() => handleLetterClick(letter)}
+      {lockedLetters[letter] ? 'purchased' : ''}
+      {incorrectLetters.includes(letter) ? 'incorrect' : ''}"
+        on:click={() => handleLetterClick(letter)}
       >
         <div class="letter">{letter}</div>
-        <div class="price">${letterCosts[letter]}</div>
+        <div class="price">${letterCosts[letter] ?? 0}</div>
       </button>
     {/each}
   </div>
@@ -127,20 +137,20 @@
       <button
       tabindex="-1"
         class="key {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''} 
-                { $gameStore.selectedPurchase?.type === 'letter' &&
-                  $gameStore.selectedPurchase.value === letter &&
+                { selectedPurchase?.type === 'letter' &&
+                  selectedPurchase.value === letter &&
                   $gameStore.gameState === 'purchase_pending'
                     ? 'pending'
-                    : $gameStore.lockedLetters?.[letter]
+                    : lockedLetters[letter]
                       ? 'purchased'
-                      : $gameStore.incorrectLetters.includes(letter)
+                      : incorrectLetters.includes(letter)
                         ? 'incorrect'
                         : ''
                 }"
         on:click={() => handleLetterClick(letter)}
       >
         <div class="letter">{letter}</div>
-        <div class="price">${letterCosts[letter]}</div>
+        <div class="price">${letterCosts[letter] ?? 0}</div>
       </button>
     {/each}
   </div>
@@ -151,20 +161,20 @@
       <button
       tabindex="-1"
         class="key {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''} 
-                { $gameStore.selectedPurchase?.type === 'letter' &&
-                  $gameStore.selectedPurchase.value === letter &&
+                { selectedPurchase?.type === 'letter' &&
+                  selectedPurchase.value === letter &&
                   $gameStore.gameState === 'purchase_pending'
                     ? 'pending'
-                    : $gameStore.lockedLetters?.[letter]
+                    : lockedLetters[letter]
                       ? 'purchased'
-                      : $gameStore.incorrectLetters.includes(letter)
+                      : incorrectLetters.includes(letter)
                         ? 'incorrect'
                         : ''
                 }"
         on:click={() => handleLetterClick(letter)}
       >
         <div class="letter">{letter}</div>
-        <div class="price">${letterCosts[letter]}</div>
+        <div class="price">${letterCosts[letter] ?? 0}</div>
       </button>
     {/each}
 
@@ -203,7 +213,7 @@
     gap: 2px;
     flex-wrap: nowrap;
   }
-  body {
+  :global(body) {
     padding-bottom: 132px; /* Space for keyboard */
     display: flex;
     flex-direction: column;
@@ -245,10 +255,6 @@
   0% { opacity: 1; }
   50% { opacity: 0; }
   100% { opacity: 1; }
-}
-
-.blinking-key {
-  animation: blink 0.8s infinite;
 }
 
   /* ---------------------------
@@ -331,8 +337,8 @@
 }
 
 /* 🔹 Remove blur when in guess mode */
-body.guess-mode .key.incorrect,
-body.guess-mode .key.disabled {
+:global(body.guess-mode) .key.incorrect,
+:global(body.guess-mode) .key.disabled {
     filter: none !important;
     opacity: 1 !important;
     pointer-events: all;

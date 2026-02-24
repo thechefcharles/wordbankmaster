@@ -23,6 +23,7 @@ export const GET = async ({ url, cookies }) => {
           set(name, value, options) {
             cookies.set(name, value, {
               ...options,
+              path: '/',
               httpOnly: true,
               sameSite: 'lax',
               secure: import.meta.env.PROD
@@ -31,6 +32,7 @@ export const GET = async ({ url, cookies }) => {
           remove(name, options) {
             cookies.delete(name, {
               ...options,
+              path: '/',
               httpOnly: true,
               sameSite: 'lax',
               secure: import.meta.env.PROD
