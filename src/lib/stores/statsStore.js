@@ -1,0 +1,152 @@
+import { supabase } from '$lib/supabaseClient';
+
+/**
+ * Fetch today's daily puzzle (same for everyone)
+ */
+export async function fetchTodaysPuzzle() {
+  const { data, error } = await supabase.rpc('get_todays_puzzle').maybeSingle();
+  if (error) {
+    console.error('❌ Error fetching daily puzzle:', error);
+    return null;
+  }
+  if (!data) return null;
+  return {
+    phrase: data.phrase,
+    category: data.category,
+    subcategory: data.subcategory ?? ''
+  };
+}
+
+/**
+ * Check if user has already played the daily puzzle today
+ */
+export async function hasPlayedDailyToday(userId) {
+  const { data, error } = await supabase.rpc('has_played_daily_today', {
+    p_user_id: userId
+  });
+  if (error) {
+    console.error('❌ Error checking daily play status:', error);
+    return false;
+  }
+  return !!data;
+}
+
+/**
+ * Get daily status and bankrolls for select page
+ */
+export async function getDailyStatus(userId) {
+  const { data, error } = await supabase.rpc('get_daily_status', {
+    p_user_id: userId
+  });
+  if (error) {
+    console.error('❌ Error fetching daily status:', error);
+    return { has_played_today: false, last_daily_won: null, daily_bankroll: 0, arcade_bankroll: 1000 };
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    has_played_today: !!row?.has_played_today,
+    last_daily_won: row?.last_daily_won ?? null,
+    daily_bankroll: row?.daily_bankroll ?? 0,
+    arcade_bankroll: row?.arcade_bankroll ?? 1000
+  };
+}
+
+/**
+ * Fetch daily leaderboard
+ * @param {string} period - 'daily' | 'weekly' | 'monthly' | 'yearly'
+ * @param {string} orderBy - 'bankroll' | 'streak' | 'puzzles' | 'win_pct'
+ */
+export async function fetchDailyLeaderboard(period = 'daily', orderBy = 'bankroll') {
+  const { data, error } = await supabase.rpc('get_daily_leaderboard', {
+    p_period: period,
+    p_order_by: orderBy
+  });
+  if (error) {
+    console.error('❌ Error fetching daily leaderboard:', error);
+    return [];
+  }
+  return data ?? [];
+}
+
+/**
+ * Fetch arcade leaderboard
+ * @param {string} period - 'all' | 'daily' | 'weekly' | 'monthly' | 'yearly'
+ * @param {string} orderBy - 'bankroll' | 'highest_bankroll' | 'streak' | 'highest_streak' | 'puzzles' | 'win_pct'
+ */
+export async function fetchArcadeLeaderboard(period = 'all', orderBy = 'bankroll') {
+  const { data, error } = await supabase.rpc('get_arcade_leaderboard', {
+    p_period: period,
+    p_order_by: orderBy
+  });
+  if (error) {
+    console.error('❌ Error fetching arcade leaderboard:', error);
+    return [];
+  }
+  return data ?? [];
+}
+
+/**
+ * Record arcade game result (call when arcade game ends - won or lost)
+ */
+export async function recordArcadeResult(userId, won, bankrollLeft) {
+  const { error } = await supabase.rpc('record_arcade_result', {
+    p_user_id: userId,
+    p_won: won,
+    p_bankroll_left: bankrollLeft
+  });
+  if (error) {
+    console.error('❌ Error recording arcade result:', error);
+  }
+}
+
+/**
+ * Record daily game result (call when daily game ends - won or lost)
+ */
+export async function recordDailyResult(userId, won, bankrollLeft) {
+  const { error } = await supabase.rpc('record_daily_result', {
+    p_user_id: userId,
+    p_won: won,
+    p_bankroll_left: bankrollLeft
+  });
+  if (error) {
+    console.error('❌ Error recording daily result:', error);
+  }
+}
+
+/**
+ * Fetch weekly leaderboard (limited)
+ */
+export async function fetchWeeklyLeaderboard(limit = 10) {
+  const { data, error } = await supabase.rpc('get_weekly_leaderboard', { p_limit: limit });
+  if (error) {
+    console.error('❌ Error fetching leaderboard:', error);
+    return [];
+  }
+  return data ?? [];
+}
+
+/**
+ * Fetch ALL users with all stats (zeros when no record)
+ */
+export async function fetchAllUsersLeaderboard() {
+  const { data, error } = await supabase.rpc('get_all_users_leaderboard');
+  if (error) {
+    console.error('❌ Error fetching all users leaderboard:', error);
+    return [];
+  }
+  return data ?? [];
+}
+
+/**
+ * Fetch leaderboard filtered by period: 'daily' | 'weekly' | 'monthly' | 'yearly'
+ */
+export async function fetchLeaderboardByPeriod(period = 'weekly') {
+  const { data, error } = await supabase.rpc('get_leaderboard_by_period', {
+    p_period: period
+  });
+  if (error) {
+    console.error('❌ Error fetching leaderboard by period:', error);
+    return [];
+  }
+  return data ?? [];
+}

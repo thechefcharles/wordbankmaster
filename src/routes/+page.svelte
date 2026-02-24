@@ -4,8 +4,9 @@
   import { supabase } from '$lib/supabaseClient';
   import { get } from 'svelte/store';
 
-  import { gameStore, fetchRandomGame } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchRandomGame, fetchDailyGame } from '$lib/stores/GameStore.js';
   import { user, userProfile, fetchUserProfile, saveUserProfile } from '$lib/stores/userStore.js';
+  import { hasPlayedDailyToday } from '$lib/stores/statsStore.js';
   import {
     saveGameToLocalStorage,
     loadGameFromLocalStorage,
@@ -31,6 +32,7 @@
   let hasTriggeredModal = false;
   let hasInitialized = false;
   let initError = null; // 🔍 Diagnostic: what failed during init
+  let dailyAlreadyPlayed = false;
 
   // ✅ Load Supabase user profile and sync bankroll (creates profile if missing)
   async function loadUserProfile(userId) {
@@ -39,7 +41,7 @@
       if (error || !profile) {
         console.warn("⚠️ Failed to load profile:", error?.message);
         // Auto-create profile for new users (no profile row yet)
-        const createError = await saveUserProfile({ id: userId, current_bankroll: 1000 });
+        const createError = await saveUserProfile({ id: userId, arcade_bankroll: 1000 });
         if (createError) {
           console.error("❌ Failed to create profile:", createError);
           return null;
@@ -53,9 +55,9 @@
       }
 
       userProfile.set(profile);
-      gameStore.update(state => ({
+        gameStore.update(state => ({
         ...state,
-        bankroll: profile.current_bankroll ?? 1000
+        bankroll: profile.arcade_bankroll ?? 1000
       }));
 
       console.log("✅ Profile loaded. Bankroll:", profile.current_bankroll);
@@ -91,18 +93,35 @@
         gameWasRestored.set(true);
         console.log("🔁 Game restored from localStorage");
       } else {
-        const category = localStorage.getItem('selectedCategory');
-        if (!category) {
-          window.location.href = '/select';
-          return;
-        }
-
-        const ok = await fetchRandomGame(category);
-        if (!ok) {
-          initError = "Puzzle fetch failed. Check Supabase RPC 'get_random_puzzle_by_category' and Network tab.";
-          console.warn("⛔", initError);
+        const gameMode = localStorage.getItem('gameMode') || 'daily';
+        if (gameMode === 'practice') localStorage.setItem('gameMode', 'arcade');
+        if (gameMode === 'daily') {
+          const played = await hasPlayedDailyToday(session.user.id);
+          if (played) {
+            dailyAlreadyPlayed = true;
+            console.log("⏳ Already played daily today");
+          } else {
+            const ok = await fetchDailyGame();
+            if (!ok) {
+              initError = "Daily puzzle failed to load. Check Supabase RPC 'get_todays_puzzle'.";
+              console.warn("⛔", initError);
+            } else {
+              console.log("📦 Fetched daily puzzle");
+            }
+          }
         } else {
-          console.log("📦 Fetched new puzzle in:", category);
+          const category = localStorage.getItem('selectedCategory');
+          if (!category) {
+            window.location.href = '/select';
+            return;
+          }
+          const ok = await fetchRandomGame(category);
+          if (!ok) {
+            initError = "Arcade puzzle failed to load. Check Supabase RPC 'get_random_puzzle_by_category'.";
+            console.warn("⛔", initError);
+          } else {
+            console.log("📦 Fetched arcade puzzle in:", category);
+          }
         }
       }
 
@@ -120,16 +139,23 @@
     hasInitialized &&
     loggedIn &&
     $gameStore.currentPhrase === '' &&
-    !$gameWasRestored
+    !$gameWasRestored &&
+    !dailyAlreadyPlayed
   ) {
-    const category = localStorage.getItem('selectedCategory');
-    if (category) {
-      console.log("🧨 Reactive fetch triggered:", category);
-      fetchRandomGame(category).then((ok) => {
-        if (!ok) initError = "Puzzle fetch failed. Check Supabase RPC and Network tab.";
+    const gameMode = localStorage.getItem('gameMode') || 'daily';
+    if (gameMode === 'daily') {
+      fetchDailyGame().then((ok) => {
+        if (!ok) initError = "Daily puzzle failed to load.";
       });
     } else {
-      window.location.href = '/select';
+      const category = localStorage.getItem('selectedCategory');
+      if (category) {
+        fetchRandomGame(category).then((ok) => {
+          if (!ok) initError = "Arcade puzzle failed to load.";
+        });
+      } else {
+        window.location.href = '/select';
+      }
     }
   }
 
@@ -196,7 +222,9 @@
     const currentUser = get(user);
     if (!currentUser?.id) return;
 
-    await saveUserProfile({ id: currentUser.id, current_bankroll: 1000 });
+    if (get(gameStore).gameMode === 'arcade') {
+      await saveUserProfile({ id: currentUser.id, arcade_bankroll: 1000 });
+    }
     clearSavedGame();
     gameWasRestored.set(false);
     localStorage.removeItem('selectedCategory');
@@ -210,8 +238,10 @@
     const currentUser = get(user);
     if (!currentUser?.id) return;
 
-    const currentBankroll = get(gameStore).bankroll;
-    await saveUserProfile({ id: currentUser.id, current_bankroll: currentBankroll });
+    const store = get(gameStore);
+    if (store.gameMode === 'arcade') {
+      await saveUserProfile({ id: currentUser.id, arcade_bankroll: store.bankroll });
+    }
 
     clearSavedGame();
     gameWasRestored.set(false);
@@ -235,6 +265,11 @@
     ❓
   </button>
 
+  <!-- 🏆 Leaderboard -->
+  {#if loggedIn}
+    <a href="/leaderboard" class="icon-button subtle-button" title="Weekly Leaderboard">🏆</a>
+  {/if}
+
   <!-- 🌙 Dark Mode Toggle -->
   <button class="icon-button subtle-button" on:click={toggleDarkMode}>
     {darkMode ? '☀️' : '🌙'}
@@ -256,6 +291,10 @@
 
       <h2>📜 How to Play</h2>
       <p>💰 Start with $1000. Use it wisely to buy letters, get hints, and guess the phrase!</p>
+
+      <h3>📅 Daily vs Arcade</h3>
+      <p><b>Daily:</b> One puzzle per day. Counts for the daily leaderboard!<br />
+      <b>Arcade:</b> Unlimited play. Build your cumulative bankroll!</p>
 
       <h3>🎯 Goal</h3>
       <p>Solve the phrase before running out of money!</p>
@@ -279,6 +318,13 @@
     <!-- 🔐 Login Screen -->
     <div class="auth-screen">
       <Auth />
+    </div>
+  {:else if dailyAlreadyPlayed}
+    <!-- ⏳ Already played daily today -->
+    <div class="daily-already-played">
+      <h2>📅 You've already played today's daily!</h2>
+      <p>Come back tomorrow for a new puzzle.</p>
+      <a href="/select" class="practice-link">Play Arcade Mode →</a>
     </div>
   {:else}
     <!-- ✅ GAME UI (Visible only when logged in) -->
@@ -328,8 +374,8 @@
       </div>
     </section>
 
-    <!-- 🎚️ Wager UI -->
-    {#if wagerUIVisible}
+    <!-- 🎚️ Wager UI (arcade only) -->
+    {#if $gameStore.gameMode === 'arcade' && wagerUIVisible}
       <div class="wager-ui">
         <div class="wager-row">
           <div class="wager-label">
@@ -421,25 +467,49 @@
     margin: 0 auto;
     text-align: center;
     font-family: 'Orbitron', sans-serif;
-    padding: 8px;
+    padding: 6px;
+    padding-bottom: 185px; /* space so bankroll stays above fixed Solve + keyboard */
     display: flex;
     flex-direction: column;
     align-items: center;
   }
 
   .category {
-    font-size: .8rem;
-    margin-top: -140px;
-    margin-bottom: -20px;
+    font-size: .7rem;
+    margin-top: -95px;
+    margin-bottom: 0.15rem;
     font-weight: bold;
   }
 
-  .phrase-section,
-  .stats-section,
+  .phrase-section {
+    width: 100%;
+    padding: 0;
+    margin-bottom: 0;
+    padding-bottom: min(1rem, 3vw);
+    min-height: 0;
+  }
+
+  .stats-section {
+    width: 100%;
+    padding: 0;
+    margin-top: 0.6rem;
+    margin-bottom: 0.4rem;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 600px) {
+    .phrase-section {
+      padding-bottom: 0.75rem;
+    }
+    .stats-section {
+      margin-top: 0.75rem;
+    }
+  }
+
   .keyboard-section,
   .buttons-section {
     width: 100%;
-    padding: 0px;
+    padding: 0;
   }
 
   .reset-button.hidden {
@@ -475,6 +545,32 @@
   .diagnostic-retry:hover {
     background: #b71c1c;
   }
+
+  .daily-already-played {
+    padding: 3rem 2rem;
+    text-align: center;
+  }
+  .daily-already-played h2 {
+    color: limegreen;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .daily-already-played p {
+    color: #666;
+    margin-bottom: 1.5rem;
+  }
+  .practice-link {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    background: limegreen;
+    color: white;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+  }
+  .practice-link:hover {
+    background: #45a049;
+  }
   :global(body.dark-mode) .diagnostic-banner {
     background: rgba(255, 80, 80, 0.2);
     border-color: #ef5350;
@@ -487,35 +583,32 @@
   }
 
   .bankroll-container {
-  position: fixed;
-  bottom: 320px; /* adjust this as needed to sit above the Solve button */
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  width: 100%;
+  margin: 0 auto;
 }
 
 
 .bankroll-box {
-  padding: 3px 40px;
+  padding: 2px 28px;
   font-size: 0.4rem;
   font-family: 'Orbitron', sans-serif;
   color: #fff;
   background: linear-gradient(180deg, #d1cdcd, #858484);
-  border: 3px solid rgba(255, 255, 255, 0.4);
-  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
   text-align: center;
   box-shadow:
-    inset 2px 2px 6px rgba(255, 255, 255, 0.2),
-    3px 3px 8px rgba(0, 0, 0, 0.742),
-    5px 5px 12px rgba(0, 0, 0, 0.5),
-    0 0 8px rgba(245, 246, 245, 0.5);
+    inset 1px 1px 4px rgba(255, 255, 255, 0.2),
+    2px 2px 6px rgba(0, 0, 0, 0.742),
+    3px 3px 8px rgba(0, 0, 0, 0.5),
+    0 0 6px rgba(245, 246, 245, 0.5);
   display: inline-flex;
   justify-content: center;
   align-items: center;
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
   backdrop-filter: blur(5px);
   transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
   animation: bankrollGlow 2.5s infinite alternate ease-in-out;
@@ -529,8 +622,8 @@
 }
 
 .currency {
-  font-size: 1.0rem;
-  margin-right: 6px;
+  font-size: 0.85rem;
+  margin-right: 4px;
   font-weight: bold;
   color: rgba(255, 255, 255, 0.8);
   text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
@@ -543,10 +636,10 @@
 }
 
   .wordbank-logo {
-    width: 380px;
+    width: 280px;
     height: auto;
     display: block;
-    margin: -50px auto -60px;
+    margin: -35px auto -42px;
     padding-bottom: 0;
     align-self: center;
   }
@@ -555,21 +648,21 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-top: -30px;
+    margin-top: -20px;
     margin-bottom: 0;
   }
 
   .bankroll-game-buttons-container {
     position: fixed;
-    bottom: 160px;
+    bottom: 118px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
-    padding: 12px 18px;
-    border-radius: 10px;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 8px;
     z-index: 1000;
   }
 
@@ -660,9 +753,11 @@
     z-index: 1000;
   }
 
-  .icon-button {
+  .icon-button, a.icon-button {
     background: transparent;
     border: none;
+    text-decoration: none;
+    color: inherit;
     font-size: 20px;
     cursor: pointer;
     color: rgba(255, 255, 255, 0.75);

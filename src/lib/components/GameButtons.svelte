@@ -17,6 +17,7 @@
   // 🧠 Reactive state
   $: bankroll = $gameStore.bankroll;
   $: guessModeActive = $gameStore.gameState === 'guess_mode';
+  $: isDailyMode = $gameStore.gameMode === 'daily';
   $: purchasePending = !!$gameStore.selectedPurchase;
   $: hintPending = $gameStore.selectedPurchase?.type === 'hint' && $gameStore.gameState === 'purchase_pending';
   $: showHintCost = hintPending;
@@ -36,9 +37,9 @@
     return true;
   })();
 
-  // 🔁 Button display modes
+  // 🔁 Button display modes (daily: no wager, go straight to guess)
   $: dualButtonMode = purchasePending
-    || (wagerUIVisible && sliderWagerAmount > 0 && !guessModeActive)
+    || (!isDailyMode && wagerUIVisible && sliderWagerAmount > 0 && !guessModeActive)
     || (guessModeActive && guessComplete);
 
   $: guessCancelOnlyMode = guessModeActive && !guessComplete;
@@ -48,7 +49,7 @@
     ? 'Confirm'
     : guessModeActive
       ? (guessComplete ? 'Submit' : 'Cancel')
-      : (!canConfirmWager && wagerUIVisible ? 'Cancel' : 'Solve');
+      : (isDailyMode ? 'Solve' : (!canConfirmWager && wagerUIVisible ? 'Cancel' : 'Solve'));
 
   // 🎨 Button classes
   $: buttonClass = [
@@ -69,6 +70,17 @@
       submitGuess();
       dispatch('setWagerUIVisible', false);
       dispatch('setSliderWagerAmount', 0);
+      return;
+    }
+
+    if (isDailyMode) {
+      gameStore.update(state => ({
+        ...state,
+        gameState: 'guess_mode',
+        wagerAmount: 1,
+        selectedPurchase: null,
+        guessedLetters: {}
+      }));
       return;
     }
 
@@ -235,12 +247,12 @@
 --------------------------- */
 .main-button-wrapper {
   position: fixed;
-  bottom: 180px;
+  bottom: 132px;
   left: 50%;
-  transform: translateX(calc(-50% - 33px)); /* 25px for hint + 8px margin */
-    display: flex;
+  transform: translateX(calc(-50% - 28px)); /* hint + margin */
+  display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   z-index: 999;
 }
 
@@ -251,13 +263,13 @@
   position: relative;
 }
 .hint-button {
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: radial-gradient(circle at 30% 30%, #4488ff, #0055bb 80%);
   color: #fff;
   font-family: 'VT323', sans-serif;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: bold;
   text-transform: uppercase;
   border: none;
@@ -276,8 +288,8 @@
 --------------------------- */
 .solve-button-container,
 .dual-button-container {
-  width: 230px;
-  height: 40px;
+  width: 190px;
+  height: 34px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -288,14 +300,14 @@
   width: 100%;
   height: 100%;
   font-family: 'VT323', sans-serif;
-  font-size: 25px;
+  font-size: 21px;
   font-weight: bold;
   text-transform: uppercase;
   background: linear-gradient(180deg, #46a230, #318020); /* Always green */
   color: white;
-  border-radius: 8px;
-  border: 3px solid #2e9417; /* Green border */
-  box-shadow: inset 2px 2px 5px rgba(255,255,255,0.3), 3px 3px 8px rgba(0,0,0,0.6);
+  border-radius: 6px;
+  border: 2px solid #2e9417; /* Green border */
+  box-shadow: inset 1px 1px 4px rgba(255,255,255,0.3), 2px 2px 6px rgba(0,0,0,0.6);
   transition: background-color 0.3s, transform 0.2s;
 }
 
@@ -319,7 +331,7 @@
 
 .guess-phrase-button.exit-mode {
   background: linear-gradient(180deg, #ff2222, #aa0000); /* Red for exit mode */
-  border: 3px solid darkred;
+  border: 2px solid darkred;
 }
 
 .guess-phrase-button.exit-mode:active {
@@ -341,10 +353,10 @@
 .confirm-button,
 .cancel-button {
   font-family: 'VT323', monospace;
-  font-size: 22px;
+  font-size: 18px;
   flex: 1;
-  height: 40px;
-  border-radius: 8px;
+  height: 34px;
+  border-radius: 6px;
   transition: transform 0.2s ease;
   cursor: pointer;
 }

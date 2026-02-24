@@ -140,19 +140,17 @@
   --------------------------- */
   .phrase-container {
     display: flex;
-    grid-template-columns: repeat(auto-fit, minmax(1fr, 1fr)); /* Responsive columns */
     flex-wrap: wrap;
-    width: 100%; /* Full viewport width */
-    max-width: 100vw; /* Ensure it never exceeds viewport */
-    padding: 0; /* Remove any padding */
-    margin: 0 0; /* Remove extra margins */
-    gap: 1px; /* Minimize space between boxes */
+    width: 100%;
+    max-width: 100vw;
+    padding: 0;
+    margin: 22px 0 12px 0;
+    gap: 1px;
     justify-content: center;
     align-items: center;
     box-sizing: border-box;
     overflow-x: hidden;
     text-align: center;
-    margin-top: 40px;
   }
   .word {
     display: flex;
@@ -160,14 +158,14 @@
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
-    margin-right: 15px;
+    margin-right: 10px;
     text-align: center;
   }
   .letter-box {
-    width: 48px;
-    min-width: 48px;
-    height: 52px;
-    min-height: 52px;
+    width: 40px;
+    min-width: 40px;
+    height: 44px;
+    min-height: 44px;
     padding: 0;
     flex-shrink: 0; /* Prevent collapse when empty */
     display: flex;
@@ -176,12 +174,12 @@
     text-align: center;
     border: 2px solid #453d3d;
     background: linear-gradient(145deg, #dfe6e9, #ffffff);
-    font-size: 24px;
+    font-size: 20px;
     font-weight: bold;
-    border-radius: 8px;
+    border-radius: 6px;
     box-shadow:
-      inset 2px 2px 4px rgba(255, 255, 255, 0.8),
-      2px 2px 4px rgba(0, 0, 0, 0.2),
+      inset 1px 1px 3px rgba(255, 255, 255, 0.8),
+      1px 1px 3px rgba(0, 0, 0, 0.2),
       0 0 0 1px rgba(0, 0, 0, 0.05);
     color: black;
     box-sizing: border-box;
@@ -219,11 +217,14 @@
   --------------------------- */
   @media (max-width: 480px) {
     .letter-box {
-      width: 36px;
-      min-width: 36px;
-      height: 44px;
-      min-height: 44px;
-      font-size: 20px;
+      width: 32px;
+      min-width: 32px;
+      height: 36px;
+      min-height: 36px;
+      font-size: 16px;
+    }
+    .phrase-container {
+      margin: 16px 0 10px 0;
     }
   }
 
