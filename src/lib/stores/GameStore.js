@@ -21,6 +21,7 @@ import { recordDailyResult, recordArcadeResult } from '$lib/stores/statsStore.js
  * @typedef {{
  *   bankroll: number,
  *   wagerAmount: number,
+ *   guessesRemaining: number,
  *   category: string,
  *   currentPhrase: string,
  *   gameState: string,
@@ -52,6 +53,7 @@ export const LETTER_COSTS = {
 export const gameStore = writable(/** @type {GameState} */ ({
   bankroll: 1000,
   wagerAmount: 1,
+  guessesRemaining: 2,
   category: '',
   currentPhrase: '',
   gameState: 'default', // States: "default", "purchase_pending", "guess_mode", "won", "lost"
@@ -108,39 +110,45 @@ function animateBankrollReduction(startingAmount) {
 
 /**
  * checkLossCondition
- * Ends the game if bankroll hits zero, reveals the phrase,
- * resets bankroll to 1000, and syncs state locally and remotely.
+ * Ends the game if bankroll hits zero, or if zero guesses remaining and bankroll < $150.
+ * Reveals the phrase, records result, and syncs state.
  *
  * @param {GameState} state - The current game state
  * @returns {GameState} Updated state if loss occurred, otherwise original state
  */
 function checkLossCondition(state) {
-  if (state.bankroll >= 1) return state;
+  const guessesLeft = state.guessesRemaining ?? 2;
+  const noGuessesAndCantBuy = guessesLeft <= 0 && state.bankroll < 150;
+  const bankrollZero = state.bankroll < 1;
 
-  console.log("💀 Game Over: Bankroll is zero.");
-  animateBankrollReduction(state.bankroll);
+  if (!noGuessesAndCantBuy && !bankrollZero) return state;
 
   // Reveal the full phrase
   const fullReveal = Object.fromEntries(
     state.currentPhrase.split('').map((/** @type {string} */ ch, /** @type {number} */ i) => [i, ch])
   );
 
-  const resetBankroll = 1000;
+  if (bankrollZero) {
+    console.log("💀 Game Over: Bankroll is zero.");
+    animateBankrollReduction(state.bankroll);
+  } else {
+    console.log("💀 Game Over: No guesses remaining and can't afford another ($150).");
+  }
 
   const newState = {
     ...state,
     gameState: "lost",
     guessedLetters: fullReveal,
-    bankroll: resetBankroll
+    bankroll: bankrollZero ? 1000 : state.bankroll
   };
 
   // 💾 Save to Supabase
   const currentUser = get(user);
   if (currentUser?.id) {
     if (state.gameMode === 'daily') {
-      recordDailyResult(currentUser.id, false, 0);
+      recordDailyResult(currentUser.id, false, bankrollZero ? 0 : state.bankroll);
     } else {
-      recordArcadeResult(currentUser.id, false, 0);
+      recordArcadeResult(currentUser.id, false, bankrollZero ? 0 : state.bankroll);
     }
   }
 
@@ -206,6 +214,23 @@ export function selectHint() {
       ...state,
       gameState: "purchase_pending",
       selectedPurchase: { type: 'hint' }
+    };
+  });
+}
+
+/**
+ * selectExtraGuess
+ * Toggles extra guess purchase ($150).
+ */
+export function selectExtraGuess() {
+  gameStore.update(state => {
+    if (state.selectedPurchase && state.selectedPurchase.type === 'extra_guess') {
+      return { ...state, selectedPurchase: null, gameState: "default" };
+    }
+    return {
+      ...state,
+      gameState: "purchase_pending",
+      selectedPurchase: { type: 'extra_guess' }
     };
   });
 }
@@ -314,6 +339,27 @@ export function confirmPurchase() {
       }
 
       return finalState;
+    }
+
+    // === Handle Extra Guess Purchase ($150) ===
+    if (purchase.type === 'extra_guess') {
+      const cost = 150;
+      if (newBankroll < cost) return { ...state, selectedPurchase: null, gameState: "default" };
+      newBankroll -= cost;
+      const currentGuesses = state.guessesRemaining ?? 2;
+      const newState = {
+        ...state,
+        bankroll: newBankroll,
+        guessesRemaining: currentGuesses + 1,
+        selectedPurchase: null,
+        gameState: "default"
+      };
+      const currentUser = get(user);
+      if (currentUser?.id && state.gameMode === 'arcade') {
+        saveUserProfile({ id: currentUser.id, arcade_bankroll: newBankroll });
+      }
+      saveGameToLocalStorage();
+      return newState;
     }
 
     // === Handle Hint Purchase ===
@@ -466,6 +512,11 @@ export function deleteGuessLetter() {
 export function submitGuess() {
   gameStore.update(/** @param {GameState} state */ (state) => {
     if (state.gameState !== "guess_mode") return state;
+    const guessesLeft = state.guessesRemaining ?? 2;
+    if (guessesLeft <= 0) {
+      console.log("⛔ No guesses remaining. Buy another for $150.");
+      return state;
+    }
 
     const phrase = state.currentPhrase;
     const wager = state.gameMode === 'daily' ? 0 : (state.wagerAmount || 1);
@@ -524,6 +575,9 @@ export function submitGuess() {
       : ((allCorrect || win) ? wager : -wager);
     const newBankroll = state.bankroll + bankrollChange;
 
+    const usedGuess = !(allCorrect || win);
+    const newGuessesRemaining = usedGuess ? Math.max(0, (state.guessesRemaining ?? 2) - 1) : (state.guessesRemaining ?? 2);
+
     const newState = {
       ...state,
       gameState: (allCorrect || win) ? "won" : "default",
@@ -531,7 +585,8 @@ export function submitGuess() {
       purchasedLetters: newPurchased,
       lockedLetters: newLockedLetters,
       shakenLetters: Array.from(newShakenLetters),
-      bankroll: newBankroll
+      bankroll: newBankroll,
+      guessesRemaining: newGuessesRemaining
     };
 
     // 💾 Sync to Supabase (arcade: persist during play; final save via recordArcadeResult on win)
@@ -610,6 +665,7 @@ export async function fetchRandomGame(category) {
       ...get(gameStore),
       bankroll: startingBankroll,
       wagerAmount: 1,
+      guessesRemaining: 2,
       category: puzzle.category ?? '',
       currentPhrase: (puzzle.phrase ?? '').toUpperCase(),
       gameState: 'default',
@@ -653,6 +709,7 @@ export async function fetchDailyGame() {
       ...get(gameStore),
       bankroll: 1000,
       wagerAmount: 1,
+      guessesRemaining: 2,
       category: puzzle.category ?? '',
       currentPhrase: (puzzle.phrase ?? '').toUpperCase(),
       gameState: 'default',

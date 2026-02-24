@@ -1,5 +1,7 @@
 <script>
+  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import {
     fetchDailyLeaderboard,
     fetchArcadeLeaderboard
@@ -64,6 +66,13 @@
     if (mode === 'arcade' && (arcadePeriod || arcadeOrderBy)) {
       loadArcade();
     }
+  });
+
+  // Open in daily tab when coming from daily finish (?mode=daily)
+  onMount(() => {
+    const modeParam = typeof window !== 'undefined' && $page.url.searchParams.get('mode');
+    if (modeParam === 'daily') mode = 'daily';
+    else if (modeParam === 'arcade') mode = 'arcade';
   });
 
   /** @param {unknown} n */
@@ -133,7 +142,7 @@
     </div>
   {/if}
 
-  <button class="back-btn" onclick={() => goto('/')}>← Back to Game</button>
+  <button class="back-btn" onclick={() => goto('/')}>← Return to main menu</button>
 
   {#if loading}
     <p class="loading">Loading...</p>
