@@ -3,10 +3,9 @@
 import { writable, get } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient.js';
 import confetti from 'canvas-confetti';
-import { saveUserProfile } from '$lib/stores/userStore.js';
 import { user } from '$lib/stores/userStore.js';
 import { saveGameToLocalStorage } from '$lib/stores/localGameUtils.js';
-import { recordDailyResult, recordArcadeResult } from '$lib/stores/statsStore.js';
+import { recordDailyResult, recordArcadeResult, saveArcadeBankroll } from '$lib/stores/statsStore.js';
 
 /* ================================
    Types (JSDoc for checkJs)
@@ -322,7 +321,7 @@ export function confirmPurchase() {
 
       const currentUser = get(user);
       if (currentUser?.id && state.gameMode === 'arcade') {
-        saveUserProfile({ id: currentUser.id, arcade_bankroll: newBankroll });
+        saveArcadeBankroll(newBankroll);
       }
 
       finalState = checkLossCondition(newState);
@@ -356,7 +355,7 @@ export function confirmPurchase() {
       };
       const currentUser = get(user);
       if (currentUser?.id && state.gameMode === 'arcade') {
-        saveUserProfile({ id: currentUser.id, arcade_bankroll: newBankroll });
+        saveArcadeBankroll(newBankroll);
       }
       saveGameToLocalStorage();
       return newState;
@@ -401,7 +400,7 @@ export function confirmPurchase() {
 
       const currentUser = get(user);
       if (currentUser?.id && state.gameMode === 'arcade') {
-        saveUserProfile({ id: currentUser.id, arcade_bankroll: newBankroll });
+        saveArcadeBankroll(newBankroll);
       }
 
       finalState = checkLossCondition(newState);
@@ -468,7 +467,7 @@ export function inputGuessLetter(letter) {
     if (editableIndices.length === 0) return state;
 
     // Find the first empty slot; if all filled, overwrite the last slot.
-    let activeIndex = editableIndices.find(idx => !state.guessedLetters.hasOwnProperty(idx));
+    let activeIndex = editableIndices.find(idx => !Object.hasOwn(state.guessedLetters, idx));
     if (activeIndex === undefined) {
       activeIndex = editableIndices[editableIndices.length - 1];
     }
@@ -592,7 +591,7 @@ export function submitGuess() {
     // 💾 Sync to Supabase (arcade: persist during play; final save via recordArcadeResult on win)
     const currentUser = get(user);
     if (currentUser?.id && state.gameMode === 'arcade') {
-      saveUserProfile({ id: currentUser.id, arcade_bankroll: newBankroll });
+      saveArcadeBankroll(newBankroll);
     }
 
     // 💾 Save to localStorage
