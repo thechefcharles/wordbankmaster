@@ -932,19 +932,22 @@
   }
 
   .banner.win {
-    font-size: 2rem;
-    font-weight: 600;
-    color: limegreen;
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #06210f;
     text-transform: uppercase;
-    background: linear-gradient(45deg, green, limegreen);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    background: var(--brand-grad);
     text-align: center;
-    padding: 20px;
-    border: 5px solid limegreen;
-    border-radius: 10px;
-    animation: winPulse 1.5s infinite, winFlash 0.5s infinite;
+    padding: 14px 28px;
+    border-radius: var(--r-pill);
+    box-shadow: var(--glow-brand);
+    animation: bannerPop 0.5s var(--ease-spring) both;
+  }
+  @keyframes bannerPop {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
   }
 
   @keyframes gameOverPulse {
@@ -961,24 +964,18 @@
   }
 
   .banner.lose {
-    font-size: 2rem;
-    font-weight: 600;
-    color: red;
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #fff;
     text-transform: uppercase;
-    background: linear-gradient(45deg, red, black);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    background: linear-gradient(135deg, #fb5a5a, #c81e1e);
     text-align: center;
-    padding: 20px;
-    border: 5px solid red;
-    border-radius: 10px;
-    animation: gameOverPulse 1.5s infinite, gameOverFlash 0.5s infinite;
-  }
-
-  :global(body.dark-mode) {
-    background: #222;
-    color: white;
+    padding: 14px 28px;
+    border-radius: var(--r-pill);
+    box-shadow: 0 8px 28px rgba(200, 30, 30, 0.4);
+    animation: bannerPop 0.5s var(--ease-spring) both;
   }
 
   button:focus,
@@ -1029,17 +1026,16 @@
   .subtle-button { opacity: 0.95; }
 
   .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.3); /* 🌘 Semi-transparent black */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-  /* Removed blur so puzzle stays sharp */
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 7, 12, 0.66);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    animation: fadeIn 0.25s ease-out;
   }
   .modal-backdrop {
     position: absolute;
@@ -1050,30 +1046,39 @@
   }
 
   .modal-content {
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
+    background: var(--surface-strong);
+    padding: 28px 24px;
+    border-radius: var(--r-xl);
     width: 90%;
     max-width: 400px;
     text-align: center;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    animation: slideIn 0.3s ease-out;
-    border: 3px solid #007bff;
-    color: black;
+    box-shadow: var(--shadow-lg);
+    animation: slideIn 0.35s var(--ease-out);
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
     position: relative;
     z-index: 1;
   }
+  .modal-content :global(h2) { font-family: var(--font-display); }
 
-  :global(body.dark-mode) .modal-content {
-    background: linear-gradient(135deg, #222, #333);
-    border: 3px solid limegreen;
-    color: white;
-    box-shadow: 0 4px 10px rgba(0, 255, 0, 0.3);
+  .close-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
   }
-
-  .close-btn:hover {
-    background: darkred;
-  }
+  .close-btn:hover { background: rgba(251, 90, 90, 0.16); border-color: rgba(251, 90, 90, 0.4); }
 
   @keyframes fadeIn {
     from { opacity: 0; }
@@ -1087,25 +1092,20 @@
 
   .next-puzzle-button {
     margin-top: 12px;
-    background-color: limegreen;
-    color: white;
-    font-weight: bold;
+    background: var(--brand-grad);
+    color: #06210f;
+    font-family: var(--font-display);
+    font-weight: 700;
     border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
+    padding: 13px 28px;
+    border-radius: var(--r-md);
     font-size: 1rem;
     cursor: pointer;
-    animation: pulse 1s infinite alternate;
+    box-shadow: var(--glow-brand);
+    transition: transform 0.16s var(--ease-spring), filter 0.2s;
   }
-
-  @keyframes pulse {
-    0% { transform: scale(1); }
-    100% { transform: scale(1.08); }
-  }
-
-  .next-puzzle-button:hover {
-    background-color: green;
-  }
+  .next-puzzle-button:hover { transform: translateY(-2px); filter: brightness(1.05); }
+  .next-puzzle-button:active { transform: scale(0.97); }
 
   .wager-ui {
   display: flex;
@@ -1118,13 +1118,13 @@
   transform: translateX(-50%);
   width: 100%;
   max-width: 360px;
-  padding: 6px 10px;
-  border-radius: 10px;
+  padding: 10px 14px;
+  border-radius: var(--r-lg);
 
-  /* 🔧 NEW: Light mode border and shadow */
-  background: rgba(255, 255, 255, 0.9);
-  border: 2px solid #ccc;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background: var(--surface-strong);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(14px);
 
   gap: 8px;
   z-index: 999;
@@ -1139,12 +1139,16 @@
 }
 
 .wager-label {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 0.8rem;
-  color: #222;
+  font-family: var(--font-ui);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
   text-align: center;
   width: 70px;
 }
+.wager-amount { color: #fcd34d; }
 
 .wager-amount {
   font-size: 1rem;

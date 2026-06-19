@@ -72,55 +72,49 @@
 </script>
 
 <main class="reset-wrapper">
-  <h2>🔑 Reset Your Password</h2>
+  <div class="reset-card glass fade-up">
+    <h2>Reset your password</h2>
 
-  {#if message}
-    <p class="message {success ? 'success' : 'error'}">{message}</p>
-  {/if}
+    {#if message}
+      <p class="message {success ? 'success' : 'error'}">{message}</p>
+    {/if}
 
-  {#if isTokenReady}
-    <input type="password" placeholder="New Password" bind:value={password} />
-    <input type="password" placeholder="Confirm Password" bind:value={confirmPassword} />
-    <button on:click={updatePassword}>Update Password</button>
-  {/if}
+    {#if isTokenReady}
+      <input class="field" type="password" placeholder="New password" bind:value={password} />
+      <input class="field" type="password" placeholder="Confirm password" bind:value={confirmPassword} />
+      <button class="btn-brand full" on:click={updatePassword}>Update password</button>
+    {/if}
+  </div>
 </main>
 
 <style>
   .reset-wrapper {
-    max-width: 400px;
-    margin: 60px auto;
-    padding: 1rem;
-    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
   }
-
-  input {
-    display: block;
+  .reset-card {
     width: 100%;
-    margin: 0.5rem 0;
-    padding: 0.75rem;
-    font-size: 1rem;
+    max-width: 400px;
+    padding: 30px 26px;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
   }
-
-  button {
-    background: limegreen;
-    color: white;
-    font-weight: bold;
-    padding: 10px 16px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
+  h2 {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    margin: 0 0 1.2rem;
   }
+  .field { margin: 10px 0; text-align: left; }
+  .full { width: 100%; margin-top: 8px; }
 
   .message {
-    margin: 1rem 0;
-    font-weight: bold;
+    margin: 0 0 1rem;
+    font-weight: 600;
+    font-size: 0.9rem;
   }
-
-  .message.success {
-    color: green;
-  }
-
-  .message.error {
-    color: red;
-  }
+  .message.success { color: var(--brand-2); }
+  .message.error { color: var(--danger); }
 </style>

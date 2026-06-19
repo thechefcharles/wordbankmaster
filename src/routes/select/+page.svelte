@@ -78,15 +78,15 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 1rem;
-    margin-top: 2rem;
+    gap: 0.75rem;
+    margin-top: 2.5rem;
   }
-
   h2 {
     text-align: center;
     margin: 0;
-    font-size: 2rem;
-    color: limegreen;
+    font-family: var(--font-display);
+    font-size: 1.9rem;
+    letter-spacing: -0.02em;
   }
 
   .leaderboard-link {
@@ -95,106 +95,83 @@
     justify-content: center;
     width: 44px;
     height: 44px;
-    font-size: 1.5rem;
-    background: #333;
-    color: white;
-    border-radius: 10px;
+    font-size: 1.3rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
     text-decoration: none;
-    transition: background 0.2s;
+    transition: background 0.2s, border-color 0.2s, transform 0.15s;
   }
-
-  .leaderboard-link:hover {
-    background: limegreen;
-  }
+  .leaderboard-link:hover { background: var(--surface-2); border-color: var(--border-strong); transform: translateY(-1px); }
 
   .mode-section {
-    margin: 2rem 0;
-    padding: 1.5rem;
-    border-radius: 12px;
-    background: rgba(0, 0, 0, 0.05);
+    width: 100%;
+    max-width: 460px;
+    margin: 1.5rem auto;
+    padding: 1.6rem 1.4rem;
+    border-radius: var(--r-xl);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(14px);
   }
+  .mode-section.arcade { border-color: rgba(163, 230, 53, 0.18); }
 
   .mode-section h3 {
     margin-top: 0;
-    color: #333;
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    color: var(--text);
   }
-
   .mode-section p {
-    color: #666;
+    color: var(--text-muted);
     margin-bottom: 1rem;
+    font-size: 0.92rem;
   }
 
-  .status-loading {
-    margin: 1rem 0;
-    color: #888;
-  }
-
-  .daily-status {
-    margin: 1rem 0;
-  }
-
-  .played-badge {
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 0.25rem;
-  }
-
-  .bankroll-badge {
-    font-weight: bold;
-    color: limegreen;
-    margin-bottom: 1rem;
-  }
-
-  .arcade-bankroll {
-    font-weight: 600;
-  }
-
-  .arcade-bankroll strong {
-    color: limegreen;
-  }
+  .status-loading { margin: 1rem 0; color: var(--text-faint); }
+  .daily-status { margin: 1rem 0; }
+  .played-badge { font-weight: 600; color: var(--text); margin-bottom: 0.25rem; }
+  .bankroll-badge { font-weight: 700; color: #fcd34d; margin-bottom: 1rem; }
+  .arcade-bankroll { font-weight: 600; color: var(--text-muted); }
+  .arcade-bankroll strong { color: #fcd34d; }
 
   .daily-btn {
-    padding: 1rem 2rem;
-    font-size: 1.2rem;
-    font-weight: bold;
-    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    padding: 0.95rem 2rem;
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 700;
+    background: var(--brand-grad);
     border: none;
-    border-radius: 12px;
-    color: white;
+    border-radius: var(--r-md);
+    color: #06210f;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: var(--glow-brand);
+    transition: transform 0.16s var(--ease-spring), filter 0.2s;
   }
-
-  .daily-btn:hover:not(.disabled) {
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
-  }
-
-  .daily-btn.disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
+  .daily-btn:hover:not(.disabled) { transform: translateY(-2px); filter: brightness(1.05); }
+  .daily-btn.disabled { opacity: 0.45; cursor: not-allowed; background: var(--surface-2); color: var(--text-muted); box-shadow: none; }
 
   .category-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.65rem;
     margin-top: 1rem;
   }
-
   .category-grid button {
-    padding: 1rem;
-    font-size: 1rem;
-    font-weight: bold;
-    background-color: limegreen;
-    border: none;
-    border-radius: 10px;
-    color: white;
+    padding: 1rem 0.75rem;
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 600;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    color: var(--text);
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: background 0.2s, border-color 0.2s, transform 0.15s var(--ease-spring);
   }
-
   .category-grid button:hover {
-    background-color: green;
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, rgba(52, 211, 153, 0.14), rgba(163, 230, 53, 0.05));
+    border-color: rgba(163, 230, 53, 0.4);
   }
 </style>
