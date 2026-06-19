@@ -175,6 +175,22 @@
   $: digits = String(bankroll).split('');
   $: sliderLocked = $gameStore.gameState === 'guess_mode';
 
+  // ✨ Bankroll change reaction (pulse + floating delta)
+  let bankrollPulse = '';
+  let bankrollDelta = 0;
+  /** @type {number | null} */
+  let _prevBankroll = null;
+  $: {
+    const b = $gameStore.bankroll;
+    if (_prevBankroll !== null && typeof b === 'number' && b !== _prevBankroll) {
+      bankrollDelta = b - _prevBankroll;
+      bankrollPulse = bankrollDelta > 0 ? 'up' : 'down';
+      const token = bankrollDelta;
+      setTimeout(() => { if (bankrollDelta === token) bankrollPulse = ''; }, 950);
+    }
+    if (typeof b === 'number') _prevBankroll = b;
+  }
+
   // ✅ Auto-save whenever state is valid
   $: if (
     loggedIn &&
@@ -404,13 +420,14 @@
     <!-- 🏠 Main Menu (after sign-in) -->
     <div class="main-menu fade-up">
       <div class="menu-hero">
-        <div class="menu-mark">WB</div>
+        <div class="menu-mark float">WB</div>
         <h1 class="menu-wordmark"><span class="brand-text">Word</span>Bank</h1>
         <p class="menu-tagline">Crack the phrase. Bank the win.</p>
       </div>
-      <div class="main-menu-buttons">
+      <div class="main-menu-buttons stagger">
         <button
-          class="menu-card primary"
+          class="menu-card primary sheen"
+          style="--i: 0"
           class:disabled={menuDailyPlayed && !(savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost')}
           on:click={handleMenuDaily}
         >
@@ -421,7 +438,7 @@
           </span>
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" on:click={handleMenuArcade}>
+        <button class="menu-card" style="--i: 1" on:click={handleMenuArcade}>
           <span class="mc-icon">🕹️</span>
           <span class="mc-body">
             <span class="mc-title">{#if savedGameInfo?.gameMode === 'arcade' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost'}Resume Arcade{:else}Arcade Mode{/if}</span>
@@ -429,7 +446,7 @@
           </span>
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" on:click={handleMenuLeaderboard}>
+        <button class="menu-card" style="--i: 2" on:click={handleMenuLeaderboard}>
           <span class="mc-icon">🏆</span>
           <span class="mc-body">
             <span class="mc-title">Leaderboard</span>
@@ -437,7 +454,7 @@
           </span>
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" on:click={handleMenuMyAccount}>
+        <button class="menu-card" style="--i: 3" on:click={handleMenuMyAccount}>
           <span class="mc-icon">👤</span>
           <span class="mc-body">
             <span class="mc-title">My Account</span>
@@ -510,7 +527,10 @@
     <!-- 💰 Bankroll Display -->
     <section class="stats-section">
       <div class="bankroll-container">
-        <div class="bankroll-box">
+        <div class="bankroll-box" class:pulse-up={bankrollPulse === 'up'} class:pulse-down={bankrollPulse === 'down'}>
+          {#if bankrollPulse}
+            <span class="bankroll-delta {bankrollPulse}">{bankrollDelta > 0 ? '+' : '−'}${Math.abs(bankrollDelta)}</span>
+          {/if}
           <span class="bankroll-label">Balance</span>
           <span class="bankroll-amount">
             <span class="currency">$</span>
@@ -570,6 +590,7 @@
 
     <!-- 🏆 Game Outcome Banner -->
     {#if $gameStore.gameState === "won"}
+      <div class="win-burst" aria-hidden="true"></div>
       <div class="banner win">Winner!</div>
     {:else if $gameStore.gameState === "lost"}
       <div class="banner lose">Bankrupt!</div>
@@ -860,6 +881,7 @@
   }
 
   .bankroll-box {
+    position: relative;
     display: inline-flex;
     flex-direction: column;
     align-items: center;
@@ -871,6 +893,39 @@
     box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.06);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
+  }
+  .bankroll-box.pulse-up { animation: bankPulseUp 0.7s var(--ease-spring); }
+  .bankroll-box.pulse-down { animation: bankPulseDown 0.6s var(--ease-spring); }
+  @keyframes bankPulseUp {
+    0%, 100% { transform: scale(1); box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.06); }
+    40% { transform: scale(1.07); box-shadow: var(--shadow-md), 0 0 30px rgba(163,230,53,0.55); }
+  }
+  @keyframes bankPulseDown {
+    0%, 100% { transform: scale(1); }
+    35% { transform: scale(0.96); }
+  }
+  .bankroll-delta {
+    position: absolute;
+    top: 2px;
+    right: 12px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.95rem;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+    text-shadow: 0 0 12px currentColor;
+  }
+  .bankroll-delta.up { color: var(--brand-2); animation: deltaFloatUp 0.95s var(--ease-out) forwards; }
+  .bankroll-delta.down { color: #fb7185; animation: deltaFloatDown 0.95s var(--ease-out) forwards; }
+  @keyframes deltaFloatUp {
+    0% { opacity: 0; transform: translateY(8px); }
+    25% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-28px); }
+  }
+  @keyframes deltaFloatDown {
+    0% { opacity: 0; transform: translateY(-8px); }
+    25% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(24px); }
   }
 
   .bankroll-label {
@@ -929,6 +984,20 @@
     0% { opacity: 1; }
     50% { opacity: 0.2; }
     100% { opacity: 1; }
+  }
+
+  .win-burst {
+    position: fixed;
+    inset: 0;
+    z-index: 998;
+    pointer-events: none;
+    background: radial-gradient(circle at 50% 45%, rgba(163, 230, 53, 0.35), rgba(52, 211, 153, 0.18) 35%, transparent 60%);
+    animation: winBurst 1s var(--ease-out) forwards;
+  }
+  @keyframes winBurst {
+    0% { opacity: 0; transform: scale(0.4); }
+    30% { opacity: 1; }
+    100% { opacity: 0; transform: scale(1.6); }
   }
 
   .banner.win {

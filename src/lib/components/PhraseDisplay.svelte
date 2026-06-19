@@ -153,6 +153,14 @@
     box-sizing: border-box;
     overflow-x: hidden;
     text-align: center;
+    perspective: 800px;
+  }
+  .letter-box.active {
+    animation: activePulse 1.4s ease-in-out infinite;
+  }
+  @keyframes activePulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(163,230,53,0.14), 0 0 14px rgba(163,230,53,0.2); }
+    50%      { box-shadow: 0 0 0 5px rgba(163,230,53,0.26), 0 0 22px rgba(163,230,53,0.4); }
   }
   .word {
     display: flex;
@@ -193,6 +201,12 @@
     background: var(--brand-grad);
     border-color: transparent;
     box-shadow: 0 4px 16px rgba(52, 211, 153, 0.35);
+    animation: tileReveal 0.55s var(--ease-spring) both;
+  }
+  @keyframes tileReveal {
+    0%   { transform: perspective(600px) rotateX(-90deg); box-shadow: 0 0 0 rgba(52,211,153,0); }
+    55%  { transform: perspective(600px) rotateX(0deg) scale(1.14); box-shadow: 0 0 26px rgba(163,230,53,0.7); }
+    100% { transform: perspective(600px) rotateX(0deg) scale(1); }
   }
   .letter-box.active {
     border: 2px solid var(--brand-2);

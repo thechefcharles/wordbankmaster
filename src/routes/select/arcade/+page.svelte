@@ -60,9 +60,9 @@
       {/each}
     </div>
   </div>
-  <div class="category-grid">
-    {#each categories as cat}
-      <button onclick={() => selectArcade(cat)}>{cat}</button>
+  <div class="category-grid stagger">
+    {#each categories as cat, i}
+      <button style="--i: {i}" onclick={() => selectArcade(cat)}>{cat}</button>
     {/each}
   </div>
 </div>

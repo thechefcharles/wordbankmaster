@@ -77,13 +77,13 @@ export const gameStore = writable(/** @type {GameState} */ ({
  * Triggers a celebratory confetti animation.
  */
 function launchConfetti() {
-  confetti({
-    particleCount: 120,
-    spread: 100,
-    startVelocity: 40,
-    scalar: 1.2,
-    origin: { y: 0.6 }
-  });
+  const colors = ['#34d399', '#a3e635', '#fcd34d', '#ffffff'];
+  /** @param {number} particleCount @param {object} opts */
+  const fire = (particleCount, opts) => confetti({ particleCount, colors, disableForReducedMotion: true, ...opts });
+  fire(90, { spread: 75, startVelocity: 55, origin: { y: 0.62 } });
+  fire(55, { spread: 110, decay: 0.92, scalar: 1.25, origin: { y: 0.6 } });
+  setTimeout(() => fire(65, { spread: 120, startVelocity: 48, angle: 60, origin: { x: 0.15, y: 0.65 } }), 160);
+  setTimeout(() => fire(65, { spread: 120, startVelocity: 48, angle: 120, origin: { x: 0.85, y: 0.65 } }), 300);
 }
 
 /* ================================
