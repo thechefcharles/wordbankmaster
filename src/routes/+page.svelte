@@ -5,8 +5,8 @@
   import { get } from 'svelte/store';
 
   import { gameStore, fetchRandomGame, fetchDailyGame } from '$lib/stores/GameStore.js';
-  import { user, userProfile, fetchUserProfile, saveUserProfile } from '$lib/stores/userStore.js';
-  import { hasPlayedDailyToday } from '$lib/stores/statsStore.js';
+  import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
+  import { hasPlayedDailyToday, saveArcadeBankroll } from '$lib/stores/statsStore.js';
   import {
     saveGameToLocalStorage,
     loadGameFromLocalStorage,
@@ -52,7 +52,7 @@
       if (error || !profile) {
         console.warn("⚠️ Failed to load profile:", error?.message ?? error);
         // Auto-create profile for new users (no profile row yet)
-        const createError = await saveUserProfile({ id: userId, arcade_bankroll: 1000 });
+        const createError = await ensureProfileExists(userId);
         if (createError) {
           console.error("❌ Failed to create profile:", createError);
           return null;
@@ -171,7 +171,6 @@
   $: loggedIn = !!$user?.id;
   $: bankroll = $gameStore.bankroll || 0;
   $: digits = String(bankroll).split('');
-  $: nextPuzzleAvailable = $gameStore.gameState === 'won' || $gameStore.gameState === 'lost';
   $: sliderLocked = $gameStore.gameState === 'guess_mode';
 
   // ✅ Auto-save whenever state is valid
@@ -288,7 +287,7 @@
 
     const store = get(gameStore);
     if (store.gameMode === 'arcade') {
-      await saveUserProfile({ id: currentUser.id, arcade_bankroll: 1000 });
+      await saveArcadeBankroll(1000);
     }
     clearSavedGame();
     gameWasRestored.set(false);
@@ -309,7 +308,7 @@
 
     const store = get(gameStore);
     if (store.gameMode === 'arcade') {
-      await saveUserProfile({ id: currentUser.id, arcade_bankroll: store.bankroll });
+      await saveArcadeBankroll(store.bankroll);
     }
 
     clearSavedGame();

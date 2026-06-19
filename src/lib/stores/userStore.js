@@ -1,4 +1,4 @@
-import { writable, get } from 'svelte/store';
+import { writable } from 'svelte/store';
 import { supabase } from '$lib/supabaseClient';
 
 /**
@@ -60,59 +60,28 @@ export async function fetchUserProfile(userId) {
 }
 
 /**
- * 💾 Save (insert or update) user profile data to Supabase
- * @param {ProfileData & { id: string }} updatedProfile - Updated profile object to insert or update
- * @returns {Promise<null | Error | { message?: string }>} - Returns error if any occurs during saving
+ * 💾 Ensure a profile row exists for the user (creation fallback for the DB trigger).
+ * INSERT-only: a duplicate (row already created by the on-signup trigger) is treated as success.
+ * Bankroll and stats are never written from the client — those go through SECURITY DEFINER RPCs.
+ * @param {string} userId - Supabase user ID
+ * @returns {Promise<null | Error | { message?: string }>} - Returns error if creation truly failed
  */
-export async function saveUserProfile(updatedProfile) {
+export async function ensureProfileExists(userId) {
   try {
-    console.log("🔄 Saving updated profile:", updatedProfile);
-
     const { error } = await supabase
       .from('profiles')
-      .upsert(updatedProfile);
+      .insert({ id: userId, arcade_bankroll: 1000 });
 
-    if (error) {
-      console.error("❌ Failed to save profile:", error.message);
+    // 23505 = unique_violation: the profile already exists (created by the on-signup trigger).
+    // That's the expected happy path, not an error.
+    if (error && error.code !== '23505') {
+      console.error("❌ Failed to create profile:", error.message);
       return error;
     }
 
-    console.log("✅ Profile saved (inserted or updated):", updatedProfile);
     return null;
   } catch (err) {
-    console.error("❌ Error in saving user profile:", err instanceof Error ? err.message : String(err));
+    console.error("❌ Error ensuring user profile:", err instanceof Error ? err.message : String(err));
     return err instanceof Error ? err : new Error(String(err));
-  }
-}
-
-/**
- * 📊 Save daily stats (called after each puzzle or at end of session)
- */
-export async function saveDailyStats({ puzzlesCompleted = 0, highestBankroll = 0, cashSpent = 0 }) {
-  const currentUser = get(user);
-
-  if (!currentUser?.id) {
-    console.warn('⛔ No user found when trying to save daily stats.');
-    return;
-  }
-
-  const today = new Date().toISOString().split('T')[0];
-
-  const { data, error } = await supabase
-    .from('daily_stats')
-    .upsert({
-      user_id: currentUser.id,
-      date: today,
-      puzzles_completed: puzzlesCompleted,
-      highest_bankroll: highestBankroll,
-      cash_spent: cashSpent
-    }, {
-      onConflict: 'user_id,date'
-    });
-
-  if (error) {
-    console.error("❌ Error saving daily stats:", error.message);
-  } else {
-    console.log("✅ Daily stats saved:", data);
   }
 }

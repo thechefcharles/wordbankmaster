@@ -21,10 +21,25 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_new_user();
 
--- 4. RLS: Allow users to insert their own profile (fixes "new row violates row-level security policy")
+-- 4. RLS: profiles policies (version-controlled so the schema is reproducible from scratch).
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Allow users to insert their own profile (creation fallback; the trigger above normally
+-- handles this). Fixes "new row violates row-level security policy" for new signups.
 DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile"
   ON public.profiles FOR INSERT
   WITH CHECK (auth.uid() = id);
+
+-- Allow users to read their own profile row (fetchUserProfile). Leaderboards read profiles
+-- via SECURITY DEFINER RPCs, so they do not depend on a public SELECT policy.
+DROP POLICY IF EXISTS "Users can read own profile" ON public.profiles;
+CREATE POLICY "Users can read own profile"
+  ON public.profiles FOR SELECT
+  USING (auth.uid() = id);
+
+-- NOTE: There is intentionally NO client UPDATE policy. Bankroll and stats are written only by
+-- the SECURITY DEFINER RPCs (record_daily_result / record_arcade_result / save_arcade_bankroll).
+-- supabase-security-hardening.sql additionally REVOKEs UPDATE/DELETE from the client roles.
 
 -- Note: If your profiles table has different columns, edit the INSERT above.

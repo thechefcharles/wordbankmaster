@@ -124,18 +124,25 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 4b. RPC: Check if user has already played daily today
+-- 4b. RPC: Check if THE CALLER has already played daily today
+-- p_user_id is ignored (kept for signature compatibility); identity comes from auth.uid()
+-- so a client can never probe another user's play status.
 CREATE OR REPLACE FUNCTION public.has_played_daily_today(p_user_id UUID)
 RETURNS BOOLEAN AS $$
+DECLARE
+  v_uid UUID := auth.uid();
 BEGIN
+  IF v_uid IS NULL THEN RETURN false; END IF;
   RETURN EXISTS (
     SELECT 1 FROM public.profiles
-    WHERE id = p_user_id AND last_daily_play_date = CURRENT_DATE
+    WHERE id = v_uid AND last_daily_play_date = CURRENT_DATE
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 4c. RPC: Get daily status and bankrolls for select page
+-- 4c. RPC: Get THE CALLER's daily status and bankrolls for the select page.
+-- p_user_id is ignored (kept for signature compatibility); identity comes from auth.uid()
+-- so a client can never read another user's bankroll/status.
 CREATE OR REPLACE FUNCTION public.get_daily_status(p_user_id UUID)
 RETURNS TABLE (
   has_played_today BOOLEAN,
@@ -143,7 +150,10 @@ RETURNS TABLE (
   daily_bankroll INT,
   arcade_bankroll INT
 ) AS $$
+DECLARE
+  v_uid UUID := auth.uid();
 BEGIN
+  IF v_uid IS NULL THEN RETURN; END IF;
   RETURN QUERY
   SELECT
     (p.last_daily_play_date = CURRENT_DATE) AS has_played_today,
@@ -151,7 +161,7 @@ BEGIN
     COALESCE(p.daily_bankroll, 0)::INT AS daily_bankroll,
     COALESCE(p.arcade_bankroll, 1000)::INT AS arcade_bankroll
   FROM public.profiles p
-  WHERE p.id = p_user_id;
+  WHERE p.id = v_uid;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -178,7 +188,8 @@ BEGIN
       v_start := date_trunc('day', CURRENT_DATE) AT TIME ZONE 'UTC';
       v_end := v_start + INTERVAL '1 day';
     WHEN 'weekly' THEN
-      v_start := (date_trunc('week', CURRENT_DATE)::DATE + 1)::TIMESTAMPTZ;
+      -- Tuesday-keyed league week, interpreted in UTC to match game_results.played_at (stored via NOW() in UTC)
+      v_start := ((date_trunc('week', CURRENT_DATE)::DATE + 1)::TIMESTAMP) AT TIME ZONE 'UTC';
       v_end := v_start + INTERVAL '7 days';
     WHEN 'monthly' THEN
       v_start := date_trunc('month', CURRENT_DATE) AT TIME ZONE 'UTC';
@@ -272,7 +283,8 @@ BEGIN
         v_start := date_trunc('day', CURRENT_DATE) AT TIME ZONE 'UTC';
         v_end := v_start + INTERVAL '1 day';
       WHEN 'weekly' THEN
-        v_start := (date_trunc('week', CURRENT_DATE)::DATE + 1)::TIMESTAMPTZ;
+        -- Tuesday-keyed league week, interpreted in UTC to match game_results.played_at
+        v_start := ((date_trunc('week', CURRENT_DATE)::DATE + 1)::TIMESTAMP) AT TIME ZONE 'UTC';
         v_end := v_start + INTERVAL '7 days';
       WHEN 'monthly' THEN
         v_start := date_trunc('month', CURRENT_DATE) AT TIME ZONE 'UTC';
@@ -347,6 +359,10 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 5. RPC: Record daily game result and update weekly stats
+-- SECURITY: p_user_id is IGNORED (kept only for signature/JS compatibility). The caller's
+-- identity comes from auth.uid(), so a client can never record a result for another user.
+-- One result per user per day is enforced here (the client-side button-disable is not trustworthy),
+-- and the bankroll is clamped to the only range a legitimate daily game can produce ([0, 1000]).
 CREATE OR REPLACE FUNCTION public.record_daily_result(
   p_user_id UUID,
   p_won BOOLEAN,
@@ -354,23 +370,38 @@ CREATE OR REPLACE FUNCTION public.record_daily_result(
 )
 RETURNS void AS $$
 DECLARE
+  v_uid UUID := auth.uid();
   v_week_start DATE;
   v_current_streak INT;
   v_highest_streak INT;
   v_last_win DATE;
+  v_last_play DATE;
+  v_bankroll INT;
 BEGIN
-  v_week_start := date_trunc('week', CURRENT_DATE)::DATE + 1; -- Monday
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'record_daily_result: not authenticated';
+  END IF;
 
-  -- Get current streak from profiles
-  SELECT current_win_streak, highest_win_streak, last_daily_win_date
-  INTO v_current_streak, v_highest_streak, v_last_win
-  FROM public.profiles WHERE id = p_user_id;
+  -- Daily starts at 1000 and can only decrease; reject anything outside that range.
+  v_bankroll := LEAST(GREATEST(COALESCE(p_bankroll_left, 0), 0), 1000);
+
+  v_week_start := date_trunc('week', CURRENT_DATE)::DATE + 1; -- Tuesday-keyed league week
+
+  SELECT current_win_streak, highest_win_streak, last_daily_win_date, last_daily_play_date
+  INTO v_current_streak, v_highest_streak, v_last_win, v_last_play
+  FROM public.profiles WHERE id = v_uid;
+
+  -- Enforce one daily result per day, server-side.
+  IF v_last_play = CURRENT_DATE THEN
+    RETURN;
+  END IF;
 
   -- Update streak, daily bankroll, and last result
   IF p_won THEN
     IF v_last_win = CURRENT_DATE - 1 THEN
       v_current_streak := COALESCE(v_current_streak, 0) + 1;
-    ELSIF v_last_win != CURRENT_DATE THEN
+    ELSIF v_last_win IS DISTINCT FROM CURRENT_DATE THEN
+      -- First win ever (NULL) or a gap since the last win: start a fresh streak at 1.
       v_current_streak := 1;
     END IF;
     v_highest_streak := GREATEST(COALESCE(v_highest_streak, 0), v_current_streak);
@@ -379,29 +410,30 @@ BEGIN
       highest_win_streak = v_highest_streak,
       last_daily_win_date = CURRENT_DATE,
       last_daily_play_date = CURRENT_DATE,
-      daily_bankroll = p_bankroll_left,
+      daily_bankroll = v_bankroll,
       last_daily_won = true
-    WHERE id = p_user_id;
+    WHERE id = v_uid;
   ELSE
+    v_current_streak := 0;
     UPDATE public.profiles SET
       current_win_streak = 0,
       last_daily_play_date = CURRENT_DATE,
-      daily_bankroll = p_bankroll_left,
+      daily_bankroll = v_bankroll,
       last_daily_won = false
-    WHERE id = p_user_id;
+    WHERE id = v_uid;
   END IF;
 
   -- Insert into game_results for period-based leaderboards
   INSERT INTO public.game_results (user_id, played_at, won, bankroll_left, game_mode)
-  VALUES (p_user_id, NOW(), p_won, p_bankroll_left, 'daily');
+  VALUES (v_uid, NOW(), p_won, v_bankroll, 'daily');
 
   -- Upsert weekly stats
   INSERT INTO public.user_weekly_stats (user_id, week_start, puzzles_completed, bankroll_earned, highest_bankroll, total_wins, total_played, win_streak)
   VALUES (
-    p_user_id, v_week_start,
+    v_uid, v_week_start,
     CASE WHEN p_won THEN 1 ELSE 0 END,
-    CASE WHEN p_won THEN p_bankroll_left ELSE 0 END,
-    p_bankroll_left,
+    CASE WHEN p_won THEN v_bankroll ELSE 0 END,
+    v_bankroll,
     CASE WHEN p_won THEN 1 ELSE 0 END,
     1,
     COALESCE(v_current_streak, 0)
@@ -410,13 +442,18 @@ BEGIN
     total_played = user_weekly_stats.total_played + 1,
     total_wins = user_weekly_stats.total_wins + CASE WHEN p_won THEN 1 ELSE 0 END,
     puzzles_completed = user_weekly_stats.puzzles_completed + CASE WHEN p_won THEN 1 ELSE 0 END,
-    bankroll_earned = user_weekly_stats.bankroll_earned + CASE WHEN p_won THEN p_bankroll_left ELSE 0 END,
-    highest_bankroll = GREATEST(user_weekly_stats.highest_bankroll, p_bankroll_left),
+    bankroll_earned = user_weekly_stats.bankroll_earned + CASE WHEN p_won THEN v_bankroll ELSE 0 END,
+    highest_bankroll = GREATEST(user_weekly_stats.highest_bankroll, v_bankroll),
     win_streak = GREATEST(user_weekly_stats.win_streak, v_current_streak);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 5b. RPC: Record arcade game result
+-- SECURITY: p_user_id is IGNORED (kept for signature/JS compatibility); identity comes from
+-- auth.uid(). Bankroll is clamped to a non-negative, sane ceiling. NOTE: arcade bankroll is
+-- still client-derived (the answer lives in the browser), so the arcade leaderboard is only as
+-- trustworthy as the client. The daily leaderboard is the integrity-critical one and is clamped
+-- tightly. Fully trustless scoring would require server-held puzzle state (see review note #2).
 CREATE OR REPLACE FUNCTION public.record_arcade_result(
   p_user_id UUID,
   p_won BOOLEAN,
@@ -424,11 +461,19 @@ CREATE OR REPLACE FUNCTION public.record_arcade_result(
 )
 RETURNS void AS $$
 DECLARE
+  v_uid UUID := auth.uid();
   v_arcade_streak INT;
   v_highest_arcade_streak INT;
+  v_bankroll INT;
 BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'record_arcade_result: not authenticated';
+  END IF;
+
+  v_bankroll := LEAST(GREATEST(COALESCE(p_bankroll_left, 0), 0), 100000000);
+
   SELECT arcade_win_streak, highest_arcade_streak INTO v_arcade_streak, v_highest_arcade_streak
-  FROM public.profiles WHERE id = p_user_id;
+  FROM public.profiles WHERE id = v_uid;
 
   IF p_won THEN
     v_arcade_streak := COALESCE(v_arcade_streak, 0) + 1;
@@ -438,14 +483,34 @@ BEGIN
   END IF;
 
   UPDATE public.profiles SET
-    arcade_bankroll = p_bankroll_left,
-    highest_arcade_bankroll = GREATEST(COALESCE(highest_arcade_bankroll, 1000), p_bankroll_left),
+    arcade_bankroll = v_bankroll,
+    highest_arcade_bankroll = GREATEST(COALESCE(highest_arcade_bankroll, 1000), v_bankroll),
     arcade_win_streak = v_arcade_streak,
     highest_arcade_streak = COALESCE(v_highest_arcade_streak, highest_arcade_streak, 0)
-  WHERE id = p_user_id;
+  WHERE id = v_uid;
 
   INSERT INTO public.game_results (user_id, played_at, won, bankroll_left, game_mode)
-  VALUES (p_user_id, NOW(), p_won, p_bankroll_left, 'arcade');
+  VALUES (v_uid, NOW(), p_won, v_bankroll, 'arcade');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 5c. RPC: Persist the caller's arcade bankroll between/within games (replaces the old
+-- direct client UPDATE of profiles.arcade_bankroll, which let any client write any value to
+-- any column). Identity comes from auth.uid(); bankroll is clamped.
+CREATE OR REPLACE FUNCTION public.save_arcade_bankroll(p_bankroll INT)
+RETURNS void AS $$
+DECLARE
+  v_uid UUID := auth.uid();
+  v_bankroll INT;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'save_arcade_bankroll: not authenticated';
+  END IF;
+  v_bankroll := LEAST(GREATEST(COALESCE(p_bankroll, 0), 0), 100000000);
+  UPDATE public.profiles SET
+    arcade_bankroll = v_bankroll,
+    highest_arcade_bankroll = GREATEST(COALESCE(highest_arcade_bankroll, 1000), v_bankroll)
+  WHERE id = v_uid;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -554,7 +619,8 @@ BEGIN
       v_start := date_trunc('day', CURRENT_DATE) AT TIME ZONE 'UTC';
       v_end := v_start + INTERVAL '1 day';
     WHEN 'weekly' THEN
-      v_start := (date_trunc('week', CURRENT_DATE)::DATE + 1)::TIMESTAMPTZ;
+      -- Tuesday-keyed league week, interpreted in UTC to match game_results.played_at
+      v_start := ((date_trunc('week', CURRENT_DATE)::DATE + 1)::TIMESTAMP) AT TIME ZONE 'UTC';
       v_end := v_start + INTERVAL '7 days';
     WHEN 'monthly' THEN
       v_start := date_trunc('month', CURRENT_DATE) AT TIME ZONE 'UTC';
@@ -563,7 +629,7 @@ BEGIN
       v_start := date_trunc('year', CURRENT_DATE) AT TIME ZONE 'UTC';
       v_end := v_start + INTERVAL '1 year';
     ELSE
-      v_start := (date_trunc('week', CURRENT_DATE)::DATE + 1)::TIMESTAMPTZ;
+      v_start := ((date_trunc('week', CURRENT_DATE)::DATE + 1)::TIMESTAMP) AT TIME ZONE 'UTC';
       v_end := v_start + INTERVAL '7 days';
   END CASE;
 

@@ -16,7 +16,6 @@
   ];
 
   let status = $state({ arcade_bankroll: 1000 });
-  let loading = $state(true);
 
   onMount(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -25,7 +24,6 @@
       const s = await getDailyStatus(session.user.id);
       status = { arcade_bankroll: s.arcade_bankroll ?? 1000 };
     }
-    loading = false;
   });
 
   /** @param {string} category */

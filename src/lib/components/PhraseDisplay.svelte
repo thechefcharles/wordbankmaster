@@ -1,13 +1,11 @@
 <script>
   import { gameStore } from '$lib/stores/GameStore.js';
   import { onDestroy, createEventDispatcher } from 'svelte';
-  import { getFormattedPhrase, getGlobalIndex } from '$lib/helpers/gameUtils.js';
+  import { getGlobalIndex } from '$lib/helpers/gameUtils.js';
 
   const dispatch = createEventDispatcher();
 
   // 📤 Reactive State Setup
-  $: phrase = $gameStore.currentPhrase || "";
-  $: formattedPhrase = getFormattedPhrase(phrase);
 
   // 💢 Shake Animation
   let shakeIndexes = new Set();
