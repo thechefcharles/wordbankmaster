@@ -240,211 +240,152 @@
 <style>
   .leaderboard-page {
     max-width: 700px;
-    margin: 2rem auto;
-    padding: 1rem;
+    margin: 0 auto;
+    padding: 2.5rem 1rem 3rem;
     text-align: center;
   }
 
   h1 {
-    color: limegreen;
+    font-family: var(--font-display);
     font-size: 2rem;
-    margin-bottom: 0.25rem;
+    letter-spacing: -0.02em;
+    margin-bottom: 1.1rem;
   }
 
   .mode-tabs {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: center;
-    margin-bottom: 1rem;
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px;
+    margin-bottom: 1.4rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
   }
 
   .tab-btn {
-    padding: 0.6rem 1.5rem;
-    border: 2px solid #ccc;
-    background: #fff;
-    color: #333;
-    border-radius: 8px;
+    padding: 0.55rem 1.6rem;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: var(--r-pill);
     cursor: pointer;
-    font-size: 1rem;
-    font-weight: bold;
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: color 0.2s, background 0.2s;
   }
-
-  .tab-btn:hover {
-    background: #f5f5f5;
-  }
-
+  .tab-btn:hover { color: var(--text); }
   .tab-btn.active {
-    background: limegreen;
-    color: white;
-    border-color: limegreen;
+    background: var(--brand-grad);
+    color: #06210f;
+    box-shadow: var(--glow-brand);
   }
 
   .period-label {
-    color: #888;
-    font-size: 0.95rem;
-    margin-bottom: 1rem;
+    color: var(--text-faint);
+    font-size: 0.9rem;
+    margin-bottom: 0.9rem;
   }
 
-  .period-filters {
+  .period-filters, .sort-filters {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.45rem;
     justify-content: center;
     flex-wrap: wrap;
     margin-bottom: 1rem;
   }
 
-  .period-btn {
+  .period-btn, .sort-btn {
     padding: 0.4rem 0.9rem;
-    border: 1px solid #ccc;
-    background: #fff;
-    color: #333;
-    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    border-radius: var(--r-pill);
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
   }
-
-  .period-btn:hover {
-    background: #f5f5f5;
-  }
-
-  .period-btn.active {
-    background: limegreen;
-    color: white;
-    border-color: limegreen;
+  .period-btn:hover, .sort-btn:hover { background: var(--surface-2); color: var(--text); }
+  .period-btn.active, .sort-btn.active {
+    background: rgba(163, 230, 53, 0.12);
+    color: var(--brand-2);
+    border-color: rgba(163, 230, 53, 0.4);
   }
 
   .sort-label {
-    color: #888;
-    font-size: 0.85rem;
-    margin: 0.5rem 0 0.25rem;
-  }
-
-  .sort-filters {
-    display: flex;
-    gap: 0.4rem;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin-bottom: 1rem;
-  }
-
-  .sort-btn {
-    padding: 0.35rem 0.75rem;
-    border: 1px solid #ccc;
-    background: #fff;
-    color: #333;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.85rem;
-  }
-
-  .sort-btn:hover {
-    background: #f5f5f5;
-  }
-
-  .sort-btn.active {
-    background: limegreen;
-    color: white;
-    border-color: limegreen;
+    color: var(--text-faint);
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 0.5rem 0 0.5rem;
   }
 
   .back-btn {
     display: inline-block;
     margin-bottom: 2rem;
-    padding: 0.5rem 1rem;
-    background: #333;
-    color: white;
-    border: none;
-    border-radius: 8px;
+    padding: 0.6rem 1.2rem;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
     cursor: pointer;
-    font-size: 0.95rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: background 0.2s, border-color 0.2s, transform 0.15s;
   }
-
-  .back-btn:hover {
-    background: #555;
-  }
+  .back-btn:hover { background: var(--surface-2); border-color: var(--border-strong); transform: translateY(-1px); }
 
   .loading, .error, .empty {
-    padding: 2rem;
-    color: #666;
+    padding: 2.5rem 1rem;
+    color: var(--text-muted);
   }
-
-  .error {
-    color: #c62828;
-  }
+  .error { color: var(--danger); }
 
   .table-wrap {
     overflow-x: auto;
-    border-radius: 12px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-    margin: 0 -1rem;
+    border-radius: var(--r-lg);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    backdrop-filter: blur(14px);
   }
 
   table {
     width: 100%;
     min-width: 550px;
     border-collapse: collapse;
-    background: white;
   }
 
   th, td {
-    padding: 0.5rem 0.75rem;
+    padding: 0.7rem 0.85rem;
     text-align: left;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
   }
 
   th {
-    background: #f5f5f5;
-    font-weight: 700;
-    color: #333;
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--text-faint);
+    background: rgba(255, 255, 255, 0.02);
   }
+  tbody tr { transition: background 0.15s; }
+  tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+  td { color: var(--text); }
 
   tr.top-three {
-    background: linear-gradient(90deg, rgba(76, 175, 80, 0.08), transparent);
+    background: linear-gradient(90deg, rgba(52, 211, 153, 0.10), transparent);
   }
 
-  td.rank {
-    font-weight: bold;
-    width: 50px;
-  }
-
-  td.name {
-    font-weight: 600;
-  }
+  td.rank { font-weight: 700; width: 50px; font-family: var(--font-display); }
+  td.name { font-weight: 600; }
 
   .hint {
-    margin-top: 2rem;
-    font-size: 0.85rem;
-    color: #999;
-  }
-
-  :global(body.dark-mode) .leaderboard-page table {
-    background: #333;
-  }
-
-  :global(body.dark-mode) th, :global(body.dark-mode) td {
-    border-color: #555;
-    color: #eee;
-  }
-
-  :global(body.dark-mode) th {
-    background: #444;
-  }
-
-  :global(body.dark-mode) .tab-btn, :global(body.dark-mode) .period-btn {
-    background: #333;
-    color: #eee;
-    border-color: #555;
-  }
-
-  :global(body.dark-mode) .tab-btn.active, :global(body.dark-mode) .period-btn.active, :global(body.dark-mode) .sort-btn.active {
-    background: limegreen;
-    color: white;
-    border-color: limegreen;
-  }
-
-  :global(body.dark-mode) .sort-btn {
-    background: #333;
-    color: #eee;
-    border-color: #555;
+    margin-top: 1.6rem;
+    font-size: 0.82rem;
+    color: var(--text-faint);
   }
 </style>

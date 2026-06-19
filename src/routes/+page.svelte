@@ -402,35 +402,48 @@
     <div class="init-loading">Loading…</div>
   {:else if showMainMenu}
     <!-- 🏠 Main Menu (after sign-in) -->
-    <div class="main-menu">
-      <div class="logo-container">
-        <img src="/1.png" alt="WordBank Logo" class="wordbank-logo" />
+    <div class="main-menu fade-up">
+      <div class="menu-hero">
+        <div class="menu-mark">WB</div>
+        <h1 class="menu-wordmark"><span class="brand-text">Word</span>Bank</h1>
+        <p class="menu-tagline">Crack the phrase. Bank the win.</p>
       </div>
-      <h1 class="main-menu-title">Main Menu</h1>
       <div class="main-menu-buttons">
         <button
-          class="main-menu-btn"
+          class="menu-card primary"
           class:disabled={menuDailyPlayed && !(savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost')}
           on:click={handleMenuDaily}
         >
-          {#if savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost'}
-            Resume Daily Puzzle
-          {:else}
-            Daily Puzzle
-          {/if}
+          <span class="mc-icon">🎯</span>
+          <span class="mc-body">
+            <span class="mc-title">{#if savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost'}Resume Daily{:else}Daily Puzzle{/if}</span>
+            <span class="mc-sub">One puzzle a day · ranked</span>
+          </span>
+          <span class="mc-arrow">→</span>
         </button>
-        <button class="main-menu-btn" on:click={handleMenuArcade}>
-          {#if savedGameInfo?.gameMode === 'arcade' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost'}
-            Resume Arcade Mode
-          {:else}
-            Arcade Mode
-          {/if}
+        <button class="menu-card" on:click={handleMenuArcade}>
+          <span class="mc-icon">🕹️</span>
+          <span class="mc-body">
+            <span class="mc-title">{#if savedGameInfo?.gameMode === 'arcade' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost'}Resume Arcade{:else}Arcade Mode{/if}</span>
+            <span class="mc-sub">Unlimited · build your bankroll</span>
+          </span>
+          <span class="mc-arrow">→</span>
         </button>
-        <button class="main-menu-btn" on:click={handleMenuLeaderboard}>
-          Leaderboard
+        <button class="menu-card" on:click={handleMenuLeaderboard}>
+          <span class="mc-icon">🏆</span>
+          <span class="mc-body">
+            <span class="mc-title">Leaderboard</span>
+            <span class="mc-sub">See who's on top</span>
+          </span>
+          <span class="mc-arrow">→</span>
         </button>
-        <button class="main-menu-btn" on:click={handleMenuMyAccount}>
-          My Account
+        <button class="menu-card" on:click={handleMenuMyAccount}>
+          <span class="mc-icon">👤</span>
+          <span class="mc-body">
+            <span class="mc-title">My Account</span>
+            <span class="mc-sub">Profile &amp; sign out</span>
+          </span>
+          <span class="mc-arrow">→</span>
         </button>
       </div>
     </div>
@@ -464,9 +477,7 @@
     <!-- ✅ GAME UI (Visible only when logged in) -->
 
     <!-- 🧠 Game Logo -->
-    <div class="logo-container">
-      <img src="/1.png" alt="WordBank Logo" class="wordbank-logo" />
-    </div>
+    <div class="game-logo"><span class="brand-text">Word</span>Bank</div>
 
     <!-- 🔍 Diagnostic banner (shows when init failed) -->
     {#if initError}
@@ -485,10 +496,10 @@
     {/if}
 
     <!-- 🌍 Category Display -->
-    <p class="category">{$gameStore.category} 🌍</p>
-    {#if $gameStore.subcategory}
-  <p class="subcategory-hint"> {$gameStore.subcategory}</p>
-{/if}
+    <div class="puzzle-meta">
+      {#if $gameStore.category}<span class="category-chip">{$gameStore.category}</span>{/if}
+      {#if $gameStore.subcategory}<span class="subcat-chip">{$gameStore.subcategory}</span>{/if}
+    </div>
 
 
     <!-- 🔤 Phrase Display -->
@@ -500,10 +511,13 @@
     <section class="stats-section">
       <div class="bankroll-container">
         <div class="bankroll-box">
-          <span class="currency">$</span>
-          {#each digits as d}
-            <FlipDigit digit={+d} />
-          {/each}
+          <span class="bankroll-label">Balance</span>
+          <span class="bankroll-amount">
+            <span class="currency">$</span>
+            {#each digits as d}
+              <FlipDigit digit={+d} />
+            {/each}
+          </span>
         </div>
       </div>
     </section>
@@ -598,19 +612,39 @@
     max-width: 600px;
     margin: 0 auto;
     text-align: center;
-    font-family: 'Orbitron', sans-serif;
-    padding: 6px;
-    padding-bottom: 185px; /* space so bankroll stays above fixed Solve + keyboard */
+    font-family: var(--font-ui);
+    padding: 16px 12px 248px; /* space so content stays above fixed Solve + keyboard */
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
   }
 
-  .category {
-    font-size: .7rem;
-    margin-top: -95px;
-    margin-bottom: 0.15rem;
-    font-weight: bold;
+  .puzzle-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin: 0 0 22px;
+  }
+  .category-chip {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--brand-2);
+    background: rgba(163, 230, 53, 0.10);
+    border: 1px solid rgba(163, 230, 53, 0.28);
+    padding: 6px 13px;
+    border-radius: var(--r-pill);
+  }
+  .subcat-chip {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 6px 13px;
+    border-radius: var(--r-pill);
   }
 
   .phrase-section {
@@ -683,87 +717,127 @@
     color: #666;
   }
 
-  /* Main menu (after sign-in) – same blue/green as game (hint + Solve) */
+  /* Main menu (after sign-in) — premium dark */
   .main-menu {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 2rem 1rem;
-    gap: 1.5rem;
+    padding: 3.5rem 1.1rem 2rem;
+    gap: 2rem;
   }
-  .main-menu .logo-container {
-    margin-top: 0;
+  .menu-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
   }
-  .main-menu-title {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1.75rem;
+  .menu-mark {
+    width: 60px;
+    height: 60px;
+    display: grid;
+    place-items: center;
+    font-family: var(--font-display);
     font-weight: 700;
-    margin: 0 0 0.5rem 0;
-    color: #0055bb;
-    text-shadow: 0 0 8px rgba(68, 136, 255, 0.4);
+    font-size: 1.35rem;
+    color: #06210f;
+    background: var(--brand-grad);
+    border-radius: 18px;
+    box-shadow: var(--glow-brand);
+    margin-bottom: 16px;
+  }
+  .menu-wordmark {
+    font-family: var(--font-display);
+    font-size: 2.4rem;
+    letter-spacing: -0.03em;
+    margin: 0;
+  }
+  .menu-tagline {
+    margin: 8px 0 0;
+    color: var(--text-muted);
+    font-size: 0.95rem;
   }
   .main-menu-buttons {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.85rem;
     width: 100%;
-    max-width: 320px;
+    max-width: 360px;
   }
-  .main-menu-btn {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1rem;
-    padding: 0.9rem 1.25rem;
-    border-radius: 10px;
-    border: 2px solid #2e9417;
-    background: linear-gradient(180deg, #46a230, #318020);
-    color: #fff;
+  .menu-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    text-align: left;
+    padding: 16px 18px;
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
     cursor: pointer;
-    box-shadow: inset 1px 1px 4px rgba(255, 255, 255, 0.3), 2px 2px 6px rgba(0, 0, 0, 0.6);
-    transition: transform 0.15s, box-shadow 0.15s;
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    transition: transform 0.16s var(--ease-spring), background 0.2s, border-color 0.2s, box-shadow 0.2s;
   }
-  .main-menu-btn:hover:not(:disabled):not(.disabled) {
+  .menu-card:hover:not(.disabled) {
     transform: translateY(-2px);
-    background: linear-gradient(180deg, #4cb038, #368828);
-    box-shadow: inset 1px 1px 4px rgba(255, 255, 255, 0.35), 2px 2px 8px rgba(0, 0, 0, 0.5);
+    background: var(--surface-2);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-md);
   }
-  .main-menu-btn:disabled,
-  .main-menu-btn.disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-    background: linear-gradient(180deg, #6b6b6b, #4a4a4a);
-    border-color: #555;
+  .menu-card:active:not(.disabled) { transform: scale(0.99); }
+  .menu-card.primary {
+    border-color: rgba(163, 230, 53, 0.4);
+    background: linear-gradient(135deg, rgba(52, 211, 153, 0.16), rgba(163, 230, 53, 0.06));
+    box-shadow: var(--glow-brand);
   }
-  .main-menu-modal {
-    text-align: center;
+  .menu-card.disabled { opacity: 0.45; cursor: not-allowed; }
+  .mc-icon {
+    width: 46px;
+    height: 46px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    font-size: 1.4rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 13px;
   }
-  .main-menu-modal .main-menu-btn {
-    margin-top: 1rem;
+  .menu-card.primary .mc-icon {
+    background: var(--brand-grad);
+    border: none;
   }
+  .mc-body { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+  .mc-title { font-family: var(--font-display); font-weight: 600; font-size: 1.06rem; }
+  .mc-sub { font-size: 0.8rem; color: var(--text-muted); }
+  .mc-arrow { color: var(--text-faint); font-size: 1.1rem; transition: transform 0.2s, color 0.2s; }
+  .menu-card:hover:not(.disabled) .mc-arrow { transform: translateX(3px); color: var(--brand-2); }
+
+  /* Modal action button (reused brand button) */
+  .main-menu-btn {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1rem;
+    padding: 13px 20px;
+    border-radius: var(--r-md);
+    border: none;
+    background: var(--brand-grad);
+    color: #06210f;
+    cursor: pointer;
+    box-shadow: var(--glow-brand);
+    transition: transform 0.15s var(--ease-spring), filter 0.2s;
+  }
+  .main-menu-btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
+  .main-menu-modal { text-align: center; }
+  .main-menu-modal .main-menu-btn { margin-top: 1rem; }
   .streak-message {
     margin: 1rem 0 0 0;
     font-size: 1.05rem;
-    color: #333;
+    color: var(--text-muted);
   }
   .account-email {
     font-size: 0.95rem;
-    color: #888;
+    color: var(--text-muted);
     margin: 0.5rem 0 0 0;
-  }
-  :global(body.dark-mode) .main-menu-title {
-    color: #66aaff;
-    text-shadow: 0 0 10px rgba(102, 170, 255, 0.5);
-  }
-  :global(body.dark-mode) .main-menu-btn {
-    background: linear-gradient(180deg, #46a230, #318020);
-    border-color: #2e9417;
-  }
-  :global(body.dark-mode) .main-menu-btn:hover:not(:disabled):not(.disabled) {
-    background: linear-gradient(180deg, #4cb038, #368828);
-  }
-  :global(body.dark-mode) .main-menu-btn:disabled,
-  :global(body.dark-mode) .main-menu-btn.disabled {
-    background: linear-gradient(180deg, #5a5a5a, #3d3d3d);
-    border-color: #555;
   }
 
   :global(body.dark-mode) .diagnostic-banner {
@@ -778,65 +852,57 @@
   }
 
   .bankroll-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  margin: 0 auto;
-}
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    margin: 0 auto;
+  }
 
+  .bankroll-box {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 12px 30px;
+    background: var(--surface-strong);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
 
-.bankroll-box {
-  padding: 2px 28px;
-  font-size: 0.4rem;
-  font-family: 'Orbitron', sans-serif;
-  color: #fff;
-  background: linear-gradient(180deg, #d1cdcd, #858484);
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  border-radius: 8px;
-  text-align: center;
-  box-shadow:
-    inset 1px 1px 4px rgba(255, 255, 255, 0.2),
-    2px 2px 6px rgba(0, 0, 0, 0.742),
-    3px 3px 8px rgba(0, 0, 0, 0.5),
-    0 0 6px rgba(245, 246, 245, 0.5);
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  letter-spacing: 1px;
-  backdrop-filter: blur(5px);
-  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
-  animation: bankrollGlow 2.5s infinite alternate ease-in-out;
-}
+  .bankroll-label {
+    font-family: var(--font-ui);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
 
-.bankroll-box:hover {
-  transform: scale(1.05);
-  box-shadow:
-    0 0 25px rgba(251, 251, 251, 0.8),
-    0 0 10px rgba(158, 158, 158, 0.7) inset;
-}
+  .bankroll-amount {
+    display: inline-flex;
+    align-items: center;
+  }
 
-.currency {
-  font-size: 0.85rem;
-  margin-right: 4px;
-  font-weight: bold;
-  color: rgba(255, 255, 255, 0.8);
-  text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
-}
+  .currency {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.55rem;
+    margin-right: 3px;
+    color: #fcd34d;
+    text-shadow: 0 0 14px rgba(251, 191, 36, 0.45);
+  }
 
-@keyframes bankrollGlow {
-  0%   { box-shadow: 0 0 8px rgba(245, 246, 245, 0.5); }
-  50%  { box-shadow: 0 0 12px rgba(242, 243, 242, 0.7); }
-  100% { box-shadow: 0 0 8px rgba(239, 241, 239, 0.5); }
-}
-
-  .wordbank-logo {
-    width: 280px;
-    height: auto;
-    display: block;
-    margin: -35px auto -42px;
-    padding-bottom: 0;
-    align-self: center;
+  .game-logo {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: -0.02em;
+    text-align: center;
+    margin: 4px 0 14px;
   }
 
   .logo-container {
@@ -866,19 +932,22 @@
   }
 
   .banner.win {
-    font-size: 2rem;
-    font-weight: 600;
-    color: limegreen;
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #06210f;
     text-transform: uppercase;
-    background: linear-gradient(45deg, green, limegreen);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    background: var(--brand-grad);
     text-align: center;
-    padding: 20px;
-    border: 5px solid limegreen;
-    border-radius: 10px;
-    animation: winPulse 1.5s infinite, winFlash 0.5s infinite;
+    padding: 14px 28px;
+    border-radius: var(--r-pill);
+    box-shadow: var(--glow-brand);
+    animation: bannerPop 0.5s var(--ease-spring) both;
+  }
+  @keyframes bannerPop {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
   }
 
   @keyframes gameOverPulse {
@@ -895,24 +964,18 @@
   }
 
   .banner.lose {
-    font-size: 2rem;
-    font-weight: 600;
-    color: red;
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #fff;
     text-transform: uppercase;
-    background: linear-gradient(45deg, red, black);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    background: linear-gradient(135deg, #fb5a5a, #c81e1e);
     text-align: center;
-    padding: 20px;
-    border: 5px solid red;
-    border-radius: 10px;
-    animation: gameOverPulse 1.5s infinite, gameOverFlash 0.5s infinite;
-  }
-
-  :global(body.dark-mode) {
-    background: #222;
-    color: white;
+    padding: 14px 28px;
+    border-radius: var(--r-pill);
+    box-shadow: 0 8px 28px rgba(200, 30, 30, 0.4);
+    animation: bannerPop 0.5s var(--ease-spring) both;
   }
 
   button:focus,
@@ -929,49 +992,52 @@
   .top-buttons {
     position: fixed;
     top: 12px;
-    left: 12px;
-    right: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 24px);
+    max-width: 600px;
     display: flex;
     justify-content: space-between;
     z-index: 1000;
   }
 
   .icon-button, a.icon-button {
-    background: transparent;
-    border: none;
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
     text-decoration: none;
-    font-size: 20px;
+    font-size: 18px;
+    line-height: 1;
     cursor: pointer;
-    color: rgba(0, 0, 0, 0.85);
-    transition: color 0.3s ease, transform 0.2s ease, opacity 0.3s ease;
+    color: var(--text);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: transform 0.18s var(--ease-spring), background 0.2s, border-color 0.2s;
   }
 
-  :global(body.dark-mode) .icon-button,
-  :global(body.dark-mode) a.icon-button {
-    color: rgba(255, 255, 255, 0.95);
+  .icon-button:hover, a.icon-button:hover {
+    background: var(--surface-2);
+    border-color: var(--border-strong);
+    transform: translateY(-1px) scale(1.05);
   }
 
-  .subtle-button {
-    opacity: 0.9;
-  }
-
-  .subtle-button:hover {
-    opacity: 1;
-    transform: scale(1.15);
-  }
+  .subtle-button { opacity: 0.95; }
 
   .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.3); /* 🌘 Semi-transparent black */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-  /* Removed blur so puzzle stays sharp */
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 7, 12, 0.66);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    animation: fadeIn 0.25s ease-out;
   }
   .modal-backdrop {
     position: absolute;
@@ -982,30 +1048,39 @@
   }
 
   .modal-content {
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
+    background: var(--surface-strong);
+    padding: 28px 24px;
+    border-radius: var(--r-xl);
     width: 90%;
     max-width: 400px;
     text-align: center;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    animation: slideIn 0.3s ease-out;
-    border: 3px solid #007bff;
-    color: black;
+    box-shadow: var(--shadow-lg);
+    animation: slideIn 0.35s var(--ease-out);
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
     position: relative;
     z-index: 1;
   }
+  .modal-content :global(h2) { font-family: var(--font-display); }
 
-  :global(body.dark-mode) .modal-content {
-    background: linear-gradient(135deg, #222, #333);
-    border: 3px solid limegreen;
-    color: white;
-    box-shadow: 0 4px 10px rgba(0, 255, 0, 0.3);
+  .close-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
   }
-
-  .close-btn:hover {
-    background: darkred;
-  }
+  .close-btn:hover { background: rgba(251, 90, 90, 0.16); border-color: rgba(251, 90, 90, 0.4); }
 
   @keyframes fadeIn {
     from { opacity: 0; }
@@ -1019,25 +1094,20 @@
 
   .next-puzzle-button {
     margin-top: 12px;
-    background-color: limegreen;
-    color: white;
-    font-weight: bold;
+    background: var(--brand-grad);
+    color: #06210f;
+    font-family: var(--font-display);
+    font-weight: 700;
     border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
+    padding: 13px 28px;
+    border-radius: var(--r-md);
     font-size: 1rem;
     cursor: pointer;
-    animation: pulse 1s infinite alternate;
+    box-shadow: var(--glow-brand);
+    transition: transform 0.16s var(--ease-spring), filter 0.2s;
   }
-
-  @keyframes pulse {
-    0% { transform: scale(1); }
-    100% { transform: scale(1.08); }
-  }
-
-  .next-puzzle-button:hover {
-    background-color: green;
-  }
+  .next-puzzle-button:hover { transform: translateY(-2px); filter: brightness(1.05); }
+  .next-puzzle-button:active { transform: scale(0.97); }
 
   .wager-ui {
   display: flex;
@@ -1045,21 +1115,21 @@
   justify-content: center;
   align-items: center;
   position: fixed;
-  bottom: 245px;
+  bottom: 230px; /* sits above the action buttons (which clear the keyboard) */
   left: 50%;
   transform: translateX(-50%);
-  width: 100%;
+  width: calc(100% - 24px);
   max-width: 360px;
-  padding: 6px 10px;
-  border-radius: 10px;
+  padding: 10px 14px;
+  border-radius: var(--r-lg);
 
-  /* 🔧 NEW: Light mode border and shadow */
-  background: rgba(255, 255, 255, 0.9);
-  border: 2px solid #ccc;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background: var(--surface-strong);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(14px);
 
   gap: 8px;
-  z-index: 999;
+  z-index: 1003; /* always in front */
 }
 
 .wager-row {
@@ -1071,12 +1141,16 @@
 }
 
 .wager-label {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 0.8rem;
-  color: #222;
+  font-family: var(--font-ui);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
   text-align: center;
   width: 70px;
 }
+.wager-amount { color: #fcd34d; }
 
 .wager-amount {
   font-size: 1rem;

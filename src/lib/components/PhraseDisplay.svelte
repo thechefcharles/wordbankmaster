@@ -164,36 +164,40 @@
     text-align: center;
   }
   .letter-box {
-    width: 40px;
-    min-width: 40px;
-    height: 44px;
-    min-height: 44px;
+    width: 42px;
+    min-width: 42px;
+    height: 48px;
+    min-height: 48px;
     padding: 0;
     flex-shrink: 0; /* Prevent collapse when empty */
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
-    border: 2px solid #453d3d;
-    background: linear-gradient(145deg, #dfe6e9, #ffffff);
-    font-size: 20px;
-    font-weight: bold;
-    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    border-radius: 11px;
     box-shadow:
-      inset 1px 1px 3px rgba(255, 255, 255, 0.8),
-      1px 1px 3px rgba(0, 0, 0, 0.2),
-      0 0 0 1px rgba(0, 0, 0, 0.05);
-    color: black;
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 2px 8px rgba(0, 0, 0, 0.3);
+    color: var(--text);
+    backdrop-filter: blur(8px);
     box-sizing: border-box;
+    transition: transform 0.2s var(--ease-spring), border-color 0.2s, background 0.2s, box-shadow 0.2s;
   }
   .letter-box.locked {
-    color: black !important;
-    font-weight: bold;
+    color: #06210f;
+    background: var(--brand-grad);
+    border-color: transparent;
+    box-shadow: 0 4px 16px rgba(52, 211, 153, 0.35);
   }
   .letter-box.active {
-    border: 3px solid #41ae29 !important;  /* Same green as main guess button */
-    color: black !important;
-}
+    border: 2px solid var(--brand-2);
+    box-shadow: 0 0 0 4px rgba(163, 230, 53, 0.16), 0 0 18px rgba(163, 230, 53, 0.25);
+  }
 
   /* ---------------------------
      Guess Mode Styling
@@ -211,11 +215,12 @@
   --------------------------- */
   @media (max-width: 480px) {
     .letter-box {
-      width: 32px;
-      min-width: 32px;
-      height: 36px;
-      min-height: 36px;
-      font-size: 16px;
+      width: 36px;
+      min-width: 36px;
+      height: 42px;
+      min-height: 42px;
+      font-size: 19px;
+      border-radius: 9px;
     }
     .phrase-container {
       margin: 16px 0 10px 0;
