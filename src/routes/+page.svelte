@@ -6,7 +6,7 @@
 
   import { gameStore, fetchRandomGame, fetchDailyGame } from '$lib/stores/GameStore.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { hasPlayedDailyToday, saveArcadeBankroll, getUserBadges } from '$lib/stores/statsStore.js';
+  import { hasPlayedDailyToday, saveArcadeBankroll, getUserBadges, getDailyStatus } from '$lib/stores/statsStore.js';
   import { BADGES, badgeInfo } from '$lib/badges.js';
   import {
     saveGameToLocalStorage,
@@ -323,12 +323,17 @@
   /** @type {string[]} */
   let accountBadges = [];
   let badgesLoaded = false;
+  let accountStreak = 0;
+  let accountFreezes = 0;
   async function handleMenuMyAccount() {
     showMyAccount = true;
     badgesLoaded = false;
     const u = get(user);
     if (u?.id) {
-      accountBadges = await getUserBadges(u.id);
+      const [badges, status] = await Promise.all([getUserBadges(u.id), getDailyStatus(u.id)]);
+      accountBadges = badges;
+      accountStreak = status.current_streak ?? 0;
+      accountFreezes = status.streak_freezes ?? 0;
     }
     badgesLoaded = true;
   }
@@ -533,6 +538,13 @@
           {#if $user?.email}
             <p class="account-email">{$user.email}</p>
           {/if}
+
+          <div class="account-stats">
+            <div class="stat-chip"><span class="stat-emoji">🔥</span> {accountStreak}<span class="stat-cap">day streak</span></div>
+            <div class="stat-chip" title="Auto-protects your streak across one missed day. Earn one every 7-day streak.">
+              <span class="stat-emoji">🧊</span> {accountFreezes}<span class="stat-cap">freeze{accountFreezes === 1 ? '' : 's'}</span>
+            </div>
+          </div>
 
           <div class="badges-section">
             <p class="badges-title">Badges {#if badgesLoaded}<span class="badges-count">{accountBadges.length}/{Object.keys(BADGES).length}</span>{/if}</p>
@@ -918,6 +930,36 @@
   .main-menu-btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
   .main-menu-modal { text-align: center; }
   .main-menu-modal .main-menu-btn { margin-top: 1rem; }
+
+  /* Streak + freeze chips (My Account) */
+  .account-stats {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin: 14px 0 4px;
+  }
+  .stat-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    padding: 8px 14px;
+    border-radius: var(--r-pill);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--text);
+  }
+  .stat-emoji { font-size: 1rem; }
+  .stat-cap {
+    font-family: var(--font-ui);
+    font-weight: 600;
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
 
   /* Badges (My Account) */
   .badges-section { margin: 18px 0 8px; }
