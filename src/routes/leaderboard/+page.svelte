@@ -7,14 +7,23 @@
     fetchArcadeLeaderboard
   } from '$lib/stores/statsStore.js';
 
-  /** @typedef {{ rank?: number, display_name?: string, bankroll_left?: number, current_streak?: number, highest_streak?: number, total_played?: number, win_rate?: number }} DailyRow */
+  /** @typedef {{ rank?: number, display_name?: string, score?: number, bankroll_left?: number, current_streak?: number, highest_streak?: number, total_played?: number, win_rate?: number }} DailyRow */
   /** @typedef {{ rank?: number, display_name?: string, current_bankroll?: number, highest_bankroll?: number, current_streak?: number, highest_streak?: number, total_played?: number, win_rate?: number }} ArcadeRow */
 
   /** @type {'daily' | 'arcade'} */
   let mode = $state('daily');
   let dailyPeriod = $state('daily');
-  /** @type {'bankroll' | 'streak' | 'highest_streak' | 'puzzles' | 'win_pct'} */
-  let dailyOrderBy = $state('bankroll');
+  /** @type {'score' | 'bankroll' | 'streak' | 'highest_streak' | 'puzzles' | 'win_pct'} */
+  let dailyOrderBy = $state('score');
+
+  /** Medal from ending bankroll. @param {number} br @param {number} played */
+  function medal(br, played) {
+    if (!played) return '';
+    if (br >= 700) return '🥇';
+    if (br >= 400) return '🥈';
+    if (br >= 100) return '🥉';
+    return ''; // busted / negligible bankroll
+  }
   /** @type {DailyRow[]} */
   let dailyData = $state([]);
   let arcadePeriod = $state('all');
@@ -116,6 +125,7 @@
     </div>
     <p class="sort-label">Sort by:</p>
     <div class="sort-filters">
+      <button class="sort-btn" class:active={dailyOrderBy === 'score'} onclick={() => { dailyOrderBy = 'score'; }}>Score</button>
       <button class="sort-btn" class:active={dailyOrderBy === 'bankroll'} onclick={() => { dailyOrderBy = 'bankroll'; }}>Bankroll</button>
       <button class="sort-btn" class:active={dailyOrderBy === 'streak'} onclick={() => { dailyOrderBy = 'streak'; }}>Current Streak</button>
       <button class="sort-btn" class:active={dailyOrderBy === 'highest_streak'} onclick={() => { dailyOrderBy = 'highest_streak'; }}>Highest Streak</button>
@@ -158,10 +168,11 @@
             <tr>
               <th>#</th>
               <th>Player</th>
-              <th>Bankroll Left</th>
-              <th>Current Streak</th>
-              <th>Highest Streak</th>
-              <th>Puzzles</th>
+              <th>Score</th>
+              <th>Bankroll</th>
+              <th>Streak</th>
+              <th>Best</th>
+              <th>Plays</th>
               <th>Win %</th>
             </tr>
           </thead>
@@ -175,7 +186,8 @@
                   {:else}{row.rank}{/if}
                 </td>
                 <td class="name">{row.display_name || 'Player'}</td>
-                <td>${fmt(row.bankroll_left)}</td>
+                <td class="score-cell">{fmt(row.score)}</td>
+                <td>${fmt(row.bankroll_left)} {medal(row.bankroll_left ?? 0, row.total_played ?? 0)}</td>
                 <td>{fmt(row.current_streak)}</td>
                 <td>{fmt(row.highest_streak)}</td>
                 <td>{fmt(row.total_played)}</td>
@@ -388,6 +400,11 @@
   }
   tr.top-three td.name { color: #fde68a; }
 
+  td.score-cell {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--brand-2);
+  }
   td.rank { font-weight: 700; width: 50px; font-family: var(--font-display); }
   tr.top-three td.rank { font-size: 1.1rem; animation: wb-pop-in 0.5s var(--ease-spring) both; display: inline-block; }
   td.name { font-weight: 600; }
