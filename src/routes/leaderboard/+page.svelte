@@ -372,15 +372,24 @@
     color: var(--text-faint);
     background: rgba(255, 255, 255, 0.02);
   }
-  tbody tr { transition: background 0.15s; }
+  tbody tr { transition: background 0.15s; animation: wb-fade-up 0.45s var(--ease-out) both; }
+  tbody tr:nth-child(1) { animation-delay: 0.03s; }
+  tbody tr:nth-child(2) { animation-delay: 0.08s; }
+  tbody tr:nth-child(3) { animation-delay: 0.13s; }
+  tbody tr:nth-child(4) { animation-delay: 0.18s; }
+  tbody tr:nth-child(5) { animation-delay: 0.23s; }
+  tbody tr:nth-child(n+6) { animation-delay: 0.28s; }
   tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
   td { color: var(--text); }
 
   tr.top-three {
-    background: linear-gradient(90deg, rgba(52, 211, 153, 0.10), transparent);
+    background: linear-gradient(90deg, rgba(251, 191, 36, 0.13), transparent);
+    box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.12);
   }
+  tr.top-three td.name { color: #fde68a; }
 
   td.rank { font-weight: 700; width: 50px; font-family: var(--font-display); }
+  tr.top-three td.rank { font-size: 1.1rem; animation: wb-pop-in 0.5s var(--ease-spring) both; display: inline-block; }
   td.name { font-weight: 600; }
 
   .hint {

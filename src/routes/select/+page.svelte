@@ -66,9 +66,9 @@
   <h3>🎮 Arcade Mode</h3>
   <p>Unlimited play. Build your cumulative bankroll!</p>
   <p class="arcade-bankroll">Your arcade bankroll: <strong>${status.arcade_bankroll?.toLocaleString() ?? 1000}</strong></p>
-  <div class="category-grid">
-    {#each categories as cat}
-      <button onclick={() => selectArcade(cat)}>{cat}</button>
+  <div class="category-grid stagger">
+    {#each categories as cat, i}
+      <button style="--i: {i}" onclick={() => selectArcade(cat)}>{cat}</button>
     {/each}
   </div>
 </div>
