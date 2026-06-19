@@ -6,7 +6,8 @@
 
   import { gameStore, fetchRandomGame, fetchDailyGame } from '$lib/stores/GameStore.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { hasPlayedDailyToday, saveArcadeBankroll } from '$lib/stores/statsStore.js';
+  import { hasPlayedDailyToday, saveArcadeBankroll, getUserBadges } from '$lib/stores/statsStore.js';
+  import { BADGES, badgeInfo } from '$lib/badges.js';
   import {
     saveGameToLocalStorage,
     loadGameFromLocalStorage,
@@ -319,8 +320,17 @@
 
   let showMyAccount = false;
   let showStreakMessage = false;
-  function handleMenuMyAccount() {
+  /** @type {string[]} */
+  let accountBadges = [];
+  let badgesLoaded = false;
+  async function handleMenuMyAccount() {
     showMyAccount = true;
+    badgesLoaded = false;
+    const u = get(user);
+    if (u?.id) {
+      accountBadges = await getUserBadges(u.id);
+    }
+    badgesLoaded = true;
   }
   /** @param {KeyboardEvent} e */
   function handleEscape(e) {
@@ -523,6 +533,20 @@
           {#if $user?.email}
             <p class="account-email">{$user.email}</p>
           {/if}
+
+          <div class="badges-section">
+            <p class="badges-title">Badges {#if badgesLoaded}<span class="badges-count">{accountBadges.length}/{Object.keys(BADGES).length}</span>{/if}</p>
+            <div class="badge-grid">
+              {#each Object.keys(BADGES) as id}
+                {@const earned = accountBadges.includes(id)}
+                <div class="badge {earned ? 'earned' : 'locked'}" title={badgeInfo(id).desc}>
+                  <span class="badge-emoji">{badgeInfo(id).emoji}</span>
+                  <span class="badge-name">{badgeInfo(id).name}</span>
+                </div>
+              {/each}
+            </div>
+          </div>
+
           <button class="main-menu-btn" on:click={() => { showMyAccount = false; handleLogout(); }}>Log Out</button>
         </div>
       </div>
@@ -894,6 +918,41 @@
   .main-menu-btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
   .main-menu-modal { text-align: center; }
   .main-menu-modal .main-menu-btn { margin-top: 1rem; }
+
+  /* Badges (My Account) */
+  .badges-section { margin: 18px 0 8px; }
+  .badges-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 0 0 10px;
+  }
+  .badges-count { color: var(--brand-2); margin-left: 4px; }
+  .badge-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    text-align: left;
+  }
+  .badge.earned {
+    border-color: rgba(163, 230, 53, 0.4);
+    background: linear-gradient(135deg, rgba(52, 211, 153, 0.12), rgba(163, 230, 53, 0.04));
+  }
+  .badge.locked { opacity: 0.4; filter: grayscale(0.8); }
+  .badge-emoji { font-size: 1.4rem; line-height: 1; }
+  .badge-name { font-size: 0.78rem; font-weight: 600; color: var(--text); }
   .streak-message {
     margin: 1rem 0 0 0;
     font-size: 1.05rem;
