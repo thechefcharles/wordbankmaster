@@ -384,25 +384,25 @@
       <button class="close-btn" on:click={() => showHowToPlay = false}>❌</button>
 
       <h2>📜 How to Play</h2>
-      <p>💰 Start with $1000. Use it wisely to buy letters, get hints, and guess the phrase!</p>
+      <p>💰 Start with $1000. Spend it on information, then solve the phrase. Whatever's left is your score.</p>
 
       <h3>📅 Daily vs Arcade</h3>
       <p><b>Daily:</b> One puzzle per day. Counts for the daily leaderboard!<br />
       <b>Arcade:</b> Unlimited play. Build your cumulative bankroll!</p>
 
       <h3>🎯 Goal</h3>
-      <p>Solve the phrase before running out of money!</p>
+      <p>Solve the phrase before you run out of money.</p>
 
       <h3>🕹️ Gameplay</h3>
       <ul>
-        <li>🔤 <b>Buy Letters:</b> Click or tap letters to purchase.</li>
-        <li>⏎ <b>Confirm:</b> Press Enter to submit purchases or guesses.</li>
-        <li>🔄 <b>Guess Mode:</b> Press Spacebar to toggle Guess Mode.</li>
-        <li>💡 <b>Hint ($150):</b> Reveals one random letter in the phrase.</li>
-        <li>🎟️ <b>Extra Guess ($150):</b> Buy another guess attempt.</li>
+        <li>🔤 <b>Buy Letters:</b> Tap a letter to buy it. In the phrase → all copies revealed. Not in it → you lose the money.</li>
+        <li>🔍 <b>Reveal ($150):</b> Reveals every copy of the most useful unrevealed letter — guaranteed, never random.</li>
+        <li>✏️ <b>Solve:</b> Fill the blanks and submit. You get <b>3 free tries</b> — a wrong guess just costs a try, no money.</li>
+        <li>🏁 <b>Out of tries?</b> You can still win by buying letters until the whole phrase is revealed.</li>
+        <li>💀 <b>You only lose</b> if you go broke before solving.</li>
       </ul>
 
-      <p><strong>Think smart, spend wisely, and guess like a pro! 🚀</strong></p>
+      <p><strong>Spend smart, solve cheap, bank the rest. 🚀</strong></p>
     </div>
   </div>
 {/if}

@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import { gameStore, confirmPurchase, submitGuess, selectExtraGuess } from '$lib/stores/GameStore.js';
+  import { gameStore, confirmPurchase, submitGuess } from '$lib/stores/GameStore.js';
 
   /** @type {boolean} */
   export let wagerUIVisible = false;
@@ -23,9 +23,7 @@
   $: purchasePending = !!$gameStore.selectedPurchase;
   $: hintPending = $gameStore.selectedPurchase?.type === 'hint' && $gameStore.gameState === 'purchase_pending';
   $: showHintCost = hintPending;
-  $: extraGuessPending = $gameStore.selectedPurchase?.type === 'extra_guess' && $gameStore.gameState === 'purchase_pending';
-  $: showExtraGuessCost = extraGuessPending;
-  $: guessesRemaining = $gameStore.guessesRemaining ?? 2;
+  $: guessesRemaining = $gameStore.guessesRemaining ?? 3;
   $: fundsLow = bankroll < 150;
   $: noGuessesLeft = guessesRemaining <= 0;
   $: canConfirmWager = sliderWagerAmount > 0;
@@ -81,7 +79,7 @@
 
     if (isDailyMode) {
       if (noGuessesLeft) {
-        gameStore.update(s => ({ ...s, message: 'Buy another guess ($150)' }));
+        gameStore.update(s => ({ ...s, message: 'Out of guesses — buy letters to finish the phrase' }));
         return;
       }
       gameStore.update(state => ({
@@ -107,7 +105,7 @@
     }
 
     if (noGuessesLeft) {
-      gameStore.update(s => ({ ...s, message: 'Buy another guess ($150)' }));
+      gameStore.update(s => ({ ...s, message: 'Out of guesses — buy letters to finish the phrase' }));
       return;
     }
 
@@ -132,11 +130,6 @@
     });
   }
 
-  function toggleExtraGuessPurchase() {
-    dispatch('setWagerUIVisible', false);
-    dispatch('setSliderWagerAmount', 0);
-    selectExtraGuess();
-  }
 </script>
 
 {#if $gameStore.message}
@@ -154,8 +147,9 @@
       class="hint-button {fundsLow ? 'disabled-purchase' : ''} {hintPending ? 'glow' : ''}"
       on:click={toggleHintPurchase}
       disabled={fundsLow || buttonsDisabled}
+      title="Reveal the most useful letter ($150)"
     >
-      Bank Letter
+      Reveal
     </button>
   </div>
 
@@ -219,17 +213,9 @@
   {/if}
 
   <div class="guesses-button-container">
-    {#if showExtraGuessCost}
-      <div class="cost-indicator">$150</div>
-    {/if}
-    <button
-      class="guesses-button {fundsLow ? 'disabled-purchase' : ''} {extraGuessPending ? 'glow' : ''}"
-      on:click={toggleExtraGuessPurchase}
-      disabled={fundsLow || buttonsDisabled}
-      title="Guesses: {guessesRemaining}. $150 for another."
-    >
-      Guesses<br /><span class="guesses-count">{guessesRemaining}</span>
-    </button>
+    <div class="guesses-display" title="Solve attempts remaining">
+      Tries<br /><span class="guesses-count">{guessesRemaining}</span>
+    </div>
   </div>
 </div>
 <style>
@@ -374,7 +360,26 @@
   transition: transform 0.16s var(--ease-spring), background 0.2s, border-color 0.2s;
   cursor: pointer;
 }
-.guesses-button .guesses-count {
+.guesses-display {
+  width: 54px;
+  height: 46px;
+  border-radius: 13px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+  backdrop-filter: blur(10px);
+}
+.guesses-count {
   font-family: var(--font-display);
   font-size: 18px;
   font-weight: 700;
