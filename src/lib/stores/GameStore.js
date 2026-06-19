@@ -6,7 +6,7 @@ import confetti from 'canvas-confetti';
 import { user } from '$lib/stores/userStore.js';
 import { saveGameToLocalStorage } from '$lib/stores/localGameUtils.js';
 import { recordDailyResult, recordArcadeResult, saveArcadeBankroll } from '$lib/stores/statsStore.js';
-import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess } from '$lib/stores/statsStore.js';
+import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, getUserPowerups, dailyUseFreeReveal } from '$lib/stores/statsStore.js';
 
 /* ================================
    Types (JSDoc for checkJs)
@@ -33,7 +33,8 @@ import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess } from '$lib/
  *   shakenLetters: number[],
  *   message: string,
  *   subcategory: string,
- *   gameMode: string
+ *   gameMode: string,
+ *   freeReveals?: number
  * }} GameState
  */
 
@@ -65,7 +66,8 @@ export const gameStore = writable(/** @type {GameState} */ ({
   shakenLetters: [],
   message: '',
   subcategory: '',
-  gameMode: 'daily' // 'daily' | 'arcade'
+  gameMode: 'daily', // 'daily' | 'arcade'
+  freeReveals: 0 // owned Free Reveal power-ups (daily)
 }));
 
 /* ================================
@@ -172,11 +174,21 @@ async function confirmPurchaseDaily(state) {
   dailyInFlight = true;
   try {
     let board = null;
-    if (purchase.type === 'letter') board = await dailyBuyLetter(purchase.value ?? '');
-    else if (purchase.type === 'hint') board = await dailyReveal();
+    let usedFree = false;
+    if (purchase.type === 'letter') {
+      board = await dailyBuyLetter(purchase.value ?? '');
+    } else if (purchase.type === 'hint') {
+      // Reveal uses a Free Reveal power-up if you own one; otherwise it costs $150.
+      if ((state.freeReveals || 0) > 0) { board = await dailyUseFreeReveal(); usedFree = true; }
+      else board = await dailyReveal();
+    }
 
-    if (board) reconcileDailyBoard(board);
-    else gameStore.update(s => ({ ...s, selectedPurchase: null, gameState: 'default' }));
+    if (board) {
+      reconcileDailyBoard(board);
+      if (usedFree) gameStore.update(s => ({ ...s, freeReveals: Math.max(0, (s.freeReveals || 0) - 1) }));
+    } else {
+      gameStore.update(s => ({ ...s, selectedPurchase: null, gameState: 'default' }));
+    }
   } finally {
     dailyInFlight = false;
   }
@@ -798,6 +810,12 @@ export async function fetchDailyGame() {
       return false;
     }
     reconcileDailyBoard(board);
+    // Load Free Reveal inventory for the in-game button.
+    try {
+      const pus = await getUserPowerups();
+      const fr = pus.find(p => p.powerup === 'free_reveal')?.count ?? 0;
+      gameStore.update(s => ({ ...s, freeReveals: fr }));
+    } catch { /* non-fatal */ }
     console.log('✅ Daily session started/resumed');
     return true;
   } catch (err) {

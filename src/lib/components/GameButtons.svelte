@@ -29,6 +29,7 @@
   $: canConfirmWager = sliderWagerAmount > 0;
   $: gameOver = $gameStore.gameState === 'won' || $gameStore.gameState === 'lost';
   $: buttonsDisabled = gameOver;
+  $: hasFreeReveal = isDailyMode && ($gameStore.freeReveals ?? 0) > 0;
 
   // ✅ Detect full phrase input
   $: guessComplete = guessModeActive && (() => {
@@ -139,17 +140,16 @@
 <div class="main-button-wrapper">
   <div class="hint-button-container">
     {#if showHintCost}
-      <div class="cost-indicator">
-        $150
-      </div>
+      <div class="cost-indicator">{hasFreeReveal ? '🎟️ FREE' : '$150'}</div>
     {/if}
     <button
-      class="hint-button {fundsLow ? 'disabled-purchase' : ''} {hintPending ? 'glow' : ''}"
+      class="hint-button {(fundsLow && !hasFreeReveal) ? 'disabled-purchase' : ''} {hintPending ? 'glow' : ''}"
       on:click={toggleHintPurchase}
-      disabled={fundsLow || buttonsDisabled}
-      title="Reveal the most useful letter ($150)"
+      disabled={(fundsLow && !hasFreeReveal) || buttonsDisabled}
+      title={hasFreeReveal ? 'Free Reveal (power-up)' : 'Reveal the most useful letter ($150)'}
     >
       Reveal
+      {#if hasFreeReveal}<span class="free-badge">{$gameStore.freeReveals}</span>{/if}
     </button>
   </div>
 
@@ -310,6 +310,7 @@
   position: relative;
 }
 .hint-button {
+  position: relative;
   width: 54px;
   height: 46px;
   border-radius: 13px;
@@ -332,6 +333,23 @@
 .hint-button:hover { transform: translateY(-2px); background: var(--surface-2); border-color: var(--border-strong); }
 .hint-button:active { transform: scale(0.96); }
 .hint-button.glow { border-color: rgba(163, 230, 53, 0.5) !important; box-shadow: var(--glow-brand); }
+.free-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  color: #06210f;
+  background: var(--brand-grad);
+  border-radius: 999px;
+  box-shadow: var(--glow-brand);
+}
 
 /* ---------------------------
    Guesses Button (blue, right of Solve)
