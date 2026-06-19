@@ -117,11 +117,22 @@ export async function recordArcadeResult(userId, won, bankrollLeft) {
    phrase is null until the game is over.
 ============================================================ */
 
-/** Start or resume today's daily session. @returns {Promise<object|null>} board */
-export async function dailyStart() {
-  const { data, error } = await supabase.rpc('daily_start');
+/**
+ * Start or resume today's daily session, activating any pre-game power-ups.
+ * @param {string[]} [powerups] - pre-game power-ups to activate (only applied on a fresh session)
+ * @returns {Promise<object|null>} board
+ */
+export async function dailyStart(powerups = []) {
+  const { data, error } = await supabase.rpc('daily_start', { p_powerups: powerups });
   if (error) { console.error('❌ daily_start error:', error); return null; }
   return data;
+}
+
+/** Whether the caller already has a session for today (drives the pre-game picker). */
+export async function dailySessionExists() {
+  const { data, error } = await supabase.rpc('daily_session_exists');
+  if (error) { console.error('❌ daily_session_exists error:', error); return false; }
+  return !!data;
 }
 
 /** Buy a letter. @param {string} letter @returns {Promise<object|null>} board */

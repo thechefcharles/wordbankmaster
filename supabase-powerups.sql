@@ -136,7 +136,7 @@ BEGIN
     IF v_bankroll >= 700 THEN PERFORM public._award_badge(p_uid, 'gold_bank'); END IF;
     IF v_current_streak >= 7 THEN PERFORM public._award_badge(p_uid, 'streak_7'); END IF;
     IF v_current_streak >= 30 THEN PERFORM public._award_badge(p_uid, 'streak_30'); END IF;
-    PERFORM public._grant_powerup(p_uid, 'free_reveal', 3);
+    PERFORM public._grant_random_powerup(p_uid);  -- Phase 3b: random from pool (defined in supabase-pregame-powerups.sql)
   END IF;
 END;
 $fn$;

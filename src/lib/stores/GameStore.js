@@ -802,9 +802,12 @@ export async function fetchRandomGame(category) {
  * The phrase is held server-side; the client only ever receives a masked board.
  * No localStorage: the server is the source of truth (and prevents replays).
  */
-export async function fetchDailyGame() {
+/**
+ * @param {string[]} [powerups] - pre-game power-ups to activate (applied only on a fresh session)
+ */
+export async function fetchDailyGame(powerups = []) {
   try {
-    const board = await dailyStart();
+    const board = await dailyStart(powerups);
     if (!board) {
       console.error('❌ daily_start returned no board');
       return false;
