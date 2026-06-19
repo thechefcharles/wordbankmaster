@@ -87,6 +87,7 @@ DECLARE
   v_word_lengths INT[];
   v_revealed JSONB := '{}'::jsonb;
   v_finished BOOLEAN := (p_state <> 'active');
+  v_locked TEXT[];
   i INT;
 BEGIN
   SELECT array_agg(length(x)) INTO v_word_lengths
@@ -104,6 +105,19 @@ BEGIN
     END LOOP;
   END IF;
 
+  -- Letters whose EVERY occurrence is revealed (safe to surface: reveals nothing hidden).
+  -- Lets the keyboard green-out fully-solved letters without the client knowing the answer.
+  SELECT array_agg(t.ch ORDER BY t.ch) INTO v_locked FROM (
+    SELECT chpos.ch
+    FROM (
+      SELECT substr(p_phrase, g.i + 1, 1) AS ch, g.i AS pos
+      FROM generate_series(0, length(p_phrase) - 1) g(i)
+      WHERE substr(p_phrase, g.i + 1, 1) <> ' '
+    ) chpos
+    GROUP BY chpos.ch
+    HAVING bool_and(v_finished OR (chpos.pos = ANY(p_revealed)))
+  ) t;
+
   RETURN jsonb_build_object(
     'state', p_state,
     'bankroll', p_bankroll,
@@ -113,6 +127,7 @@ BEGIN
     'word_lengths', to_jsonb(COALESCE(v_word_lengths, '{}'::int[])),
     'revealed', v_revealed,
     'incorrect_letters', to_jsonb(COALESCE(p_incorrect, '{}'::text[])),
+    'locked_letters', to_jsonb(COALESCE(v_locked, '{}'::text[])),
     'phrase', CASE WHEN v_finished THEN p_phrase ELSE NULL END
   );
 END;

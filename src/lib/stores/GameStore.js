@@ -6,6 +6,7 @@ import confetti from 'canvas-confetti';
 import { user } from '$lib/stores/userStore.js';
 import { saveGameToLocalStorage } from '$lib/stores/localGameUtils.js';
 import { recordDailyResult, recordArcadeResult, saveArcadeBankroll } from '$lib/stores/statsStore.js';
+import { dailyStart, dailyBuyLetter, dailyBuyHint, dailyBuyGuess, dailySubmitGuess } from '$lib/stores/statsStore.js';
 
 /* ================================
    Types (JSDoc for checkJs)
@@ -83,6 +84,125 @@ function launchConfetti() {
     scalar: 1.2,
     origin: { y: 0.6 }
   });
+}
+
+/* ================================
+   Server-authoritative DAILY adapter
+
+   For daily mode the puzzle answer never reaches the client. These helpers call
+   the server RPCs and reconcile the existing gameStore shape from the masked
+   board they return, so the UI (PhraseDisplay/Keyboard/GameButtons) is unchanged.
+   The local currentPhrase is a MASK: real letters at revealed positions, '#' at
+   unrevealed letter positions, real spaces between words.
+=================================== */
+
+// Guards against double-submits while a daily RPC is in flight.
+let dailyInFlight = false;
+
+/**
+ * reconcileDailyBoard
+ * Rebuild gameStore from a server board view. The answer is only present once
+ * the game is finished (board.phrase), so during play currentPhrase stays masked.
+ *
+ * @param {any} board - board JSON returned by a daily_* RPC
+ */
+function reconcileDailyBoard(board) {
+  if (!board) return;
+  const prev = get(gameStore);
+
+  /** @type {number[]} */
+  const wordLengths = board.word_lengths || [];
+  // Masked phrase: '#' per letter slot, single space between words.
+  const chars = wordLengths.map((/** @type {number} */ len) => '#'.repeat(len)).join(' ').split('');
+
+  /** @type {Record<string, string>} */
+  const revealed = board.revealed || {};
+  /** @type {string[]} */
+  const purchased = [];
+  /** @type {number[]} */
+  const newlyRevealed = [];
+  for (const [k, v] of Object.entries(revealed)) {
+    const i = Number(k);
+    chars[i] = /** @type {string} */ (v);
+    purchased[i] = /** @type {string} */ (v);
+    if (prev.purchasedLetters?.[i] !== v) newlyRevealed.push(i);
+  }
+
+  const finished = board.state !== 'active';
+  const currentPhrase = finished && board.phrase
+    ? String(board.phrase).toUpperCase()
+    : chars.join('');
+
+  /** @type {Record<string, boolean>} */
+  const lockedLetters = {};
+  (board.locked_letters || []).forEach((/** @type {string} */ l) => { lockedLetters[l] = true; });
+
+  gameStore.set(/** @type {GameState} */ ({
+    ...prev,
+    bankroll: board.bankroll,
+    guessesRemaining: board.guesses_remaining,
+    category: board.category ?? prev.category,
+    subcategory: board.subcategory ?? '',
+    currentPhrase,
+    gameMode: 'daily',
+    gameState: finished ? board.state : 'default',
+    purchasedLetters: purchased,
+    guessedLetters: {},
+    lockedLetters,
+    incorrectLetters: board.incorrect_letters || [],
+    selectedPurchase: null,
+    shakenLetters: newlyRevealed,
+    wagerAmount: 0,
+    message: ''
+  }));
+
+  if (board.state === 'won') {
+    setTimeout(() => launchConfetti(), 300);
+  }
+}
+
+/**
+ * confirmPurchaseDaily
+ * Commit a pending letter/hint/extra-guess purchase via the server.
+ * @param {GameState} state
+ */
+async function confirmPurchaseDaily(state) {
+  const purchase = state.selectedPurchase;
+  if (!purchase || dailyInFlight) return;
+  dailyInFlight = true;
+  try {
+    let board = null;
+    if (purchase.type === 'letter') board = await dailyBuyLetter(purchase.value ?? '');
+    else if (purchase.type === 'hint') board = await dailyBuyHint();
+    else if (purchase.type === 'extra_guess') board = await dailyBuyGuess();
+
+    if (board) reconcileDailyBoard(board);
+    else gameStore.update(s => ({ ...s, selectedPurchase: null, gameState: 'default' }));
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
+/**
+ * submitGuessDaily
+ * Send the filled blanks to the server, which reveals correct letters and
+ * decides win/loss. Daily wager is 0, so bankroll is unaffected by a guess.
+ * @param {GameState} state
+ */
+async function submitGuessDaily(state) {
+  if (state.gameState !== 'guess_mode' || dailyInFlight) return;
+  /** @type {Record<string, string>} */
+  const guess = {};
+  for (const [k, v] of Object.entries(state.guessedLetters || {})) guess[k] = /** @type {string} */ (v);
+  if (Object.keys(guess).length === 0) return;
+
+  dailyInFlight = true;
+  try {
+    const board = await dailySubmitGuess(guess);
+    if (board) reconcileDailyBoard(board);
+  } finally {
+    dailyInFlight = false;
+  }
 }
 
 /**
@@ -254,6 +374,13 @@ export function setWager(amount) {
  * Handles purchase of a letter or hint and updates game state.
  */
 export function confirmPurchase() {
+  // Daily is server-authoritative: commit the purchase via RPC and reconcile.
+  const current = get(gameStore);
+  if (current.gameMode === 'daily') {
+    confirmPurchaseDaily(current);
+    return;
+  }
+
   let finalState;
 
   gameStore.update(/** @param {GameState} state */ (state) => {
@@ -509,6 +636,13 @@ export function deleteGuessLetter() {
  * syncs to Supabase, and hides wager slider.
  */
 export function submitGuess() {
+  // Daily is server-authoritative: the server validates the guess and scores it.
+  const current = get(gameStore);
+  if (current.gameMode === 'daily') {
+    submitGuessDaily(current);
+    return;
+  }
+
   gameStore.update(/** @param {GameState} state */ (state) => {
     if (state.gameState !== "guess_mode") return state;
     const guessesLeft = state.guessesRemaining ?? 2;
@@ -691,44 +825,22 @@ export async function fetchRandomGame(category) {
 }
 
 /**
- * fetchDailyGame - Fetches today's daily puzzle (same for everyone). Always starts with $1000.
+ * fetchDailyGame - Starts or resumes today's server-authoritative daily session.
+ * The phrase is held server-side; the client only ever receives a masked board.
+ * No localStorage: the server is the source of truth (and prevents replays).
  */
 export async function fetchDailyGame() {
   try {
-    const { data, error } = await supabase.rpc('get_todays_puzzle').maybeSingle();
-    if (error || !data) {
-      console.error('❌ Error fetching daily puzzle:', error);
+    const board = await dailyStart();
+    if (!board) {
+      console.error('❌ daily_start returned no board');
       return false;
     }
-
-    /** @type {{ category?: string, phrase?: string, subcategory?: string }} */
-    const puzzle = data;
-
-    const newState = /** @type {GameState} */ ({
-      ...get(gameStore),
-      bankroll: 1000,
-      wagerAmount: 1,
-      guessesRemaining: 2,
-      category: puzzle.category ?? '',
-      currentPhrase: (puzzle.phrase ?? '').toUpperCase(),
-      gameState: 'default',
-      gameMode: 'daily',
-      subcategory: puzzle.subcategory ?? '',
-      purchasedLetters: [],
-      guessedLetters: {},
-      lockedLetters: {},
-      incorrectLetters: [],
-      selectedPurchase: null,
-      shakenLetters: [],
-      message: ''
-    });
-
-    gameStore.set(newState);
-    saveGameToLocalStorage();
-    console.log(`✅ Daily puzzle loaded: "${puzzle.phrase}"`);
+    reconcileDailyBoard(board);
+    console.log('✅ Daily session started/resumed');
     return true;
   } catch (err) {
-    console.error('❌ Error fetching daily puzzle:', err instanceof Error ? err.message : String(err));
+    console.error('❌ Error starting daily game:', err instanceof Error ? err.message : String(err));
     return false;
   }
 }

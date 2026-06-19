@@ -106,6 +106,54 @@ export async function recordArcadeResult(userId, won, bankrollLeft) {
   }
 }
 
+/* ============================================================
+   Server-authoritative DAILY mode (the answer never reaches the client).
+   Each call returns a masked board:
+   { state, bankroll, guesses_remaining, category, subcategory,
+     word_lengths[], revealed{pos:letter}, incorrect_letters[],
+     locked_letters[], phrase|null }
+   phrase is null until the game is over.
+============================================================ */
+
+/** Start or resume today's daily session. @returns {Promise<object|null>} board */
+export async function dailyStart() {
+  const { data, error } = await supabase.rpc('daily_start');
+  if (error) { console.error('❌ daily_start error:', error); return null; }
+  return data;
+}
+
+/** Buy a letter. @param {string} letter @returns {Promise<object|null>} board */
+export async function dailyBuyLetter(letter) {
+  const { data, error } = await supabase.rpc('daily_buy_letter', { p_letter: letter });
+  if (error) { console.error('❌ daily_buy_letter error:', error); return null; }
+  return data;
+}
+
+/** Buy a hint ($150). @returns {Promise<object|null>} board */
+export async function dailyBuyHint() {
+  const { data, error } = await supabase.rpc('daily_buy_hint');
+  if (error) { console.error('❌ daily_buy_hint error:', error); return null; }
+  return data;
+}
+
+/** Buy an extra guess ($150). @returns {Promise<object|null>} board */
+export async function dailyBuyGuess() {
+  const { data, error } = await supabase.rpc('daily_buy_guess');
+  if (error) { console.error('❌ daily_buy_guess error:', error); return null; }
+  return data;
+}
+
+/**
+ * Submit a full guess.
+ * @param {Record<string, string>} guess - map of absolute position -> guessed letter
+ * @returns {Promise<object|null>} board
+ */
+export async function dailySubmitGuess(guess) {
+  const { data, error } = await supabase.rpc('daily_submit_guess', { p_guess: guess });
+  if (error) { console.error('❌ daily_submit_guess error:', error); return null; }
+  return data;
+}
+
 /**
  * Persist the caller's arcade bankroll between/within games.
  * Goes through a SECURITY DEFINER RPC (auth.uid() + clamp) instead of writing the
