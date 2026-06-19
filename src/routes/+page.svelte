@@ -191,6 +191,43 @@
     if (typeof b === 'number') _prevBankroll = b;
   }
 
+  // ---- Daily result: medal + shareable card ----
+  const PUZZLE_EPOCH = Date.UTC(2026, 5, 1); // 2026-06-01
+  $: puzzleNumber = Math.max(1, Math.floor((Date.now() - PUZZLE_EPOCH) / 86400000) + 1);
+
+  /** @param {number} br @param {boolean} won */
+  function medalFor(br, won) {
+    if (!won) return { emoji: '💀', name: 'Busted', tier: 'none' };
+    if (br >= 700) return { emoji: '🥇', name: 'Gold', tier: 'gold' };
+    if (br >= 400) return { emoji: '🥈', name: 'Silver', tier: 'silver' };
+    return { emoji: '🥉', name: 'Bronze', tier: 'bronze' };
+  }
+  $: resultWon = $gameStore.gameState === 'won';
+  $: isDailyResult = $gameStore.gameMode === 'daily';
+  $: resultBankroll = Math.max(0, Math.floor($gameStore.bankroll || 0));
+  $: resultMedal = medalFor(resultBankroll, resultWon);
+
+  let shareCopied = false;
+  function buildShareText() {
+    const br = '$' + resultBankroll.toLocaleString();
+    const link = 'https://wordbanksvelte1.vercel.app';
+    if (isDailyResult) {
+      return `🏦 WordBank Daily #${puzzleNumber}\n${resultMedal.emoji} ${resultWon ? resultMedal.name + ' — ' : ''}${br} banked\n${link}`;
+    }
+    return `🏦 WordBank Arcade\n${resultMedal.emoji} ${br} banked\n${link}`;
+  }
+  async function handleShare() {
+    const text = buildShareText();
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) { await navigator.share({ text }); return; }
+    } catch { /* user cancelled native share */ }
+    try {
+      await navigator.clipboard.writeText(text);
+      shareCopied = true;
+      setTimeout(() => { shareCopied = false; }, 1800);
+    } catch { /* clipboard unavailable */ }
+  }
+
   // ✅ Auto-save whenever state is valid
   $: if (
     loggedIn &&
@@ -599,23 +636,30 @@
     <!-- 🎯 Result Modal -->
     {#if showResultModal && ['won', 'lost'].includes($gameStore.gameState)}
       <div class="modal-overlay">
-        <div class="modal-content">
-          <h2>{$gameStore.gameState === 'won' ? '🎉 You Win!' : '💀 Game Over'}</h2>
-          <p>
-            {$gameStore.gameState === 'won'
-              ? 'Great job! Want to try the next one?'
-              : 'You ran out of cash. Want to try again?'}
-          </p>
+        <div class="modal-content result-modal">
+          <div class="result-medal {resultMedal.tier}">{resultMedal.emoji}</div>
+          <h2>{resultWon ? 'Solved!' : 'Busted'}</h2>
+          {#if isDailyResult}
+            <p class="result-sub">Daily #{puzzleNumber}{#if resultWon} · {resultMedal.name}{/if}</p>
+          {:else}
+            <p class="result-sub">Arcade</p>
+          {/if}
 
-          <div style="margin-top: 16px;">
-<!-- ✅ Fixed version -->
-<button
-  class="next-puzzle-button"
-  on:click={$gameStore.gameState === 'won' ? handleNextPuzzle : handlePlayAgain}
-  disabled={!['won', 'lost'].includes($gameStore.gameState)}
->
-  {$gameStore.gameState === 'won' ? 'Next Puzzle' : 'Play Again'}
-</button>
+          <div class="result-bankroll">
+            <span class="rb-label">Banked</span>
+            <span class="rb-amount">${resultBankroll.toLocaleString()}</span>
+          </div>
+
+          <div class="result-actions">
+            <button class="share-btn" on:click={handleShare}>
+              {shareCopied ? '✓ Copied!' : 'Share'}
+            </button>
+            <button
+              class="next-puzzle-button"
+              on:click={resultWon ? handleNextPuzzle : handlePlayAgain}
+            >
+              {isDailyResult ? 'Leaderboard' : (resultWon ? 'Next Puzzle' : 'Play Again')}
+            </button>
           </div>
         </div>
       </div>
@@ -1177,6 +1221,70 @@
   }
   .next-puzzle-button:hover { transform: translateY(-2px); filter: brightness(1.05); }
   .next-puzzle-button:active { transform: scale(0.97); }
+
+  /* Result modal (daily/arcade) */
+  .result-modal h2 { font-size: 1.7rem; margin: 4px 0 2px; }
+  .result-medal {
+    font-size: 3.4rem;
+    line-height: 1;
+    margin-bottom: 6px;
+    animation: wb-pop-in 0.6s var(--ease-spring) both;
+    filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5));
+  }
+  .result-medal.gold { filter: drop-shadow(0 0 22px rgba(251, 191, 36, 0.6)); }
+  .result-medal.silver { filter: drop-shadow(0 0 18px rgba(203, 213, 225, 0.5)); }
+  .result-medal.bronze { filter: drop-shadow(0 0 18px rgba(217, 119, 60, 0.5)); }
+  .result-sub {
+    color: var(--text-muted);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.92rem;
+    margin: 0 0 16px;
+  }
+  .result-bankroll {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 14px;
+    margin: 0 0 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+  }
+  .rb-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    font-weight: 600;
+  }
+  .rb-amount {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 2rem;
+    color: #fcd34d;
+    text-shadow: 0 0 18px rgba(251, 191, 36, 0.4);
+  }
+  .result-actions {
+    display: flex;
+    gap: 10px;
+  }
+  .result-actions > * { flex: 1; margin-top: 0; }
+  .share-btn {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1rem;
+    padding: 13px 18px;
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    cursor: pointer;
+    transition: transform 0.15s var(--ease-spring), background 0.2s, border-color 0.2s;
+  }
+  .share-btn:hover { transform: translateY(-2px); background: rgba(56, 189, 248, 0.14); border-color: rgba(56, 189, 248, 0.4); }
+  .share-btn:active { transform: scale(0.97); }
 
   .wager-ui {
   display: flex;
