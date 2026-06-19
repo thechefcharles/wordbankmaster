@@ -129,17 +129,10 @@ export async function dailyBuyLetter(letter) {
   return data;
 }
 
-/** Buy a hint ($150). @returns {Promise<object|null>} board */
-export async function dailyBuyHint() {
-  const { data, error } = await supabase.rpc('daily_buy_hint');
-  if (error) { console.error('❌ daily_buy_hint error:', error); return null; }
-  return data;
-}
-
-/** Buy an extra guess ($150). @returns {Promise<object|null>} board */
-export async function dailyBuyGuess() {
-  const { data, error } = await supabase.rpc('daily_buy_guess');
-  if (error) { console.error('❌ daily_buy_guess error:', error); return null; }
+/** Reveal ($150): all instances of the most-useful unrevealed letter. @returns {Promise<object|null>} board */
+export async function dailyReveal() {
+  const { data, error } = await supabase.rpc('daily_reveal');
+  if (error) { console.error('❌ daily_reveal error:', error); return null; }
   return data;
 }
 

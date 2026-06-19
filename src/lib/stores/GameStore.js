@@ -6,7 +6,7 @@ import confetti from 'canvas-confetti';
 import { user } from '$lib/stores/userStore.js';
 import { saveGameToLocalStorage } from '$lib/stores/localGameUtils.js';
 import { recordDailyResult, recordArcadeResult, saveArcadeBankroll } from '$lib/stores/statsStore.js';
-import { dailyStart, dailyBuyLetter, dailyBuyHint, dailyBuyGuess, dailySubmitGuess } from '$lib/stores/statsStore.js';
+import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess } from '$lib/stores/statsStore.js';
 
 /* ================================
    Types (JSDoc for checkJs)
@@ -53,7 +53,7 @@ export const LETTER_COSTS = {
 export const gameStore = writable(/** @type {GameState} */ ({
   bankroll: 1000,
   wagerAmount: 1,
-  guessesRemaining: 2,
+  guessesRemaining: 3,
   category: '',
   currentPhrase: '',
   gameState: 'default', // States: "default", "purchase_pending", "guess_mode", "won", "lost"
@@ -173,8 +173,7 @@ async function confirmPurchaseDaily(state) {
   try {
     let board = null;
     if (purchase.type === 'letter') board = await dailyBuyLetter(purchase.value ?? '');
-    else if (purchase.type === 'hint') board = await dailyBuyHint();
-    else if (purchase.type === 'extra_guess') board = await dailyBuyGuess();
+    else if (purchase.type === 'hint') board = await dailyReveal();
 
     if (board) reconcileDailyBoard(board);
     else gameStore.update(s => ({ ...s, selectedPurchase: null, gameState: 'default' }));
@@ -227,54 +226,40 @@ function animateBankrollReduction(startingAmount) {
 }
 
 
+// Cheapest letter you can buy — below this you can't act, so the game is lost.
+const MIN_LETTER_COST = 30;
+
 /**
- * checkLossCondition
- * Ends the game if bankroll hits zero, or if zero guesses remaining and bankroll < $150.
- * Reveals the phrase, records result, and syncs state.
+ * checkLossCondition (arcade only — daily resolves on the server)
+ * The only failure state: broke and unsolved (can't afford the cheapest letter).
+ * Guesses are free and unlimited isn't a loss; you can always buy toward a full reveal.
  *
  * @param {GameState} state - The current game state
  * @returns {GameState} Updated state if loss occurred, otherwise original state
  */
 function checkLossCondition(state) {
-  const guessesLeft = state.guessesRemaining ?? 2;
-  const noGuessesAndCantBuy = guessesLeft <= 0 && state.bankroll < 150;
-  const bankrollZero = state.bankroll < 1;
-
-  if (!noGuessesAndCantBuy && !bankrollZero) return state;
+  if (state.gameState === 'won' || state.bankroll >= MIN_LETTER_COST) return state;
 
   // Reveal the full phrase
   const fullReveal = Object.fromEntries(
     state.currentPhrase.split('').map((/** @type {string} */ ch, /** @type {number} */ i) => [i, ch])
   );
 
-  if (bankrollZero) {
-    console.log("💀 Game Over: Bankroll is zero.");
-    animateBankrollReduction(state.bankroll);
-  } else {
-    console.log("💀 Game Over: No guesses remaining and can't afford another ($150).");
-  }
+  console.log("💀 Game Over: out of money.");
+  animateBankrollReduction(state.bankroll);
 
   const newState = {
     ...state,
     gameState: "lost",
-    guessedLetters: fullReveal,
-    bankroll: bankrollZero ? 1000 : state.bankroll
+    guessedLetters: fullReveal
   };
 
-  // 💾 Save to Supabase
   const currentUser = get(user);
-  if (currentUser?.id) {
-    if (state.gameMode === 'daily') {
-      recordDailyResult(currentUser.id, false, bankrollZero ? 0 : state.bankroll);
-    } else {
-      recordArcadeResult(currentUser.id, false, bankrollZero ? 0 : state.bankroll);
-    }
+  if (currentUser?.id && state.gameMode === 'arcade') {
+    recordArcadeResult(currentUser.id, false, state.bankroll);
   }
 
-  // 💾 Save to localStorage
   saveGameToLocalStorage();
-  console.log("💾 Saved game state after loss:", newState);
-
   return newState;
 }
 /* ================================
@@ -333,23 +318,6 @@ export function selectHint() {
       ...state,
       gameState: "purchase_pending",
       selectedPurchase: { type: 'hint' }
-    };
-  });
-}
-
-/**
- * selectExtraGuess
- * Toggles extra guess purchase ($150).
- */
-export function selectExtraGuess() {
-  gameStore.update(state => {
-    if (state.selectedPurchase && state.selectedPurchase.type === 'extra_guess') {
-      return { ...state, selectedPurchase: null, gameState: "default" };
-    }
-    return {
-      ...state,
-      gameState: "purchase_pending",
-      selectedPurchase: { type: 'extra_guess' }
     };
   });
 }
@@ -467,68 +435,61 @@ export function confirmPurchase() {
       return finalState;
     }
 
-    // === Handle Extra Guess Purchase ($150) ===
-    if (purchase.type === 'extra_guess') {
-      const cost = 150;
-      if (newBankroll < cost) return { ...state, selectedPurchase: null, gameState: "default" };
-      newBankroll -= cost;
-      const currentGuesses = state.guessesRemaining ?? 2;
-      const newState = {
-        ...state,
-        bankroll: newBankroll,
-        guessesRemaining: currentGuesses + 1,
-        selectedPurchase: null,
-        gameState: "default"
-      };
-      const currentUser = get(user);
-      if (currentUser?.id && state.gameMode === 'arcade') {
-        saveArcadeBankroll(newBankroll);
-      }
-      saveGameToLocalStorage();
-      return newState;
-    }
-
-    // === Handle Hint Purchase ===
+    // === Handle Reveal Purchase ($150): all instances of the most-frequent unrevealed letter ===
     if (purchase.type === 'hint') {
       const cost = 150;
       if (newBankroll < cost) return { ...state, selectedPurchase: null, gameState: "default" };
 
-      /** @type {number[]} */
-      const unrevealedIndices = phrase.split('').reduce((/** @type {number[]} */ acc, ch, i) => {
-        if (ch !== ' ' && !state.purchasedLetters[i]) acc.push(i);
-        return acc;
-      }, []);
-      if (unrevealedIndices.length === 0) return { ...state, selectedPurchase: null, gameState: "default" };
+      // Tally unrevealed non-space letters, pick the most frequent (ties: alphabetical).
+      /** @type {Record<string, number>} */
+      const unrevealedCounts = {};
+      for (let i = 0; i < phrase.length; i++) {
+        const ch = phrase[i];
+        if (ch !== ' ' && state.purchasedLetters[i] !== ch) {
+          unrevealedCounts[ch] = (unrevealedCounts[ch] || 0) + 1;
+        }
+      }
+      const candidates = Object.keys(unrevealedCounts);
+      if (candidates.length === 0) return { ...state, selectedPurchase: null, gameState: "default" };
+      candidates.sort((a, b) => unrevealedCounts[b] - unrevealedCounts[a] || a.localeCompare(b));
+      const letter = candidates[0];
 
-      const randomIndex = unrevealedIndices[Math.floor(Math.random() * unrevealedIndices.length)];
-      const letter = phrase[randomIndex];
+      // Reveal every instance of that letter.
       /** @type {string[]} */
       const newPurchased = [...state.purchasedLetters];
-      newPurchased[randomIndex] = letter;
-
       /** @type {number[]} */
-      const indices = phrase.split('').reduce((/** @type {number[]} */ acc, ch, i) => {
-        if (ch === letter) acc.push(i);
-        return acc;
-      }, []);
+      const indices = [];
+      for (let i = 0; i < phrase.length; i++) {
+        if (phrase[i] === letter) { newPurchased[i] = letter; indices.push(i); }
+      }
       const newLockedLetters = { ...state.lockedLetters };
-      newLockedLetters[letter] = indices.every(idx => newPurchased[idx] === letter);
+      newLockedLetters[letter] = true;
 
       newBankroll -= cost;
+
+      const newShaken = new Set(state.shakenLetters || []);
+      indices.forEach(idx => newShaken.add(idx));
+
+      // Revealing the final letters can complete the puzzle.
+      const win = phrase.length > 0 &&
+        phrase.split('').every((ch, i) => ch === ' ' || newPurchased[i] === ch);
 
       const newState = {
         ...state,
         bankroll: newBankroll,
         purchasedLetters: newPurchased,
         lockedLetters: newLockedLetters,
+        shakenLetters: Array.from(newShaken),
         selectedPurchase: null,
-        gameState: "default"
+        gameState: win ? "won" : "default"
       };
 
       const currentUser = get(user);
       if (currentUser?.id && state.gameMode === 'arcade') {
-        saveArcadeBankroll(newBankroll);
+        if (win) recordArcadeResult(currentUser.id, true, newBankroll);
+        else saveArcadeBankroll(newBankroll);
       }
+      if (win) setTimeout(() => launchConfetti(), 300);
 
       finalState = checkLossCondition(newState);
       return finalState;
@@ -645,7 +606,7 @@ export function submitGuess() {
 
   gameStore.update(/** @param {GameState} state */ (state) => {
     if (state.gameState !== "guess_mode") return state;
-    const guessesLeft = state.guessesRemaining ?? 2;
+    const guessesLeft = state.guessesRemaining ?? 3;
     if (guessesLeft <= 0) {
       console.log("⛔ No guesses remaining. Buy another for $150.");
       return state;
@@ -709,7 +670,7 @@ export function submitGuess() {
     const newBankroll = state.bankroll + bankrollChange;
 
     const usedGuess = !(allCorrect || win);
-    const newGuessesRemaining = usedGuess ? Math.max(0, (state.guessesRemaining ?? 2) - 1) : (state.guessesRemaining ?? 2);
+    const newGuessesRemaining = usedGuess ? Math.max(0, (state.guessesRemaining ?? 3) - 1) : (state.guessesRemaining ?? 3);
 
     const newState = {
       ...state,
@@ -792,13 +753,13 @@ export async function fetchRandomGame(category) {
 
     const { data: profile } = await supabase.from('profiles').select('arcade_bankroll').eq('id', get(user)?.id).maybeSingle();
     const arcadeBankroll = profile?.arcade_bankroll ?? 1000;
-    const startingBankroll = arcadeBankroll > 0 ? arcadeBankroll : 1000;
+    const startingBankroll = arcadeBankroll >= 30 ? arcadeBankroll : 1000;
 
     const newState = /** @type {GameState} */ ({
       ...get(gameStore),
       bankroll: startingBankroll,
       wagerAmount: 1,
-      guessesRemaining: 2,
+      guessesRemaining: 3,
       category: puzzle.category ?? '',
       currentPhrase: (puzzle.phrase ?? '').toUpperCase(),
       gameState: 'default',

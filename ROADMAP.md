@@ -30,10 +30,13 @@ Living plan for the game's evolution. **Update the Status column as we go.**
 
 ## V2 design decisions (agreed)
 
-### Shared core
-- 📋 **One currency: bankroll.** Remove guess-buying and the "0 guesses + <$150 = instant loss" dead-end.
-- 📋 **Wrong guess costs money** (fixed penalty) instead of consuming a separate "guess" currency. You lose only when you can't afford to act.
-- 📋 **"Bank Letter" → "Reveal"**: smart (reveals most-useful letter / a vowel), dynamically priced. Specific letters = cheap-but-risky; Reveal = pricey-but-safe.
+### Shared core (Phase 0 — LOCKED)
+- **Bankroll is only for information.** No more buying guesses; no "<$150" dead-end.
+- **Guessing is free but limited to 3 attempts** (not purchasable). A wrong guess burns an attempt — **no money lost** (avoids the harsh cliff where a wrong guess at $70 zeroes you out).
+- **Out of attempts ≠ stuck:** you can still win by buying letters until the phrase is fully revealed (expensive → low score). The economy still matters without an instant-loss gotcha.
+- **"Bank Letter" → "Reveal":** reveals **all instances of the most-frequent unrevealed letter** (guaranteed useful, not random), flat **$150** (tunable). Strictly better than the old random single-tile hint.
+- **Lose only when broke + unsolved** (bankroll < $30, the cheapest letter). One clean failure state.
+- **Attempts start at 3.** Daily has no wager; arcade keeps its wager for now (revisit Phase 4).
 
 ### 🗓️ Daily — ranked & fair (prestige mode)
 - 📋 Same puzzle for everyone, once a day. (already true)
@@ -77,7 +80,7 @@ Status: 📋 Planned (Phase 3)
 
 | Phase | Scope | Touches | Status |
 |---|---|---|---|
-| **0 — Economy refactor** | One currency, wrong-guess-costs-money, Reveal rework/retune | Daily RPCs (server) + arcade client | 📋 |
+| **0 — Economy refactor** | 3 free attempts, free guessing, win-by-reveal, Reveal rework, broke-only loss | Daily RPCs (server) + arcade client | ✅ |
 | **1 — Daily scoring + share** | Par/efficiency/streak scoring, medals, **share card** | Server scoring + UI | 📋 |
 | **2 — Streaks & badges** | Streak freeze, badge engine, leaderboard flair | Server + UI | 📋 |
 | **3 — Power-up system** | Inventory + effects, earned via play/badges (no payments) | Server + UI | 📋 |

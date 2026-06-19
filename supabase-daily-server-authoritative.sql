@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS public.daily_sessions (
   puzzle_date DATE NOT NULL DEFAULT CURRENT_DATE,
   puzzle_id UUID NOT NULL REFERENCES public.daily_puzzles(id) ON DELETE RESTRICT,
   bankroll INT NOT NULL DEFAULT 1000,
-  guesses_remaining INT NOT NULL DEFAULT 2,
+  guesses_remaining INT NOT NULL DEFAULT 3,   -- "attempts"; free, not purchasable
   revealed_positions INT[] NOT NULL DEFAULT '{}',   -- 0-indexed positions revealed so far
   incorrect_letters TEXT[] NOT NULL DEFAULT '{}',   -- letters bought that aren't in the phrase
   state TEXT NOT NULL DEFAULT 'active',              -- 'active' | 'won' | 'lost'
@@ -215,7 +215,7 @@ BEGIN
     WHERE substr(p_phrase, g.i + 1, 1) <> ' ' AND NOT (g.i = ANY(s.revealed_positions))
   );
   -- Loss = broke, or out of guesses and can't afford another ($150). Mirrors original game.
-  v_lost := (s.bankroll < 1) OR (s.guesses_remaining <= 0 AND s.bankroll < 150);
+  v_lost := (s.bankroll < 30);  -- broke: can't afford the cheapest letter
 
   IF v_won THEN
     s.state := 'won';
@@ -261,7 +261,7 @@ BEGIN
   IF NOT FOUND THEN
     IF v_pid IS NULL THEN RAISE EXCEPTION 'daily_start: no puzzle available'; END IF;
     INSERT INTO public.daily_sessions (user_id, puzzle_date, puzzle_id, bankroll, guesses_remaining)
-    VALUES (v_uid, CURRENT_DATE, v_pid, 1000, 2)
+    VALUES (v_uid, CURRENT_DATE, v_pid, 1000, 3)
     RETURNING * INTO s;
   END IF;
 
@@ -328,72 +328,48 @@ BEGIN
 END;
 $$;
 
--- Buy a hint ($150): reveal one random unrevealed position.
-CREATE OR REPLACE FUNCTION public.daily_buy_hint()
+-- Reveal ($150): reveal ALL instances of the most-frequent unrevealed letter.
+-- Smart (not random) and a strict upgrade over the old single-tile hint.
+CREATE OR REPLACE FUNCTION public.daily_reveal()
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
   v_uid UUID := auth.uid();
   s public.daily_sessions;
   v_phrase TEXT; v_cat TEXT; v_sub TEXT;
-  v_pos INT;
+  v_letter TEXT; v_positions INT[]; v_cost INT := 150;
 BEGIN
-  IF v_uid IS NULL THEN RAISE EXCEPTION 'daily_buy_hint: not authenticated'; END IF;
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'daily_reveal: not authenticated'; END IF;
 
   SELECT * INTO s FROM public.daily_sessions
   WHERE user_id = v_uid AND puzzle_date = CURRENT_DATE FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'daily_buy_hint: no active session'; END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION 'daily_reveal: no active session'; END IF;
 
   SELECT upper(phrase), category, COALESCE(subcategory, '')
   INTO v_phrase, v_cat, v_sub FROM public.daily_puzzles WHERE id = s.puzzle_id;
 
-  SELECT g.i INTO v_pos
-  FROM generate_series(0, length(v_phrase) - 1) g(i)
-  WHERE substr(v_phrase, g.i + 1, 1) <> ' ' AND NOT (g.i = ANY(s.revealed_positions))
-  ORDER BY md5(random()::text) LIMIT 1;
+  SELECT t.ch INTO v_letter FROM (
+    SELECT substr(v_phrase, g.i + 1, 1) AS ch, count(*) AS c
+    FROM generate_series(0, length(v_phrase) - 1) g(i)
+    WHERE substr(v_phrase, g.i + 1, 1) <> ' ' AND NOT (g.i = ANY(s.revealed_positions))
+    GROUP BY substr(v_phrase, g.i + 1, 1)
+    ORDER BY c DESC, ch
+    LIMIT 1
+  ) t;
 
-  IF s.state <> 'active' OR s.bankroll < 150 OR v_pos IS NULL THEN
+  IF s.state <> 'active' OR s.bankroll < v_cost OR v_letter IS NULL THEN
     RETURN public._daily_board(v_phrase, s.state, s.bankroll, s.guesses_remaining,
                                s.revealed_positions, s.incorrect_letters, v_cat, v_sub);
   END IF;
 
-  s.bankroll := s.bankroll - 150;
-  s.revealed_positions := ARRAY(SELECT DISTINCT unnest(s.revealed_positions || ARRAY[v_pos]) ORDER BY 1);
+  SELECT array_agg(g.i) INTO v_positions
+  FROM generate_series(0, length(v_phrase) - 1) g(i)
+  WHERE substr(v_phrase, g.i + 1, 1) = v_letter;
+
+  s.bankroll := s.bankroll - v_cost;
+  s.revealed_positions := ARRAY(SELECT DISTINCT unnest(s.revealed_positions || v_positions) ORDER BY 1);
 
   UPDATE public.daily_sessions SET
     bankroll = s.bankroll, revealed_positions = s.revealed_positions, updated_at = NOW()
-  WHERE user_id = v_uid AND puzzle_date = CURRENT_DATE;
-
-  RETURN public._daily_resolve_and_return(v_uid, v_phrase, v_cat, v_sub);
-END;
-$$;
-
--- Buy an extra guess ($150): +1 guess.
-CREATE OR REPLACE FUNCTION public.daily_buy_guess()
-RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-  v_uid UUID := auth.uid();
-  s public.daily_sessions;
-  v_phrase TEXT; v_cat TEXT; v_sub TEXT;
-BEGIN
-  IF v_uid IS NULL THEN RAISE EXCEPTION 'daily_buy_guess: not authenticated'; END IF;
-
-  SELECT * INTO s FROM public.daily_sessions
-  WHERE user_id = v_uid AND puzzle_date = CURRENT_DATE FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'daily_buy_guess: no active session'; END IF;
-
-  SELECT upper(phrase), category, COALESCE(subcategory, '')
-  INTO v_phrase, v_cat, v_sub FROM public.daily_puzzles WHERE id = s.puzzle_id;
-
-  IF s.state <> 'active' OR s.bankroll < 150 THEN
-    RETURN public._daily_board(v_phrase, s.state, s.bankroll, s.guesses_remaining,
-                               s.revealed_positions, s.incorrect_letters, v_cat, v_sub);
-  END IF;
-
-  s.bankroll := s.bankroll - 150;
-  s.guesses_remaining := s.guesses_remaining + 1;
-
-  UPDATE public.daily_sessions SET
-    bankroll = s.bankroll, guesses_remaining = s.guesses_remaining, updated_at = NOW()
   WHERE user_id = v_uid AND puzzle_date = CURRENT_DATE;
 
   RETURN public._daily_resolve_and_return(v_uid, v_phrase, v_cat, v_sub);
@@ -471,8 +447,7 @@ $$;
 -- ---- Grants: signed-in users may call the public RPCs only -----------------
 GRANT EXECUTE ON FUNCTION public.daily_start()                 TO authenticated;
 GRANT EXECUTE ON FUNCTION public.daily_buy_letter(TEXT)        TO authenticated;
-GRANT EXECUTE ON FUNCTION public.daily_buy_hint()              TO authenticated;
-GRANT EXECUTE ON FUNCTION public.daily_buy_guess()             TO authenticated;
+GRANT EXECUTE ON FUNCTION public.daily_reveal()                TO authenticated;
 GRANT EXECUTE ON FUNCTION public.daily_submit_guess(JSONB)     TO authenticated;
 -- Internal helpers are not granted to clients (called only via SECURITY DEFINER RPCs).
 REVOKE EXECUTE ON FUNCTION public._todays_puzzle_id()                         FROM anon, authenticated;
