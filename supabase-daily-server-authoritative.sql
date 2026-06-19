@@ -143,6 +143,7 @@ DECLARE
   v_highest_streak INT;
   v_last_win DATE;
   v_bankroll INT;
+  v_score INT;
 BEGIN
   v_bankroll := LEAST(GREATEST(COALESCE(p_bankroll, 0), 0), 1000);
   v_week_start := date_trunc('week', CURRENT_DATE)::DATE + 1;
@@ -176,8 +177,11 @@ BEGIN
     WHERE id = p_uid;
   END IF;
 
-  INSERT INTO public.game_results (user_id, played_at, won, bankroll_left, game_mode)
-  VALUES (p_uid, NOW(), p_won, v_bankroll, 'daily');
+  -- Streak multiplier: 0% at streak 1, +10%/day, capped at +100% (streak 11+).
+  v_score := ROUND(v_bankroll * (1 + LEAST(GREATEST(COALESCE(v_current_streak, 0) - 1, 0), 10) * 0.1))::INT;
+
+  INSERT INTO public.game_results (user_id, played_at, won, bankroll_left, game_mode, score)
+  VALUES (p_uid, NOW(), p_won, v_bankroll, 'daily', v_score);
 
   INSERT INTO public.user_weekly_stats (user_id, week_start, puzzles_completed, bankroll_earned, highest_bankroll, total_wins, total_played, win_streak)
   VALUES (

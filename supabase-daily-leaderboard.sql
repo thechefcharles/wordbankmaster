@@ -63,6 +63,8 @@ CREATE TABLE IF NOT EXISTS public.game_results (
   game_mode TEXT NOT NULL DEFAULT 'daily'
 );
 ALTER TABLE public.game_results ADD COLUMN IF NOT EXISTS game_mode TEXT NOT NULL DEFAULT 'daily';
+-- Daily score = bankroll × streak multiplier (see _finalize_daily). Ranks the daily leaderboard.
+ALTER TABLE public.game_results ADD COLUMN IF NOT EXISTS score INT NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_game_results_user_played ON public.game_results(user_id, played_at);
 ALTER TABLE public.game_results ENABLE ROW LEVEL SECURITY;
@@ -167,11 +169,12 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 4d. RPC: Daily leaderboard (bankroll, current/highest streak, puzzles, win %; sortable)
 DROP FUNCTION IF EXISTS public.get_daily_leaderboard(TEXT, TEXT);
-CREATE OR REPLACE FUNCTION public.get_daily_leaderboard(p_period TEXT DEFAULT 'daily', p_order_by TEXT DEFAULT 'bankroll')
+CREATE OR REPLACE FUNCTION public.get_daily_leaderboard(p_period TEXT DEFAULT 'daily', p_order_by TEXT DEFAULT 'score')
 RETURNS TABLE (
   rank BIGINT,
   user_id UUID,
   display_name TEXT,
+  score INT,
   bankroll_left INT,
   current_streak INT,
   highest_streak INT,
@@ -184,11 +187,8 @@ DECLARE
   v_end TIMESTAMPTZ;
 BEGIN
   CASE p_period
-    WHEN 'daily' THEN
-      v_start := date_trunc('day', CURRENT_DATE) AT TIME ZONE 'UTC';
-      v_end := v_start + INTERVAL '1 day';
     WHEN 'weekly' THEN
-      -- Tuesday-keyed league week, interpreted in UTC to match game_results.played_at (stored via NOW() in UTC)
+      -- Tuesday-keyed league week, interpreted in UTC to match game_results.played_at
       v_start := ((date_trunc('week', CURRENT_DATE)::DATE + 1)::TIMESTAMP) AT TIME ZONE 'UTC';
       v_end := v_start + INTERVAL '7 days';
     WHEN 'monthly' THEN
@@ -206,6 +206,7 @@ BEGIN
   WITH agg AS (
     SELECT
       gr.user_id,
+      MAX(gr.score)::INT AS score,
       MAX(gr.bankroll_left)::INT AS bankroll_left,
       COUNT(*)::INT AS total_played,
       COUNT(*) FILTER (WHERE gr.won)::INT AS total_wins
@@ -218,6 +219,7 @@ BEGIN
     SELECT
       prof.id AS user_id,
       COALESCE(au.raw_user_meta_data->>'full_name', split_part(au.raw_user_meta_data->>'email', '@', 1), 'Player')::TEXT AS display_name,
+      agg.score,
       agg.bankroll_left,
       COALESCE(prof.current_win_streak, 0)::INT AS current_streak,
       COALESCE(prof.highest_win_streak, 0)::INT AS highest_streak,
@@ -236,16 +238,11 @@ BEGIN
         CASE WHEN p_order_by = 'highest_streak' THEN base.highest_streak END DESC NULLS LAST,
         CASE WHEN p_order_by = 'puzzles' THEN base.total_played END DESC NULLS LAST,
         CASE WHEN p_order_by = 'win_pct' THEN base.win_rate END DESC NULLS LAST,
-        base.bankroll_left DESC NULLS LAST
+        CASE WHEN p_order_by = 'score' THEN base.score END DESC NULLS LAST,
+        base.score DESC NULLS LAST
     )::BIGINT AS rank,
-    base.user_id,
-    base.display_name,
-    base.bankroll_left,
-    base.current_streak,
-    base.highest_streak,
-    base.total_played,
-    base.total_wins,
-    base.win_rate
+    base.user_id, base.display_name, base.score, base.bankroll_left,
+    base.current_streak, base.highest_streak, base.total_played, base.total_wins, base.win_rate
   FROM base
   ORDER BY
     CASE WHEN p_order_by = 'bankroll' THEN base.bankroll_left END DESC NULLS LAST,
@@ -253,7 +250,8 @@ BEGIN
     CASE WHEN p_order_by = 'highest_streak' THEN base.highest_streak END DESC NULLS LAST,
     CASE WHEN p_order_by = 'puzzles' THEN base.total_played END DESC NULLS LAST,
     CASE WHEN p_order_by = 'win_pct' THEN base.win_rate END DESC NULLS LAST,
-    base.bankroll_left DESC NULLS LAST;
+    CASE WHEN p_order_by = 'score' THEN base.score END DESC NULLS LAST,
+    base.score DESC NULLS LAST;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

@@ -60,7 +60,7 @@ export async function getDailyStatus(userId) {
  * @param {string} period - 'daily' | 'weekly' | 'monthly' | 'yearly'
  * @param {string} orderBy - 'bankroll' | 'streak' | 'puzzles' | 'win_pct'
  */
-export async function fetchDailyLeaderboard(period = 'daily', orderBy = 'bankroll') {
+export async function fetchDailyLeaderboard(period = 'daily', orderBy = 'score') {
   const { data, error } = await supabase.rpc('get_daily_leaderboard', {
     p_period: period,
     p_order_by: orderBy
