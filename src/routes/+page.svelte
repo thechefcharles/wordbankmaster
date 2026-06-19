@@ -613,7 +613,7 @@
     margin: 0 auto;
     text-align: center;
     font-family: var(--font-ui);
-    padding: 16px 12px 200px; /* space so content stays above fixed Solve + keyboard */
+    padding: 16px 12px 248px; /* space so content stays above fixed Solve + keyboard */
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -992,8 +992,10 @@
   .top-buttons {
     position: fixed;
     top: 12px;
-    left: 12px;
-    right: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 24px);
+    max-width: 600px;
     display: flex;
     justify-content: space-between;
     z-index: 1000;
@@ -1113,21 +1115,21 @@
   justify-content: center;
   align-items: center;
   position: fixed;
-  bottom: 245px;
+  bottom: 230px; /* sits above the action buttons (which clear the keyboard) */
   left: 50%;
   transform: translateX(-50%);
-  width: 100%;
+  width: calc(100% - 24px);
   max-width: 360px;
   padding: 10px 14px;
   border-radius: var(--r-lg);
 
   background: var(--surface-strong);
   border: 1px solid var(--border-strong);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
   backdrop-filter: blur(14px);
 
   gap: 8px;
-  z-index: 999;
+  z-index: 1003; /* always in front */
 }
 
 .wager-row {

@@ -286,10 +286,10 @@
 
 .message-box {
   position: fixed;
-  bottom: 190px;
+  bottom: 232px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1001;
+  z-index: 1002;
   font-family: var(--font-ui);
   font-weight: 600;
   font-size: 0.85rem;
@@ -308,7 +308,7 @@
 --------------------------- */
 .main-button-wrapper {
   position: fixed;
-  bottom: 132px;
+  bottom: 174px; /* clears the 156px-tall keyboard + gap */
   left: 50%;
   transform: translateX(-50%);
   display: flex;
