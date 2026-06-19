@@ -99,7 +99,9 @@
       }
 
       const peek = getSavedGameInfo(session.user.id);
-      const inProgress = peek && peek.gameState !== 'won' && peek.gameState !== 'lost';
+      // Daily is now server-resumed (daily_start); only arcade resumes from localStorage.
+      const arcadeSave = peek && peek.gameMode === 'arcade' ? peek : null;
+      const inProgress = arcadeSave && arcadeSave.gameState !== 'won' && arcadeSave.gameState !== 'lost';
 
       if (inProgress) {
         const restored = loadGameFromLocalStorage();
@@ -109,12 +111,12 @@
           console.log("🔁 Game restored from localStorage");
         } else {
           showMainMenu = true;
-          savedGameInfo = peek;
+          savedGameInfo = arcadeSave;
           menuDailyPlayed = await hasPlayedDailyToday(session.user.id);
         }
       } else {
         showMainMenu = true;
-        savedGameInfo = peek;
+        savedGameInfo = arcadeSave;
         menuDailyPlayed = await hasPlayedDailyToday(session.user.id);
         // If they just came from /select with a category, start arcade instead of showing menu
         const mode = localStorage.getItem('gameMode');
@@ -222,16 +224,12 @@
   async function handleMenuDaily() {
     const currentUser = get(user);
     if (!currentUser?.id) return;
-    if (savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost') {
-      loadGameFromLocalStorage();
-      gameWasRestored.set(true);
-      showMainMenu = false;
-      return;
-    }
+    // Finished today's daily already -> show streak message (server enforces one/day).
     if (menuDailyPlayed) {
       showStreakMessage = true;
       return;
     }
+    // daily_start resumes an in-progress session or begins a fresh one, server-side.
     localStorage.setItem('gameMode', 'daily');
     const ok = await fetchDailyGame();
     if (ok) {
