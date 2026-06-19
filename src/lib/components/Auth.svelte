@@ -106,24 +106,27 @@
   }
 </script>
 
-<div class="auth-container">
-  <div class="auth-box">
-    <!-- 🟢 WordBank Logo -->
-    <img src="/1.png" alt="WordBank Logo" class="wordbank-logo" />
+<div class="auth-screen">
+  <div class="auth-card glass fade-up">
+    <div class="brand">
+      <div class="mark">WB</div>
+      <h1 class="wordmark"><span class="brand-text">Word</span>Bank</h1>
+      <p class="tagline">Crack the phrase. Bank the win.</p>
+    </div>
 
-    <h2>
+    <h2 class="auth-title">
       {#if showReset}
-        Reset Password
+        Reset password
       {:else}
-        {isLogin ? 'Login' : 'Sign Up'} to Play
+        {isLogin ? 'Welcome back' : 'Create your account'}
       {/if}
     </h2>
 
     {#if showReset}
-      <input type="email" bind:value={resetEmail} placeholder="Your email" />
+      <input class="field" type="email" bind:value={resetEmail} placeholder="Your email" />
 
-      <button on:click={handlePasswordReset} disabled={isLoading}>
-        {isLoading ? 'Sending...' : 'Send Reset Link'}
+      <button class="btn-brand full" on:click={handlePasswordReset} disabled={isLoading}>
+        {isLoading ? 'Sending…' : 'Send reset link'}
       </button>
 
       {#if resetMsg}
@@ -131,23 +134,22 @@
       {/if}
 
       <p class="toggle-mode">
-        <button type="button" on:click={() => showReset = false}>
-          ← Back to Login
+        <button type="button" class="link" on:click={() => showReset = false}>
+          ← Back to login
         </button>
       </p>
 
     {:else}
-      <input type="email" bind:value={email} placeholder="Email" />
-      <input type="password" bind:value={password} placeholder="Password" />
+      <input class="field" type="email" bind:value={email} placeholder="Email" />
+      <input class="field" type="password" bind:value={password} placeholder="Password" />
 
-      <button on:click={handleAuth} disabled={isLoading}>
-        {isLoading ? 'Loading...' : (isLogin ? 'Login' : 'Sign Up')}
+      <button class="btn-brand full" on:click={handleAuth} disabled={isLoading}>
+        {isLoading ? 'Loading…' : (isLogin ? 'Log in' : 'Sign up')}
       </button>
 
-      <div class="divider">or</div>
+      <div class="divider"><span>or</span></div>
 
-      <!-- 🟥 Google Sign-In Button -->
-      <button class="google-btn" on:click={signInWithGoogle}>
+      <button class="btn-ghost full google" on:click={signInWithGoogle}>
         <img src="/googlelogo.png" alt="Google icon" class="google-icon" />
         Continue with Google
       </button>
@@ -157,15 +159,15 @@
       {/if}
 
       <p class="toggle-mode">
-        <button type="button" on:click={() => showReset = true}>
-          Forgot Password?
+        <button type="button" class="link subtle" on:click={() => showReset = true}>
+          Forgot password?
         </button>
       </p>
 
       <p class="toggle-mode">
         {isLogin ? "Don't have an account?" : 'Already have an account?'}
-        <button type="button" on:click={() => isLogin = !isLogin}>
-          {isLogin ? 'Sign up here' : 'Log in here'}
+        <button type="button" class="link" on:click={() => isLogin = !isLogin}>
+          {isLogin ? 'Sign up' : 'Log in'}
         </button>
       </p>
     {/if}
@@ -173,140 +175,114 @@
 </div>
 
 <style>
-  .auth-container {
+  .auth-screen {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
-    padding: 16px;
+    min-height: 100vh;
+    padding: 20px;
   }
 
-  .auth-box {
-    background-color: white;
-    padding: 24px 32px;
-    border-radius: 12px;
-    box-shadow: 0 0 16px rgba(0, 0, 0, 0.15);
+  .auth-card {
     width: 100%;
     max-width: 400px;
+    padding: 32px 28px 28px;
     text-align: center;
+    box-shadow: var(--shadow-lg);
   }
 
-  input {
-    display: block;
+  .brand { margin-bottom: 22px; }
+
+  .mark {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 14px;
+    display: grid;
+    place-items: center;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: #06210f;
+    background: var(--brand-grad);
+    border-radius: 16px;
+    box-shadow: var(--glow-brand);
+  }
+
+  .wordmark {
+    font-size: 2.1rem;
+    letter-spacing: -0.03em;
+    margin: 0;
+  }
+
+  .tagline {
+    margin: 8px 0 0;
+    color: var(--text-muted);
+    font-size: 0.92rem;
+  }
+
+  .auth-title {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 18px;
+  }
+
+  .field { margin: 10px 0; text-align: left; }
+
+  .full { width: 100%; }
+  .btn-brand.full { margin-top: 6px; padding: 15px; font-size: 1.02rem; }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 20px 2px;
+    color: var(--text-faint);
+    font-size: 0.82rem;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .google {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
     width: 100%;
-    padding: 10px;
-    margin: 12px 0;
-    font-size: 1rem;
-    border: 2px solid #ccc;
-    border-radius: 8px;
-    background-color: white;
-    color: black;
   }
-
-  button {
-    padding: 10px;
-    font-size: 1rem;
-    background-color: limegreen;
-    color: white;
-    border: none;
-    font-weight: bold;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.2s ease;
-  }
-
-  button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  .google-icon { width: 18px; height: 18px; }
 
   .toggle-mode {
-    margin-top: 15px;
+    margin-top: 16px;
     font-size: 0.9rem;
-    color: black;
+    color: var(--text-muted);
   }
 
-  .toggle-mode button {
-    color: #007bff;
-    text-decoration: underline;
-    cursor: pointer;
+  .link {
     background: none;
     border: none;
+    padding: 0;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--brand-2);
   }
+  .link:hover { text-decoration: underline; }
+  .link.subtle { color: var(--text-muted); font-weight: 500; }
 
   .error-text {
-    color: red;
+    margin-top: 12px;
+    color: var(--danger);
+    font-size: 0.9rem;
+  }
+
+  .reset-msg {
     margin-top: 10px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
   }
-
-  :global(body.dark-mode) .auth-box {
-    background-color: #222;
-  }
-
-  :global(body.dark-mode) .auth-box h2,
-  :global(body.dark-mode) .toggle-mode,
-  :global(body.dark-mode) .error-text {
-    color: white;
-  }
-
-  :global(body.dark-mode) input {
-    background-color: #333;
-    color: white;
-    border: 2px solid #666;
-  }
-
-  :global(body.dark-mode) .toggle-mode button {
-    color: #4da3ff;
-  }
-  .wordbank-logo {
-  width: 280px;
-  max-width: 80%;
-  margin-bottom: 20px;
-  height: auto;
-}
-
-@media (max-width: 600px) {
-  .wordbank-logo {
-    width: 200px;
-  }
-}
-
-.google-btn {
-  background-color: #fff;
-  color: #444;
-  border: 2px solid #ccc;
-  padding: 10px;
-  width: 100%;
-  font-weight: bold;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  transition: background 0.2s ease;
-}
-
-.google-btn:hover {
-  background-color: #f1f1f1;
-}
-
-.google-icon {
-  width: 20px;
-  height: 20px;
-}
-
-.divider {
-  margin: 20px 0;
-  font-size: 0.9rem;
-  color: #888;
-}
-
-.reset-msg {
-  font-size: 0.9rem;
-  color: #444;
-  margin-top: 6px;
-}
-
-
 </style>

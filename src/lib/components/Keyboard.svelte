@@ -247,32 +247,35 @@
   --------------------------- */
   .key {
     width: 56px;
-    height: 40px;
-    font-size: 12px;
-    font-weight: bold;
-    border: 2px solid black;
-    background-color: white;
+    height: 46px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    border-radius: 10px;
     cursor: pointer;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 1px;
     padding: 2px;
     box-sizing: border-box;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: transform 0.12s var(--ease-spring), background 0.15s, border-color 0.15s;
   }
-/* 🔹 Delete Button (Match Exit Guess Mode Style) */
-.key.delete {
-    background: linear-gradient(180deg, #ff4444, #cc0000); /* Red gradient */
-    color: white !important;
-    border: 1px solid darkred !important;
-    transition: background-color 0.3s ease, transform 0.2s ease;
-}
+  .key:hover:not(.purchased):not(.incorrect):not(.disabled) {
+    background: var(--surface-2);
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+  }
+  .key:active { transform: scale(0.94); }
 
-/* 🔹 Dark Mode: Ensure Delete Button Stays Red */
-:global(body.dark-mode) .key.delete {
-    background: linear-gradient(180deg, #ff2222, #aa0000) !important;
-    border: 1px solid #880000 !important;
-}
+  .key.delete {
+    background: rgba(251, 90, 90, 0.15);
+    color: #ffb4b4 !important;
+    border-color: rgba(251, 90, 90, 0.4) !important;
+  }
   @keyframes blink {
   0% { opacity: 1; }
   50% { opacity: 0; }
@@ -284,38 +287,44 @@
   --------------------------- */
   .letter {
     line-height: 1;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 15px;
   }
   .price {
     line-height: 1;
     font-size: 9px;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
   }
 
   /* ---------------------------
      Key State Styles
   --------------------------- */
   .purchased {
-    background-color: green;
-    color: white;
+    background: linear-gradient(135deg, rgba(52, 211, 153, 0.30), rgba(163, 230, 53, 0.18)) !important;
+    color: var(--brand-2) !important;
+    border-color: rgba(163, 230, 53, 0.4) !important;
     cursor: default;
-    filter: blur(.8px); /* Apply a subtle blur */
-    opacity: 0.7; /* Make slightly faded */
-    pointer-events: none; /* Prevent clicking */
-    transition: filter 0.3s ease, opacity 0.3s ease;
+    pointer-events: none;
   }
+  .purchased .price { color: rgba(163, 230, 53, 0.65); }
   .pending {
-    background-color: blue !important;
-    color: white !important;
-    animation: blink 1s infinite;
-  
+    background: var(--brand-grad) !important;
+    color: #06210f !important;
+    border-color: transparent !important;
+    box-shadow: var(--glow-brand);
+    animation: keyPulse 1s infinite;
   }
+  .pending .price { color: rgba(6, 33, 15, 0.7); }
+  @keyframes keyPulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.12); } }
   .incorrect {
-    background-color: red;
-    color: white;
+    background: rgba(255, 255, 255, 0.02) !important;
+    color: var(--text-faint) !important;
+    border-color: var(--border) !important;
     cursor: default;
-    filter: blur(.8px); /* Apply a subtle blur */
-    opacity: 0.7; /* Make slightly faded */
-    pointer-events: none; /* Prevent clicking */
-    transition: filter 0.3s ease, opacity 0.3s ease;
+    opacity: 0.5;
+    pointer-events: none;
   }
 
   /* Blinking animation for pending keys */
@@ -325,57 +334,17 @@
     100% { opacity: 1; }
   }
 
-  /* ---------------------------
-     Dark Mode Overrides
-  --------------------------- */
-  :global(body.dark-mode) .keyboard-container {
-    background-color: #333;
-  }
-  :global(body.dark-mode) .key {
-    background-color: #444;
-    color: white;
-    border-color: #777;
-  }
-  :global(body.dark-mode) .purchased {
-    background-color: green !important;
-    color: white !important;
-  }
-  :global(body.dark-mode) .incorrect {
-    background-color: red !important;
-    color: white !important;
-  }
-  :global(body.dark-mode) .pending {
-    background-color: blue !important;
-    color: white !important;
-    animation: blink 1s infinite;
-  }
-
-  /* 🔹 Apply blur effect to unaffordable letters */
+  /* Unaffordable letters: dim, not blurred */
   .key.disabled {
-    filter: blur(.8px);  /* 🔹 Blur effect */
-    opacity: 0.5;       /* 🔹 Make slightly faded */
-    pointer-events: none; /* 🔹 Prevent clicking */
-    transition: filter 0.3s ease, opacity 0.3s ease;
-}
+    opacity: 0.4;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
 
-/* 🔹 Remove blur when in guess mode */
-:global(body.guess-mode) .key.incorrect,
-:global(body.guess-mode) .key.disabled {
-    filter: none !important;
+  /* In guess mode, all letters are tappable */
+  :global(body.guess-mode) .key.incorrect,
+  :global(body.guess-mode) .key.disabled {
     opacity: 1 !important;
     pointer-events: all;
-}
-/* 🔹 Light up keys that are NOT purchased, incorrect, or disabled */
-.key:not(.purchased):not(.incorrect):not(.disabled) {
-    box-shadow: 0px 0px 8px rgba(0, 255, 180, 0.6); /* Initial blue-green glow */
-    animation: subtleGlow 2s infinite alternate ease-in-out;
-}
-
-/* 🔹 Smooth Blue-Green Glow Animation */
-@keyframes subtleGlow {
-    0% { box-shadow: 0px 0px 6px rgba(0, 150, 255, 0.5); } /* Soft blue */
-    50% { box-shadow: 0px 0px 10px rgba(0, 255, 180, 0.6); } /* Mix between blue & green */
-    100% { box-shadow: 0px 0px 8px rgba(0, 255, 120, 0.5); } /* Soft green */
-}
-
+  }
 </style>

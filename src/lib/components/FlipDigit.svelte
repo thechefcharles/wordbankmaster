@@ -34,11 +34,9 @@
 </div>
 
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
-
   .slot-container {
     overflow: hidden;
-    width: 15px;
+    width: 22px;
     height: 40px;
   }
 
@@ -51,8 +49,11 @@
     height: 40px;
     line-height: 40px;
     text-align: center;
-    font-size: 1.8rem;
-    font-family: 'VT323', monospace;
-    color: white;
+    font-size: 1.9rem;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #fcd34d;
+    text-shadow: 0 0 14px rgba(251, 191, 36, 0.45);
   }
 </style>

@@ -270,11 +270,37 @@
 }
 .cost-indicator {
   position: absolute;
-  top: -25px;
-  font-size: 20px;
-  font-family: 'VT323', sans-serif;
-  color: red;
-  animation: blinkColor 1s infinite;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  color: #fcd34d;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.message-box {
+  position: fixed;
+  bottom: 190px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1001;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text);
+  background: var(--surface-strong);
+  border: 1px solid var(--border-strong);
+  padding: 9px 16px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(12px);
+  white-space: nowrap;
 }
 
 /* ---------------------------
@@ -298,25 +324,28 @@
   position: relative;
 }
 .hint-button {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #4488ff, #0055bb 80%);
-  color: #fff;
-  font-family: 'VT323', sans-serif;
+  width: 54px;
+  height: 46px;
+  border-radius: 13px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-ui);
   font-size: 9px;
-  font-weight: bold;
+  font-weight: 700;
   text-transform: uppercase;
-  border: none;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s ease;
+  backdrop-filter: blur(10px);
+  transition: transform 0.16s var(--ease-spring), background 0.2s, border-color 0.2s;
   cursor: pointer;
 }
-.hint-button:hover { transform: translateY(-2px); }
-.hint-button:active { transform: translateY(2px); }
-.hint-button.glow { animation: softGlow 0.3s infinite alternate ease-in-out; border: 3px outset #0d3e01 !important; }
+.hint-button:hover { transform: translateY(-2px); background: var(--surface-2); border-color: var(--border-strong); }
+.hint-button:active { transform: scale(0.96); }
+.hint-button.glow { border-color: rgba(163, 230, 53, 0.5) !important; box-shadow: var(--glow-brand); }
 
 /* ---------------------------
    Guesses Button (blue, right of Solve)
@@ -325,32 +354,38 @@
   position: relative;
 }
 .guesses-button {
-  width: 52px;
-  height: 40px;
-  border-radius: 8px;
-  background: radial-gradient(circle at 30% 30%, #4488ff, #0055bb 80%);
-  color: #fff;
-  font-family: 'VT323', sans-serif;
-  font-size: 14px;
-  font-weight: bold;
-  border: 2px solid #2266cc;
+  width: 54px;
+  height: 46px;
+  border-radius: 13px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   line-height: 1.1;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  backdrop-filter: blur(10px);
+  transition: transform 0.16s var(--ease-spring), background 0.2s, border-color 0.2s;
   cursor: pointer;
 }
 .guesses-button .guesses-count {
+  font-family: var(--font-display);
   font-size: 18px;
+  font-weight: 700;
+  color: var(--brand-2);
   display: block;
 }
-.guesses-button:hover { transform: translateY(-2px); }
-.guesses-button:active { transform: translateY(2px); }
+.guesses-button:hover { transform: translateY(-2px); background: var(--surface-2); border-color: var(--border-strong); }
+.guesses-button:active { transform: scale(0.96); }
 .guesses-button.glow {
-  box-shadow: 0 0 12px rgba(68, 136, 255, 0.8);
-  border-color: #66aaff;
+  box-shadow: var(--glow-brand);
+  border-color: rgba(163, 230, 53, 0.5);
 }
 
 /* ---------------------------
@@ -358,8 +393,8 @@
 --------------------------- */
 .solve-button-container,
 .dual-button-container {
-  width: 190px;
-  height: 34px;
+  width: 200px;
+  height: 46px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -369,44 +404,46 @@
 .guess-phrase-button {
   width: 100%;
   height: 100%;
-  font-family: 'VT323', sans-serif;
-  font-size: 21px;
-  font-weight: bold;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
-  background: linear-gradient(180deg, #46a230, #318020); /* Always green */
-  color: white;
-  border-radius: 6px;
-  border: 2px solid #2e9417; /* Green border */
-  box-shadow: inset 1px 1px 4px rgba(255,255,255,0.3), 2px 2px 6px rgba(0,0,0,0.6);
-  transition: background-color 0.3s, transform 0.2s;
+  background: var(--brand-grad);
+  color: #06210f;
+  border-radius: 14px;
+  border: none;
+  box-shadow: var(--glow-brand);
+  transition: transform 0.16s var(--ease-spring), filter 0.2s, box-shadow 0.2s;
 }
 
 .guess-phrase-button:hover {
   transform: translateY(-2px);
-  background: linear-gradient(180deg, #46a230, #318020); /* Keep it green on hover */
+  filter: brightness(1.05);
 }
 
 .guess-phrase-button:active {
-  transform: translateY(2px);
-  background: linear-gradient(180deg, #46a230, #318020); /* Keep it green when active */
+  transform: scale(0.97);
 }
 
-.guess-phrase-button.pending {
-  animation: blinkDarkGreen 1s infinite;
-}
-
+.guess-phrase-button.pending,
 .guess-phrase-button.guess-complete {
-  animation: blinkGreen 1s infinite;
+  animation: solvePulse 1.1s infinite;
+}
+@keyframes solvePulse {
+  0%, 100% { box-shadow: var(--glow-brand); }
+  50% { box-shadow: 0 0 0 1px rgba(163, 230, 53, 0.4), 0 8px 36px rgba(52, 211, 153, 0.5); }
 }
 
 .guess-phrase-button.exit-mode {
-  background: linear-gradient(180deg, #ff2222, #aa0000); /* Red for exit mode */
-  border: 2px solid darkred;
+  background: linear-gradient(135deg, #fb5a5a, #c81e1e);
+  color: #fff;
+  border: none;
+  box-shadow: 0 8px 24px rgba(200, 30, 30, 0.35);
 }
 
 .guess-phrase-button.exit-mode:active {
-  background: linear-gradient(180deg, #cc0000, #990000);
-  transform: scale(0.95);
+  transform: scale(0.96);
 }
 
 /* Dark mode adjustments */
@@ -422,55 +459,38 @@
 }
 .confirm-button,
 .cancel-button {
-  font-family: 'VT323', monospace;
-  font-size: 18px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
   flex: 1;
-  height: 34px;
-  border-radius: 6px;
-  transition: transform 0.2s ease;
+  height: 46px;
+  border-radius: 14px;
   cursor: pointer;
+  transition: transform 0.16s var(--ease-spring), filter 0.2s;
 }
 
 /* Confirm */
 .confirm-button {
-  background: linear-gradient(180deg, #28a745, #218838);
-  color: white;
-  border: 3px solid #1e7e34;
-  animation: pulseGlow 1s infinite;
+  background: var(--brand-grad);
+  color: #06210f;
+  border: none;
+  box-shadow: var(--glow-brand);
+  animation: solvePulse 1.1s infinite;
 }
 .confirm-button:hover {
-  background: linear-gradient(180deg, #45c362, #2f9f4a);
+  filter: brightness(1.05);
   transform: translateY(-2px);
 }
+.confirm-button:active { transform: scale(0.97); }
 
 /* Cancel */
 .cancel-button {
-  background: linear-gradient(180deg, #aa0000, #660000);
-  color: white;
-  border: 2px solid darkred;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
 }
-.cancel-button:hover {
-  transform: scale(1.08);
-}
-
-/* ---------------------------
-   Dark Mode
---------------------------- */
-:global(body.dark-mode) .guess-phrase-button {
-  background: linear-gradient(180deg, #46a230, #318020);
-}
-:global(body.dark-mode) .hint-button {
-  background: radial-gradient(circle at 30% 30%, #66aaff, #3388ff 80%) !important;
-  border: 3px solid #66aaff !important;
-}
-:global(body.dark-mode) .guess-phrase-button.exit-mode {
-  background: linear-gradient(180deg, #ff2222, #aa0000) !important;
-  border: 3px solid #880000 !important;
-}
-:global(body.dark-mode) .guess-phrase-button.guess-complete {
-  background: linear-gradient(180deg, #28a745, #218838) !important;
-  border: 3px solid #1e7e34 !important;
-}
+.cancel-button:hover { transform: translateY(-1px); background: rgba(251, 90, 90, 0.16); border-color: rgba(251, 90, 90, 0.4); }
+.cancel-button:active { transform: scale(0.97); }
 .guess-phrase-button:disabled,
 .confirm-button:disabled,
 .cancel-button:disabled {
