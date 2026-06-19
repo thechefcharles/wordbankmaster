@@ -142,6 +142,23 @@ export async function getUserBadges(userId) {
   return (data ?? []).map((/** @type {{ badge: string }} */ r) => r.badge);
 }
 
+/**
+ * Fetch the caller's power-up inventory.
+ * @returns {Promise<{powerup: string, count: number}[]>}
+ */
+export async function getUserPowerups() {
+  const { data, error } = await supabase.rpc('get_user_powerups');
+  if (error) { console.error('❌ get_user_powerups error:', error); return []; }
+  return data ?? [];
+}
+
+/** Use a Free Reveal power-up (free smart reveal). @returns {Promise<object|null>} board */
+export async function dailyUseFreeReveal() {
+  const { data, error } = await supabase.rpc('daily_use_free_reveal');
+  if (error) { console.error('❌ daily_use_free_reveal error:', error); return null; }
+  return data;
+}
+
 /** Reveal ($150): all instances of the most-useful unrevealed letter. @returns {Promise<object|null>} board */
 export async function dailyReveal() {
   const { data, error } = await supabase.rpc('daily_reveal');
