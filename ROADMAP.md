@@ -82,7 +82,7 @@ Status: 📋 Planned (Phase 3)
 |---|---|---|---|
 | **0 — Economy refactor** | 3 free attempts, free guessing, win-by-reveal, Reveal rework, broke-only loss | Daily RPCs (server) + arcade client | ✅ |
 | **1 — Daily scoring + share** | Share card ✅ + medals ✅. Daily **score = bankroll × streak multiplier** (server), leaderboard ranks by score ✅ | Server scoring + UI | ✅ |
-| **2 — Streaks & badges** | Streak freeze, badge engine, leaderboard flair | Server + UI | 📋 |
+| **2 — Streaks & badges** | Badge engine ✅ (4 daily badges, My Account display, leaderboard 🔥 flair). Streak **freeze** still TODO. | Server + UI | 🚧 |
 | **3 — Power-up system** | Inventory + effects, earned via play/badges (no payments) | Server + UI | 📋 |
 | **4 — Roguelike arcade** | Run structure, escalation, power-up drafting, best-run board (pending arcade decision) | Mostly client + leaderboard | 📋 |
 | **5 — Polish** | Guided tutorial, sound + haptics, "ghost of yesterday" compare | Client | 📋 |

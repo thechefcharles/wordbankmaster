@@ -129,6 +129,17 @@ export async function dailyBuyLetter(letter) {
   return data;
 }
 
+/**
+ * Fetch a user's earned badge ids (defaults to the caller).
+ * @param {string} [userId]
+ * @returns {Promise<string[]>}
+ */
+export async function getUserBadges(userId) {
+  const { data, error } = await supabase.rpc('get_user_badges', userId ? { p_user_id: userId } : {});
+  if (error) { console.error('❌ get_user_badges error:', error); return []; }
+  return (data ?? []).map((/** @type {{ badge: string }} */ r) => r.badge);
+}
+
 /** Reveal ($150): all instances of the most-useful unrevealed letter. @returns {Promise<object|null>} board */
 export async function dailyReveal() {
   const { data, error } = await supabase.rpc('daily_reveal');

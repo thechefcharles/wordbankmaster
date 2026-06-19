@@ -185,7 +185,7 @@
                   {:else if row.rank === 3}🥉
                   {:else}{row.rank}{/if}
                 </td>
-                <td class="name">{row.display_name || 'Player'}</td>
+                <td class="name">{row.display_name || 'Player'}{#if (row.current_streak ?? 0) >= 7} 🔥{/if}</td>
                 <td class="score-cell">{fmt(row.score)}</td>
                 <td>${fmt(row.bankroll_left)} {medal(row.bankroll_left ?? 0, row.total_played ?? 0)}</td>
                 <td>{fmt(row.current_streak)}</td>
