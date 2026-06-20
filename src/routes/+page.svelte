@@ -30,7 +30,6 @@
 
   // UI state
   let showTutorial = false;
-  let darkMode = false;
   let showResultModal = false;
   let hasTriggeredModal = false;
   let hasInitialized = false;
@@ -211,22 +210,7 @@
     saveGameToLocalStorage();
   }
 
-  // ✅ Dark mode init
-  const applyDarkMode = () => {
-    document.body.classList.toggle('dark-mode', darkMode);
-  };
-
-  const toggleDarkMode = () => {
-    darkMode = !darkMode;
-    localStorage.setItem('darkMode', String(darkMode));
-    applyDarkMode();
-  };
-
   onMount(() => {
-    if (browser) {
-      darkMode = localStorage.getItem('darkMode') === 'true';
-      applyDarkMode();
-    }
     ['click', 'mousedown', 'touchstart'].forEach(event =>
       document.addEventListener(event, removeButtonFocus, true)
     );
@@ -400,11 +384,6 @@
     aria-label="Toggle sound and haptics"
   >
     {$soundEnabled ? '🔊' : '🔇'}
-  </button>
-
-  <!-- 🌙 Dark Mode Toggle -->
-  <button class="icon-button subtle-button" on:click={toggleDarkMode}>
-    {darkMode ? '☀️' : '🌙'}
   </button>
 
   <!-- 🚪 Logout -->
@@ -1043,17 +1022,6 @@
     font-size: 0.95rem;
     color: var(--text-muted);
     margin: 0.5rem 0 0 0;
-  }
-
-  :global(body.dark-mode) .diagnostic-banner {
-    background: rgba(255, 80, 80, 0.2);
-    border-color: #ef5350;
-    color: #ffcdd2;
-  }
-  :global(body.dark-mode) .diagnostic-banner.info {
-    background: rgba(33, 150, 243, 0.2);
-    border-color: #42a5f5;
-    color: #90caf9;
   }
 
   .bankroll-container {
