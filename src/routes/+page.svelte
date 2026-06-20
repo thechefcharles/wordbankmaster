@@ -23,11 +23,12 @@
   import GameButtons from '$lib/components/GameButtons.svelte';
   import FlipDigit from '$lib/components/FlipDigit.svelte';
   import Auth from '$lib/components/Auth.svelte';
+  import Tutorial from '$lib/components/Tutorial.svelte';
 
   export let data;
 
   // UI state
-  let showHowToPlay = false;
+  let showTutorial = false;
   let darkMode = false;
   let showResultModal = false;
   let hasTriggeredModal = false;
@@ -227,6 +228,16 @@
     );
   });
 
+  const TUTORIAL_KEY = 'wb_tutorial_seen';
+  // First-run guided tutorial: show once a signed-in user reaches the menu.
+  $: if (browser && loggedIn && hasInitialized && localStorage.getItem(TUTORIAL_KEY) !== 'true') {
+    showTutorial = true;
+  }
+  function dismissTutorial() {
+    showTutorial = false;
+    if (browser) localStorage.setItem(TUTORIAL_KEY, 'true');
+  }
+
   /** @param {Event} e */
   const removeButtonFocus = (e) => {
     if (e.target && /** @type {HTMLElement} */ (e.target).tagName === 'BUTTON') /** @type {HTMLButtonElement} */ (e.target).blur();
@@ -375,8 +386,8 @@
 <svelte:window on:keydown={handleEscape} />
 <!-- 🔹 Top Control Buttons -->
 <div class="top-buttons">
-  <!-- ❓ How to Play -->
-  <button class="icon-button subtle-button" on:click={() => showHowToPlay = true}>
+  <!-- ❓ How to Play (replays the guided tutorial) -->
+  <button class="icon-button subtle-button" title="How to play" on:click={() => showTutorial = true}>
     ❓
   </button>
 
@@ -415,34 +426,9 @@
   {/if}
 </div>
 
-<!-- 📜 How to Play Modal -->
-{#if showHowToPlay}
-  <div class="modal-overlay">
-    <div class="modal-content">
-      <button class="close-btn" on:click={() => showHowToPlay = false}>❌</button>
-
-      <h2>📜 How to Play</h2>
-      <p>💰 Start with $1000. Spend it on information, then solve the phrase. Whatever's left is your score.</p>
-
-      <h3>📅 Daily vs Arcade</h3>
-      <p><b>Daily:</b> One puzzle per day. Counts for the daily leaderboard!<br />
-      <b>Arcade:</b> Unlimited play. Build your cumulative bankroll!</p>
-
-      <h3>🎯 Goal</h3>
-      <p>Solve the phrase before you run out of money.</p>
-
-      <h3>🕹️ Gameplay</h3>
-      <ul>
-        <li>🔤 <b>Buy Letters:</b> Tap a letter to buy it. In the phrase → all copies revealed. Not in it → you lose the money.</li>
-        <li>🔍 <b>Reveal ($150):</b> Reveals every copy of the most useful unrevealed letter — guaranteed, never random.</li>
-        <li>✏️ <b>Solve:</b> Fill the blanks and submit. You get <b>3 free tries</b> — a wrong guess just costs a try, no money.</li>
-        <li>🏁 <b>Out of tries?</b> You can still win by buying letters until the whole phrase is revealed.</li>
-        <li>💀 <b>You only lose</b> if you go broke before solving.</li>
-      </ul>
-
-      <p><strong>Spend smart, solve cheap, bank the rest. 🚀</strong></p>
-    </div>
-  </div>
+<!-- 📜 Guided tutorial (first run + replayable from ❓) -->
+{#if showTutorial}
+  <Tutorial on:close={dismissTutorial} />
 {/if}
 
 <main>
