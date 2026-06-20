@@ -55,14 +55,19 @@ CREATE OR REPLACE FUNCTION public._todays_puzzle_id()
 RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE v_pid UUID;
 BEGIN
-  -- First caller of the day assigns a not-yet-used puzzle deterministically; others no-op.
+  -- First caller of the day assigns a puzzle deterministically; others no-op.
+  -- Prefer one never used as a daily; once the pool is exhausted, recycle the
+  -- one used longest ago (Phase 4 fallback) so the daily never runs dry.
   INSERT INTO public.daily_puzzle_schedule (scheduled_date, puzzle_id)
   SELECT CURRENT_DATE, sub.pid FROM (
-    SELECT (
-      SELECT p2.id FROM public.daily_puzzles p2
-      WHERE p2.id NOT IN (SELECT puzzle_id FROM public.daily_puzzle_schedule)
-      ORDER BY md5(CURRENT_DATE::text || p2.id::text)
-      LIMIT 1
+    SELECT COALESCE(
+      (SELECT p2.id FROM public.daily_puzzles p2
+        WHERE p2.id NOT IN (SELECT puzzle_id FROM public.daily_puzzle_schedule)
+        ORDER BY md5(CURRENT_DATE::text || p2.id::text) LIMIT 1),
+      (SELECT p3.id FROM public.daily_puzzles p3
+        LEFT JOIN (SELECT puzzle_id, MAX(scheduled_date) AS last_used
+                   FROM public.daily_puzzle_schedule GROUP BY puzzle_id) u ON u.puzzle_id = p3.id
+        ORDER BY u.last_used ASC NULLS FIRST, md5(CURRENT_DATE::text || p3.id::text) LIMIT 1)
     ) AS pid
   ) sub
   WHERE sub.pid IS NOT NULL
