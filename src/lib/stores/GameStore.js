@@ -7,6 +7,7 @@ import { user } from '$lib/stores/userStore.js';
 import { saveGameToLocalStorage } from '$lib/stores/localGameUtils.js';
 import { recordDailyResult, recordArcadeResult, saveArcadeBankroll } from '$lib/stores/statsStore.js';
 import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, getUserPowerups, dailyUseFreeReveal } from '$lib/stores/statsStore.js';
+import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNext } from '$lib/stores/statsStore.js';
 
 /* ================================
    Types (JSDoc for checkJs)
@@ -34,7 +35,8 @@ import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, getUserPower
  *   message: string,
  *   subcategory: string,
  *   gameMode: string,
- *   freeReveals?: number
+ *   freeReveals?: number,
+ *   arcadeRun?: any
  * }} GameState
  */
 
@@ -67,7 +69,8 @@ export const gameStore = writable(/** @type {GameState} */ ({
   message: '',
   subcategory: '',
   gameMode: 'daily', // 'daily' | 'arcade'
-  freeReveals: 0 // owned Free Reveal power-ups (daily)
+  freeReveals: 0, // owned Free Reveal power-ups (daily)
+  arcadeRun: null // arcade gauntlet run state { state, banked, multiplier, position, total, furthest, last_gain }
 }));
 
 /* ================================
@@ -108,15 +111,14 @@ let dailyInFlight = false;
  *
  * @param {any} board - board JSON returned by a daily_* RPC
  */
-function reconcileDailyBoard(board) {
-  if (!board) return;
-  const prev = get(gameStore);
-
+/**
+ * boardToState — shared masked-board → gameStore partial (used by daily + arcade).
+ * @param {any} board @param {GameState} prev
+ */
+function boardToState(board, prev) {
   /** @type {number[]} */
   const wordLengths = board.word_lengths || [];
-  // Masked phrase: '#' per letter slot, single space between words.
   const chars = wordLengths.map((/** @type {number} */ len) => '#'.repeat(len)).join(' ').split('');
-
   /** @type {Record<string, string>} */
   const revealed = board.revealed || {};
   /** @type {string[]} */
@@ -129,25 +131,17 @@ function reconcileDailyBoard(board) {
     purchased[i] = /** @type {string} */ (v);
     if (prev.purchasedLetters?.[i] !== v) newlyRevealed.push(i);
   }
-
   const finished = board.state !== 'active';
-  const currentPhrase = finished && board.phrase
-    ? String(board.phrase).toUpperCase()
-    : chars.join('');
-
+  const currentPhrase = finished && board.phrase ? String(board.phrase).toUpperCase() : chars.join('');
   /** @type {Record<string, boolean>} */
   const lockedLetters = {};
   (board.locked_letters || []).forEach((/** @type {string} */ l) => { lockedLetters[l] = true; });
-
-  gameStore.set(/** @type {GameState} */ ({
-    ...prev,
+  return {
     bankroll: board.bankroll,
     guessesRemaining: board.guesses_remaining,
     category: board.category ?? prev.category,
     subcategory: board.subcategory ?? '',
     currentPhrase,
-    gameMode: 'daily',
-    gameState: finished ? board.state : 'default',
     purchasedLetters: purchased,
     guessedLetters: {},
     lockedLetters,
@@ -156,10 +150,99 @@ function reconcileDailyBoard(board) {
     shakenLetters: newlyRevealed,
     wagerAmount: 0,
     message: ''
-  }));
+  };
+}
 
-  if (board.state === 'won') {
-    setTimeout(() => launchConfetti(), 300);
+/** @param {any} board */
+function reconcileDailyBoard(board) {
+  if (!board) return;
+  const prev = get(gameStore);
+  const finished = board.state !== 'active';
+  gameStore.set(/** @type {GameState} */ ({
+    ...prev, ...boardToState(board, prev),
+    gameMode: 'daily',
+    gameState: finished ? board.state : 'default'
+  }));
+  if (board.state === 'won') setTimeout(() => launchConfetti(), 300);
+}
+
+/**
+ * reconcileArcadeBoard — arcade gauntlet { board, run } → gameStore.
+ * @param {any} resp
+ */
+function reconcileArcadeBoard(resp) {
+  if (!resp || !resp.board) return;
+  const prev = get(gameStore);
+  const board = resp.board;
+  const run = resp.run || {};
+  // Per-puzzle outcome drives gameState: solved/complete -> won, busted -> lost.
+  let gs = 'default';
+  if (run.state === 'solved' || run.state === 'complete') gs = 'won';
+  else if (run.state === 'busted') gs = 'lost';
+  gameStore.set(/** @type {GameState} */ ({
+    ...prev, ...boardToState(board, prev),
+    gameMode: 'arcade',
+    gameState: gs,
+    arcadeRun: run,
+    freeReveals: 0
+  }));
+  if (run.state === 'solved' || run.state === 'complete') setTimeout(() => launchConfetti(), 300);
+}
+
+/** confirmPurchaseArcade — commit a letter/reveal on the current gauntlet puzzle. @param {GameState} state */
+async function confirmPurchaseArcade(state) {
+  const purchase = state.selectedPurchase;
+  if (!purchase || dailyInFlight) return;
+  dailyInFlight = true;
+  try {
+    let resp = null;
+    if (purchase.type === 'letter') resp = await arcadeBuyLetter(purchase.value ?? '');
+    else if (purchase.type === 'hint') resp = await arcadeReveal();
+    if (resp) reconcileArcadeBoard(resp);
+    else gameStore.update(s => ({ ...s, selectedPurchase: null, gameState: 'default' }));
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
+/** submitGuessArcade — submit a guess on the current gauntlet puzzle. @param {GameState} state */
+async function submitGuessArcade(state) {
+  if (state.gameState !== 'guess_mode' || dailyInFlight) return;
+  /** @type {Record<string, string>} */
+  const guess = {};
+  for (const [k, v] of Object.entries(state.guessedLetters || {})) guess[k] = /** @type {string} */ (v);
+  if (Object.keys(guess).length === 0) return;
+  dailyInFlight = true;
+  try {
+    const resp = await arcadeSubmitGuess(guess);
+    if (resp) reconcileArcadeBoard(resp);
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
+/** Start or resume today's arcade gauntlet. */
+export async function fetchArcadeGame() {
+  try {
+    const resp = await arcadeStart();
+    if (!resp) { console.error('❌ arcade_start returned nothing'); return false; }
+    reconcileArcadeBoard(resp);
+    return true;
+  } catch (err) {
+    console.error('❌ Error starting arcade:', err instanceof Error ? err.message : String(err));
+    return false;
+  }
+}
+
+/** Advance to the next puzzle after a solve, or retry after a bust. */
+export async function arcadeContinue() {
+  if (dailyInFlight) return;
+  dailyInFlight = true;
+  try {
+    const resp = await arcadeNext();
+    if (resp) reconcileArcadeBoard(resp);
+  } finally {
+    dailyInFlight = false;
   }
 }
 
@@ -354,10 +437,14 @@ export function setWager(amount) {
  * Handles purchase of a letter or hint and updates game state.
  */
 export function confirmPurchase() {
-  // Daily is server-authoritative: commit the purchase via RPC and reconcile.
+  // Daily & arcade are both server-authoritative now: commit via RPC and reconcile.
   const current = get(gameStore);
   if (current.gameMode === 'daily') {
     confirmPurchaseDaily(current);
+    return;
+  }
+  if (current.gameMode === 'arcade') {
+    confirmPurchaseArcade(current);
     return;
   }
 
@@ -609,10 +696,14 @@ export function deleteGuessLetter() {
  * syncs to Supabase, and hides wager slider.
  */
 export function submitGuess() {
-  // Daily is server-authoritative: the server validates the guess and scores it.
+  // Daily & arcade are both server-authoritative: the server validates + scores.
   const current = get(gameStore);
   if (current.gameMode === 'daily') {
     submitGuessDaily(current);
+    return;
+  }
+  if (current.gameMode === 'arcade') {
+    submitGuessArcade(current);
     return;
   }
 

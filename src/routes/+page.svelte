@@ -4,14 +4,13 @@
   import { supabase } from '$lib/supabaseClient';
   import { get } from 'svelte/store';
 
-  import { gameStore, fetchRandomGame, fetchDailyGame } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue } from '$lib/stores/GameStore.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
   import { hasPlayedDailyToday, saveArcadeBankroll, getUserBadges, getDailyStatus, getUserPowerups, dailySessionExists } from '$lib/stores/statsStore.js';
   import { BADGES, badgeInfo } from '$lib/badges.js';
   import { powerupInfo } from '$lib/powerups.js';
   import {
     saveGameToLocalStorage,
-    loadGameFromLocalStorage,
     clearSavedGame,
     getSavedGameInfo
   } from '$lib/stores/localGameUtils.js';
@@ -100,37 +99,10 @@
         return;
       }
 
-      const peek = getSavedGameInfo(session.user.id);
-      // Daily is now server-resumed (daily_start); only arcade resumes from localStorage.
-      const arcadeSave = peek && peek.gameMode === 'arcade' ? peek : null;
-      const inProgress = arcadeSave && arcadeSave.gameState !== 'won' && arcadeSave.gameState !== 'lost';
-
-      if (inProgress) {
-        const restored = loadGameFromLocalStorage();
-        if (restored) {
-          gameWasRestored.set(true);
-          showMainMenu = false;
-          console.log("🔁 Game restored from localStorage");
-        } else {
-          showMainMenu = true;
-          savedGameInfo = arcadeSave;
-          menuDailyPlayed = await hasPlayedDailyToday(session.user.id);
-        }
-      } else {
-        showMainMenu = true;
-        savedGameInfo = arcadeSave;
-        menuDailyPlayed = await hasPlayedDailyToday(session.user.id);
-        // If they just came from /select with a category, start arcade instead of showing menu
-        const mode = localStorage.getItem('gameMode');
-        const category = localStorage.getItem('selectedCategory');
-        if (mode === 'arcade' && category) {
-          const ok = await fetchRandomGame(category);
-          if (ok) {
-            showMainMenu = false;
-            hasInitialized = true;
-          }
-        }
-      }
+      // Daily and arcade are both server-authoritative now — start from the menu.
+      showMainMenu = true;
+      savedGameInfo = null;
+      menuDailyPlayed = await hasPlayedDailyToday(session.user.id);
 
       await tick();
       hasInitialized = true;
@@ -150,19 +122,14 @@
     !$gameWasRestored
   ) {
     const gameMode = localStorage.getItem('gameMode') || 'daily';
-    if (gameMode === 'daily') {
+    if (gameMode === 'arcade') {
+      fetchArcadeGame().then((ok) => {
+        if (!ok) initError = "Arcade failed to load.";
+      });
+    } else {
       fetchDailyGame().then((ok) => {
         if (!ok) initError = "Daily puzzle failed to load.";
       });
-    } else {
-      const category = localStorage.getItem('selectedCategory');
-      if (category) {
-        fetchRandomGame(category).then((ok) => {
-          if (!ok) initError = "Arcade puzzle failed to load.";
-        });
-      } else {
-        window.location.href = '/select/arcade';
-      }
     }
   }
 
@@ -208,6 +175,10 @@
   $: isDailyResult = $gameStore.gameMode === 'daily';
   $: resultBankroll = Math.max(0, Math.floor($gameStore.bankroll || 0));
   $: resultMedal = medalFor(resultBankroll, resultWon);
+  // Arcade gauntlet run state
+  $: arun = $gameStore.arcadeRun;
+  $: arcadeComplete = !isDailyResult && arun?.state === 'complete';
+  $: arcadeMult = ((arun?.multiplier ?? 100) / 100).toFixed(2);
 
   let shareCopied = false;
   function buildShareText() {
@@ -323,14 +294,25 @@
   }
 
   /** Start or resume arcade: resume from save or go to arcade category select */
-  function handleMenuArcade() {
-    if (savedGameInfo?.gameMode === 'arcade' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost') {
-      loadGameFromLocalStorage();
-      gameWasRestored.set(true);
+  async function handleMenuArcade() {
+    const currentUser = get(user);
+    if (!currentUser?.id) return;
+    // Arcade is now the server-authoritative Press-Your-Luck gauntlet (start/resume today's run).
+    localStorage.setItem('gameMode', 'arcade');
+    const ok = await fetchArcadeGame();
+    if (ok) {
+      hasInitialized = true;
       showMainMenu = false;
-      return;
+    } else {
+      initError = 'Arcade failed to load.';
     }
-    goto('/select/arcade');
+  }
+
+  // After solving / busting a gauntlet puzzle, advance or retry.
+  async function handleArcadeContinue() {
+    showResultModal = false;
+    hasTriggeredModal = false;
+    await arcadeContinue();
   }
 
   function handleMenuLeaderboard() {
@@ -663,6 +645,15 @@
       </div>
     {/if}
 
+    <!-- 🕹️ Arcade gauntlet HUD -->
+    {#if $gameStore.gameMode === 'arcade' && arun}
+      <div class="arcade-hud">
+        <div class="ah-cell"><span class="ah-val">{(arun.position ?? 0) + 1}<span class="ah-sub">/{arun.total}</span></span><span class="ah-label">Puzzle</span></div>
+        <div class="ah-cell ah-mult"><span class="ah-val">×{arcadeMult}</span><span class="ah-label">Multiplier</span></div>
+        <div class="ah-cell"><span class="ah-val ah-gold">${(arun.banked ?? 0).toLocaleString()}</span><span class="ah-label">Banked</span></div>
+      </div>
+    {/if}
+
     <!-- 🌍 Category Display -->
     <div class="puzzle-meta">
       {#if $gameStore.category}<span class="category-chip">{$gameStore.category}</span>{/if}
@@ -751,30 +742,49 @@
     {#if showResultModal && ['won', 'lost'].includes($gameStore.gameState)}
       <div class="modal-overlay">
         <div class="modal-content result-modal">
-          <div class="result-medal {resultMedal.tier}">{resultMedal.emoji}</div>
-          <h2>{resultWon ? 'Solved!' : 'Busted'}</h2>
           {#if isDailyResult}
+            <div class="result-medal {resultMedal.tier}">{resultMedal.emoji}</div>
+            <h2>{resultWon ? 'Solved!' : 'Busted'}</h2>
             <p class="result-sub">Daily #{puzzleNumber}{#if resultWon} · {resultMedal.name}{/if}</p>
+            <div class="result-bankroll">
+              <span class="rb-label">Banked</span>
+              <span class="rb-amount">${resultBankroll.toLocaleString()}</span>
+            </div>
+            <div class="result-actions">
+              <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
+              <button class="next-puzzle-button" on:click={resultWon ? handleNextPuzzle : handlePlayAgain}>Leaderboard</button>
+            </div>
           {:else}
-            <p class="result-sub">Arcade</p>
+            <!-- Arcade Press-Your-Luck transition -->
+            {#if arcadeComplete}
+              <div class="result-medal gold">🏆</div>
+              <h2>Gauntlet Cleared!</h2>
+              <p class="result-sub">All {arun?.total} puzzles solved</p>
+            {:else if resultWon}
+              <div class="result-medal">✅</div>
+              <h2>Solved!</h2>
+              <p class="result-sub">Puzzle {(arun?.position ?? 0) + 1}/{arun?.total} · next ×{arcadeMult}</p>
+            {:else}
+              <div class="result-medal">💥</div>
+              <h2>Busted</h2>
+              <p class="result-sub">Multiplier reset to ×1 — retry this puzzle</p>
+            {/if}
+            <div class="result-bankroll">
+              <span class="rb-label">Total Banked</span>
+              <span class="rb-amount">${(arun?.banked ?? 0).toLocaleString()}</span>
+            </div>
+            {#if resultWon && !arcadeComplete && (arun?.last_gain ?? 0) > 0}
+              <p class="arcade-gain">+${(arun?.last_gain ?? 0).toLocaleString()} this puzzle</p>
+            {/if}
+            <div class="result-actions">
+              <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
+              {#if arcadeComplete}
+                <button class="next-puzzle-button" on:click={() => { showResultModal = false; goToMainMenu(); }}>Done</button>
+              {:else}
+                <button class="next-puzzle-button" on:click={handleArcadeContinue}>{resultWon ? 'Continue' : 'Try Again'}</button>
+              {/if}
+            </div>
           {/if}
-
-          <div class="result-bankroll">
-            <span class="rb-label">Banked</span>
-            <span class="rb-amount">${resultBankroll.toLocaleString()}</span>
-          </div>
-
-          <div class="result-actions">
-            <button class="share-btn" on:click={handleShare}>
-              {shareCopied ? '✓ Copied!' : 'Share'}
-            </button>
-            <button
-              class="next-puzzle-button"
-              on:click={resultWon ? handleNextPuzzle : handlePlayAgain}
-            >
-              {isDailyResult ? 'Leaderboard' : (resultWon ? 'Next Puzzle' : 'Play Again')}
-            </button>
-          </div>
         </div>
       </div>
     {/if}
@@ -799,6 +809,32 @@
     align-items: center;
     justify-content: center;
   }
+
+  .arcade-hud {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto 14px;
+  }
+  .ah-cell {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 10px 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+  }
+  .ah-mult { border-color: rgba(163, 230, 53, 0.35); background: linear-gradient(135deg, rgba(52,211,153,0.12), rgba(163,230,53,0.04)); }
+  .ah-val { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; color: var(--text); font-variant-numeric: tabular-nums; }
+  .ah-mult .ah-val { color: var(--brand-2); }
+  .ah-gold { color: #fcd34d; }
+  .ah-sub { font-size: 0.7rem; color: var(--text-faint); font-weight: 600; }
+  .ah-label { font-size: 0.55rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
+  .arcade-gain { font-family: var(--font-display); font-weight: 700; color: var(--brand-2); margin: -8px 0 14px; font-size: 1rem; }
 
   .puzzle-meta {
     display: flex;

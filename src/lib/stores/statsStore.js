@@ -128,6 +128,40 @@ export async function dailyStart(powerups = []) {
   return data;
 }
 
+/* ===== Arcade Press-Your-Luck gauntlet (server-authoritative) =====
+   Each returns { board, run } where run = { state, banked, multiplier, position,
+   total, furthest, last_gain }. */
+/** @returns {Promise<any>} */
+export async function arcadeStart() {
+  const { data, error } = await supabase.rpc('arcade_start');
+  if (error) { console.error('❌ arcade_start error:', error); return null; }
+  return data;
+}
+/** @param {string} letter @returns {Promise<any>} */
+export async function arcadeBuyLetter(letter) {
+  const { data, error } = await supabase.rpc('arcade_buy_letter', { p_letter: letter });
+  if (error) { console.error('❌ arcade_buy_letter error:', error); return null; }
+  return data;
+}
+/** @returns {Promise<any>} */
+export async function arcadeReveal() {
+  const { data, error } = await supabase.rpc('arcade_reveal');
+  if (error) { console.error('❌ arcade_reveal error:', error); return null; }
+  return data;
+}
+/** @param {Record<string,string>} guess @returns {Promise<any>} */
+export async function arcadeSubmitGuess(guess) {
+  const { data, error } = await supabase.rpc('arcade_submit_guess', { p_guess: guess });
+  if (error) { console.error('❌ arcade_submit_guess error:', error); return null; }
+  return data;
+}
+/** Advance after a solve / retry after a bust. @returns {Promise<any>} */
+export async function arcadeNext() {
+  const { data, error } = await supabase.rpc('arcade_next');
+  if (error) { console.error('❌ arcade_next error:', error); return null; }
+  return data;
+}
+
 /** Whether the caller already has a session for today (drives the pre-game picker). */
 export async function dailySessionExists() {
   const { data, error } = await supabase.rpc('daily_session_exists');
