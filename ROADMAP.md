@@ -45,9 +45,14 @@ Living plan for the game's evolution. **Update the Status column as we go.**
 - 📋 **Shareable result card** (spoiler-free), e.g. `WordBank #142 🟩🟩⬛ $740 · 🔥12 · ⭐Gold`. ← top growth lever.
 - 📋 **Streak freeze** so one missed day doesn't nuke a long streak.
 
-### 🕹️ Arcade — high-roller mode
-- ❓ **Direction TBD:** full **roguelike run** (escalating puzzles, power-up drafting between rounds, run ends on bust, best-run leaderboard) **vs** keep **endless** cumulative bankroll + layer power-ups/better risk. *Decide after Phase 0.*
-- 📋 Replace the "free-EV when confident" wager with a real pre-commit risk decision (e.g., double-or-nothing *before* buying letters).
+### 🕹️ Arcade — daily Press-Your-Luck gauntlet (LOCKED)
+- **One shared daily sequence** of puzzles (same order for everyone) → the leaderboard is a real, fair skill comparison. **No difficulty escalation.**
+- **Climb the ladder.** Each puzzle = fresh $1,000 working bank, same core play (buy letters / Reveal / Solve).
+- **Auto-bank:** every solve banks `leftover bankroll × multiplier`. The **multiplier rises with each clean consecutive solve** (×1 → ×1.25 → ×1.5 → ×2 …, capped).
+- **Bust = setback, not game over.** Run out of money on a puzzle → **multiplier resets to ×1**, but you keep your banked total and your place; you retry that puzzle (fresh $1,000) and keep climbing.
+- So a flawless 1→N run banks far more than a stop-start one over the *same* puzzles — pure execution skill.
+- **Server-authoritative** (answers off the client) so the fair board is trustworthy — reuses the Daily engine. **Leaderboard = total banked today** (+ furthest reached).
+- Auto-bank chosen over cash-out: in a skill puzzle you control bust risk, so a "bank or risk" gamble is a fake decision; the multiplier (skill) is the real tension. Cash-out can bolt on later if we want a casino feel.
 
 ---
 
@@ -84,7 +89,7 @@ Status: 📋 Planned (Phase 3)
 | **1 — Daily scoring + share** | Share card ✅ + medals ✅. Daily **score = bankroll × streak multiplier** (server), leaderboard ranks by score ✅ | Server scoring + UI | ✅ |
 | **2 — Streaks & badges** | Badges ✅ (4 daily, My Account, 🔥 flair). Streak **freeze** ✅ (auto-bridge a missed day, earn 1 per 7-day milestone, cap 3; shown in My Account). | Server + UI | ✅ |
 | **3 — Power-up system** | Inventory, earning (random on win), display ✅; Free Reveal (in-game) ✅; pre-game picker ✅; effects: +$250 Start, Discount, Insurance, Vowel Vision ✅. (Double Payout = arcade, Phase 4.) | Server + UI | ✅ |
-| **4 — Roguelike arcade** | Run structure, escalation, power-up drafting, best-run board (pending arcade decision) | Mostly client + leaderboard | 📋 |
+| **4 — Arcade gauntlet** | Daily Press-Your-Luck ladder: shared sequence, auto-bank + multiplier, continue-on-bust, server-authoritative, banked-today board. 4a server 🚧. | Server + client | 🚧 |
 | **5 — Polish** | Guided tutorial, sound + haptics, "ghost of yesterday" compare | Client | 📋 |
 
 Recommended order de-risks: economy first → cheap-high-impact share → retention (streaks/badges) → big arcade swing.
@@ -105,7 +110,7 @@ Recommended order de-risks: economy first → cheap-high-impact share → retent
 ---
 
 ## Open decisions (❓)
-1. Arcade direction: full roguelike run vs endless + power-ups (decide after Phase 0).
+1. ✅ Arcade direction: daily Press-Your-Luck gauntlet (shared sequence, auto-bank, server-authoritative). LOCKED.
 2. Power-up source: earned-only vs earned + free daily pick.
 3. Daily scoring formula specifics (par definition, efficiency bonus weight, streak multiplier curve).
 4. Wrong-guess penalty amount / does it scale.
