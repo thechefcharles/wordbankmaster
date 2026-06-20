@@ -23,14 +23,22 @@
   const row2: string[] = ['A','S','D','F','G','H','J','K','L'];
   const row3: string[] = ['Z','X','C','V','B','N','M'];
 
-  // Effective per-letter prices after today's shared Daily Modifier (server matches this).
+  // Effective per-letter prices after active discount / vowel_vision (server matches this):
+  // daily uses the shared modifier; arcade uses the run's armed power-ups.
   $: effCosts = (() => {
-    const m = $gameStore.gameMode === 'daily' ? ($gameStore.modifier ?? null) : null;
+    let discount = false, vowelHalf = false;
+    if ($gameStore.gameMode === 'daily') {
+      const m = $gameStore.modifier;
+      discount = m === 'discount'; vowelHalf = m === 'vowel_vision';
+    } else if ($gameStore.gameMode === 'arcade') {
+      const a: string[] = ($gameStore.arcadeRun && $gameStore.arcadeRun.active) || [];
+      discount = a.includes('discount'); vowelHalf = a.includes('vowel_vision');
+    }
     const out: Record<string, number> = {};
     for (const k of Object.keys(letterCosts)) {
       let c = letterCosts[k];
-      if (m === 'discount') c = Math.ceil(c * 0.75);
-      else if (m === 'vowel_vision' && 'AEIOU'.includes(k)) c = Math.ceil(c * 0.5);
+      if (discount) c = Math.ceil(c * 0.75);
+      if (vowelHalf && 'AEIOU'.includes(k)) c = Math.ceil(c * 0.5);
       out[k] = c;
     }
     return out;
