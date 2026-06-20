@@ -13,22 +13,22 @@
     {
       icon: '🔤',
       title: 'Buy letters',
-      body: 'Tap a letter to buy it. If it’s in the phrase, every copy appears. If it’s not, you lose what it cost.'
+      body: 'Buy a letter by tapping it. If it’s in the phrase, every copy appears. If it’s not, you lose what you paid.'
     },
     {
       icon: '🔍',
       title: 'Reveal',
-      body: 'Reveal buys you the most useful letter — no guessing. It costs money, so use it when you’re stuck.'
+      body: 'Buy a clue with Reveal. It fills in the most useful letter for you, but it costs money, so save it for when you’re stuck.'
     },
     {
       icon: '🎯',
       title: 'Solve',
-      body: 'When you’ve got it, tap Solve, type the phrase, and submit. Three tries — a wrong guess costs a try, not money.'
+      body: 'Solve the phrase by tapping Solve, typing it in, and submitting. You get three tries, and a wrong guess only costs a try, not money.'
     },
     {
       icon: '🏆',
       title: 'Daily & Arcade',
-      body: 'Daily is one ranked puzzle for everyone. Arcade keeps going — bank each solve and build your multiplier until you bust.'
+      body: 'Play Daily for one ranked puzzle everyone shares. Play Arcade to keep solving, banking each win and building your multiplier until you bust.'
     }
   ];
 
