@@ -915,3 +915,108 @@ BEGIN
   RETURN public._arcade_response(v_uid);
 END; $fn$;
 GRANT EXECUTE ON FUNCTION public.arcade_start() TO authenticated;
+
+-- ============================================================
+-- Arcade Phase 3: surface Hot Hand (+$250) for the client flash.
+-- last_bonus is written fresh on every letter buy (250 when Hot Hand pops, else
+-- 0) and cleared at each puzzle boundary. The client flashes only on a
+-- letter-buy response, and two Hot Hands can't land on back-to-back buys, so
+-- the value always changes (0↔250) between pops — no stale flashes.
+-- ============================================================
+ALTER TABLE public.arcade_runs ADD COLUMN IF NOT EXISTS last_bonus INT NOT NULL DEFAULT 0;
+
+CREATE OR REPLACE FUNCTION public._arcade_response(p_uid UUID)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER AS $fn$
+DECLARE r public.arcade_runs; v_phrase TEXT; v_cat TEXT; v_sub TEXT; v_bstate TEXT;
+BEGIN
+  SELECT * INTO r FROM public.arcade_runs WHERE user_id = p_uid AND run_date = CURRENT_DATE;
+  SELECT upper(phrase), category, COALESCE(subcategory, '')
+  INTO v_phrase, v_cat, v_sub FROM public.daily_puzzles WHERE id = r.puzzle_id;
+  v_bstate := CASE r.state WHEN 'solved' THEN 'won' WHEN 'complete' THEN 'won' WHEN 'busted' THEN 'lost' ELSE 'active' END;
+  RETURN jsonb_build_object(
+    'board', public._daily_board(v_phrase, v_bstate, r.bankroll, r.guesses_remaining, r.revealed_positions, r.incorrect_letters, v_cat, v_sub),
+    'run', jsonb_build_object('state', r.state, 'banked', r.banked, 'multiplier', r.multiplier_x100,
+                              'position', r.position, 'total', public._arcade_ladder_size(),
+                              'furthest', r.furthest, 'last_gain', r.last_gain, 'last_bonus', r.last_bonus,
+                              'inventory', r.inventory, 'active', to_jsonb(r.active_powerups), 'last_earn', r.last_earn)
+  );
+END; $fn$;
+
+CREATE OR REPLACE FUNCTION public.arcade_buy_letter(p_letter TEXT)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER AS $fn$
+DECLARE v_uid UUID := auth.uid(); r public.arcade_runs; v_phrase TEXT; v_letter TEXT; v_cost INT; v_positions INT[]; v_bonus INT := 0;
+BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'arcade_buy_letter: not authenticated'; END IF;
+  v_letter := upper(p_letter); v_cost := public.letter_cost(v_letter);
+  IF v_cost IS NULL THEN RAISE EXCEPTION 'arcade_buy_letter: invalid letter'; END IF;
+  SELECT * INTO r FROM public.arcade_runs WHERE user_id = v_uid AND run_date = CURRENT_DATE FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'arcade_buy_letter: no run'; END IF;
+  IF r.state <> 'active' THEN RETURN public._arcade_response(v_uid); END IF;
+  SELECT upper(phrase) INTO v_phrase FROM public.daily_puzzles WHERE id = r.puzzle_id;
+  IF v_letter = ANY(r.incorrect_letters) OR r.bankroll < v_cost THEN RETURN public._arcade_response(v_uid); END IF;
+  SELECT array_agg(g.i) INTO v_positions FROM generate_series(0, length(v_phrase)-1) g(i)
+  WHERE substr(v_phrase, g.i+1, 1) = v_letter;
+  IF v_positions IS NOT NULL AND v_positions <@ r.revealed_positions THEN RETURN public._arcade_response(v_uid); END IF;
+  r.bankroll := r.bankroll - v_cost;
+  r.p_buys := r.p_buys + 1;
+  IF v_letter IN ('A','E','I','O','U') THEN r.p_vowels := r.p_vowels + 1; END IF;
+  IF v_positions IS NULL THEN
+    r.incorrect_letters := array_append(r.incorrect_letters, v_letter);
+    r.p_combo := 0;
+  ELSE
+    r.revealed_positions := ARRAY(SELECT DISTINCT unnest(r.revealed_positions || v_positions) ORDER BY 1);
+    r.p_combo := r.p_combo + 1;
+    IF r.p_combo % 3 = 0 THEN r.bankroll := r.bankroll + 250; v_bonus := 250; END IF;  -- Hot Hand
+  END IF;
+  r.banked := GREATEST(r.banked, r.bankroll);
+  UPDATE public.arcade_runs SET bankroll = r.bankroll, incorrect_letters = r.incorrect_letters,
+    revealed_positions = r.revealed_positions, p_buys = r.p_buys, p_vowels = r.p_vowels,
+    p_combo = r.p_combo, banked = r.banked, last_bonus = v_bonus, updated_at = NOW()
+  WHERE user_id = v_uid AND run_date = CURRENT_DATE;
+  RETURN public._arcade_resolve(v_uid);
+END; $fn$;
+GRANT EXECUTE ON FUNCTION public.arcade_buy_letter(TEXT) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.arcade_next()
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER AS $fn$
+DECLARE v_uid UUID := auth.uid(); r public.arcade_runs; v_next UUID;
+BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'arcade_next: not authenticated'; END IF;
+  SELECT * INTO r FROM public.arcade_runs WHERE user_id = v_uid AND run_date = CURRENT_DATE FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'arcade_next: no run'; END IF;
+  IF r.state = 'solved' THEN
+    v_next := public._arcade_puzzle_at(r.position + 1);
+    UPDATE public.arcade_runs SET position = position + 1, puzzle_id = v_next,
+      revealed_positions = '{}', incorrect_letters = '{}', active_powerups = '{}',
+      p_buys = 0, p_vowels = 0, p_reveals = 0, p_wrong_guess = false, p_combo = 0,
+      last_gain = 0, last_bonus = 0, last_earn = NULL, state = 'active', updated_at = NOW()
+    WHERE user_id = v_uid AND run_date = CURRENT_DATE;
+  END IF;
+  RETURN public._arcade_response(v_uid);
+END; $fn$;
+GRANT EXECUTE ON FUNCTION public.arcade_next() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.arcade_start()
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER AS $fn$
+DECLARE v_uid UUID := auth.uid(); r public.arcade_runs; v_pid UUID;
+BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'arcade_start: not authenticated'; END IF;
+  PERFORM public._todays_puzzle_id();
+  SELECT * INTO r FROM public.arcade_runs WHERE user_id = v_uid AND run_date = CURRENT_DATE;
+  IF NOT FOUND THEN
+    v_pid := public._arcade_puzzle_at(0);
+    IF v_pid IS NULL THEN RAISE EXCEPTION 'arcade_start: no puzzles available'; END IF;
+    INSERT INTO public.arcade_runs (user_id, run_date, position, puzzle_id, bankroll, banked, multiplier_x100, guesses_remaining, furthest, last_gain, state)
+    VALUES (v_uid, CURRENT_DATE, 0, v_pid, 1500, 1500, 100, 5, 0, 0, 'active');
+  ELSIF r.state = 'over' THEN
+    v_pid := public._arcade_puzzle_at(0);
+    UPDATE public.arcade_runs SET position = 0, puzzle_id = v_pid, bankroll = 1500, multiplier_x100 = 100,
+      guesses_remaining = 5, last_gain = 0, last_bonus = 0, revealed_positions = '{}', incorrect_letters = '{}',
+      active_powerups = '{}', inventory = '{}', last_earn = NULL, clean_streak = 0,
+      p_buys = 0, p_vowels = 0, p_reveals = 0, p_wrong_guess = false, p_combo = 0,
+      state = 'active', updated_at = NOW()
+    WHERE user_id = v_uid AND run_date = CURRENT_DATE;
+  END IF;
+  RETURN public._arcade_response(v_uid);
+END; $fn$;
+GRANT EXECUTE ON FUNCTION public.arcade_start() TO authenticated;

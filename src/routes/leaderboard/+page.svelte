@@ -131,7 +131,7 @@
       <button class="sort-btn" class:active={dailyOrderBy === 'win_pct'} onclick={() => { dailyOrderBy = 'win_pct'; }}>Win %</button>
     </div>
   {:else}
-    <p class="period-label">{periodLabels[arcadePeriod] ?? 'Today'} · best run</p>
+    <p class="period-label">{periodLabels[arcadePeriod] ?? 'Today'} · peak bankroll</p>
     <div class="period-filters">
       {#each ['daily', 'weekly', 'monthly', 'all'] as p}
         <button class="period-btn" class:active={arcadePeriod === p} onclick={() => { arcadePeriod = p; }}>
@@ -197,8 +197,8 @@
             <tr>
               <th>#</th>
               <th>Player</th>
-              <th>Banked</th>
-              <th>Furthest</th>
+              <th>Peak $</th>
+              <th>Solved</th>
             </tr>
           </thead>
           <tbody>
@@ -225,7 +225,7 @@
     {#if mode === 'daily'}
       Daily: Score = bankroll × streak multiplier. Medals 🥇$700 / 🥈$400 / 🥉$100. 🔥 = 7+ day streak.
     {:else}
-      Arcade: your best banked run in the period (Press-Your-Luck gauntlet), and how far you climbed.
+      Arcade: ranked by peak bankroll in a survival run, and how many puzzles you solved before going broke.
     {/if}
   </p>
 </main>

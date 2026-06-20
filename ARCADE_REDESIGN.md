@@ -1,6 +1,6 @@
 # Arcade Redesign — Rolling Bankroll + Earned Power-ups
 
-**Status:** 🔒 Design locked · Phases 1–2 shipped. Living doc — update phase
+**Status:** 🔒 Design locked · Phases 1–4 shipped. Living doc — update phase
 checkboxes as we ship.
 
 Arcade moves from "per-puzzle reset + banked × multiplier, endless" to a
@@ -90,9 +90,13 @@ Power-up-free; 3 guesses per puzzle; progression is the category badges.
       +$250 per 3 correct letters in `arcade_buy_letter`; `arcade_use_powerup`
       reworked to the 3 effects; tray + `powerups.js` trimmed to 3; "Earned …"
       line in the solve modal.
-- [ ] **Phase 3 — UI polish.** HUD payout/streak, Hot Hand flash, run-over
-      screen, leaderboard rename to peak/furthest.
-- [ ] **Phase 4 — Daily-pool recycle fallback.**
+- [x] **Phase 3 — UI polish.** ✅ HUD payout/streak (Phase 1), Hot Hand flash
+      (`last_bonus` from the server → floating "🔥 Hot Hand +$250" over the
+      bankroll), run-over screen (Phase 1), arcade leaderboard relabelled to
+      Peak $ / Solved.
+- [x] **Phase 4 — Daily-pool recycle fallback.** ✅ `_todays_puzzle_id` prefers
+      an unused puzzle, then recycles the one used longest ago (least-recently
+      scheduled) so the daily never runs dry. Deterministic; arcade unaffected.
 
 ## Tunable values (revisit in playtest)
 - Starting bankroll **$1,500** · solve base **$500** · streak step/cap

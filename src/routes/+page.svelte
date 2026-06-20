@@ -160,6 +160,21 @@
     if (typeof b === 'number') _prevBankroll = b;
   }
 
+  // 🔥 Hot Hand flash — +$250 per 3 correct letters in a row (arcade). The
+  // server sends last_bonus on the buy that pops it; flash only while playing.
+  let hotHandFlash = false;
+  let _prevBonus = 0;
+  $: {
+    const lb = $gameStore.arcadeRun?.last_bonus ?? 0;
+    const playing = $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost';
+    if (lb > 0 && lb !== _prevBonus && playing) {
+      hotHandFlash = true;
+      fx('multiplier');
+      setTimeout(() => { hotHandFlash = false; }, 1300);
+    }
+    _prevBonus = lb;
+  }
+
   // ---- Daily result: medal + shareable card ----
   const PUZZLE_EPOCH = Date.UTC(2026, 5, 1); // 2026-06-01
   $: puzzleNumber = Math.max(1, Math.floor((Date.now() - PUZZLE_EPOCH) / 86400000) + 1);
@@ -614,6 +629,9 @@
         <div class="bankroll-box" class:pulse-up={bankrollPulse === 'up'} class:pulse-down={bankrollPulse === 'down'}>
           {#if bankrollPulse}
             <span class="bankroll-delta {bankrollPulse}">{bankrollDelta > 0 ? '+' : '−'}${Math.abs(bankrollDelta)}</span>
+          {/if}
+          {#if hotHandFlash}
+            <span class="hot-hand-flash">🔥 Hot Hand +$250</span>
           {/if}
           <span class="bankroll-label">Balance</span>
           <span class="bankroll-amount">
@@ -1136,6 +1154,33 @@
     0% { opacity: 0; transform: translateY(-8px); }
     25% { opacity: 1; }
     100% { opacity: 0; transform: translateY(24px); }
+  }
+  .hot-hand-flash {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #fcd34d;
+    background: rgba(120, 53, 15, 0.85);
+    border: 1px solid rgba(251, 191, 36, 0.55);
+    border-radius: 999px;
+    padding: 4px 12px;
+    pointer-events: none;
+    text-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
+    box-shadow: 0 0 18px rgba(251, 191, 36, 0.35);
+    animation: hotHandPop 1.3s var(--ease-out) forwards;
+    z-index: 5;
+  }
+  @keyframes hotHandPop {
+    0% { opacity: 0; transform: translateX(-50%) translateY(8px) scale(0.8); }
+    18% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.05); }
+    32% { transform: translateX(-50%) translateY(0) scale(1); }
+    80% { opacity: 1; }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-22px) scale(1); }
   }
 
   .bankroll-label {
