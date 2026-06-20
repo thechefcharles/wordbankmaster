@@ -7,28 +7,28 @@
   const steps = [
     {
       icon: '💰',
-      title: 'Spend less, score more',
-      body: 'A phrase is hidden. The cash you don’t spend cracking it is your score.'
+      title: 'Crack the phrase',
+      body: 'A phrase is hidden. You’ve got $1,000 to uncover it — and every dollar you keep becomes your score.'
     },
     {
       icon: '🔤',
-      title: 'Buy a letter',
-      body: 'Tap one. In the phrase? Every copy fills in. Not in it? You lose what you paid.'
+      title: 'Letters cost money',
+      body: 'Tap to buy one. In the phrase? Every copy fills in. Not in it? That cash is gone.'
     },
     {
       icon: '🔍',
-      title: 'Need a hand?',
-      body: 'Reveal buys you the most useful letter. Guaranteed — no guessing.'
+      title: 'Buy yourself a clue',
+      body: 'Reveal drops the most useful letter on the board. Guaranteed intel, zero luck.'
     },
     {
       icon: '🎯',
-      title: 'Make the call',
-      body: 'Tap Solve, type the phrase, submit. Three tries — a wrong one costs a try, not cash.'
+      title: 'Call it',
+      body: 'Know it? Hit Solve, type the phrase, lock it in. Three tries — a miss costs a try, not a cent.'
     },
     {
       icon: '🏆',
       title: 'Daily or Arcade',
-      body: 'Daily: one puzzle, ranked. Arcade: keep solving, stack a multiplier — don’t bust.'
+      body: 'Daily: one phrase, the whole world, ranked. Arcade: solve, bank, ride your multiplier — push it before you bust.'
     }
   ];
 
