@@ -7,28 +7,28 @@
   const steps = [
     {
       icon: '💰',
-      title: 'You start with $1,000',
-      body: 'Behind the blanks is a hidden phrase. Spend as little as you can to crack it — whatever’s left in the bank is your score.'
+      title: 'Spend less, score more',
+      body: 'A phrase is hidden. The cash you don’t spend cracking it is your score.'
     },
     {
       icon: '🔤',
-      title: 'Buy your letters',
-      body: 'Tap a letter to buy it. Hit, and every copy lights up. Miss, and the cash is gone. Read the phrase, play the odds.'
+      title: 'Buy a letter',
+      body: 'Tap one. In the phrase? Every copy fills in. Not in it? You lose what you paid.'
     },
     {
       icon: '🔍',
-      title: 'Stuck? Buy a clue',
-      body: 'Reveal drops the most useful letter onto the board — every copy of it, guaranteed. No luck, no guesswork.'
+      title: 'Need a hand?',
+      body: 'Reveal buys you the most useful letter. Guaranteed — no guessing.'
     },
     {
       icon: '🎯',
-      title: 'Take your shot',
-      body: 'Think you’ve got it? Hit Solve, fill the blanks, and submit. Three shots at the answer — a miss costs a try, never a dollar.'
+      title: 'Make the call',
+      body: 'Tap Solve, type the phrase, submit. Three tries — a wrong one costs a try, not cash.'
     },
     {
       icon: '🏆',
       title: 'Daily or Arcade',
-      body: 'Daily: one puzzle, everyone plays it, ranked — keep a win streak going to multiply your score. Arcade: a press-your-luck gauntlet — bank each solve, ride your multiplier, don’t go bust.'
+      body: 'Daily: one puzzle, ranked. Arcade: keep solving, stack a multiplier — don’t bust.'
     }
   ];
 

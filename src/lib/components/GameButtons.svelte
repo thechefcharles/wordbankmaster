@@ -414,11 +414,6 @@
   transform: scale(0.96);
 }
 
-/* Dark mode adjustments */
-:global(body.dark-mode) .guess-phrase-button {
-  background: linear-gradient(180deg, #46a230, #318020); /* Keep it green in dark mode */
-}
-
 /* ---------------------------
    Confirm / Cancel Buttons
 --------------------------- */
