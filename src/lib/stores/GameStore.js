@@ -4,7 +4,7 @@ import { writable, get } from 'svelte/store';
 import confetti from 'canvas-confetti';
 import { fx } from '$lib/sound.js';
 import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, getDailyModifier } from '$lib/stores/statsStore.js';
-import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNext } from '$lib/stores/statsStore.js';
+import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNext, arcadeUsePowerup } from '$lib/stores/statsStore.js';
 
 /* ================================
    Types (JSDoc for checkJs)
@@ -267,6 +267,18 @@ export async function arcadeContinue() {
   dailyInFlight = true;
   try {
     const resp = await arcadeNext();
+    if (resp) reconcileArcadeBoard(resp);
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
+/** Spend an earned power-up during the current arcade run. @param {string} powerup */
+export async function useArcadePowerup(powerup) {
+  if (dailyInFlight) return;
+  dailyInFlight = true;
+  try {
+    const resp = await arcadeUsePowerup(powerup);
     if (resp) reconcileArcadeBoard(resp);
   } finally {
     dailyInFlight = false;
