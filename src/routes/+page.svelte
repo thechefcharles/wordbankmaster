@@ -6,7 +6,7 @@
 
   import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue } from '$lib/stores/GameStore.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { hasPlayedDailyToday, getUserBadges, getDailyStatus, getUserPowerups, getDailyGhost } from '$lib/stores/statsStore.js';
+  import { hasPlayedDailyToday, getUserBadges, getDailyStatus, getDailyGhost } from '$lib/stores/statsStore.js';
   import { BADGES, badgeInfo } from '$lib/badges.js';
   import { powerupInfo, modifierInfo } from '$lib/powerups.js';
   import {
@@ -325,18 +325,15 @@
   let badgesLoaded = false;
   let accountStreak = 0;
   let accountFreezes = 0;
-  /** @type {{powerup: string, count: number}[]} */
-  let accountPowerups = [];
   async function handleMenuMyAccount() {
     showMyAccount = true;
     badgesLoaded = false;
     const u = get(user);
     if (u?.id) {
-      const [badges, status, powerups] = await Promise.all([getUserBadges(u.id), getDailyStatus(u.id), getUserPowerups()]);
+      const [badges, status] = await Promise.all([getUserBadges(u.id), getDailyStatus(u.id)]);
       accountBadges = badges;
       accountStreak = status.current_streak ?? 0;
       accountFreezes = status.streak_freezes ?? 0;
-      accountPowerups = powerups;
     }
     badgesLoaded = true;
   }
@@ -509,22 +506,6 @@
             <div class="stat-chip" title="Auto-protects your streak across one missed day. Earn one every 7-day streak.">
               <span class="stat-emoji">🧊</span> {accountFreezes}<span class="stat-cap">freeze{accountFreezes === 1 ? '' : 's'}</span>
             </div>
-          </div>
-
-          <div class="badges-section">
-            <p class="badges-title">Power-ups</p>
-            {#if badgesLoaded && accountPowerups.length === 0}
-              <p class="powerups-empty">Win daily puzzles to earn power-ups 🎟️</p>
-            {:else}
-              <div class="badge-grid">
-                {#each accountPowerups as pu}
-                  <div class="badge earned" title={powerupInfo(pu.powerup).desc}>
-                    <span class="badge-emoji">{powerupInfo(pu.powerup).emoji}</span>
-                    <span class="badge-name">{powerupInfo(pu.powerup).name} ×{pu.count}</span>
-                  </div>
-                {/each}
-              </div>
-            {/if}
           </div>
 
           <div class="badges-section">
@@ -1021,7 +1002,6 @@
 
   /* Badges + power-ups (My Account) */
   .badges-section { margin: 18px 0 8px; }
-  .powerups-empty { font-size: 0.82rem; color: var(--text-faint); margin: 0; }
   .badges-title {
     font-family: var(--font-display);
     font-weight: 600;

@@ -6,29 +6,29 @@
 
   const steps = [
     {
-      icon: '🧠',
-      title: 'Welcome to WordBank',
-      body: 'Uncover the hidden phrase for the lowest cost. Whatever you don’t spend becomes your score.'
+      icon: '💰',
+      title: 'You start with $1,000',
+      body: 'Behind the blanks is a hidden phrase. Spend as little as you can to crack it — whatever’s left in the bank is your score.'
     },
     {
       icon: '🔤',
-      title: 'Buy letters',
-      body: 'Tap a letter to buy it. If it’s in the phrase, every copy lights up. If not, you lose that money — so spend on likely letters first.'
+      title: 'Buy your letters',
+      body: 'Tap a letter to buy it. Hit, and every copy lights up. Miss, and the cash is gone. Read the phrase, play the odds.'
     },
     {
       icon: '🔍',
-      title: 'Reveal',
-      body: 'Stuck? Reveal ($150) uncovers every copy of the single most useful letter — guaranteed, never random.'
+      title: 'Stuck? Buy a clue',
+      body: 'Reveal drops the most useful letter onto the board — every copy of it, guaranteed. No luck, no guesswork.'
     },
     {
-      icon: '✏️',
-      title: 'Solve the phrase',
-      body: 'Think you’ve got it? Hit Solve, fill the blanks, and Submit. You get 3 free tries — a wrong guess just costs a try, never money.'
+      icon: '🎯',
+      title: 'Take your shot',
+      body: 'Think you’ve got it? Hit Solve, fill the blanks, and submit. Three shots at the answer — a miss costs a try, never a dollar.'
     },
     {
       icon: '🏆',
-      title: 'Daily & Arcade',
-      body: 'Daily: one ranked puzzle a day — score = bankroll × your win streak. Arcade: a press-your-luck gauntlet — bank each solve and grow your multiplier before you bust.'
+      title: 'Daily or Arcade',
+      body: 'Daily: one puzzle, everyone plays it, ranked — keep a win streak going to multiply your score. Arcade: a press-your-luck gauntlet — bank each solve, ride your multiplier, don’t go bust.'
     }
   ];
 
