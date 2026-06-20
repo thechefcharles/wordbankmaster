@@ -173,11 +173,10 @@
   $: resultMedal = medalFor(resultBankroll, resultWon);
   // Arcade gauntlet run state
   $: arun = $gameStore.arcadeRun;
-  $: arcadeComplete = !isDailyResult && arun?.state === 'complete';
   $: arcadeMult = ((arun?.multiplier ?? 100) / 100).toFixed(2);
   // Power-up earned on this solve, and whether a Shield saved a bust (multiplier kept).
   $: arcadeEarn = (!isDailyResult && resultWon && arun?.last_earn) ? powerupInfo(arun.last_earn) : null;
-  $: arcadeShielded = (!isDailyResult && !resultWon && !arcadeComplete && (arun?.multiplier ?? 100) > 100);
+  $: arcadeShielded = (!isDailyResult && !resultWon && (arun?.multiplier ?? 100) > 100);
 
   let shareCopied = false;
   function buildShareText() {
@@ -529,7 +528,7 @@
     <!-- 🕹️ Arcade gauntlet HUD -->
     {#if $gameStore.gameMode === 'arcade' && arun}
       <div class="arcade-hud">
-        <div class="ah-cell"><span class="ah-val">{(arun.position ?? 0) + 1}<span class="ah-sub">/{arun.total}</span></span><span class="ah-label">Puzzle</span></div>
+        <div class="ah-cell"><span class="ah-val">{(arun.position ?? 0) + 1}</span><span class="ah-label">Puzzle</span></div>
         <div class="ah-cell ah-mult"><span class="ah-val">×{arcadeMult}</span><span class="ah-label">Multiplier</span></div>
         <div class="ah-cell"><span class="ah-val ah-gold">${(arun.banked ?? 0).toLocaleString()}</span><span class="ah-label">Banked</span></div>
       </div>
@@ -629,15 +628,11 @@
               <button class="next-puzzle-button" on:click={goToDailyLeaderboard}>Leaderboard</button>
             </div>
           {:else}
-            <!-- Arcade Press-Your-Luck transition -->
-            {#if arcadeComplete}
-              <div class="result-medal gold">🏆</div>
-              <h2>Gauntlet Cleared!</h2>
-              <p class="result-sub">All {arun?.total} puzzles solved</p>
-            {:else if resultWon}
+            <!-- Arcade Press-Your-Luck transition (endless — runs never "complete") -->
+            {#if resultWon}
               <div class="result-medal">✅</div>
               <h2>Solved!</h2>
-              <p class="result-sub">Puzzle {(arun?.position ?? 0) + 1}/{arun?.total} · next ×{arcadeMult}</p>
+              <p class="result-sub">Puzzle {(arun?.position ?? 0) + 1} · next ×{arcadeMult}</p>
             {:else if arcadeShielded}
               <div class="result-medal">🔰</div>
               <h2>Busted</h2>
@@ -651,7 +646,7 @@
               <span class="rb-label">Total Banked</span>
               <span class="rb-amount">${(arun?.banked ?? 0).toLocaleString()}</span>
             </div>
-            {#if resultWon && !arcadeComplete && (arun?.last_gain ?? 0) > 0}
+            {#if resultWon && (arun?.last_gain ?? 0) > 0}
               <p class="arcade-gain">+${(arun?.last_gain ?? 0).toLocaleString()} this puzzle</p>
             {/if}
             {#if arcadeEarn}
@@ -659,11 +654,7 @@
             {/if}
             <div class="result-actions">
               <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
-              {#if arcadeComplete}
-                <button class="next-puzzle-button" on:click={() => { showResultModal = false; goToMainMenu(); }}>Done</button>
-              {:else}
-                <button class="next-puzzle-button" on:click={handleArcadeContinue}>{resultWon ? 'Continue' : 'Next Puzzle'}</button>
-              {/if}
+              <button class="next-puzzle-button" on:click={handleArcadeContinue}>{resultWon ? 'Continue' : 'Next Puzzle'}</button>
             </div>
           {/if}
         </div>
@@ -713,7 +704,6 @@
   .ah-val { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; color: var(--text); font-variant-numeric: tabular-nums; }
   .ah-mult .ah-val { color: var(--brand-2); }
   .ah-gold { color: #fcd34d; }
-  .ah-sub { font-size: 0.7rem; color: var(--text-faint); font-weight: 600; }
   .ah-label { font-size: 0.55rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
   .arcade-gain { font-family: var(--font-display); font-weight: 700; color: var(--brand-2); margin: -8px 0 14px; font-size: 1rem; }
   .arcade-earn { font-family: var(--font-display); font-weight: 700; color: #fcd34d; margin: -6px 0 14px; font-size: 0.95rem; text-shadow: 0 0 14px rgba(251, 191, 36, 0.35); }

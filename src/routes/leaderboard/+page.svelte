@@ -212,7 +212,7 @@
                 </td>
                 <td class="name">{row.display_name || 'Player'}</td>
                 <td class="score-cell">${fmt(row.banked)}</td>
-                <td>{fmt(row.furthest)}/{fmt(row.total)}</td>
+                <td>{fmt(row.furthest)}</td>
               </tr>
             {/each}
           </tbody>
