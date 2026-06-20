@@ -57,16 +57,13 @@ for (const vp of viewports) {
   await page.screenshot({ path: `screenshots/fix-${vp.tag}-daily.png` });
   console.log(`\n[${vp.tag} ${vp.width}x${vp.height}] daily:`, JSON.stringify(await boxes(page, vp.height)));
 
-  // Arcade with wager bar — go through category select so the arcade game loads
-  await page.goto(`${BASE}/select/arcade`, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(1200);
-  await page.locator('.category-grid button').first().click().catch(() => {});
-  await page.waitForTimeout(3000);
-  // In arcade, clicking Solve reveals the wager UI
-  await page.locator('.guess-phrase-button').first().click({ force: true }).catch(() => {});
+  // Arcade gauntlet — start today's run from the menu (server-authoritative, no wager)
+  await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.waitForTimeout(1000);
-  await page.screenshot({ path: `screenshots/fix-${vp.tag}-arcade-wager.png` });
-  console.log(`[${vp.tag}] arcade+wager:`, JSON.stringify(await boxes(page, vp.height)));
+  await page.getByRole('button', { name: /arcade/i }).first().click().catch(() => {});
+  await page.waitForTimeout(3000);
+  await page.screenshot({ path: `screenshots/fix-${vp.tag}-arcade.png` });
+  console.log(`[${vp.tag}] arcade:`, JSON.stringify(await boxes(page, vp.height)));
 
   await browser.close();
 }

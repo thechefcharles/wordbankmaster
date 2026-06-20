@@ -34,57 +34,6 @@ export function saveGameToLocalStorage() {
   }
   
   /**
-   * 📥 Load game state from localStorage (scoped by user ID)
-   * @returns {boolean} whether a valid game was restored
-   */
-  export function loadGameFromLocalStorage() {
-    const currentUser = get(user);
-    const userId = currentUser?.id;
-  
-    if (!userId) {
-      console.warn("⚠️ Cannot load saved game — no user ID");
-      return false;
-    }
-  
-    const key = `wordbank_game_state_${userId}`;
-    const saved = localStorage.getItem(key);
-    if (!saved) {
-      console.log(`🧩 No saved game found for user ${userId}`);
-      return false;
-    }
-  
-    try {
-      const parsed = JSON.parse(saved);
-  
-      const isValid =
-        parsed &&
-        typeof parsed.currentPhrase === 'string' &&
-        parsed.currentPhrase.trim().length > 0 &&
-        typeof parsed.category === 'string' &&
-        parsed.category.trim().length > 0 &&
-        Array.isArray(parsed.purchasedLetters) &&
-        typeof parsed.bankroll === 'number';
-  
-      if (!isValid) {
-        console.warn(`⚠️ Invalid saved game for user ${userId}:`, parsed);
-        localStorage.removeItem(key);
-        return false;
-      }
-  
-      parsed.gameMode = parsed.gameMode === 'practice' ? 'arcade' : (parsed.gameMode || 'arcade');
-      parsed.guessesRemaining = typeof parsed.guessesRemaining === 'number' ? parsed.guessesRemaining : 2;
-      gameStore.set(parsed);
-      console.log(`✅ Game state restored for user ${userId}:`, parsed);
-      return true;
-  
-    } catch (err) {
-      console.warn(`⚠️ Failed to parse saved game for user ${userId}:`, err);
-      localStorage.removeItem(key);
-      return false;
-    }
-  }
-  
-  /**
    * 📋 Peek at saved game without restoring (for menu labels: Resume daily/arcade)
    * @param {string} userId
    * @returns {{ gameMode: string, gameState: string } | null}

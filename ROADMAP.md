@@ -90,6 +90,7 @@ Status: 📋 Planned (Phase 3)
 | **2 — Streaks & badges** | Badges ✅ (4 daily, My Account, 🔥 flair). Streak **freeze** ✅ (auto-bridge a missed day, earn 1 per 7-day milestone, cap 3; shown in My Account). | Server + UI | ✅ |
 | **3 — Power-up system** | Inventory, earning (random on win), display ✅; Free Reveal (in-game) ✅; pre-game picker ✅; effects: +$250 Start, Discount, Insurance, Vowel Vision ✅. (Double Payout = arcade, Phase 4.) | Server + UI | ✅ |
 | **4 — Arcade gauntlet** | Server engine ✅ (4a); client ✅ (4b: arcade=gauntlet, HUD banked/multiplier/position, solve→Continue / bust→Try Again); leaderboard ✅ (4c: best banked run + furthest reached, day/week/month/all). | Server + client | ✅ |
+| **4d — Legacy cleanup** | Removed the dead pre-gauntlet arcade: wager UI + slider, `/select` & `/select/arcade` routes, client-side win/loss/bankroll paths (`fetchRandomGame`, `resetGame`, `reduceBankrollToZero`, `setWager`, `checkLossCondition`, `loadGameFromLocalStorage`, `save/recordArcade/DailyResult`). Both modes are now purely server-authoritative. | Client + stores | ✅ |
 | **5 — Polish** | Guided tutorial, sound + haptics, "ghost of yesterday" compare | Client | 📋 |
 
 Recommended order de-risks: economy first → cheap-high-impact share → retention (streaks/badges) → big arcade swing.

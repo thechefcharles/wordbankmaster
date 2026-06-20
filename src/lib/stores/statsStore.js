@@ -87,23 +87,6 @@ export async function fetchArcadeLeaderboard(period = 'daily') {
   return data ?? [];
 }
 
-/**
- * Record arcade game result (call when arcade game ends - won or lost)
- * @param {string} userId
- * @param {boolean} won
- * @param {number} bankrollLeft
- */
-export async function recordArcadeResult(userId, won, bankrollLeft) {
-  const { error } = await supabase.rpc('record_arcade_result', {
-    p_user_id: userId,
-    p_won: won,
-    p_bankroll_left: bankrollLeft
-  });
-  if (error) {
-    console.error('❌ Error recording arcade result:', error);
-  }
-}
-
 /* ============================================================
    Server-authoritative DAILY mode (the answer never reaches the client).
    Each call returns a masked board:
@@ -216,38 +199,6 @@ export async function dailySubmitGuess(guess) {
   const { data, error } = await supabase.rpc('daily_submit_guess', { p_guess: guess });
   if (error) { console.error('❌ daily_submit_guess error:', error); return null; }
   return data;
-}
-
-/**
- * Persist the caller's arcade bankroll between/within games.
- * Goes through a SECURITY DEFINER RPC (auth.uid() + clamp) instead of writing the
- * profiles table directly, so a client can't set an arbitrary bankroll on any row.
- * @param {number} bankroll
- */
-export async function saveArcadeBankroll(bankroll) {
-  const { error } = await supabase.rpc('save_arcade_bankroll', {
-    p_bankroll: bankroll
-  });
-  if (error) {
-    console.error('❌ Error saving arcade bankroll:', error);
-  }
-}
-
-/**
- * Record daily game result (call when daily game ends - won or lost)
- * @param {string} userId
- * @param {boolean} won
- * @param {number} bankrollLeft
- */
-export async function recordDailyResult(userId, won, bankrollLeft) {
-  const { error } = await supabase.rpc('record_daily_result', {
-    p_user_id: userId,
-    p_won: won,
-    p_bankroll_left: bankrollLeft
-  });
-  if (error) {
-    console.error('❌ Error recording daily result:', error);
-  }
 }
 
 /**
