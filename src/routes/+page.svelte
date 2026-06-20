@@ -7,8 +7,7 @@
   import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue } from '$lib/stores/GameStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { hasPlayedDailyToday, getUserBadges, getDailyStatus, getDailyGhost, getCategoryStats } from '$lib/stores/statsStore.js';
-  import BadgesModal from '$lib/components/BadgesModal.svelte';
+  import { hasPlayedDailyToday, getDailyStatus, getDailyGhost } from '$lib/stores/statsStore.js';
   import { powerupInfo, modifierInfo } from '$lib/powerups.js';
   import {
     saveGameToLocalStorage,
@@ -318,24 +317,6 @@
     await freeplayContinue();
   }
 
-  // ----- Badges screen -----
-  let showBadges = false;
-  /** @type {{category: string, solves: number}[]} */
-  let badgeStats = [];
-  /** @type {string[]} */
-  let badgeEarned = [];
-  let badgesLoaded2 = false;
-  async function handleMenuBadges() {
-    const u = get(user);
-    if (!u?.id) return;
-    showBadges = true;
-    badgesLoaded2 = false;
-    const [stats, earned] = await Promise.all([getCategoryStats(), getUserBadges(u.id)]);
-    badgeStats = stats;
-    badgeEarned = earned;
-    badgesLoaded2 = true;
-  }
-
   function handleMenuLeaderboard() {
     goto('/leaderboard');
   }
@@ -486,7 +467,7 @@
           </span>
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 3" on:click={handleMenuBadges}>
+        <button class="menu-card" style="--i: 3" on:click={() => goto('/badges')}>
           <span class="mc-icon">🏅</span>
           <span class="mc-body">
             <span class="mc-title">Badges</span>
@@ -512,11 +493,6 @@
         </button>
       </div>
     </div>
-
-    <!-- Badges screen -->
-    {#if showBadges}
-      <BadgesModal categoryStats={badgeStats} earnedBadges={badgeEarned} loaded={badgesLoaded2} on:close={() => showBadges = false} />
-    {/if}
 
     <!-- Free Play: category picker -->
     {#if showCategorySelect}
@@ -568,7 +544,7 @@
             </div>
           </div>
 
-          <button class="main-menu-btn ghost-btn" on:click={() => { showMyAccount = false; handleMenuBadges(); }}>🏅 View Badges</button>
+          <button class="main-menu-btn ghost-btn" on:click={() => goto('/badges')}>🏅 View Badges</button>
           <button class="main-menu-btn" on:click={() => { showMyAccount = false; handleLogout(); }}>Log Out</button>
         </div>
       </div>

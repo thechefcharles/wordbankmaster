@@ -16,7 +16,7 @@ try {
   }
   await p.locator('.menu-card:has(.mc-title:text-is("Badges"))').first().click().catch((e)=>log('badges click', e.message));
   await wait(1500);
-  log('badges modal:', await p.locator('.badges-modal').count() > 0);
+  log('badges modal:', await p.locator('.badges-page').count() > 0);
   log('total line:', await p.locator('.badges-total').innerText().catch(()=>'—'));
   log('category rows:', await p.locator('.bm-cat').count());
   log('Movies tier:', await p.locator('.bm-cat', { hasText: 'Movies & TV' }).locator('.bm-cat-tier').innerText().catch(()=>'—'));
