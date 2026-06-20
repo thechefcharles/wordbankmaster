@@ -1,5 +1,6 @@
 <script>
   import { gameStore, confirmPurchase, submitGuess } from '$lib/stores/GameStore.js';
+  import { fx } from '$lib/sound.js';
 
   // 🧠 Reactive state (daily & arcade are both server-authoritative — no wager)
   $: bankroll = $gameStore.bankroll;
@@ -46,6 +47,7 @@
 
   // 🎯 Main button logic
   function handleMainButtonClick() {
+    fx('tap');
     if (purchasePending) {
       confirmPurchase();
       return;
@@ -69,6 +71,7 @@
   }
 
   function toggleHintPurchase() {
+    fx('tap');
     gameStore.update(state => {
       if (state.selectedPurchase?.type === 'hint') {
         return { ...state, selectedPurchase: null, gameState: 'default' };

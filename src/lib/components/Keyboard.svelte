@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, createEventDispatcher } from 'svelte';
+  import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import {
     gameStore,
@@ -10,8 +10,7 @@
     deleteGuessLetter,
     enterGuessMode
   } from '$lib/stores/GameStore.js';
-
-  const dispatch = createEventDispatcher();
+  import { fx } from '$lib/sound.js';
 
   type LetterCosts = Record<string, number>;
   const letterCosts: LetterCosts = {
@@ -41,10 +40,9 @@
 
   /**
    * 🔹 Letter click logic for both guess mode and purchase mode.
-   * 🔸 Also emits a custom event to parent to cancel wager UI.
    */
   function handleLetterClick(letter: string): void {
-    dispatch('letterSelected'); // ✅ Notify parent to hide slider
+    fx('select');
     if ($gameStore.gameState === 'guess_mode') {
       inputGuessLetter(letter);
     } else {
@@ -65,11 +63,8 @@
       event.preventDefault();
       if (state.gameState === 'guess_mode') {
         enterGuessMode();
-        window.dispatchEvent(new CustomEvent('hideWagerSlider'));
       } else if (state.selectedPurchase) {
         gameStore.update(s => ({ ...s, selectedPurchase: null, gameState: 'default' }));
-      } else {
-        window.dispatchEvent(new CustomEvent('hideWagerSlider'));
       }
       const active = document.activeElement;
       if (active && active instanceof HTMLElement) active.blur();
@@ -114,7 +109,7 @@
     // A–Z – Select letter (purchase or guess)
     if (/^[A-Z]$/.test(key)) {
       event.preventDefault();
-      dispatch('letterSelected');
+      fx('select');
       if (state.gameState === 'guess_mode') {
         inputGuessLetter(key);
       } else {

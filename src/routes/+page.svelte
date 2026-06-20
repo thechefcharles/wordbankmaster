@@ -15,6 +15,7 @@
     getSavedGameInfo
   } from '$lib/stores/localGameUtils.js';
   import { gameWasRestored } from '$lib/stores/GameStateFlags.js';
+  import { soundEnabled, toggleSound, fx } from '$lib/sound.js';
   import { goto } from '$app/navigation';
 
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
@@ -390,6 +391,16 @@
   {#if loggedIn}
     <a href="/leaderboard" class="icon-button subtle-button" title="Weekly Leaderboard">🏆</a>
   {/if}
+
+  <!-- 🔊 Sound + Haptics Toggle -->
+  <button
+    class="icon-button subtle-button"
+    on:click={() => { toggleSound(); if ($soundEnabled) fx('select'); }}
+    title={$soundEnabled ? 'Sound & haptics on' : 'Sound & haptics off'}
+    aria-label="Toggle sound and haptics"
+  >
+    {$soundEnabled ? '🔊' : '🔇'}
+  </button>
 
   <!-- 🌙 Dark Mode Toggle -->
   <button class="icon-button subtle-button" on:click={toggleDarkMode}>
