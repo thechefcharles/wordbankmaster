@@ -5,6 +5,7 @@ import confetti from 'canvas-confetti';
 import { fx } from '$lib/sound.js';
 import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, getDailyModifier, getDailyClue, getArcadeClue } from '$lib/stores/statsStore.js';
 import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNext, arcadeUsePowerup } from '$lib/stores/statsStore.js';
+import { freeplayStart, freeplayNext, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
 
 /* ================================
    Types (JSDoc for checkJs)
@@ -284,6 +285,89 @@ export async function arcadeContinue() {
   }
 }
 
+/* ===== Free Play (unranked, category-picked, endless) ===== */
+
+/** @param {any} board */
+function reconcileFreeplayBoard(board) {
+  if (!board) return;
+  const prev = get(gameStore);
+  const finished = board.state !== 'active';
+  gameStore.set(/** @type {GameState} */ ({
+    ...prev, ...boardToState(board, prev),
+    gameMode: 'freeplay',
+    gameState: finished ? board.state : 'default',
+    modifier: null, arcadeRun: null
+  }));
+  if (board.state === 'won') { setTimeout(() => launchConfetti(), 300); fx('win'); }
+  else if (finished) fx('bust');
+  else playMoveCue(prev, board);
+}
+
+async function refreshFreeplayClue() {
+  try {
+    const clue = await getFreeplayClue();
+    gameStore.update(s => ({ ...s, clue }));
+  } catch { /* non-fatal */ }
+}
+
+/** Start Free Play in a category (random puzzle from it). @param {string} category */
+export async function fetchFreeplayGame(category) {
+  try {
+    const board = await freeplayStart(category);
+    if (!board) { console.error('❌ freeplay_start returned nothing'); return false; }
+    reconcileFreeplayBoard(board);
+    await refreshFreeplayClue();
+    return true;
+  } catch (err) {
+    console.error('❌ Error starting free play:', err instanceof Error ? err.message : String(err));
+    return false;
+  }
+}
+
+/** Next free-play puzzle in the same category. */
+export async function freeplayContinue() {
+  if (dailyInFlight) return;
+  dailyInFlight = true;
+  try {
+    const board = await freeplayNext();
+    if (board) { reconcileFreeplayBoard(board); await refreshFreeplayClue(); }
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
+/** @param {GameState} state */
+async function confirmPurchaseFreeplay(state) {
+  const purchase = state.selectedPurchase;
+  if (!purchase || dailyInFlight) return;
+  dailyInFlight = true;
+  try {
+    let board = null;
+    if (purchase.type === 'letter') board = await freeplayBuyLetter(purchase.value ?? '');
+    else if (purchase.type === 'hint') board = await freeplayReveal();
+    if (board) reconcileFreeplayBoard(board);
+    else gameStore.update(s => ({ ...s, selectedPurchase: null, gameState: 'default' }));
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
+/** @param {GameState} state */
+async function submitGuessFreeplay(state) {
+  if (state.gameState !== 'guess_mode' || dailyInFlight) return;
+  /** @type {Record<string, string>} */
+  const guess = {};
+  for (const [k, v] of Object.entries(state.guessedLetters || {})) guess[k] = /** @type {string} */ (v);
+  if (Object.keys(guess).length === 0) return;
+  dailyInFlight = true;
+  try {
+    const board = await freeplaySubmitGuess(guess);
+    if (board) reconcileFreeplayBoard(board);
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
 /** Spend an earned power-up during the current arcade run. @param {string} powerup */
 export async function useArcadePowerup(powerup) {
   if (dailyInFlight) return;
@@ -418,10 +502,11 @@ export function selectHint() {
  * Handles purchase of a letter or hint and updates game state.
  */
 export function confirmPurchase() {
-  // Daily & arcade are both server-authoritative: commit via RPC and reconcile.
+  // All modes are server-authoritative: commit via RPC and reconcile.
   const current = get(gameStore);
   if (current.gameMode === 'daily') confirmPurchaseDaily(current);
   else if (current.gameMode === 'arcade') confirmPurchaseArcade(current);
+  else if (current.gameMode === 'freeplay') confirmPurchaseFreeplay(current);
 }
 /* ================================
    Guess Mode Functions
@@ -517,10 +602,11 @@ export function deleteGuessLetter() {
  * Routes the full guess to the server (daily or arcade), which validates and scores.
  */
 export function submitGuess() {
-  // Daily & arcade are both server-authoritative: the server validates + scores.
+  // All modes are server-authoritative: the server validates + scores.
   const current = get(gameStore);
   if (current.gameMode === 'daily') submitGuessDaily(current);
   else if (current.gameMode === 'arcade') submitGuessArcade(current);
+  else if (current.gameMode === 'freeplay') submitGuessFreeplay(current);
 }
 /* ================================
    Puzzle Fetch Functions
