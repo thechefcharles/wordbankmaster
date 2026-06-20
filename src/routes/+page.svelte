@@ -6,7 +6,7 @@
 
   import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue } from '$lib/stores/GameStore.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { hasPlayedDailyToday, saveArcadeBankroll, getUserBadges, getDailyStatus, getUserPowerups, dailySessionExists } from '$lib/stores/statsStore.js';
+  import { hasPlayedDailyToday, getUserBadges, getDailyStatus, getUserPowerups, dailySessionExists } from '$lib/stores/statsStore.js';
   import { BADGES, badgeInfo } from '$lib/badges.js';
   import { powerupInfo } from '$lib/powerups.js';
   import {
@@ -28,11 +28,6 @@
   // UI state
   let showHowToPlay = false;
   let darkMode = false;
-  /** @type {boolean} */
-  let wagerUIVisible = false;
-  /** @type {number} */
-  let sliderWagerAmount = 0;
-  let sliderLocked = false;
   let showResultModal = false;
   let hasTriggeredModal = false;
   let hasInitialized = false;
@@ -142,7 +137,6 @@
   $: loggedIn = !!$user?.id;
   $: bankroll = $gameStore.bankroll || 0;
   $: digits = String(bankroll).split('');
-  $: sliderLocked = $gameStore.gameState === 'guess_mode';
 
   // ✨ Bankroll change reaction (pulse + floating delta)
   let bankrollPulse = '';
@@ -293,7 +287,7 @@
     selectedPowerups = selectedPowerups; // trigger reactivity
   }
 
-  /** Start or resume arcade: resume from save or go to arcade category select */
+  /** Start or resume today's server-authoritative arcade gauntlet run. */
   async function handleMenuArcade() {
     const currentUser = get(user);
     if (!currentUser?.id) return;
@@ -357,47 +351,15 @@
     if (showStreakMessage) showStreakMessage = false;
   }
 
-  const handlePlayAgain = async () => {
+  // Daily result → go to the daily leaderboard (arcade uses handleArcadeContinue instead).
+  const goToDailyLeaderboard = () => {
     showResultModal = false;
     hasTriggeredModal = false;
-
     const currentUser = get(user);
     if (!currentUser?.id) return;
-
-    const store = get(gameStore);
-    if (store.gameMode === 'arcade') {
-      await saveArcadeBankroll(1000);
-    }
     clearSavedGame();
     gameWasRestored.set(false);
-    localStorage.removeItem('selectedCategory');
-    if (store.gameMode === 'arcade') {
-      goto('/select/arcade');
-    } else {
-      goto('/leaderboard?mode=daily');
-    }
-  };
-
-  const handleNextPuzzle = async () => {
-    showResultModal = false;
-    hasTriggeredModal = false;
-
-    const currentUser = get(user);
-    if (!currentUser?.id) return;
-
-    const store = get(gameStore);
-    if (store.gameMode === 'arcade') {
-      await saveArcadeBankroll(store.bankroll);
-    }
-
-    clearSavedGame();
-    gameWasRestored.set(false);
-    localStorage.removeItem('selectedCategory');
-    if (store.gameMode === 'arcade') {
-      goto('/select/arcade');
-    } else {
-      goto('/leaderboard?mode=daily');
-    }
+    goto('/leaderboard?mode=daily');
   };
 
   const onPhraseRevealComplete = () => {
@@ -684,50 +646,14 @@
       </div>
     </section>
 
-    <!-- 🎚️ Wager UI (arcade only) -->
-    {#if $gameStore.gameMode === 'arcade' && wagerUIVisible}
-      <div class="wager-ui">
-        <div class="wager-row">
-          <div class="wager-label">
-            Wager<br /><span class="wager-amount">${sliderWagerAmount}</span>
-          </div>
-
-          <input
-            type="range"
-            min="0"
-            max={$gameStore.bankroll}
-            step="1"
-            bind:value={sliderWagerAmount}
-            class="wager-slider"
-            disabled={sliderLocked || $gameStore.gameState === 'won' || $gameStore.gameState === 'lost'}
-            />
-
-          <div class="wager-label">
-            To Win<br /><span class="wager-amount">${sliderWagerAmount * 2}</span>
-          </div>
-        </div>
-      </div>
-    {/if}
-
     <!-- 🎮 Solve / Cancel Buttons -->
     <section class="buttons-section">
-      <GameButtons
-        bind:wagerUIVisible
-        bind:sliderWagerAmount
-        on:setWagerUIVisible={(e) => wagerUIVisible = e.detail}
-        on:setSliderWagerAmount={(e) => sliderWagerAmount = e.detail}
-      />
+      <GameButtons />
     </section>
 
     <!-- ⌨️ Keyboard Section (keyboard disables itself via gameStore state) -->
     <section class="keyboard-section">
-      <Keyboard
-        on:letterSelected={() => {
-          if ($gameStore.gameState !== 'guess_mode') {
-            wagerUIVisible = false;
-          }
-        }}
-      />
+      <Keyboard />
     </section>
 
     <!-- 🏆 Game Outcome Banner -->
@@ -752,7 +678,7 @@
             </div>
             <div class="result-actions">
               <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
-              <button class="next-puzzle-button" on:click={resultWon ? handleNextPuzzle : handlePlayAgain}>Leaderboard</button>
+              <button class="next-puzzle-button" on:click={goToDailyLeaderboard}>Leaderboard</button>
             </div>
           {:else}
             <!-- Arcade Press-Your-Luck transition -->
@@ -1533,113 +1459,7 @@
   .share-btn:hover { transform: translateY(-2px); background: rgba(56, 189, 248, 0.14); border-color: rgba(56, 189, 248, 0.4); }
   .share-btn:active { transform: scale(0.97); }
 
-  .wager-ui {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  position: fixed;
-  bottom: 230px; /* sits above the action buttons (which clear the keyboard) */
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% - 24px);
-  max-width: 360px;
-  padding: 10px 14px;
-  border-radius: var(--r-lg);
-
-  background: var(--surface-strong);
-  border: 1px solid var(--border-strong);
-  box-shadow: var(--shadow-lg);
-  backdrop-filter: blur(14px);
-
-  gap: 8px;
-  z-index: 1003; /* always in front */
-}
-
-.wager-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-}
-
-.wager-label {
-  font-family: var(--font-ui);
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  text-align: center;
-  width: 70px;
-}
-.wager-amount { color: #fcd34d; }
-
-.wager-amount {
-  font-size: 1rem;
-  font-weight: bold;
-  display: block;
-}
-
-.wager-slider {
-  flex: 1;
-  max-width: 260px; /* ✅ Long enough for precision */
-  height: 10px;
-  background: linear-gradient(90deg, limegreen 0%, #a8e063 100%);
-  border-radius: 6px;
-  outline: none;
-  cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
-  touch-action: pan-y;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* ✅ Precision Thumb Styling */
-.wager-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 22px;
-  height: 22px;
-  background-color: limegreen;
-  border: 2px solid white;
-  border-radius: 50%;
-  box-shadow: 0 0 6px rgba(0, 255, 0, 0.8);
-  transition: transform 0.1s ease;
-}
-.wager-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.1);
-}
-
-.wager-slider::-moz-range-thumb {
-  width: 22px;
-  height: 22px;
-  background-color: limegreen;
-  border: 2px solid white;
-  border-radius: 50%;
-  box-shadow: 0 0 6px rgba(0, 255, 0, 0.8);
-  cursor: pointer;
-  transition: transform 0.1s ease;
-}
-.wager-slider::-moz-range-thumb:hover {
-  transform: scale(1.1);
-}
-.wager-slider:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-:global(body.dark-mode) .wager-label {
-  color: white;
-}
-
-:global(body.dark-mode) .wager-ui {
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 12px rgba(0, 255, 0, 0.2);
-}
-
-.subcategory-hint {
+  .subcategory-hint {
   font-size: 1rem;
   font-style: italic;
   color: #999;

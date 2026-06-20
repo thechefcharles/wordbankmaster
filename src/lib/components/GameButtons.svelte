@@ -1,34 +1,16 @@
 <script>
-  import { createEventDispatcher, onMount } from 'svelte';
   import { gameStore, confirmPurchase, submitGuess } from '$lib/stores/GameStore.js';
 
-  /** @type {boolean} */
-  export let wagerUIVisible = false;
-  /** @type {number} */
-  export let sliderWagerAmount = 0;
-
-  const dispatch = createEventDispatcher();
-
-  onMount(() => {
-    window.addEventListener('hideWagerSlider', () => {
-      dispatch('setWagerUIVisible', false);
-      dispatch('setSliderWagerAmount', 0);
-    });
-  });
-
-  // 🧠 Reactive state
+  // 🧠 Reactive state (daily & arcade are both server-authoritative — no wager)
   $: bankroll = $gameStore.bankroll;
   $: guessModeActive = $gameStore.gameState === 'guess_mode';
   $: isDailyMode = $gameStore.gameMode === 'daily';
-  // Both daily and arcade are server-authoritative now (no wager) — same button flow.
-  $: serverMode = $gameStore.gameMode === 'daily' || $gameStore.gameMode === 'arcade';
   $: purchasePending = !!$gameStore.selectedPurchase;
   $: hintPending = $gameStore.selectedPurchase?.type === 'hint' && $gameStore.gameState === 'purchase_pending';
   $: showHintCost = hintPending;
   $: guessesRemaining = $gameStore.guessesRemaining ?? 3;
   $: fundsLow = bankroll < 150;
   $: noGuessesLeft = guessesRemaining <= 0;
-  $: canConfirmWager = sliderWagerAmount > 0;
   $: gameOver = $gameStore.gameState === 'won' || $gameStore.gameState === 'lost';
   $: buttonsDisabled = gameOver;
   $: hasFreeReveal = isDailyMode && ($gameStore.freeReveals ?? 0) > 0;
@@ -44,11 +26,8 @@
     return true;
   })();
 
-  // 🔁 Button display modes (daily: no wager, go straight to guess)
-  $: dualButtonMode = purchasePending
-    || (!serverMode && wagerUIVisible && sliderWagerAmount > 0 && !guessModeActive)
-    || (guessModeActive && guessComplete);
-
+  // 🔁 Button display modes
+  $: dualButtonMode = purchasePending || (guessModeActive && guessComplete);
   $: guessCancelOnlyMode = guessModeActive && !guessComplete;
 
   // 🏷️ Main button label
@@ -56,14 +35,13 @@
     ? 'Confirm'
     : guessModeActive
       ? (guessComplete ? 'Submit' : 'Cancel')
-      : (serverMode ? 'Solve' : (!canConfirmWager && wagerUIVisible ? 'Cancel' : 'Solve'));
+      : 'Solve';
 
   // 🎨 Button classes
   $: buttonClass = [
     'guess-phrase-button',
     guessModeActive && !guessComplete ? 'exit-mode' : '',
-    guessComplete ? 'guess-complete' : '',
-    !canConfirmWager && wagerUIVisible ? 'exit-mode' : ''
+    guessComplete ? 'guess-complete' : ''
   ].join(' ');
 
   // 🎯 Main button logic
@@ -75,35 +53,6 @@
 
     if (guessModeActive && guessComplete) {
       submitGuess();
-      dispatch('setWagerUIVisible', false);
-      dispatch('setSliderWagerAmount', 0);
-      return;
-    }
-
-    if (serverMode) {
-      if (noGuessesLeft) {
-        gameStore.update(s => ({ ...s, message: 'Out of guesses — buy letters to finish the phrase' }));
-        return;
-      }
-      gameStore.update(state => ({
-        ...state,
-        gameState: 'guess_mode',
-        wagerAmount: 1,
-        selectedPurchase: null,
-        guessedLetters: {}
-      }));
-      return;
-    }
-
-    if (!wagerUIVisible) {
-      dispatch('setWagerUIVisible', true);
-      dispatch('setSliderWagerAmount', 0);
-      return;
-    }
-
-    if (!canConfirmWager) {
-      dispatch('setWagerUIVisible', false);
-      dispatch('setSliderWagerAmount', 0);
       return;
     }
 
@@ -111,20 +60,15 @@
       gameStore.update(s => ({ ...s, message: 'Out of guesses — buy letters to finish the phrase' }));
       return;
     }
-
     gameStore.update(state => ({
       ...state,
       gameState: 'guess_mode',
-      wagerAmount: sliderWagerAmount,
       selectedPurchase: null,
       guessedLetters: {}
     }));
   }
 
   function toggleHintPurchase() {
-    dispatch('setWagerUIVisible', false);
-    dispatch('setSliderWagerAmount', 0);
-
     gameStore.update(state => {
       if (state.selectedPurchase?.type === 'hint') {
         return { ...state, selectedPurchase: null, gameState: 'default' };
@@ -160,8 +104,6 @@
       <button
         class="cancel-button"
         on:click={() => {
-          dispatch('setWagerUIVisible', false);
-          dispatch('setSliderWagerAmount', 0);
           gameStore.update(state => ({
             ...state,
             guessedLetters: {},
@@ -188,8 +130,6 @@
       <button
         class="guess-phrase-button exit-mode"
         on:click={() => {
-          dispatch('setWagerUIVisible', false);
-          dispatch('setSliderWagerAmount', 0);
           gameStore.update(state => ({
             ...state,
             guessedLetters: {},

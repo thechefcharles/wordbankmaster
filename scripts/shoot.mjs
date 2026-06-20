@@ -59,10 +59,5 @@ await page.goto(`${BASE}/leaderboard`, { waitUntil: 'networkidle' });
 await wait(2000);
 await shot('07-leaderboard');
 
-// Mode select
-await page.goto(`${BASE}/select`, { waitUntil: 'networkidle' });
-await wait(1500);
-await shot('08-select');
-
 await browser.close();
 console.log('done');
