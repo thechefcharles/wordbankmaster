@@ -20,6 +20,8 @@
   $: bankroll = $gameStore.bankroll;
   $: guessModeActive = $gameStore.gameState === 'guess_mode';
   $: isDailyMode = $gameStore.gameMode === 'daily';
+  // Both daily and arcade are server-authoritative now (no wager) — same button flow.
+  $: serverMode = $gameStore.gameMode === 'daily' || $gameStore.gameMode === 'arcade';
   $: purchasePending = !!$gameStore.selectedPurchase;
   $: hintPending = $gameStore.selectedPurchase?.type === 'hint' && $gameStore.gameState === 'purchase_pending';
   $: showHintCost = hintPending;
@@ -44,7 +46,7 @@
 
   // 🔁 Button display modes (daily: no wager, go straight to guess)
   $: dualButtonMode = purchasePending
-    || (!isDailyMode && wagerUIVisible && sliderWagerAmount > 0 && !guessModeActive)
+    || (!serverMode && wagerUIVisible && sliderWagerAmount > 0 && !guessModeActive)
     || (guessModeActive && guessComplete);
 
   $: guessCancelOnlyMode = guessModeActive && !guessComplete;
@@ -54,7 +56,7 @@
     ? 'Confirm'
     : guessModeActive
       ? (guessComplete ? 'Submit' : 'Cancel')
-      : (isDailyMode ? 'Solve' : (!canConfirmWager && wagerUIVisible ? 'Cancel' : 'Solve'));
+      : (serverMode ? 'Solve' : (!canConfirmWager && wagerUIVisible ? 'Cancel' : 'Solve'));
 
   // 🎨 Button classes
   $: buttonClass = [
@@ -78,7 +80,7 @@
       return;
     }
 
-    if (isDailyMode) {
+    if (serverMode) {
       if (noGuessesLeft) {
         gameStore.update(s => ({ ...s, message: 'Out of guesses — buy letters to finish the phrase' }));
         return;
