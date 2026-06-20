@@ -533,11 +533,13 @@
       </div>
     {/if}
 
-    <!-- 🌍 Category Display -->
+    <!-- 🌍 Category + witty clue -->
     <div class="puzzle-meta">
       {#if $gameStore.category}<span class="category-chip">{$gameStore.category}</span>{/if}
-      {#if $gameStore.subcategory}<span class="subcat-chip">{$gameStore.subcategory}</span>{/if}
     </div>
+    {#if $gameStore.clue}
+      <p class="puzzle-clue">{$gameStore.clue}</p>
+    {/if}
 
     <!-- ✨ Today's shared Daily Modifier (same for every player) -->
     {#if dailyMod}
@@ -724,13 +726,15 @@
     padding: 6px 13px;
     border-radius: var(--r-pill);
   }
-  .subcat-chip {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    padding: 6px 13px;
-    border-radius: var(--r-pill);
+  .puzzle-clue {
+    max-width: 340px;
+    margin: 10px auto 18px;
+    font-family: var(--font-ui);
+    font-size: 0.98rem;
+    font-style: italic;
+    line-height: 1.4;
+    color: var(--text);
+    text-wrap: balance;
   }
 
   .daily-modifier {
