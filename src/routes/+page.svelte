@@ -8,7 +8,7 @@
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
   import { hasPlayedDailyToday, getDailyStatus, getDailyGhost } from '$lib/stores/statsStore.js';
-  import { powerupInfo, modifierInfo } from '$lib/powerups.js';
+  import { modifierInfo } from '$lib/powerups.js';
   import {
     saveGameToLocalStorage,
     clearSavedGame,
@@ -175,12 +175,10 @@
   $: isFreeplay = $gameStore.gameMode === 'freeplay';
   $: resultBankroll = Math.max(0, Math.floor($gameStore.bankroll || 0));
   $: resultMedal = medalFor(resultBankroll, resultWon);
-  // Arcade gauntlet run state
+  // Arcade rolling-survival run state
   $: arun = $gameStore.arcadeRun;
   $: arcadeMult = ((arun?.multiplier ?? 100) / 100).toFixed(2);
-  // Power-up earned on this solve, and whether a Shield saved a bust (multiplier kept).
-  $: arcadeEarn = (!isDailyResult && resultWon && arun?.last_earn) ? powerupInfo(arun.last_earn) : null;
-  $: arcadeShielded = (!isDailyResult && !resultWon && (arun?.multiplier ?? 100) > 100);
+  $: arcadePayout = Math.round(500 * (arun?.multiplier ?? 100) / 100); // next solve is worth this
 
   let shareCopied = false;
   function buildShareText() {
@@ -285,11 +283,18 @@
     }
   }
 
-  // After solving / busting a gauntlet puzzle, advance or retry.
+  // After solving, advance to the next puzzle (bankroll + streak carry over).
   async function handleArcadeContinue() {
     showResultModal = false;
     hasTriggeredModal = false;
     await arcadeContinue();
+  }
+
+  // After a run ends (broke), start a fresh run.
+  async function handleArcadeNewRun() {
+    showResultModal = false;
+    hasTriggeredModal = false;
+    await fetchArcadeGame();
   }
 
   // ----- Free Play (unranked, pick a category) -----
@@ -575,8 +580,8 @@
     {#if $gameStore.gameMode === 'arcade' && arun}
       <div class="arcade-hud">
         <div class="ah-cell"><span class="ah-val">{(arun.position ?? 0) + 1}</span><span class="ah-label">Puzzle</span></div>
-        <div class="ah-cell ah-mult"><span class="ah-val">×{arcadeMult}</span><span class="ah-label">Multiplier</span></div>
-        <div class="ah-cell"><span class="ah-val ah-gold">${(arun.banked ?? 0).toLocaleString()}</span><span class="ah-label">Banked</span></div>
+        <div class="ah-cell ah-mult"><span class="ah-val">×{arcadeMult}</span><span class="ah-label">Streak</span></div>
+        <div class="ah-cell"><span class="ah-val ah-gold">+${arcadePayout.toLocaleString()}</span><span class="ah-label">Solve</span></div>
       </div>
     {/if}
 
@@ -691,34 +696,29 @@
               <button class="next-puzzle-button" on:click={handleFreeplayContinue}>Next</button>
             </div>
           {:else}
-            <!-- Arcade Press-Your-Luck transition (endless — runs never "complete") -->
+            <!-- Arcade rolling-bankroll survival -->
             {#if resultWon}
               <div class="result-medal">✅</div>
-              <h2>Solved!</h2>
-              <p class="result-sub">Puzzle {(arun?.position ?? 0) + 1} · next ×{arcadeMult}</p>
-            {:else if arcadeShielded}
-              <div class="result-medal">🔰</div>
-              <h2>Busted</h2>
-              <p class="result-sub">Shield saved your ×{arcadeMult}! — on to the next puzzle</p>
+              <h2>Solved! +${(arun?.last_gain ?? 0).toLocaleString()}</h2>
+              <p class="result-sub">Bankroll ${resultBankroll.toLocaleString()} · streak ×{arcadeMult}</p>
+              <div class="result-actions">
+                <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
+                <button class="next-puzzle-button" on:click={handleArcadeContinue}>Continue</button>
+              </div>
             {:else}
-              <div class="result-medal">💥</div>
-              <h2>Busted</h2>
-              <p class="result-sub">Multiplier reset to ×1 — on to the next puzzle</p>
+              <div class="result-medal">🏁</div>
+              <h2>Run Over</h2>
+              <p class="result-sub">You ran out of cash.</p>
+              <div class="result-bankroll">
+                <span class="rb-label">Peak Bankroll</span>
+                <span class="rb-amount">${(arun?.banked ?? 0).toLocaleString()}</span>
+              </div>
+              <p class="arcade-gain">{arun?.furthest ?? 0} {(arun?.furthest ?? 0) === 1 ? 'puzzle' : 'puzzles'} solved</p>
+              <div class="result-actions">
+                <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
+                <button class="next-puzzle-button" on:click={handleArcadeNewRun}>New Run</button>
+              </div>
             {/if}
-            <div class="result-bankroll">
-              <span class="rb-label">Total Banked</span>
-              <span class="rb-amount">${(arun?.banked ?? 0).toLocaleString()}</span>
-            </div>
-            {#if resultWon && (arun?.last_gain ?? 0) > 0}
-              <p class="arcade-gain">+${(arun?.last_gain ?? 0).toLocaleString()} this puzzle</p>
-            {/if}
-            {#if arcadeEarn}
-              <p class="arcade-earn">Earned {arcadeEarn.emoji} {arcadeEarn.name}!</p>
-            {/if}
-            <div class="result-actions">
-              <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
-              <button class="next-puzzle-button" on:click={handleArcadeContinue}>{resultWon ? 'Continue' : 'Next Puzzle'}</button>
-            </div>
           {/if}
         </div>
       </div>
