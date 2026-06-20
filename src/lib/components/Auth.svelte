@@ -109,9 +109,8 @@
 <div class="auth-screen">
   <div class="auth-card glass fade-up">
     <div class="brand">
-      <div class="mark">WB</div>
-      <h1 class="wordmark"><span class="brand-text">Word</span>Bank</h1>
-      <p class="tagline">Crack the phrase. Bank the win.</p>
+      <img class="mark" src="/logo-mark.png" alt="" width="72" height="72" />
+      <img class="wordmark" src="/wordmark-slogan.png" alt="WordBank — Spend Less. Think More." />
     </div>
 
     <h2 class="auth-title">
@@ -194,30 +193,20 @@
   .brand { margin-bottom: 22px; }
 
   .mark {
-    width: 56px;
-    height: 56px;
-    margin: 0 auto 14px;
-    display: grid;
-    place-items: center;
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 1.25rem;
-    color: #06210f;
-    background: var(--brand-grad);
-    border-radius: 16px;
-    box-shadow: var(--glow-brand);
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    margin: 0 auto 12px;
+    display: block;
+    filter: drop-shadow(0 6px 20px rgba(52, 211, 153, 0.28));
   }
 
   .wordmark {
-    font-size: 2.1rem;
-    letter-spacing: -0.03em;
-    margin: 0;
-  }
-
-  .tagline {
-    margin: 8px 0 0;
-    color: var(--text-muted);
-    font-size: 0.92rem;
+    width: min(72vw, 270px);
+    height: auto;
+    margin: 2px auto 0;
+    display: block;
+    filter: drop-shadow(0 2px 14px rgba(0, 0, 0, 0.5));
   }
 
   .auth-title {
