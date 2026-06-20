@@ -75,6 +75,17 @@ export async function fetchDailyLeaderboard(period = 'daily', orderBy = 'score')
 }
 
 /**
+ * "Ghost of yesterday" — today's daily result vs the caller's own result
+ * yesterday, plus the share of today's field they beat.
+ * @returns {Promise<null | { yesterday_played: boolean, yesterday_banked: number|null, yesterday_won: boolean, yesterday_score: number|null, today_banked: number|null, today_score: number|null, today_players: number, today_percentile: number|null }>}
+ */
+export async function getDailyGhost() {
+  const { data, error } = await supabase.rpc('get_daily_ghost');
+  if (error) { console.error('❌ get_daily_ghost error:', error); return null; }
+  return data;
+}
+
+/**
  * Fetch the arcade gauntlet leaderboard (best banked run + furthest reached).
  * @param {string} period - 'daily' | 'weekly' | 'monthly' | 'yearly' | 'all'
  */

@@ -664,3 +664,57 @@ BEGIN
   ORDER BY COALESCE(prof.current_bankroll, 1000) DESC;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================
+-- Phase 5c: "Ghost of yesterday" — compare today's daily result to the caller's
+-- own result yesterday, plus the share of today's field they strictly beat.
+-- SECURITY DEFINER + auth.uid(): a client can only read its own ghost.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.get_daily_ghost()
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER AS $fn$
+DECLARE
+  uid uuid := auth.uid();
+  y RECORD;
+  t RECORD;
+  pct int := NULL;
+  players int := 0;
+BEGIN
+  IF uid IS NULL THEN RETURN NULL; END IF;
+
+  SELECT bankroll_left, won, score INTO y
+  FROM public.game_results
+  WHERE user_id = uid AND game_mode = 'daily' AND played_at::date = CURRENT_DATE - 1
+  ORDER BY played_at DESC LIMIT 1;
+
+  SELECT bankroll_left, won, score INTO t
+  FROM public.game_results
+  WHERE user_id = uid AND game_mode = 'daily' AND played_at::date = CURRENT_DATE
+  ORDER BY played_at DESC LIMIT 1;
+
+  -- Share of today's distinct players whose score is strictly below mine.
+  IF t.score IS NOT NULL THEN
+    SELECT count(*),
+           ROUND(100.0 * count(*) FILTER (WHERE s < t.score) / NULLIF(count(*), 0))::int
+    INTO players, pct
+    FROM (
+      SELECT DISTINCT ON (user_id) score AS s
+      FROM public.game_results
+      WHERE game_mode = 'daily' AND played_at::date = CURRENT_DATE
+      ORDER BY user_id, played_at DESC
+    ) today_all;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'yesterday_played', (y IS NOT NULL),
+    'yesterday_banked', y.bankroll_left,
+    'yesterday_won',    COALESCE(y.won, false),
+    'yesterday_score',  y.score,
+    'today_banked',     t.bankroll_left,
+    'today_score',      t.score,
+    'today_players',    players,
+    'today_percentile', pct
+  );
+END;
+$fn$;
+GRANT EXECUTE ON FUNCTION public.get_daily_ghost() TO authenticated;
