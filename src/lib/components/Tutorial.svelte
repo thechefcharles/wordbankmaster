@@ -7,28 +7,28 @@
   const steps = [
     {
       icon: '💰',
-      title: 'Crack the phrase',
-      body: 'A phrase is hidden. You’ve got $1,000 to uncover it — and every dollar you keep becomes your score.'
+      title: 'Guess the phrase',
+      body: 'Guess the phrase by spending as little as possible. Whatever’s left of your $1,000 is your score.'
     },
     {
       icon: '🔤',
-      title: 'Letters cost money',
-      body: 'Tap to buy one. In the phrase? Every copy fills in. Not in it? That cash is gone.'
+      title: 'Buy letters',
+      body: 'Tap a letter to buy it. If it’s in the phrase, every copy appears. If it’s not, you lose what it cost.'
     },
     {
       icon: '🔍',
-      title: 'Buy yourself a clue',
-      body: 'Reveal drops the most useful letter on the board. Guaranteed intel, zero luck.'
+      title: 'Reveal',
+      body: 'Reveal buys you the most useful letter — no guessing. It costs money, so use it when you’re stuck.'
     },
     {
       icon: '🎯',
-      title: 'Call it',
-      body: 'Know it? Hit Solve, type the phrase, lock it in. Three tries — a miss costs a try, not a cent.'
+      title: 'Solve',
+      body: 'When you’ve got it, tap Solve, type the phrase, and submit. Three tries — a wrong guess costs a try, not money.'
     },
     {
       icon: '🏆',
-      title: 'Daily or Arcade',
-      body: 'Daily: one phrase, the whole world, ranked. Arcade: solve, bank, ride your multiplier — push it before you bust.'
+      title: 'Daily & Arcade',
+      body: 'Daily is one ranked puzzle for everyone. Arcade keeps going — bank each solve and build your multiplier until you bust.'
     }
   ];
 

@@ -20,8 +20,12 @@ try {
     const body = await p.locator('.tut-body').innerText().catch(()=>'—');
     console.log(`STEP ${s}: ${t} :: ${body}`);
     await p.screenshot({ path: `screenshots/tut-${s}.png` });
-    if (s < 5) { await p.locator('.tut-btn.primary').click().catch(()=>{}); await wait(450); }
+    await p.locator('.tut-btn.primary').click().catch(()=>{}); await wait(450);
   }
+  // After finishing, the menu shows — capture the tagline.
+  await wait(600);
+  console.log('menu tagline:', await p.locator('.menu-tagline').innerText().catch(()=>'—'));
+  await p.screenshot({ path: 'screenshots/menu-tagline.png' });
 } catch (e) {
   console.log('FATAL', e.message);
 } finally {

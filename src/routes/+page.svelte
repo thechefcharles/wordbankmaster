@@ -414,7 +414,7 @@
       <div class="menu-hero">
         <div class="menu-mark float">WB</div>
         <h1 class="menu-wordmark"><span class="brand-text">Word</span>Bank</h1>
-        <p class="menu-tagline">Crack the phrase. Bank the win.</p>
+        <p class="menu-tagline">Spend Less. Think More.</p>
       </div>
       <div class="main-menu-buttons stagger">
         <button
