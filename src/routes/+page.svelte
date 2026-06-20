@@ -1082,9 +1082,10 @@
 
   .game-logo {
     display: block;
-    width: min(44vw, 150px);
+    width: min(64vw, 230px);
     height: auto;
-    margin: 4px auto 14px;
+    margin: 6px auto 16px;
+    filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.5));
   }
 
   .logo-container {
