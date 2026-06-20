@@ -2,6 +2,7 @@
 
 import { writable, get } from 'svelte/store';
 import confetti from 'canvas-confetti';
+import { fx } from '$lib/sound.js';
 import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, getUserPowerups, dailyUseFreeReveal } from '$lib/stores/statsStore.js';
 import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNext } from '$lib/stores/statsStore.js';
 
@@ -149,6 +150,23 @@ function boardToState(board, prev) {
   };
 }
 
+/**
+ * In-play audio/haptic cue from comparing the previous board to the new one.
+ * (Win/bust cues are fired by the callers.)
+ * @param {GameState} prev @param {any} board
+ */
+function playMoveCue(prev, board) {
+  const revealed = board.revealed || {};
+  let newReveals = 0;
+  for (const [k, v] of Object.entries(revealed)) {
+    if (prev.purchasedLetters?.[Number(k)] !== v) newReveals++;
+  }
+  const incGrew = (board.incorrect_letters || []).length > (prev.incorrectLetters || []).length;
+  if (newReveals >= 2) fx('reveal');
+  else if (newReveals > 0) fx('correct');
+  else if (incGrew) fx('wrong');
+}
+
 /** @param {any} board */
 function reconcileDailyBoard(board) {
   if (!board) return;
@@ -159,7 +177,9 @@ function reconcileDailyBoard(board) {
     gameMode: 'daily',
     gameState: finished ? board.state : 'default'
   }));
-  if (board.state === 'won') setTimeout(() => launchConfetti(), 300);
+  if (board.state === 'won') { setTimeout(() => launchConfetti(), 300); fx('win'); }
+  else if (finished) fx('bust');
+  else playMoveCue(prev, board);
 }
 
 /**
@@ -182,7 +202,15 @@ function reconcileArcadeBoard(resp) {
     arcadeRun: run,
     freeReveals: 0
   }));
-  if (run.state === 'solved' || run.state === 'complete') setTimeout(() => launchConfetti(), 300);
+  if (run.state === 'solved' || run.state === 'complete') {
+    setTimeout(() => launchConfetti(), 300);
+    fx('win');
+    if ((run.last_gain || 0) > 0) setTimeout(() => fx('multiplier'), 240);
+  } else if (run.state === 'busted') {
+    fx('bust');
+  } else {
+    playMoveCue(prev, board);
+  }
 }
 
 /** confirmPurchaseArcade — commit a letter/reveal on the current gauntlet puzzle. @param {GameState} state */
