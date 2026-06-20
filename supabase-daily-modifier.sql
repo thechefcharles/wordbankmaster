@@ -43,7 +43,7 @@ BEGIN
     v_mod := public._daily_modifier();
     IF v_mod = 'extra_bank' THEN v_bonus := 250; END IF;
     INSERT INTO public.daily_sessions (user_id, puzzle_date, puzzle_id, bankroll, guesses_remaining, active_powerups)
-    VALUES (v_uid, CURRENT_DATE, v_pid, 1000 + v_bonus, 3, ARRAY[v_mod])
+    VALUES (v_uid, CURRENT_DATE, v_pid, 1000 + v_bonus, 1, ARRAY[v_mod])  -- daily = one guess
     RETURNING * INTO s;
   END IF;
   SELECT upper(phrase), category, COALESCE(subcategory, '')

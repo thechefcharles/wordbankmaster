@@ -196,10 +196,10 @@ function reconcileArcadeBoard(resp) {
   const prev = get(gameStore);
   const board = resp.board;
   const run = resp.run || {};
-  // Per-puzzle outcome drives gameState: solved/complete -> won, busted -> lost.
+  // Rolling-survival outcome: solved -> won (continue), over -> lost (run ends).
   let gs = 'default';
-  if (run.state === 'solved' || run.state === 'complete') gs = 'won';
-  else if (run.state === 'busted') gs = 'lost';
+  if (run.state === 'solved') gs = 'won';
+  else if (run.state === 'over') gs = 'lost';
   gameStore.set(/** @type {GameState} */ ({
     ...prev, ...boardToState(board, prev),
     gameMode: 'arcade',
@@ -208,11 +208,11 @@ function reconcileArcadeBoard(resp) {
     freeReveals: 0,
     modifier: null
   }));
-  if (run.state === 'solved' || run.state === 'complete') {
+  if (run.state === 'solved') {
     setTimeout(() => launchConfetti(), 300);
     fx('win');
     if ((run.last_gain || 0) > 0) setTimeout(() => fx('multiplier'), 240);
-  } else if (run.state === 'busted') {
+  } else if (run.state === 'over') {
     fx('bust');
   } else {
     playMoveCue(prev, board);
