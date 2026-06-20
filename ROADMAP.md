@@ -83,7 +83,7 @@ Status: 📋 Planned (Phase 3)
 | **0 — Economy refactor** | 3 free attempts, free guessing, win-by-reveal, Reveal rework, broke-only loss | Daily RPCs (server) + arcade client | ✅ |
 | **1 — Daily scoring + share** | Share card ✅ + medals ✅. Daily **score = bankroll × streak multiplier** (server), leaderboard ranks by score ✅ | Server scoring + UI | ✅ |
 | **2 — Streaks & badges** | Badges ✅ (4 daily, My Account, 🔥 flair). Streak **freeze** ✅ (auto-bridge a missed day, earn 1 per 7-day milestone, cap 3; shown in My Account). | Server + UI | ✅ |
-| **3 — Power-up system** | Inventory + earning + display ✅; Free Reveal (in-game) ✅; pre-game picker + **+$250 Start** | **3 — Power-up system** | Framework: inventory, earning, display + **Free Reveal** consumable (3a). More effects (extra bank, discount, insurance…) TODO (3b). | Server + UI | 🚧 | **Discount** ✅. Insurance / Vowel Vision / Double Payout TODO (3c). | Server + UI | 🚧 |
+| **3 — Power-up system** | Inventory, earning (random on win), display ✅; Free Reveal (in-game) ✅; pre-game picker ✅; effects: +$250 Start, Discount, Insurance, Vowel Vision ✅. (Double Payout = arcade, Phase 4.) | Server + UI | ✅ |
 | **4 — Roguelike arcade** | Run structure, escalation, power-up drafting, best-run board (pending arcade decision) | Mostly client + leaderboard | 📋 |
 | **5 — Polish** | Guided tutorial, sound + haptics, "ghost of yesterday" compare | Client | 📋 |
 
