@@ -411,9 +411,8 @@
     <!-- 🏠 Main Menu (after sign-in) -->
     <div class="main-menu fade-up">
       <div class="menu-hero">
-        <div class="menu-mark float">WB</div>
-        <h1 class="menu-wordmark"><span class="brand-text">Word</span>Bank</h1>
-        <p class="menu-tagline">Spend Less. Think More.</p>
+        <img class="menu-mark float" src="/logo-mark.png" alt="" width="84" height="84" />
+        <img class="menu-wordmark" src="/wordmark-slogan.png" alt="WordBank — Spend Less. Think More." />
       </div>
       <div class="main-menu-buttons stagger">
         <button
@@ -507,7 +506,7 @@
     <!-- ✅ GAME UI (Visible only when logged in) -->
 
     <!-- 🧠 Game Logo -->
-    <div class="game-logo"><span class="brand-text">Word</span>Bank</div>
+    <img class="game-logo" src="/wordmark.png" alt="WordBank" />
 
     <!-- 🔍 Diagnostic banner (shows when init failed) -->
     {#if initError}
@@ -841,29 +840,17 @@
     text-align: center;
   }
   .menu-mark {
-    width: 60px;
-    height: 60px;
-    display: grid;
-    place-items: center;
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 1.35rem;
-    color: #06210f;
-    background: var(--brand-grad);
-    border-radius: 18px;
-    box-shadow: var(--glow-brand);
-    margin-bottom: 16px;
+    width: 84px;
+    height: 84px;
+    object-fit: contain;
+    margin-bottom: 14px;
+    filter: drop-shadow(0 6px 22px rgba(52, 211, 153, 0.28));
   }
   .menu-wordmark {
-    font-family: var(--font-display);
-    font-size: 2.4rem;
-    letter-spacing: -0.03em;
-    margin: 0;
-  }
-  .menu-tagline {
-    margin: 8px 0 0;
-    color: var(--text-muted);
-    font-size: 0.95rem;
+    width: min(80vw, 300px);
+    height: auto;
+    margin: 2px 0 0;
+    filter: drop-shadow(0 2px 14px rgba(0, 0, 0, 0.5));
   }
   .main-menu-buttons {
     display: flex;
@@ -1094,12 +1081,10 @@
   }
 
   .game-logo {
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 1.5rem;
-    letter-spacing: -0.02em;
-    text-align: center;
-    margin: 4px 0 14px;
+    display: block;
+    width: min(44vw, 150px);
+    height: auto;
+    margin: 4px auto 14px;
   }
 
   .logo-container {
