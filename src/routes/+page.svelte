@@ -6,7 +6,7 @@
 
   import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue } from '$lib/stores/GameStore.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { hasPlayedDailyToday, getUserBadges, getDailyStatus, getUserPowerups, dailySessionExists } from '$lib/stores/statsStore.js';
+  import { hasPlayedDailyToday, getUserBadges, getDailyStatus, getUserPowerups, dailySessionExists, getDailyGhost } from '$lib/stores/statsStore.js';
   import { BADGES, badgeInfo } from '$lib/badges.js';
   import { powerupInfo } from '$lib/powerups.js';
   import {
@@ -374,9 +374,17 @@
     goto('/leaderboard?mode=daily');
   };
 
+  /** @type {null | { yesterday_played: boolean, yesterday_banked: number|null, yesterday_won: boolean, today_banked: number|null, today_players: number, today_percentile: number|null }} */
+  let ghost = null;
+
   const onPhraseRevealComplete = () => {
     if (!hasTriggeredModal && ['won', 'lost'].includes($gameStore.gameState)) {
       hasTriggeredModal = true;
+      // Daily only: fetch the "ghost of yesterday" comparison for the result modal.
+      if ($gameStore.gameMode === 'daily') {
+        ghost = null;
+        getDailyGhost().then((g) => { ghost = g; }).catch(() => {});
+      }
       setTimeout(() => {
         showResultModal = true;
       }, 1000);
@@ -673,6 +681,24 @@
               <span class="rb-label">Banked</span>
               <span class="rb-amount">${resultBankroll.toLocaleString()}</span>
             </div>
+            {#if ghost}
+              <div class="ghost-compare">
+                {#if ghost.yesterday_played}
+                  {@const delta = resultBankroll - (ghost.yesterday_banked ?? 0)}
+                  <p class="ghost-line">👻 Yesterday you banked <b>${(ghost.yesterday_banked ?? 0).toLocaleString()}</b></p>
+                  <p class="ghost-delta {delta > 0 ? 'up' : delta < 0 ? 'down' : 'even'}">
+                    {#if delta > 0}▲ ${delta.toLocaleString()} ahead of your ghost
+                    {:else if delta < 0}▼ ${Math.abs(delta).toLocaleString()} behind your ghost
+                    {:else}= dead even with your ghost{/if}
+                  </p>
+                {:else}
+                  <p class="ghost-line">👻 Your first daily — you just set the ghost for tomorrow.</p>
+                {/if}
+                {#if ghost.today_percentile != null && (ghost.today_players ?? 0) >= 5}
+                  <p class="ghost-field">Ahead of {ghost.today_percentile}% of today’s players</p>
+                {/if}
+              </div>
+            {/if}
             <div class="result-actions">
               <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
               <button class="next-puzzle-button" on:click={goToDailyLeaderboard}>Leaderboard</button>
@@ -1435,6 +1461,38 @@
     font-size: 2rem;
     color: #fcd34d;
     text-shadow: 0 0 18px rgba(251, 191, 36, 0.4);
+  }
+  .ghost-compare {
+    margin: 2px auto 16px;
+    padding: 10px 14px;
+    max-width: 300px;
+    border-radius: 14px;
+    background: var(--surface-2, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  }
+  .ghost-line {
+    font-family: var(--font-ui);
+    font-size: 0.86rem;
+    color: var(--text-muted, #c2cbd8);
+    margin: 0 0 4px;
+  }
+  .ghost-line b { color: var(--text, #fff); }
+  .ghost-delta {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin: 0;
+  }
+  .ghost-delta.up { color: #34d399; }
+  .ghost-delta.down { color: #fb7185; }
+  .ghost-delta.even { color: var(--text-muted, #c2cbd8); }
+  .ghost-field {
+    font-family: var(--font-ui);
+    font-size: 0.76rem;
+    color: var(--text-faint, #8a94a6);
+    margin: 8px 0 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
   }
   .result-actions {
     display: flex;

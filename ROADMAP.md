@@ -91,7 +91,7 @@ Status: 📋 Planned (Phase 3)
 | **3 — Power-up system** | Inventory, earning (random on win), display ✅; Free Reveal (in-game) ✅; pre-game picker ✅; effects: +$250 Start, Discount, Insurance, Vowel Vision ✅. (Double Payout = arcade, Phase 4.) | Server + UI | ✅ |
 | **4 — Arcade gauntlet** | Server engine ✅ (4a); client ✅ (4b: arcade=gauntlet, HUD banked/multiplier/position, solve→Continue / bust→Try Again); leaderboard ✅ (4c: best banked run + furthest reached, day/week/month/all). | Server + client | ✅ |
 | **4d — Legacy cleanup** | Removed the dead pre-gauntlet arcade: wager UI + slider, `/select` & `/select/arcade` routes, client-side win/loss/bankroll paths (`fetchRandomGame`, `resetGame`, `reduceBankrollToZero`, `setWager`, `checkLossCondition`, `loadGameFromLocalStorage`, `save/recordArcade/DailyResult`). Both modes are now purely server-authoritative. | Client + stores | ✅ |
-| **5 — Polish** | Sound + haptics ✅ (5a: WebAudio cue engine + `navigator.vibrate`, persisted 🔊/🔇 toggle). Guided tutorial ✅ (5b: 5-step carousel, first-run + replay via ❓, `wb_tutorial_seen`). "Ghost of yesterday" compare (5c) TODO. | Client | 🚧 |
+| **5 — Polish** | Sound + haptics ✅ (5a). Guided tutorial ✅ (5b). "Ghost of yesterday" ✅ (5c: daily result modal compares today's bank to your own yesterday — delta ahead/behind — plus share of today's field beaten when ≥5 players, via `get_daily_ghost`). | Client + server | ✅ |
 
 Recommended order de-risks: economy first → cheap-high-impact share → retention (streaks/badges) → big arcade swing.
 
