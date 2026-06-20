@@ -214,3 +214,47 @@ BEGIN
 END;
 $fn$;
 GRANT EXECUTE ON FUNCTION public.arcade_submit_guess(JSONB) TO authenticated;
+
+-- ============================================================
+-- Phase 4c: Arcade gauntlet leaderboard (best banked run + furthest reached)
+-- Ranks each user by their best banked run over the period window, tie-break
+-- on how far they climbed. 'daily' = today; weekly/monthly/yearly/all windows.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.get_arcade_gauntlet_leaderboard(p_period text DEFAULT 'daily')
+  RETURNS TABLE(rank bigint, user_id uuid, display_name text, banked integer, furthest integer, total integer)
+  LANGUAGE plpgsql SECURITY DEFINER AS $fn$
+DECLARE v_start DATE; v_end DATE;
+BEGIN
+  CASE p_period
+    WHEN 'weekly' THEN
+      v_start := date_trunc('week', CURRENT_DATE)::DATE + 1; v_end := v_start + 7;
+    WHEN 'monthly' THEN
+      v_start := date_trunc('month', CURRENT_DATE)::DATE; v_end := (date_trunc('month', CURRENT_DATE) + INTERVAL '1 month')::DATE;
+    WHEN 'yearly' THEN
+      v_start := date_trunc('year', CURRENT_DATE)::DATE; v_end := (date_trunc('year', CURRENT_DATE) + INTERVAL '1 year')::DATE;
+    WHEN 'all' THEN
+      v_start := DATE '1970-01-01'; v_end := DATE '9999-12-31';
+    ELSE  -- daily / today
+      v_start := CURRENT_DATE; v_end := CURRENT_DATE + 1;
+  END CASE;
+
+  RETURN QUERY
+  WITH agg AS (
+    SELECT ar.user_id, MAX(ar.banked)::INT AS banked, MAX(ar.furthest)::INT AS furthest
+    FROM public.arcade_runs ar
+    WHERE ar.run_date >= v_start AND ar.run_date < v_end
+    GROUP BY ar.user_id
+  ),
+  base AS (
+    SELECT a.user_id,
+      COALESCE(au.raw_user_meta_data->>'full_name', split_part(au.raw_user_meta_data->>'email', '@', 1), 'Player')::TEXT AS display_name,
+      a.banked, a.furthest
+    FROM agg a LEFT JOIN auth.users au ON au.id = a.user_id
+  )
+  SELECT ROW_NUMBER() OVER (ORDER BY base.banked DESC, base.furthest DESC)::BIGINT AS rank,
+    base.user_id, base.display_name, base.banked, base.furthest, public._arcade_ladder_size()
+  FROM base
+  ORDER BY base.banked DESC, base.furthest DESC;
+END;
+$fn$;
+GRANT EXECUTE ON FUNCTION public.get_arcade_gauntlet_leaderboard(text) TO authenticated;

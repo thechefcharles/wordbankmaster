@@ -8,7 +8,7 @@
   } from '$lib/stores/statsStore.js';
 
   /** @typedef {{ rank?: number, display_name?: string, score?: number, bankroll_left?: number, current_streak?: number, highest_streak?: number, total_played?: number, win_rate?: number }} DailyRow */
-  /** @typedef {{ rank?: number, display_name?: string, current_bankroll?: number, highest_bankroll?: number, current_streak?: number, highest_streak?: number, total_played?: number, win_rate?: number }} ArcadeRow */
+  /** @typedef {{ rank?: number, display_name?: string, banked?: number, furthest?: number, total?: number }} ArcadeRow */
 
   /** @type {'daily' | 'arcade'} */
   let mode = $state('daily');
@@ -26,9 +26,7 @@
   }
   /** @type {DailyRow[]} */
   let dailyData = $state([]);
-  let arcadePeriod = $state('all');
-  /** @type {'bankroll' | 'highest_bankroll' | 'streak' | 'highest_streak' | 'puzzles' | 'win_pct'} */
-  let arcadeOrderBy = $state('bankroll');
+  let arcadePeriod = $state('daily');
   /** @type {ArcadeRow[]} */
   let arcadeData = $state([]);
   let loading = $state(true);
@@ -52,7 +50,7 @@
 
   async function loadArcade() {
     try {
-      arcadeData = await fetchArcadeLeaderboard(arcadePeriod, arcadeOrderBy);
+      arcadeData = await fetchArcadeLeaderboard(arcadePeriod);
     } catch (e) {
       error = (e instanceof Error ? e.message : String(e)) || 'Failed to load';
     }
@@ -72,7 +70,7 @@
     if (mode === 'daily' && (dailyPeriod || dailyOrderBy)) {
       loadDaily();
     }
-    if (mode === 'arcade' && (arcadePeriod || arcadeOrderBy)) {
+    if (mode === 'arcade' && arcadePeriod) {
       loadArcade();
     }
   });
@@ -133,22 +131,13 @@
       <button class="sort-btn" class:active={dailyOrderBy === 'win_pct'} onclick={() => { dailyOrderBy = 'win_pct'; }}>Win %</button>
     </div>
   {:else}
-    <p class="period-label">{periodLabels[arcadePeriod] ?? 'All Time'}</p>
+    <p class="period-label">{periodLabels[arcadePeriod] ?? 'Today'} · best run</p>
     <div class="period-filters">
-      {#each ['all', 'daily', 'weekly', 'monthly', 'yearly'] as p}
+      {#each ['daily', 'weekly', 'monthly', 'all'] as p}
         <button class="period-btn" class:active={arcadePeriod === p} onclick={() => { arcadePeriod = p; }}>
           {periodLabels[p] ?? p}
         </button>
       {/each}
-    </div>
-    <p class="sort-label">Sort by:</p>
-    <div class="sort-filters">
-      <button class="sort-btn" class:active={arcadeOrderBy === 'bankroll'} onclick={() => { arcadeOrderBy = 'bankroll'; }}>Bankroll</button>
-      <button class="sort-btn" class:active={arcadeOrderBy === 'highest_bankroll'} onclick={() => { arcadeOrderBy = 'highest_bankroll'; }}>Highest Bankroll</button>
-      <button class="sort-btn" class:active={arcadeOrderBy === 'streak'} onclick={() => { arcadeOrderBy = 'streak'; }}>Current Streak</button>
-      <button class="sort-btn" class:active={arcadeOrderBy === 'highest_streak'} onclick={() => { arcadeOrderBy = 'highest_streak'; }}>Highest Streak</button>
-      <button class="sort-btn" class:active={arcadeOrderBy === 'puzzles'} onclick={() => { arcadeOrderBy = 'puzzles'; }}>Puzzles</button>
-      <button class="sort-btn" class:active={arcadeOrderBy === 'win_pct'} onclick={() => { arcadeOrderBy = 'win_pct'; }}>Win %</button>
     </div>
   {/if}
 
@@ -200,7 +189,7 @@
     {/if}
   {:else}
     {#if arcadeData.length === 0}
-      <p class="empty">No arcade results yet. Play arcade mode to build your bankroll!</p>
+      <p class="empty">No arcade runs yet. Climb today's gauntlet to appear!</p>
     {:else}
       <div class="table-wrap">
         <table>
@@ -208,12 +197,8 @@
             <tr>
               <th>#</th>
               <th>Player</th>
-              <th>Bankroll</th>
-              <th>Highest Bankroll</th>
-              <th>Current Streak</th>
-              <th>Highest Streak</th>
-              <th>Puzzles</th>
-              <th>Win %</th>
+              <th>Banked</th>
+              <th>Furthest</th>
             </tr>
           </thead>
           <tbody>
@@ -226,12 +211,8 @@
                   {:else}{row.rank}{/if}
                 </td>
                 <td class="name">{row.display_name || 'Player'}</td>
-                <td>${fmt(row.current_bankroll)}</td>
-                <td>${fmt(row.highest_bankroll)}</td>
-                <td>{fmt(row.current_streak)}</td>
-                <td>{fmt(row.highest_streak)}</td>
-                <td>{fmt(row.total_played)}</td>
-                <td>{fmt(row.win_rate)}%</td>
+                <td class="score-cell">${fmt(row.banked)}</td>
+                <td>{fmt(row.furthest)}/{fmt(row.total)}</td>
               </tr>
             {/each}
           </tbody>
@@ -242,9 +223,9 @@
 
   <p class="hint">
     {#if mode === 'daily'}
-      Daily: Bankroll left, current streak (consecutive days won), highest streak, puzzles, win %.
+      Daily: Score = bankroll × streak multiplier. Medals 🥇$700 / 🥈$400 / 🥉$100. 🔥 = 7+ day streak.
     {:else}
-      Arcade: Current bankroll, highest bankroll, streaks, puzzles played, win %.
+      Arcade: your best banked run in the period (Press-Your-Luck gauntlet), and how far you climbed.
     {/if}
   </p>
 </main>

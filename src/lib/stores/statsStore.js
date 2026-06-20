@@ -75,15 +75,11 @@ export async function fetchDailyLeaderboard(period = 'daily', orderBy = 'score')
 }
 
 /**
- * Fetch arcade leaderboard
- * @param {string} period - 'all' | 'daily' | 'weekly' | 'monthly' | 'yearly'
- * @param {string} orderBy - 'bankroll' | 'highest_bankroll' | 'streak' | 'highest_streak' | 'puzzles' | 'win_pct'
+ * Fetch the arcade gauntlet leaderboard (best banked run + furthest reached).
+ * @param {string} period - 'daily' | 'weekly' | 'monthly' | 'yearly' | 'all'
  */
-export async function fetchArcadeLeaderboard(period = 'all', orderBy = 'bankroll') {
-  const { data, error } = await supabase.rpc('get_arcade_leaderboard', {
-    p_period: period,
-    p_order_by: orderBy
-  });
+export async function fetchArcadeLeaderboard(period = 'daily') {
+  const { data, error } = await supabase.rpc('get_arcade_gauntlet_leaderboard', { p_period: period });
   if (error) {
     console.error('❌ Error fetching arcade leaderboard:', error);
     return [];
