@@ -1,6 +1,6 @@
 # Arcade Redesign — Rolling Bankroll + Earned Power-ups
 
-**Status:** 🔒 Design locked · Phase 1 in progress. Living doc — update phase
+**Status:** 🔒 Design locked · Phases 1–2 shipped. Living doc — update phase
 checkboxes as we ship.
 
 Arcade moves from "per-puzzle reset + banked × multiplier, endless" to a
@@ -83,9 +83,13 @@ Power-up-free; 3 guesses per puzzle; progression is the category badges.
 - [ ] **Phase 1 — Rolling economy + run-end + guess pool.** Server ✅ (rolling
       bankroll, $500 × streak, run-over on broke, applied). Client ✅ (HUD,
       run-over modal). TODO: carry-over guess pool (start 5) + daily 1-guess.
-- [ ] **Phase 2 — Earned power-ups + Hot Hand.** Solve counters (letters/vowels
-      bought, mistakes, won-by-guess, clean-streak); the 3 feat-based earns; Hot
-      Hand +$250 combo; trim tray to 3 + earned line.
+- [x] **Phase 2 — Earned power-ups + Hot Hand.** ✅ Solve counters (p_buys /
+      p_vowels / p_reveals / p_wrong_guess / p_combo per-puzzle, clean_streak
+      run-level); the 3 feat-based earns wired in `_arcade_resolve` (Blind→⚡,
+      Hot Streak→❤️, Consonant King→💎; most solves earn nothing); Hot Hand
+      +$250 per 3 correct letters in `arcade_buy_letter`; `arcade_use_powerup`
+      reworked to the 3 effects; tray + `powerups.js` trimmed to 3; "Earned …"
+      line in the solve modal.
 - [ ] **Phase 3 — UI polish.** HUD payout/streak, Hot Hand flash, run-over
       screen, leaderboard rename to peak/furthest.
 - [ ] **Phase 4 — Daily-pool recycle fallback.**
