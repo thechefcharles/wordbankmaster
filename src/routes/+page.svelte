@@ -24,6 +24,7 @@
   import FlipDigit from '$lib/components/FlipDigit.svelte';
   import Auth from '$lib/components/Auth.svelte';
   import Tutorial from '$lib/components/Tutorial.svelte';
+  import PowerupTray from '$lib/components/PowerupTray.svelte';
 
   export let data;
 
@@ -175,6 +176,9 @@
   $: arun = $gameStore.arcadeRun;
   $: arcadeComplete = !isDailyResult && arun?.state === 'complete';
   $: arcadeMult = ((arun?.multiplier ?? 100) / 100).toFixed(2);
+  // Power-up earned on this solve, and whether a Shield saved a bust (multiplier kept).
+  $: arcadeEarn = (!isDailyResult && resultWon && arun?.last_earn) ? powerupInfo(arun.last_earn) : null;
+  $: arcadeShielded = (!isDailyResult && !resultWon && !arcadeComplete && (arun?.multiplier ?? 100) > 100);
 
   let shareCopied = false;
   function buildShareText() {
@@ -609,6 +613,9 @@
       </div>
     </section>
 
+    <!-- 💎 Arcade power-up tray (earned this run) -->
+    <PowerupTray />
+
     <!-- 🎮 Solve / Cancel Buttons -->
     <section class="buttons-section">
       <GameButtons />
@@ -671,6 +678,10 @@
               <div class="result-medal">✅</div>
               <h2>Solved!</h2>
               <p class="result-sub">Puzzle {(arun?.position ?? 0) + 1}/{arun?.total} · next ×{arcadeMult}</p>
+            {:else if arcadeShielded}
+              <div class="result-medal">🔰</div>
+              <h2>Busted</h2>
+              <p class="result-sub">Shield saved your ×{arcadeMult}! — on to the next puzzle</p>
             {:else}
               <div class="result-medal">💥</div>
               <h2>Busted</h2>
@@ -682,6 +693,9 @@
             </div>
             {#if resultWon && !arcadeComplete && (arun?.last_gain ?? 0) > 0}
               <p class="arcade-gain">+${(arun?.last_gain ?? 0).toLocaleString()} this puzzle</p>
+            {/if}
+            {#if arcadeEarn}
+              <p class="arcade-earn">Earned {arcadeEarn.emoji} {arcadeEarn.name}!</p>
             {/if}
             <div class="result-actions">
               <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
@@ -742,6 +756,7 @@
   .ah-sub { font-size: 0.7rem; color: var(--text-faint); font-weight: 600; }
   .ah-label { font-size: 0.55rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
   .arcade-gain { font-family: var(--font-display); font-weight: 700; color: var(--brand-2); margin: -8px 0 14px; font-size: 1rem; }
+  .arcade-earn { font-family: var(--font-display); font-weight: 700; color: #fcd34d; margin: -6px 0 14px; font-size: 0.95rem; text-shadow: 0 0 14px rgba(251, 191, 36, 0.35); }
 
   .puzzle-meta {
     display: flex;
