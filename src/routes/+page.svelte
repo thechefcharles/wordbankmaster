@@ -7,8 +7,8 @@
   import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue } from '$lib/stores/GameStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { hasPlayedDailyToday, getUserBadges, getDailyStatus, getDailyGhost } from '$lib/stores/statsStore.js';
-  import { BADGES, badgeInfo } from '$lib/badges.js';
+  import { hasPlayedDailyToday, getUserBadges, getDailyStatus, getDailyGhost, getCategoryStats } from '$lib/stores/statsStore.js';
+  import BadgesModal from '$lib/components/BadgesModal.svelte';
   import { powerupInfo, modifierInfo } from '$lib/powerups.js';
   import {
     saveGameToLocalStorage,
@@ -318,6 +318,24 @@
     await freeplayContinue();
   }
 
+  // ----- Badges screen -----
+  let showBadges = false;
+  /** @type {{category: string, solves: number}[]} */
+  let badgeStats = [];
+  /** @type {string[]} */
+  let badgeEarned = [];
+  let badgesLoaded2 = false;
+  async function handleMenuBadges() {
+    const u = get(user);
+    if (!u?.id) return;
+    showBadges = true;
+    badgesLoaded2 = false;
+    const [stats, earned] = await Promise.all([getCategoryStats(), getUserBadges(u.id)]);
+    badgeStats = stats;
+    badgeEarned = earned;
+    badgesLoaded2 = true;
+  }
+
   function handleMenuLeaderboard() {
     goto('/leaderboard');
   }
@@ -333,22 +351,16 @@
 
   let showMyAccount = false;
   let showStreakMessage = false;
-  /** @type {string[]} */
-  let accountBadges = [];
-  let badgesLoaded = false;
   let accountStreak = 0;
   let accountFreezes = 0;
   async function handleMenuMyAccount() {
     showMyAccount = true;
-    badgesLoaded = false;
     const u = get(user);
     if (u?.id) {
-      const [badges, status] = await Promise.all([getUserBadges(u.id), getDailyStatus(u.id)]);
-      accountBadges = badges;
+      const status = await getDailyStatus(u.id);
       accountStreak = status.current_streak ?? 0;
       accountFreezes = status.streak_freezes ?? 0;
     }
-    badgesLoaded = true;
   }
   /** @param {KeyboardEvent} e */
   function handleEscape(e) {
@@ -474,7 +486,15 @@
           </span>
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 3" on:click={handleMenuLeaderboard}>
+        <button class="menu-card" style="--i: 3" on:click={handleMenuBadges}>
+          <span class="mc-icon">🏅</span>
+          <span class="mc-body">
+            <span class="mc-title">Badges</span>
+            <span class="mc-sub">Level up every category</span>
+          </span>
+          <span class="mc-arrow">→</span>
+        </button>
+        <button class="menu-card" style="--i: 4" on:click={handleMenuLeaderboard}>
           <span class="mc-icon">🏆</span>
           <span class="mc-body">
             <span class="mc-title">Leaderboard</span>
@@ -482,7 +502,7 @@
           </span>
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 4" on:click={handleMenuMyAccount}>
+        <button class="menu-card" style="--i: 5" on:click={handleMenuMyAccount}>
           <span class="mc-icon">👤</span>
           <span class="mc-body">
             <span class="mc-title">My Account</span>
@@ -492,6 +512,11 @@
         </button>
       </div>
     </div>
+
+    <!-- Badges screen -->
+    {#if showBadges}
+      <BadgesModal categoryStats={badgeStats} earnedBadges={badgeEarned} loaded={badgesLoaded2} on:close={() => showBadges = false} />
+    {/if}
 
     <!-- Free Play: category picker -->
     {#if showCategorySelect}
@@ -543,19 +568,7 @@
             </div>
           </div>
 
-          <div class="badges-section">
-            <p class="badges-title">Badges {#if badgesLoaded}<span class="badges-count">{accountBadges.length}/{Object.keys(BADGES).length}</span>{/if}</p>
-            <div class="badge-grid">
-              {#each Object.keys(BADGES) as id}
-                {@const earned = accountBadges.includes(id)}
-                <div class="badge {earned ? 'earned' : 'locked'}" title={badgeInfo(id).desc}>
-                  <span class="badge-emoji">{badgeInfo(id).emoji}</span>
-                  <span class="badge-name">{badgeInfo(id).name}</span>
-                </div>
-              {/each}
-            </div>
-          </div>
-
+          <button class="main-menu-btn ghost-btn" on:click={() => { showMyAccount = false; handleMenuBadges(); }}>🏅 View Badges</button>
           <button class="main-menu-btn" on:click={() => { showMyAccount = false; handleLogout(); }}>Log Out</button>
         </div>
       </div>
@@ -1000,6 +1013,12 @@
     transition: transform 0.15s var(--ease-spring), filter 0.2s;
   }
   .main-menu-btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
+  .main-menu-btn.ghost-btn {
+    background: var(--surface-2, rgba(255, 255, 255, 0.06));
+    color: var(--text);
+    border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16));
+    box-shadow: none;
+  }
   .main-menu-modal { text-align: center; }
   .main-menu-modal .main-menu-btn { margin-top: 1rem; }
 
@@ -1065,40 +1084,6 @@
     color: var(--text-faint);
   }
 
-  /* Badges + power-ups (My Account) */
-  .badges-section { margin: 18px 0 8px; }
-  .badges-title {
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: 0.85rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--text-faint);
-    margin: 0 0 10px;
-  }
-  .badges-count { color: var(--brand-2); margin-left: 4px; }
-  .badge-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-  .badge {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px;
-    border-radius: var(--r-md);
-    border: 1px solid var(--border);
-    background: var(--surface);
-    text-align: left;
-  }
-  .badge.earned {
-    border-color: rgba(163, 230, 53, 0.4);
-    background: linear-gradient(135deg, rgba(52, 211, 153, 0.12), rgba(163, 230, 53, 0.04));
-  }
-  .badge.locked { opacity: 0.4; filter: grayscale(0.8); }
-  .badge-emoji { font-size: 1.4rem; line-height: 1; }
-  .badge-name { font-size: 0.78rem; font-weight: 600; color: var(--text); }
   .streak-message {
     margin: 1rem 0 0 0;
     font-size: 1.05rem;

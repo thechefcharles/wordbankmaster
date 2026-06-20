@@ -74,6 +74,16 @@ export async function fetchDailyLeaderboard(period = 'daily', orderBy = 'score')
   return data ?? [];
 }
 
+/**
+ * All-time per-category solve counts for the caller.
+ * @returns {Promise<{category: string, solves: number}[]>}
+ */
+export async function getCategoryStats() {
+  const { data, error } = await supabase.rpc('get_category_stats');
+  if (error) { console.error('❌ get_category_stats error:', error); return []; }
+  return data ?? [];
+}
+
 /* ===== Free Play (unranked, pick-a-category) — return a masked board ===== */
 /** @param {string} category @returns {Promise<object|null>} */
 export async function freeplayStart(category) {
