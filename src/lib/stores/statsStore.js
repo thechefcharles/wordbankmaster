@@ -161,6 +161,12 @@ export async function arcadeNext() {
   if (error) { console.error('❌ arcade_next error:', error); return null; }
   return data;
 }
+/** Spend an earned power-up during the current run. @param {string} powerup @returns {Promise<any>} */
+export async function arcadeUsePowerup(powerup) {
+  const { data, error } = await supabase.rpc('arcade_use_powerup', { p_powerup: powerup });
+  if (error) { console.error('❌ arcade_use_powerup error:', error); return null; }
+  return data;
+}
 
 /** Whether the caller already has a session for today (drives the pre-game picker). */
 export async function dailySessionExists() {
