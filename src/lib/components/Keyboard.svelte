@@ -23,6 +23,19 @@
   const row2: string[] = ['A','S','D','F','G','H','J','K','L'];
   const row3: string[] = ['Z','X','C','V','B','N','M'];
 
+  // Effective per-letter prices after today's shared Daily Modifier (server matches this).
+  $: effCosts = (() => {
+    const m = $gameStore.gameMode === 'daily' ? ($gameStore.modifier ?? null) : null;
+    const out: Record<string, number> = {};
+    for (const k of Object.keys(letterCosts)) {
+      let c = letterCosts[k];
+      if (m === 'discount') c = Math.ceil(c * 0.75);
+      else if (m === 'vowel_vision' && 'AEIOU'.includes(k)) c = Math.ceil(c * 0.5);
+      out[k] = c;
+    }
+    return out;
+  })();
+
   type SelectedPurchase = { type: string; value?: string } | null;
   type LockedLetters = Record<string, unknown>;
   let selectedPurchase: SelectedPurchase = null;
@@ -32,9 +45,9 @@
   $: lockedLetters = ($gameStore.lockedLetters || {}) as LockedLetters;
   $: incorrectLetters = ($gameStore.incorrectLetters || []) as string[];
 
-  // 🔹 Disable unaffordable or incorrect keys
+  // 🔹 Disable unaffordable or incorrect keys (uses modifier-adjusted prices)
   $: disabledKeys = Object.keys(letterCosts).filter((letter: string) =>
-    (letterCosts[letter] ?? 0) > $gameStore.bankroll ||
+    (effCosts[letter] ?? 0) > $gameStore.bankroll ||
     incorrectLetters.includes(letter)
   );
 
@@ -143,7 +156,7 @@
         on:click={() => handleLetterClick(letter)}
       >
         <div class="letter">{letter}</div>
-        <div class="price">${letterCosts[letter] ?? 0}</div>
+        <div class="price">${effCosts[letter] ?? 0}</div>
       </button>
     {/each}
   </div>
@@ -167,7 +180,7 @@
         on:click={() => handleLetterClick(letter)}
       >
         <div class="letter">{letter}</div>
-        <div class="price">${letterCosts[letter] ?? 0}</div>
+        <div class="price">${effCosts[letter] ?? 0}</div>
       </button>
     {/each}
   </div>
@@ -191,7 +204,7 @@
         on:click={() => handleLetterClick(letter)}
       >
         <div class="letter">{letter}</div>
-        <div class="price">${letterCosts[letter] ?? 0}</div>
+        <div class="price">${effCosts[letter] ?? 0}</div>
       </button>
     {/each}
 

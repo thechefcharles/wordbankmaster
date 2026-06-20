@@ -14,3 +14,18 @@ export const POWERUPS = {
 export function powerupInfo(id) {
   return POWERUPS[id] || { emoji: '⚡', name: id, desc: '' };
 }
+
+// Daily Modifier — the single shared effect active for everyone on a given day.
+// Keys match the server _daily_modifier() pool. `blurb` is the short "twist" line.
+/** @type {Record<string, { emoji: string, name: string, blurb: string }>} */
+export const MODIFIERS = {
+  discount:     { emoji: '🏷️', name: 'Discount Day', blurb: 'Every letter is 25% off' },
+  vowel_vision: { emoji: '👁️', name: 'Vowel Vision', blurb: 'Vowels cost half price' },
+  extra_bank:   { emoji: '💰', name: 'Big Bank',      blurb: 'Start with an extra $250' },
+  insurance:    { emoji: '🛡️', name: 'Insured',       blurb: 'Your first wrong guess is free' }
+};
+
+/** @param {string} id */
+export function modifierInfo(id) {
+  return MODIFIERS[id] || null;
+}

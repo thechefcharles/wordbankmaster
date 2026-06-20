@@ -6,9 +6,9 @@
 
   import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue } from '$lib/stores/GameStore.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { hasPlayedDailyToday, getUserBadges, getDailyStatus, getUserPowerups, dailySessionExists, getDailyGhost } from '$lib/stores/statsStore.js';
+  import { hasPlayedDailyToday, getUserBadges, getDailyStatus, getUserPowerups, getDailyGhost } from '$lib/stores/statsStore.js';
   import { BADGES, badgeInfo } from '$lib/badges.js';
-  import { powerupInfo } from '$lib/powerups.js';
+  import { powerupInfo, modifierInfo } from '$lib/powerups.js';
   import {
     saveGameToLocalStorage,
     clearSavedGame,
@@ -252,13 +252,8 @@
     location.reload();
   };
 
-  /** Start daily: resume if in progress, else show "already played" or fetch new daily */
-  let showPowerupPicker = false;
-  /** @type {{powerup: string, count: number}[]} */
-  let pickerPowerups = [];
-  /** @type {Set<string>} */
-  let selectedPowerups = new Set();
-
+  /** Start daily: resume if in progress, else show "already played" or fetch new daily.
+   *  Daily has no personal power-ups — everyone shares the same Daily Modifier. */
   async function handleMenuDaily() {
     const currentUser = get(user);
     if (!currentUser?.id) return;
@@ -267,23 +262,12 @@
       showStreakMessage = true;
       return;
     }
-    // Fresh daily + owns pre-game power-ups -> let the player choose which to use.
-    const [exists, powerups] = await Promise.all([dailySessionExists(), getUserPowerups()]);
-    const pregame = powerups.filter(p => powerupInfo(p.powerup).pregame);
-    if (!exists && pregame.length > 0) {
-      pickerPowerups = pregame;
-      selectedPowerups = new Set();
-      showPowerupPicker = true;
-      return;
-    }
-    await startDaily([]);
+    await startDaily();
   }
 
-  /** @param {string[]} powerups */
-  async function startDaily(powerups) {
-    showPowerupPicker = false;
+  async function startDaily() {
     localStorage.setItem('gameMode', 'daily');
-    const ok = await fetchDailyGame(powerups);
+    const ok = await fetchDailyGame();
     if (ok) {
       hasInitialized = true;
       showMainMenu = false;
@@ -292,12 +276,8 @@
     }
   }
 
-  /** @param {string} id */
-  function togglePowerup(id) {
-    if (selectedPowerups.has(id)) selectedPowerups.delete(id);
-    else selectedPowerups.add(id);
-    selectedPowerups = selectedPowerups; // trigger reactivity
-  }
+  // Today's shared Daily Modifier banner (id lives in the game store, set by fetchDailyGame).
+  $: dailyMod = ($gameStore.gameMode === 'daily' && $gameStore.modifier) ? modifierInfo($gameStore.modifier) : null;
 
   /** Start or resume today's server-authoritative arcade gauntlet run. */
   async function handleMenuArcade() {
@@ -496,36 +476,6 @@
         </button>
       </div>
     </div>
-    <!-- Pre-game power-up picker (fresh daily + owned pre-game power-ups) -->
-    {#if showPowerupPicker}
-      <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Use power-ups">
-        <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showPowerupPicker = false}></button>
-        <div class="modal-content main-menu-modal">
-          <button class="close-btn" on:click={() => showPowerupPicker = false}>❌</button>
-          <h2>Use a power-up?</h2>
-          <p class="picker-sub">Tap to apply before today's daily. They're consumed when you start.</p>
-          <div class="picker-list">
-            {#each pickerPowerups as pu}
-              <button
-                class="picker-item {selectedPowerups.has(pu.powerup) ? 'on' : ''}"
-                on:click={() => togglePowerup(pu.powerup)}
-              >
-                <span class="pi-emoji">{powerupInfo(pu.powerup).emoji}</span>
-                <span class="pi-body">
-                  <span class="pi-name">{powerupInfo(pu.powerup).name} <span class="pi-count">×{pu.count}</span></span>
-                  <span class="pi-desc">{powerupInfo(pu.powerup).desc}</span>
-                </span>
-                <span class="pi-check">{selectedPowerups.has(pu.powerup) ? '✓' : ''}</span>
-              </button>
-            {/each}
-          </div>
-          <div class="picker-actions">
-            <button class="btn-ghost" on:click={() => startDaily([])}>Skip</button>
-            <button class="main-menu-btn" on:click={() => startDaily([...selectedPowerups])}>Start{#if selectedPowerups.size > 0} ({selectedPowerups.size}){/if}</button>
-          </div>
-        </div>
-      </div>
-    {/if}
 
     <!-- Streak message (when Daily is disabled and user taps it) -->
     {#if showStreakMessage}
@@ -626,6 +576,14 @@
       {#if $gameStore.category}<span class="category-chip">{$gameStore.category}</span>{/if}
       {#if $gameStore.subcategory}<span class="subcat-chip">{$gameStore.subcategory}</span>{/if}
     </div>
+
+    <!-- ✨ Today's shared Daily Modifier (same for every player) -->
+    {#if dailyMod}
+      <div class="daily-modifier" title={dailyMod.blurb}>
+        <span class="dm-emoji">{dailyMod.emoji}</span>
+        <span class="dm-text"><span class="dm-name">{dailyMod.name}</span><span class="dm-blurb">{dailyMod.blurb}</span></span>
+      </div>
+    {/if}
 
 
     <!-- 🔤 Phrase Display -->
@@ -810,6 +768,28 @@
     padding: 6px 13px;
     border-radius: var(--r-pill);
   }
+
+  .daily-modifier {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: -10px auto 20px;
+    padding: 8px 16px;
+    border-radius: var(--r-pill, 999px);
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(163, 230, 53, 0.1));
+    border: 1px solid rgba(251, 191, 36, 0.32);
+    box-shadow: 0 0 18px rgba(251, 191, 36, 0.12);
+  }
+  .dm-emoji { font-size: 1.25rem; line-height: 1; }
+  .dm-text { display: flex; flex-direction: column; text-align: left; line-height: 1.2; }
+  .dm-name {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: #fcd34d;
+    letter-spacing: 0.01em;
+  }
+  .dm-blurb { font-family: var(--font-ui); font-size: 0.7rem; color: var(--text-muted); }
 
   .phrase-section {
     width: 100%;
@@ -1023,37 +1003,6 @@
     text-transform: uppercase;
     color: var(--text-faint);
   }
-
-  /* Pre-game power-up picker */
-  .picker-sub { font-size: 0.85rem; color: var(--text-muted); margin: 0 0 14px; }
-  .picker-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-  .picker-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    text-align: left;
-    padding: 12px 14px;
-    border-radius: var(--r-md);
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
-    cursor: pointer;
-    transition: background 0.18s, border-color 0.18s, transform 0.15s var(--ease-spring);
-  }
-  .picker-item:hover { transform: translateY(-1px); border-color: var(--border-strong); }
-  .picker-item.on {
-    border-color: rgba(163, 230, 53, 0.5);
-    background: linear-gradient(135deg, rgba(52, 211, 153, 0.14), rgba(163, 230, 53, 0.05));
-    box-shadow: var(--glow-brand);
-  }
-  .pi-emoji { font-size: 1.5rem; line-height: 1; }
-  .pi-body { display: flex; flex-direction: column; gap: 2px; flex: 1; }
-  .pi-name { font-family: var(--font-display); font-weight: 600; font-size: 0.98rem; }
-  .pi-count { color: var(--brand-2); }
-  .pi-desc { font-size: 0.76rem; color: var(--text-muted); }
-  .pi-check { color: var(--brand-2); font-weight: 700; font-size: 1.1rem; width: 16px; }
-  .picker-actions { display: flex; gap: 10px; }
-  .picker-actions > * { flex: 1; margin-top: 0; }
 
   /* Badges + power-ups (My Account) */
   .badges-section { margin: 18px 0 8px; }

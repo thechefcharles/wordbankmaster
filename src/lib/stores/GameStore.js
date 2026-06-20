@@ -3,7 +3,7 @@
 import { writable, get } from 'svelte/store';
 import confetti from 'canvas-confetti';
 import { fx } from '$lib/sound.js';
-import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, getUserPowerups, dailyUseFreeReveal } from '$lib/stores/statsStore.js';
+import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, getDailyModifier } from '$lib/stores/statsStore.js';
 import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNext } from '$lib/stores/statsStore.js';
 
 /* ================================
@@ -33,7 +33,8 @@ import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNe
  *   subcategory: string,
  *   gameMode: string,
  *   freeReveals?: number,
- *   arcadeRun?: any
+ *   arcadeRun?: any,
+ *   modifier?: string | null
  * }} GameState
  */
 
@@ -67,7 +68,8 @@ export const gameStore = writable(/** @type {GameState} */ ({
   subcategory: '',
   gameMode: 'daily', // 'daily' | 'arcade'
   freeReveals: 0, // owned Free Reveal power-ups (daily)
-  arcadeRun: null // arcade gauntlet run state { state, banked, multiplier, position, total, furthest, last_gain }
+  arcadeRun: null, // arcade gauntlet run state { state, banked, multiplier, position, total, furthest, last_gain }
+  modifier: null // today's shared Daily Modifier id (daily only)
 }));
 
 /* ================================
@@ -200,7 +202,8 @@ function reconcileArcadeBoard(resp) {
     gameMode: 'arcade',
     gameState: gs,
     arcadeRun: run,
-    freeReveals: 0
+    freeReveals: 0,
+    modifier: null
   }));
   if (run.state === 'solved' || run.state === 'complete') {
     setTimeout(() => launchConfetti(), 300);
@@ -281,18 +284,15 @@ async function confirmPurchaseDaily(state) {
   dailyInFlight = true;
   try {
     let board = null;
-    let usedFree = false;
     if (purchase.type === 'letter') {
       board = await dailyBuyLetter(purchase.value ?? '');
     } else if (purchase.type === 'hint') {
-      // Reveal uses a Free Reveal power-up if you own one; otherwise it costs $150.
-      if ((state.freeReveals || 0) > 0) { board = await dailyUseFreeReveal(); usedFree = true; }
-      else board = await dailyReveal();
+      // Daily has no personal power-ups — Reveal always costs $150 (fair for all).
+      board = await dailyReveal();
     }
 
     if (board) {
       reconcileDailyBoard(board);
-      if (usedFree) gameStore.update(s => ({ ...s, freeReveals: Math.max(0, (s.freeReveals || 0) - 1) }));
     } else {
       gameStore.update(s => ({ ...s, selectedPurchase: null, gameState: 'default' }));
     }
@@ -507,23 +507,20 @@ export function submitGuess() {
  * fetchDailyGame - Starts or resumes today's server-authoritative daily session.
  * The phrase is held server-side; the client only ever receives a masked board.
  * No localStorage: the server is the source of truth (and prevents replays).
+ * The day's shared modifier is applied server-side at start (no client power-ups).
  */
-/**
- * @param {string[]} [powerups] - pre-game power-ups to activate (applied only on a fresh session)
- */
-export async function fetchDailyGame(powerups = []) {
+export async function fetchDailyGame() {
   try {
-    const board = await dailyStart(powerups);
+    const board = await dailyStart();
     if (!board) {
       console.error('❌ daily_start returned no board');
       return false;
     }
     reconcileDailyBoard(board);
-    // Load Free Reveal inventory for the in-game button.
+    // Today's shared modifier (same for everyone) — drives the banner + key pricing.
     try {
-      const pus = await getUserPowerups();
-      const fr = pus.find(p => p.powerup === 'free_reveal')?.count ?? 0;
-      gameStore.update(s => ({ ...s, freeReveals: fr }));
+      const mod = await getDailyModifier();
+      gameStore.update(s => ({ ...s, modifier: mod }));
     } catch { /* non-fatal */ }
     console.log('✅ Daily session started/resumed');
     return true;

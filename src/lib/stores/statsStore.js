@@ -75,6 +75,16 @@ export async function fetchDailyLeaderboard(period = 'daily', orderBy = 'score')
 }
 
 /**
+ * Today's shared Daily Modifier id (same for every player; rotates by date).
+ * @returns {Promise<string|null>}
+ */
+export async function getDailyModifier() {
+  const { data, error } = await supabase.rpc('get_daily_modifier');
+  if (error) { console.error('❌ get_daily_modifier error:', error); return null; }
+  return data ?? null;
+}
+
+/**
  * "Ghost of yesterday" — today's daily result vs the caller's own result
  * yesterday, plus the share of today's field they beat.
  * @returns {Promise<null | { yesterday_played: boolean, yesterday_banked: number|null, yesterday_won: boolean, yesterday_score: number|null, today_banked: number|null, today_score: number|null, today_players: number, today_percentile: number|null }>}
