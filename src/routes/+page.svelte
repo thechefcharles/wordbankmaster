@@ -4,7 +4,8 @@
   import { supabase } from '$lib/supabaseClient';
   import { get } from 'svelte/store';
 
-  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue } from '$lib/stores/GameStore.js';
+  import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
   import { hasPlayedDailyToday, getUserBadges, getDailyStatus, getDailyGhost } from '$lib/stores/statsStore.js';
   import { BADGES, badgeInfo } from '$lib/badges.js';
@@ -123,6 +124,9 @@
       fetchArcadeGame().then((ok) => {
         if (!ok) initError = "Arcade failed to load.";
       });
+    } else if (gameMode === 'freeplay') {
+      // Free Play isn't deep-link restorable — send back to the menu to re-pick.
+      showMainMenu = true;
     } else {
       fetchDailyGame().then((ok) => {
         if (!ok) initError = "Daily puzzle failed to load.";
@@ -169,6 +173,7 @@
   }
   $: resultWon = $gameStore.gameState === 'won';
   $: isDailyResult = $gameStore.gameMode === 'daily';
+  $: isFreeplay = $gameStore.gameMode === 'freeplay';
   $: resultBankroll = Math.max(0, Math.floor($gameStore.bankroll || 0));
   $: resultMedal = medalFor(resultBankroll, resultWon);
   // Arcade gauntlet run state
@@ -286,6 +291,31 @@
     showResultModal = false;
     hasTriggeredModal = false;
     await arcadeContinue();
+  }
+
+  // ----- Free Play (unranked, pick a category) -----
+  let showCategorySelect = false;
+  function handleMenuFreeplay() {
+    if (!get(user)?.id) return;
+    showCategorySelect = true;
+  }
+  /** @param {string} category */
+  async function startFreeplay(category) {
+    showCategorySelect = false;
+    localStorage.setItem('gameMode', 'freeplay');
+    const ok = await fetchFreeplayGame(category);
+    if (ok) {
+      hasInitialized = true;
+      showMainMenu = false;
+    } else {
+      initError = 'Free Play failed to load.';
+    }
+  }
+  // After solving / going broke in Free Play, load the next puzzle in the category.
+  async function handleFreeplayContinue() {
+    showResultModal = false;
+    hasTriggeredModal = false;
+    await freeplayContinue();
   }
 
   function handleMenuLeaderboard() {
@@ -436,7 +466,15 @@
           </span>
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 2" on:click={handleMenuLeaderboard}>
+        <button class="menu-card" style="--i: 2" on:click={handleMenuFreeplay}>
+          <span class="mc-icon">🎲</span>
+          <span class="mc-body">
+            <span class="mc-title">Free Play</span>
+            <span class="mc-sub">Pick a category · unranked</span>
+          </span>
+          <span class="mc-arrow">→</span>
+        </button>
+        <button class="menu-card" style="--i: 3" on:click={handleMenuLeaderboard}>
           <span class="mc-icon">🏆</span>
           <span class="mc-body">
             <span class="mc-title">Leaderboard</span>
@@ -444,7 +482,7 @@
           </span>
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 3" on:click={handleMenuMyAccount}>
+        <button class="menu-card" style="--i: 4" on:click={handleMenuMyAccount}>
           <span class="mc-icon">👤</span>
           <span class="mc-body">
             <span class="mc-title">My Account</span>
@@ -454,6 +492,26 @@
         </button>
       </div>
     </div>
+
+    <!-- Free Play: category picker -->
+    {#if showCategorySelect}
+      <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Pick a category">
+        <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showCategorySelect = false}></button>
+        <div class="modal-content main-menu-modal cat-modal">
+          <button class="close-btn" on:click={() => showCategorySelect = false}>❌</button>
+          <h2>Free Play</h2>
+          <p class="cat-sub">Pick a category — solve as many as you like. Unranked.</p>
+          <div class="cat-grid">
+            {#each CATEGORIES as c}
+              <button class="cat-tile" on:click={() => startFreeplay(c.value)}>
+                <span class="cat-emoji">{c.emoji}</span>
+                <span class="cat-label">{c.label}</span>
+              </button>
+            {/each}
+          </div>
+        </div>
+      </div>
+    {/if}
 
     <!-- Streak message (when Daily is disabled and user taps it) -->
     {#if showStreakMessage}
@@ -627,6 +685,21 @@
             <div class="result-actions">
               <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
               <button class="next-puzzle-button" on:click={goToDailyLeaderboard}>Leaderboard</button>
+            </div>
+          {:else if isFreeplay}
+            <!-- Free Play transition (unranked) -->
+            {#if resultWon}
+              <div class="result-medal">✅</div>
+              <h2>Solved!</h2>
+              <p class="result-sub">{$gameStore.currentPhrase}</p>
+            {:else}
+              <div class="result-medal">💸</div>
+              <h2>Out of Cash</h2>
+              <p class="result-sub">The answer was {$gameStore.currentPhrase}</p>
+            {/if}
+            <div class="result-actions">
+              <button class="share-btn" on:click={() => { showResultModal = false; showCategorySelect = true; }}>Categories</button>
+              <button class="next-puzzle-button" on:click={handleFreeplayContinue}>Next</button>
             </div>
           {:else}
             <!-- Arcade Press-Your-Luck transition (endless — runs never "complete") -->
@@ -929,6 +1002,38 @@
   .main-menu-btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
   .main-menu-modal { text-align: center; }
   .main-menu-modal .main-menu-btn { margin-top: 1rem; }
+
+  /* Free Play category picker */
+  .cat-modal { max-width: 420px; }
+  .cat-sub { font-size: 0.85rem; color: var(--text-muted); margin: 0 0 16px; }
+  .cat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .cat-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 8px;
+    border-radius: var(--r-md, 14px);
+    background: var(--surface, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+    color: var(--text);
+    cursor: pointer;
+    transition: transform 0.15s var(--ease-spring, ease), border-color 0.2s, background 0.2s;
+  }
+  .cat-tile:hover { transform: translateY(-2px); border-color: rgba(163, 230, 53, 0.5); background: var(--surface-2, rgba(255, 255, 255, 0.07)); }
+  .cat-tile:active { transform: scale(0.97); }
+  .cat-emoji { font-size: 1.6rem; line-height: 1; }
+  .cat-label {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.82rem;
+    text-align: center;
+    line-height: 1.1;
+  }
 
   /* Streak + freeze chips (My Account) */
   .account-stats {

@@ -68,3 +68,17 @@ INSERT INTO public.daily_puzzles (phrase, category, subcategory, clue) VALUES
 ('Ted Lasso','Movies & TV 🎬','Comedy','An American coaches British soccer on pure relentless optimism.'),
 ('Arrested Development','Movies & TV 🎬','Comedy','A wealthy family loses everything except their terrible decisions.'),
 ('The Mandalorian','Movies & TV 🎬','Sci-Fi','A lone bounty hunter goes soft for a very small green boss.');
+
+-- ---- One sample per remaining category (placeholders until each is filled to ~50)
+INSERT INTO public.daily_puzzles (phrase, category, subcategory, clue) VALUES
+('Bohemian Rhapsody','Music 🎵','Rock','Six minutes of opera, headbanging, and is this the real life?'),
+('Albert Einstein','Famous People 🌟','Science','Wild hair, wilder physics, and a tongue out for the camera.'),
+('Chicken Parmesan','Food & Drink 🍔','Italian','Breaded, fried, and smothered in sauce and cheese. Comfort on a plate.'),
+('The Eiffel Tower','Places & Travel ✈️','Landmarks','Parisians once hated this iron giant; now everyone proposes under it.'),
+('Hail Mary','Sports 🏆','Football','A desperate last-second heave and a prayer into the end zone.'),
+('Bite the Bullet','Phrases & Sayings 🗣️','Idioms','Grit your teeth and just get the painful thing over with.'),
+('The Solar System','Science & Nature 🔬','Space','Eight planets, one star, and a dwarf we all still feel bad about.'),
+('Sherlock Holmes','Books & Characters 📚','Mystery','A pipe, a violin, and a deduction that makes everyone feel slow.'),
+('Donkey Kong','Video Games 🎮','Retro','A barrel-tossing ape, a trapped girl, and a very determined plumber.'),
+('Coca Cola','Brands & Logos 🏷️','Drinks','A secret recipe, a red can, and the most famous fizz on Earth.'),
+('Artificial Intelligence','Tech & Internet 💻','Tech','Machines that learn, chat, and occasionally just make things up.');
