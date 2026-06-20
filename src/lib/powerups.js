@@ -1,18 +1,12 @@
-// Power-up catalog. Keys match the server ids.
-// `armed`: an effect that arms on the CURRENT puzzle (shown as active). Otherwise
-// it fires instantly when used. Used by the arcade tray + active-effect badges.
-/** @type {Record<string, { emoji: string, name: string, desc: string, armed?: boolean }>} */
+// Power-up catalog. Keys match the server ids. Arcade earns exactly 3, each by a
+// special feat (most solves earn nothing). `armed`: arms on the CURRENT puzzle
+// (shown as ON). Otherwise it fires instantly when used. `feat`: the move that
+// earns it (shown in the solve modal so players learn the feats).
+/** @type {Record<string, { emoji: string, name: string, desc: string, feat: string, armed?: boolean }>} */
 export const POWERUPS = {
-  free_reveal:     { emoji: '🎟️', name: 'Free Reveal',     desc: 'One free smart reveal (no $ charge)' },
-  extra_bank:      { emoji: '💰', name: '+$250',           desc: 'Add $250 to your bankroll now' },
-  discount:        { emoji: '🏷️', name: 'Discount',        desc: 'All letters −25% this puzzle', armed: true },
-  insurance:       { emoji: '🛡️', name: 'Insurance',       desc: 'Your first wrong guess is free', armed: true },
-  vowel_vision:    { emoji: '👁️', name: 'Vowel Vision',    desc: 'Vowels cost half this puzzle', armed: true },
-  double_payout:   { emoji: '💎', name: 'Double Payout',   desc: 'Bank 2× on this puzzle', armed: true },
-  multiplier_boost:{ emoji: '⚡', name: 'Multiplier Boost', desc: '+0.5× to your multiplier now' },
-  shield:          { emoji: '🔰', name: 'Shield',          desc: 'A bust here keeps your multiplier', armed: true },
-  skip:            { emoji: '⏭️', name: 'Skip',            desc: 'Skip this puzzle, keep your multiplier' },
-  extra_try:       { emoji: '❤️', name: 'Extra Try',       desc: '+1 solve attempt' }
+  multiplier_boost:{ emoji: '⚡', name: 'Multiplier Boost', desc: '+0.5× to your streak now',     feat: 'Blind Solve' },
+  double_payout:   { emoji: '💎', name: 'Double Payout',   desc: 'Next solve pays 2×', armed: true, feat: 'Consonant King' },
+  extra_guess:     { emoji: '❤️', name: 'Extra Guess',     desc: '+1 to your guess pool',         feat: 'Hot Streak' }
 };
 
 /** @param {string} id */

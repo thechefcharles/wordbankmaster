@@ -5,6 +5,7 @@
   import { get } from 'svelte/store';
 
   import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue } from '$lib/stores/GameStore.js';
+  import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
   import { hasPlayedDailyToday, getDailyStatus, getDailyGhost } from '$lib/stores/statsStore.js';
@@ -701,6 +702,10 @@
               <div class="result-medal">✅</div>
               <h2>Solved! +${(arun?.last_gain ?? 0).toLocaleString()}</h2>
               <p class="result-sub">Bankroll ${resultBankroll.toLocaleString()} · streak ×{arcadeMult}</p>
+              {#if arun?.last_earn}
+                {@const earned = powerupInfo(arun.last_earn)}
+                <p class="arcade-earn">Earned {earned.emoji} {earned.name} — {earned.feat}!</p>
+              {/if}
               <div class="result-actions">
                 <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
                 <button class="next-puzzle-button" on:click={handleArcadeContinue}>Continue</button>
@@ -769,6 +774,12 @@
   .ah-gold { color: #fcd34d; }
   .ah-label { font-size: 0.55rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
   .arcade-gain { font-family: var(--font-display); font-weight: 700; color: var(--brand-2); margin: -8px 0 14px; font-size: 1rem; }
+  .arcade-earn {
+    font-family: var(--font-display); font-weight: 700; font-size: 0.95rem;
+    color: #fcd34d; margin: 10px auto 0; padding: 7px 14px;
+    background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.4);
+    border-radius: 999px; display: inline-block;
+  }
   .arcade-earn { font-family: var(--font-display); font-weight: 700; color: #fcd34d; margin: -6px 0 14px; font-size: 0.95rem; text-shadow: 0 0 14px rgba(251, 191, 36, 0.35); }
 
   .puzzle-meta {

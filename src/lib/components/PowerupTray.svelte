@@ -1,6 +1,6 @@
 <script>
-  // Arcade-only: the run's earned power-ups, tappable to spend. Armed effects
-  // (discount, shield, double_payout…) show as active and can't be re-armed.
+  // Arcade-only: the run's earned power-ups, tappable to spend. The armed effect
+  // (Double Payout) shows as ON and can't be re-armed.
   import { gameStore, useArcadePowerup } from '$lib/stores/GameStore.js';
   import { powerupInfo } from '$lib/powerups.js';
   import { fx } from '$lib/sound.js';
