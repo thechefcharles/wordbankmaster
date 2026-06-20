@@ -113,19 +113,21 @@ BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'arcade_next: not authenticated'; END IF;
   SELECT * INTO r FROM public.arcade_runs WHERE user_id = v_uid AND run_date = CURRENT_DATE FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'arcade_next: no run'; END IF;
-  IF r.state = 'solved' THEN
+
+  -- Both a solve and a bust move on to the next rung (you never replay a
+  -- puzzle whose answer you've already seen). The only difference is the
+  -- multiplier: grown on solve, reset to x1 on bust in _arcade_resolve.
+  IF r.state IN ('solved', 'busted') THEN
     IF r.position + 1 >= public._arcade_ladder_size() THEN
-      UPDATE public.arcade_runs SET state = 'complete', updated_at = NOW() WHERE user_id = v_uid AND run_date = CURRENT_DATE;
+      UPDATE public.arcade_runs SET state = 'complete', updated_at = NOW()
+      WHERE user_id = v_uid AND run_date = CURRENT_DATE;
     ELSE
       v_next := public._arcade_puzzle_at(r.position + 1);
       UPDATE public.arcade_runs SET position = position + 1, puzzle_id = v_next, bankroll = 1000,
         guesses_remaining = 3, revealed_positions = '{}', incorrect_letters = '{}', active_powerups = '{}',
-        last_gain = 0, state = 'active', updated_at = NOW() WHERE user_id = v_uid AND run_date = CURRENT_DATE;
+        last_gain = 0, state = 'active', updated_at = NOW()
+      WHERE user_id = v_uid AND run_date = CURRENT_DATE;
     END IF;
-  ELSIF r.state = 'busted' THEN
-    UPDATE public.arcade_runs SET bankroll = 1000, guesses_remaining = 3, revealed_positions = '{}',
-      incorrect_letters = '{}', active_powerups = '{}', state = 'active', updated_at = NOW()
-    WHERE user_id = v_uid AND run_date = CURRENT_DATE;
   END IF;
   RETURN public._arcade_response(v_uid);
 END;

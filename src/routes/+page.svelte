@@ -716,7 +716,7 @@
             {:else}
               <div class="result-medal">💥</div>
               <h2>Busted</h2>
-              <p class="result-sub">Multiplier reset to ×1 — retry this puzzle</p>
+              <p class="result-sub">Multiplier reset to ×1 — on to the next puzzle</p>
             {/if}
             <div class="result-bankroll">
               <span class="rb-label">Total Banked</span>
@@ -730,7 +730,7 @@
               {#if arcadeComplete}
                 <button class="next-puzzle-button" on:click={() => { showResultModal = false; goToMainMenu(); }}>Done</button>
               {:else}
-                <button class="next-puzzle-button" on:click={handleArcadeContinue}>{resultWon ? 'Continue' : 'Try Again'}</button>
+                <button class="next-puzzle-button" on:click={handleArcadeContinue}>{resultWon ? 'Continue' : 'Next Puzzle'}</button>
               {/if}
             </div>
           {/if}
