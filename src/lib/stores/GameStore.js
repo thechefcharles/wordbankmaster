@@ -3,7 +3,7 @@
 import { writable, get } from 'svelte/store';
 import confetti from 'canvas-confetti';
 import { fx } from '$lib/sound.js';
-import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, getDailyModifier } from '$lib/stores/statsStore.js';
+import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, getDailyModifier, getDailyClue, getArcadeClue } from '$lib/stores/statsStore.js';
 import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNext, arcadeUsePowerup } from '$lib/stores/statsStore.js';
 
 /* ================================
@@ -34,7 +34,8 @@ import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNe
  *   gameMode: string,
  *   freeReveals?: number,
  *   arcadeRun?: any,
- *   modifier?: string | null
+ *   modifier?: string | null,
+ *   clue?: string | null
  * }} GameState
  */
 
@@ -69,7 +70,8 @@ export const gameStore = writable(/** @type {GameState} */ ({
   gameMode: 'daily', // 'daily' | 'arcade'
   freeReveals: 0, // owned Free Reveal power-ups (daily)
   arcadeRun: null, // arcade gauntlet run state { state, banked, multiplier, position, total, furthest, last_gain }
-  modifier: null // today's shared Daily Modifier id (daily only)
+  modifier: null, // today's shared Daily Modifier id (daily only)
+  clue: null // witty one-line hint for the current puzzle
 }));
 
 /* ================================
@@ -248,12 +250,21 @@ async function submitGuessArcade(state) {
   }
 }
 
+/** Refresh the clue for the current arcade puzzle (changes each rung). */
+async function refreshArcadeClue() {
+  try {
+    const clue = await getArcadeClue();
+    gameStore.update(s => ({ ...s, clue }));
+  } catch { /* non-fatal */ }
+}
+
 /** Start or resume today's arcade gauntlet. */
 export async function fetchArcadeGame() {
   try {
     const resp = await arcadeStart();
     if (!resp) { console.error('❌ arcade_start returned nothing'); return false; }
     reconcileArcadeBoard(resp);
+    await refreshArcadeClue();
     return true;
   } catch (err) {
     console.error('❌ Error starting arcade:', err instanceof Error ? err.message : String(err));
@@ -267,7 +278,7 @@ export async function arcadeContinue() {
   dailyInFlight = true;
   try {
     const resp = await arcadeNext();
-    if (resp) reconcileArcadeBoard(resp);
+    if (resp) { reconcileArcadeBoard(resp); await refreshArcadeClue(); }
   } finally {
     dailyInFlight = false;
   }
@@ -531,8 +542,8 @@ export async function fetchDailyGame() {
     reconcileDailyBoard(board);
     // Today's shared modifier (same for everyone) — drives the banner + key pricing.
     try {
-      const mod = await getDailyModifier();
-      gameStore.update(s => ({ ...s, modifier: mod }));
+      const [mod, clue] = await Promise.all([getDailyModifier(), getDailyClue()]);
+      gameStore.update(s => ({ ...s, modifier: mod, clue }));
     } catch { /* non-fatal */ }
     console.log('✅ Daily session started/resumed');
     return true;

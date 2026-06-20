@@ -74,6 +74,20 @@ export async function fetchDailyLeaderboard(period = 'daily', orderBy = 'score')
   return data ?? [];
 }
 
+/** Witty clue for the caller's current daily puzzle. @returns {Promise<string|null>} */
+export async function getDailyClue() {
+  const { data, error } = await supabase.rpc('daily_clue');
+  if (error) { console.error('❌ daily_clue error:', error); return null; }
+  return data ?? null;
+}
+
+/** Witty clue for the caller's current arcade puzzle. @returns {Promise<string|null>} */
+export async function getArcadeClue() {
+  const { data, error } = await supabase.rpc('arcade_clue');
+  if (error) { console.error('❌ arcade_clue error:', error); return null; }
+  return data ?? null;
+}
+
 /**
  * Today's shared Daily Modifier id (same for every player; rotates by date).
  * @returns {Promise<string|null>}
