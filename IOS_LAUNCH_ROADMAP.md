@@ -99,6 +99,9 @@ team (this sets the provisioning automatically). Bundle id is `com.wordbank.app`
 *Pulled out of the critical path per decision (2026-06): get to testers first.*
 
 **Store-submission compliance** (needed for public App Store, not for TestFlight):
+- [ ] **Re-enable Supabase email confirmation** before public launch (turned OFF
+      2026-06 for frictionless beta signup). Critical before the sweepstakes —
+      verified emails = anti-fraud + account recovery + prize eligibility.
 - [ ] **Sign in with Apple** — required *if/when* we re-add Google or other social login. [4.8]
 - [ ] **In-app account deletion** — required for sign-up apps. [5.1.1(v)] Flow +
       server RPC purging profile/sessions/results.
