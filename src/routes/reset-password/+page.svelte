@@ -8,39 +8,39 @@
   let message = '';
   let isTokenReady = false;
   let success = false;
+  // A one-time recovery token (token_hash) from the email link. We DON'T verify
+  // it on load — email scanners/prefetchers GET links and would burn the
+  // one-time token. We hold it and verify only when the user submits the form.
+  let tokenHash = '';
+  let otpType = '';
 
   onMount(() => {
-    // Supabase passes errors (expired/used link) back as query params.
     const url = new URL(window.location.href);
+
+    // Supabase passes errors (expired/used link) back as query params.
     const errDesc = url.searchParams.get('error_description');
     if (errDesc) {
       message = `⛔ ${decodeURIComponent(errDesc.replace(/\+/g, ' '))}`;
       return;
     }
 
-    let settled = false;
-    const ready = () => { settled = true; isTokenReady = true; message = ''; };
-
-    // Fallback: if the email template links here directly with a token_hash
-    // (instead of via /auth/confirm), verify it client-side. token_hash needs no
-    // local code verifier, so this works cross-device too.
-    const tokenHash = url.searchParams.get('token_hash');
-    const otpType = url.searchParams.get('type');
+    // Recovery link landed here directly with a token_hash → show the form now,
+    // verify on submit (prefetch-safe, no local code verifier, works cross-device).
+    tokenHash = url.searchParams.get('token_hash') ?? '';
+    otpType = url.searchParams.get('type') ?? '';
     if (tokenHash && otpType) {
-      supabase.auth.verifyOtp({ token_hash: tokenHash, type: /** @type {any} */ (otpType) })
-        .then(({ error }) => {
-          if (error) message = `⛔ ${error.message}`;
-          else ready();
-        });
+      isTokenReady = true;
       return;
     }
 
-    // Otherwise the session was already established (e.g. by /auth/confirm).
+    // Otherwise a session was already established (e.g. via /auth/confirm, or the
+    // user is signed in) — surface the form once we see it.
+    let settled = false;
+    const ready = () => { settled = true; isTokenReady = true; message = ''; };
     supabase.auth.getSession().then(({ data }) => { if (data.session) ready(); });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) ready();
     });
-
     const timer = setTimeout(() => {
       if (!settled) message = '⛔ This reset link is invalid or has expired. Please request a new one.';
     }, 3000);
@@ -59,6 +59,20 @@
       message = '❌ Passwords do not match.';
       success = false;
       return;
+    }
+
+    // Verify the one-time token now (deferred from page load). This establishes
+    // the recovery session; if the link is expired/used, the user finds out here.
+    if (tokenHash && otpType) {
+      const { error: verifyErr } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash, type: /** @type {any} */ (otpType)
+      });
+      if (verifyErr) {
+        message = `⛔ ${verifyErr.message}`;
+        success = false;
+        return;
+      }
+      tokenHash = ''; // consumed
     }
 
     console.log("🔐 Attempting password update...");
