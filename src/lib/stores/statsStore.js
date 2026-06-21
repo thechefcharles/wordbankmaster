@@ -76,6 +76,27 @@ export async function getDailyQuests() {
   };
 }
 
+/** My shareable friend code (generated on first call). @returns {Promise<string|null>} */
+export async function getMyFriendCode() {
+  const { data, error } = await supabase.rpc('get_my_friend_code');
+  if (error) { console.error('❌ get_my_friend_code:', error); return null; }
+  return data ?? null;
+}
+
+/** Add a friend by code. @param {string} code @returns {Promise<{ok:boolean, reason?:string, friend_name?:string}>} */
+export async function addFriend(code) {
+  const { data, error } = await supabase.rpc('add_friend', { p_code: code });
+  if (error || !data) { if (error) console.error('❌ add_friend:', error); return { ok: false }; }
+  return data;
+}
+
+/** Me + friends ranked by today's Daily score. @returns {Promise<any[]>} */
+export async function getFriendsDailyLeaderboard() {
+  const { data, error } = await supabase.rpc('get_friends_daily_leaderboard');
+  if (error) { console.error('❌ get_friends_daily_leaderboard:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
+
 /** Claim the all-quests-done reward (a streak freeze). @returns {Promise<{ok:boolean, reason?:string, freezes?:number}>} */
 export async function claimQuestReward() {
   const { data, error } = await supabase.rpc('claim_quest_reward');

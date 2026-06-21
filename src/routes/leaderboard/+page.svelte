@@ -4,14 +4,57 @@
   import { page } from '$app/stores';
   import {
     fetchDailyLeaderboard,
-    fetchArcadeLeaderboard
+    fetchArcadeLeaderboard,
+    getMyFriendCode,
+    addFriend,
+    getFriendsDailyLeaderboard
   } from '$lib/stores/statsStore.js';
+  import { track } from '$lib/analytics.js';
 
   /** @typedef {{ rank?: number, display_name?: string, score?: number, bankroll_left?: number, current_streak?: number, highest_streak?: number, total_played?: number, win_rate?: number }} DailyRow */
   /** @typedef {{ rank?: number, display_name?: string, banked?: number, furthest?: number, total?: number }} ArcadeRow */
 
-  /** @type {'daily' | 'arcade'} */
+  /** @type {'daily' | 'arcade' | 'friends'} */
   let mode = $state('daily');
+
+  // ---- Friends ----
+  let friendCode = $state('');
+  /** @type {any[]} */
+  let friendsData = $state([]);
+  let addCode = $state('');
+  let addMsg = $state('');
+  let codeCopied = $state(false);
+
+  async function loadFriends() {
+    try {
+      if (!friendCode) friendCode = (await getMyFriendCode()) ?? '';
+      friendsData = await getFriendsDailyLeaderboard();
+    } catch (e) {
+      error = (e instanceof Error ? e.message : String(e)) || 'Failed to load';
+    }
+  }
+  async function submitAddFriend() {
+    const code = addCode.trim().toUpperCase();
+    if (!code) return;
+    addMsg = 'Adding…';
+    const res = await addFriend(code);
+    if (res.ok) {
+      addMsg = `✓ Added ${res.friend_name || 'friend'}!`;
+      addCode = '';
+      track('friend_add');
+      await loadFriends();
+    } else {
+      addMsg = res.reason === 'not_found' ? 'No player with that code.'
+        : res.reason === 'self' ? "That's your own code 🙂"
+        : 'Could not add friend.';
+    }
+  }
+  function shareCode() {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://wordbanksvelte.vercel.app';
+    const text = `Add me on WordBank! Tap to add me + play today's puzzle: ${origin}/?add=${friendCode}`;
+    if (typeof navigator !== 'undefined' && navigator.share) { navigator.share({ text }).catch(() => {}); return; }
+    navigator.clipboard?.writeText(text).then(() => { codeCopied = true; setTimeout(() => codeCopied = false, 1800); }, () => {});
+  }
   let dailyPeriod = $state('daily');
   /** @type {'score' | 'bankroll' | 'streak' | 'highest_streak' | 'puzzles' | 'win_pct'} */
   let dailyOrderBy = $state('score');
@@ -61,8 +104,10 @@
     error = '';
     if (mode === 'daily') {
       loadDaily().finally(() => { loading = false; });
-    } else {
+    } else if (mode === 'arcade') {
       loadArcade().finally(() => { loading = false; });
+    } else {
+      loadFriends().finally(() => { loading = false; });
     }
   });
 
@@ -80,6 +125,7 @@
     const modeParam = typeof window !== 'undefined' && $page.url.searchParams.get('mode');
     if (modeParam === 'daily') mode = 'daily';
     else if (modeParam === 'arcade') mode = 'arcade';
+    else if (modeParam === 'friends') mode = 'friends';
   });
 
   /** @param {unknown} n */
@@ -106,6 +152,13 @@
     >
       Arcade
     </button>
+    <button
+      class="tab-btn"
+      class:active={mode === 'friends'}
+      onclick={() => { mode = 'friends'; }}
+    >
+      Friends
+    </button>
   </div>
 
   {#if mode === 'daily'}
@@ -130,7 +183,7 @@
       <button class="sort-btn" class:active={dailyOrderBy === 'puzzles'} onclick={() => { dailyOrderBy = 'puzzles'; }}>Puzzles</button>
       <button class="sort-btn" class:active={dailyOrderBy === 'win_pct'} onclick={() => { dailyOrderBy = 'win_pct'; }}>Win %</button>
     </div>
-  {:else}
+  {:else if mode === 'arcade'}
     <p class="period-label">{periodLabels[arcadePeriod] ?? 'Today'} · peak bankroll</p>
     <div class="period-filters">
       {#each ['daily', 'weekly', 'monthly', 'all'] as p}
@@ -138,6 +191,22 @@
           {periodLabels[p] ?? p}
         </button>
       {/each}
+    </div>
+  {:else}
+    <p class="period-label">Today's Daily · you vs your friends</p>
+    <div class="friend-panel">
+      <div class="my-code">
+        <span class="mc-label">Your code</span>
+        <button class="code-pill" onclick={shareCode} title="Share your code">
+          {friendCode || '······'} <span class="share-ico">{codeCopied ? '✓' : '↗'}</span>
+        </button>
+      </div>
+      <div class="add-row">
+        <input class="code-input" placeholder="Enter a friend's code" bind:value={addCode} maxlength="6"
+          onkeydown={(e) => { if (e.key === 'Enter') submitAddFriend(); }} />
+        <button class="add-btn" onclick={submitAddFriend}>Add</button>
+      </div>
+      {#if addMsg}<p class="add-msg">{addMsg}</p>{/if}
     </div>
   {/if}
 
@@ -187,7 +256,7 @@
         </table>
       </div>
     {/if}
-  {:else}
+  {:else if mode === 'arcade'}
     {#if arcadeData.length === 0}
       <p class="empty">No arcade runs yet. Climb today's gauntlet to appear!</p>
     {:else}
@@ -219,13 +288,40 @@
         </table>
       </div>
     {/if}
+  {:else}
+    <!-- Friends: you + friends ranked by today's Daily score -->
+    {#if friendsData.length <= 1}
+      <p class="empty">Add friends with their code above, then race them on today's Daily!</p>
+    {/if}
+    {#if friendsData.length > 0}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Player</th><th>Today's Score</th></tr>
+          </thead>
+          <tbody>
+            {#each friendsData as row}
+              <tr class={row.is_me ? 'me-row' : ((row.rank ?? 0) <= 3 ? 'top-three' : '')}>
+                <td class="rank">
+                  {#if row.rank === 1}🥇{:else if row.rank === 2}🥈{:else if row.rank === 3}🥉{:else}{row.rank}{/if}
+                </td>
+                <td class="name">{row.is_me ? 'You' : (row.name || 'Player')}{#if (row.streak ?? 0) >= 7} 🔥{/if}</td>
+                <td class="score-cell">{row.played ? fmt(row.score) : '—'}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    {/if}
   {/if}
 
   <p class="hint">
     {#if mode === 'daily'}
       Daily: Score = bankroll × streak multiplier. Medals 🥇$700 / 🥈$400 / 🥉$100. 🔥 = 7+ day streak.
-    {:else}
+    {:else if mode === 'arcade'}
       Arcade: ranked by peak bankroll in a survival run, and how many puzzles you solved before going broke.
+    {:else}
+      Friends: share your code to add friends — everyone plays the same Daily, so it's a head-to-head. "—" = hasn't played today.
     {/if}
   </p>
 </main>
@@ -395,6 +491,30 @@
     font-size: 0.82rem;
     color: var(--text-faint);
   }
+
+  /* ---- Friends ---- */
+  .friend-panel { max-width: 420px; margin: 0 auto 0.5rem; display: flex; flex-direction: column; gap: 0.7rem; }
+  .my-code { display: flex; align-items: center; justify-content: center; gap: 0.6rem; }
+  .mc-label { color: var(--text-faint); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .code-pill {
+    font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; letter-spacing: 0.12em;
+    padding: 0.5rem 1rem; border-radius: 999px; cursor: pointer; color: var(--brand-2);
+    background: rgba(163,230,53,0.1); border: 1px solid rgba(163,230,53,0.4);
+    display: inline-flex; align-items: center; gap: 0.5rem;
+  }
+  .share-ico { font-size: 0.85rem; opacity: 0.8; }
+  .add-row { display: flex; gap: 0.5rem; }
+  .code-input {
+    flex: 1; padding: 0.6rem 0.9rem; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .add-btn {
+    padding: 0.6rem 1.2rem; border: none; border-radius: 12px; cursor: pointer; font-weight: 700;
+    color: #06210f; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635));
+  }
+  .add-msg { text-align: center; font-size: 0.85rem; color: var(--text-muted); margin: 0; }
+  tr.me-row { background: rgba(56, 189, 248, 0.12); box-shadow: inset 0 0 0 1px rgba(56,189,248,0.25); }
+  tr.me-row td.name { color: #7dd3fc; font-weight: 700; }
 
   /* ---- Mobile: fit the table without horizontal scroll ---- */
   @media (max-width: 560px) {
