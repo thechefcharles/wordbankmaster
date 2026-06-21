@@ -3,12 +3,25 @@
   import { user, userProfile } from '$lib/stores/userStore.js';
   import { gameStore } from '$lib/stores/GameStore.js';
   import { saveGameToLocalStorage } from '$lib/stores/localGameUtils.js';
+  import { onMount } from 'svelte';
 
   let email = '';
   let password = '';
   let errorMsg = '';
   let isLoading = false;
   let isLogin = true;
+
+  // Inside the native (Capacitor) app, Google blocks OAuth in the embedded
+  // webview so it kicks out to Safari. Hide it there — native testers use
+  // email/password (stays in-app). On the web, Google shows normally.
+  let isNativeApp = false;
+  onMount(() => {
+    try {
+      const c = /** @type {any} */ (window).Capacitor;
+      isNativeApp = !!(c && (c.isNativePlatform ? c.isNativePlatform() : c.isNative))
+        || /WordBankApp/i.test(navigator.userAgent);
+    } catch { isNativeApp = false; }
+  });
 
   let showReset = false;
   let resetEmail = '';
@@ -145,12 +158,14 @@
         {isLoading ? 'Loading…' : (isLogin ? 'Log in' : 'Sign up')}
       </button>
 
-      <div class="divider"><span>or</span></div>
+      {#if !isNativeApp}
+        <div class="divider"><span>or</span></div>
 
-      <button class="btn-ghost full google" on:click={signInWithGoogle}>
-        <img src="/googlelogo.png" alt="Google icon" class="google-icon" />
-        Continue with Google
-      </button>
+        <button class="btn-ghost full google" on:click={signInWithGoogle}>
+          <img src="/googlelogo.png" alt="Google icon" class="google-icon" />
+          Continue with Google
+        </button>
+      {/if}
 
       {#if errorMsg}
         <div class="error-text">{errorMsg}</div>

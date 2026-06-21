@@ -102,7 +102,9 @@ team (this sets the provisioning automatically). Bundle id is `com.wordbank.app`
 - [ ] **Sign in with Apple** — required *if/when* we re-add Google or other social login. [4.8]
 - [ ] **In-app account deletion** — required for sign-up apps. [5.1.1(v)] Flow +
       server RPC purging profile/sessions/results.
-- [ ] **Privacy policy** + **App Privacy nutrition label**.
+- [x] **Privacy policy page** at `/privacy` (→ `https://wordbanksvelte.vercel.app/privacy`;
+      needed for external TestFlight). Still TODO: enter the URL in App Store Connect
+      + fill the App Privacy nutrition label.
 - [ ] **Age rating**, **Support URL**, screenshots, description, keywords.
 - [ ] **Push notifications** ("daily ready") — big retention lever + native value. [4.2]
 - [ ] Native auth rework: native Google + password-reset deep-linking (custom URL
