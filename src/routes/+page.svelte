@@ -4,7 +4,8 @@
   import { supabase } from '$lib/supabaseClient';
   import { get } from 'svelte/store';
 
-  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge } from '$lib/stores/GameStore.js';
+  import { getMyChallenges } from '$lib/stores/statsStore.js';
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
@@ -220,6 +221,7 @@
   $: resultWon = $gameStore.gameState === 'won';
   $: isDailyResult = $gameStore.gameMode === 'daily';
   $: isFreeplay = $gameStore.gameMode === 'freeplay';
+  $: isChallenge = $gameStore.gameMode === 'challenge';
   $: resultBankroll = Math.max(0, Math.floor($gameStore.bankroll || 0));
   $: resultMedal = medalFor(resultBankroll, resultWon);
   // Arcade rolling-survival run state
@@ -370,6 +372,58 @@
       initError = 'Free Play failed to load.';
     }
   }
+  // ===== Challenges (friend wagers) =====
+  let showChallenges = false;
+  /** @type {any[]} */
+  let myChallenges = [];
+  let chCode = '';
+  let chCategory = '';
+  let chWager = 500;
+  let chMsg = '';
+  let chBusy = false;
+  async function openChallenges() {
+    if (!get(user)?.id) return;
+    chMsg = '';
+    showChallenges = true;
+    myChallenges = await getMyChallenges();
+  }
+  async function submitNewChallenge() {
+    if (chBusy) return;
+    if (!chCode.trim() || !chCategory) { chMsg = 'Pick a friend code and a category.'; return; }
+    chBusy = true; chMsg = 'Creating…';
+    const res = await startChallenge(chCode.trim().toUpperCase(), chCategory, Math.floor(Number(chWager) || 0));
+    chBusy = false;
+    if (res?.ok) { launchChallengePlay(); }
+    else {
+      chMsg = res?.reason === 'no_friend' ? 'No player with that code.'
+        : res?.reason === 'insufficient' ? "Not enough in your Bank for that wager."
+        : res?.reason === 'min_wager' ? 'Minimum wager is $100.'
+        : res?.reason === 'self' ? "You can't challenge yourself."
+        : res?.reason === 'no_puzzle' ? 'No puzzles in that category.'
+        : 'Could not create the challenge.';
+    }
+  }
+  async function respondToChallenge(/** @type {any} */ ch) {
+    if (chBusy) return;
+    chBusy = true;
+    let ok = false;
+    if (ch.is_creator) {
+      ok = await resumeChallenge(ch.id); // creators resume their own (can't "accept")
+    } else {
+      const res = await acceptAndPlayChallenge(ch.id);
+      ok = !!res?.ok;
+      if (!ok) chMsg = res?.reason === 'insufficient' ? 'Not enough in your Bank.' : 'Could not open that challenge.';
+    }
+    chBusy = false;
+    if (ok) launchChallengePlay();
+  }
+  function launchChallengePlay() {
+    showChallenges = false;
+    localStorage.setItem('gameMode', 'challenge');
+    hasInitialized = true;
+    showMainMenu = false;
+  }
+
   // After solving / going broke in Free Play, load the next puzzle in the category.
   async function handleFreeplayContinue() {
     showResultModal = false;
@@ -554,7 +608,15 @@
           </span>
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 4" on:click={() => goto('/badges')}>
+        <button class="menu-card" style="--i: 4" on:click={openChallenges}>
+          <span class="mc-icon">⚔️</span>
+          <span class="mc-body">
+            <span class="mc-title">Challenges</span>
+            <span class="mc-sub">Wager your Bank vs friends</span>
+          </span>
+          <span class="mc-arrow">→</span>
+        </button>
+        <button class="menu-card" style="--i: 5" on:click={() => goto('/badges')}>
           <span class="mc-icon">🏅</span>
           <span class="mc-body">
             <span class="mc-title">Badges</span>
@@ -562,7 +624,7 @@
           </span>
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 5" on:click={handleMenuLeaderboard}>
+        <button class="menu-card" style="--i: 6" on:click={handleMenuLeaderboard}>
           <span class="mc-icon">🏆</span>
           <span class="mc-body">
             <span class="mc-title">Leaderboard</span>
@@ -570,7 +632,7 @@
           </span>
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 6" on:click={handleMenuMyAccount}>
+        <button class="menu-card" style="--i: 7" on:click={handleMenuMyAccount}>
           <span class="mc-icon">👤</span>
           <span class="mc-body">
             <span class="mc-title">My Account</span>
@@ -597,6 +659,53 @@
               </button>
             {/each}
           </div>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Challenges: wager vs friends -->
+    {#if showChallenges}
+      <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Challenges">
+        <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showChallenges = false}></button>
+        <div class="modal-content main-menu-modal ch-modal">
+          <button class="close-btn" on:click={() => showChallenges = false}>❌</button>
+          <h2>⚔️ Challenges</h2>
+          <p class="cat-sub">Wager your Bank head-to-head — same puzzle, best score wins the pot.</p>
+
+          <div class="ch-new">
+            <div class="ch-row">
+              <input class="ch-input" placeholder="Friend code" bind:value={chCode} maxlength="6" />
+              <select class="ch-input" bind:value={chCategory}>
+                <option value="" disabled selected>Category</option>
+                {#each CATEGORIES as c}<option value={c.value}>{c.emoji} {c.label}</option>{/each}
+              </select>
+            </div>
+            <div class="ch-row">
+              <input class="ch-input" type="number" min="100" step="100" placeholder="Wager $" bind:value={chWager} />
+              <button class="ch-create" disabled={chBusy} on:click={submitNewChallenge}>Send ⚔️</button>
+            </div>
+            {#if chMsg}<p class="add-msg">{chMsg}</p>{/if}
+          </div>
+
+          {#if myChallenges.length}
+            <div class="ch-list">
+              {#each myChallenges as ch}
+                <div class="ch-item">
+                  <div class="ch-info">
+                    <span class="ch-vs">{ch.is_creator ? 'You vs' : 'From'} {ch.opponent_name}</span>
+                    <span class="ch-meta">${ch.wager?.toLocaleString()} · {ch.category}</span>
+                  </div>
+                  {#if ch.status === 'settled'}
+                    <span class="ch-result {ch.result}">{ch.result === 'win' ? 'Won 🏆' : ch.result === 'loss' ? 'Lost' : 'Tie'}{#if ch.my_score != null} · ${ch.my_score} vs ${ch.their_score}{/if}</span>
+                  {:else if ch.needs_my_play}
+                    <button class="ch-play" disabled={chBusy} on:click={() => respondToChallenge(ch)}>{ch.is_creator ? 'Resume' : 'Play'}</button>
+                  {:else}
+                    <span class="ch-waiting">Waiting…</span>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          {/if}
         </div>
       </div>
     {/if}
@@ -798,6 +907,16 @@
             <div class="result-actions">
               <button class="share-btn" on:click={() => { showResultModal = false; showCategorySelect = true; }}>Categories</button>
               <button class="next-puzzle-button" on:click={handleFreeplayContinue}>Next</button>
+            </div>
+          {:else if isChallenge}
+            <!-- Challenge result (settles when the friend plays) -->
+            <div class="result-medal">⚔️</div>
+            <h2>Challenge played!</h2>
+            <p class="result-sub">You scored ${resultBankroll.toLocaleString()} · {$gameStore.currentPhrase}</p>
+            <p class="arcade-gain">We'll settle the pot once your friend plays.</p>
+            <div class="result-actions">
+              <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; openChallenges(); }}>Challenges</button>
+              <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Menu</button>
             </div>
           {:else}
             <!-- Arcade rolling-bankroll survival -->
@@ -1204,6 +1323,29 @@
   /* Free Play category picker */
   .cat-modal { max-width: 420px; }
   .cat-sub { font-size: 0.85rem; color: var(--text-muted); margin: 0 0 16px; }
+
+  /* Challenges modal */
+  .ch-modal { max-width: 440px; }
+  .ch-new { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+  .ch-row { display: flex; gap: 0.5rem; }
+  .ch-input {
+    flex: 1; min-width: 0; padding: 0.6rem 0.8rem; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 0.9rem;
+  }
+  .ch-create { padding: 0.6rem 1rem; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; color: #06210f; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); }
+  .ch-create:disabled { opacity: 0.6; }
+  .ch-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 280px; overflow-y: auto; }
+  .ch-item { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.7rem 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+  .ch-info { display: flex; flex-direction: column; gap: 2px; text-align: left; min-width: 0; }
+  .ch-vs { font-weight: 600; font-size: 0.9rem; }
+  .ch-meta { font-size: 0.75rem; color: var(--text-faint); }
+  .ch-play { padding: 0.45rem 0.9rem; border: none; border-radius: 999px; cursor: pointer; font-weight: 700; font-size: 0.85rem; color: #06210f; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); }
+  .ch-play:disabled { opacity: 0.6; }
+  .ch-waiting { font-size: 0.8rem; color: var(--text-faint); }
+  .ch-result { font-family: var(--font-display); font-weight: 700; font-size: 0.8rem; }
+  .ch-result.win { color: var(--brand-2); }
+  .ch-result.loss { color: #fb7185; }
+  .ch-result.tie { color: var(--text-muted); }
   .cat-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);

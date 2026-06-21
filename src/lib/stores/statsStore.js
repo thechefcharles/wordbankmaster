@@ -317,6 +317,50 @@ export async function arcadeCashout() {
   return data;
 }
 
+/* ===== Challenges (friend wagers) ===== */
+/** @param {string} code @param {string} category @param {number} wager */
+export async function createChallenge(code, category, wager) {
+  const { data, error } = await supabase.rpc('create_challenge', { p_code: code, p_category: category, p_wager: wager });
+  if (error || !data) { if (error) console.error('❌ create_challenge:', error); return { ok: false }; }
+  return data;
+}
+/** @param {string} id */
+export async function acceptChallenge(id) {
+  const { data, error } = await supabase.rpc('accept_challenge', { p_id: id });
+  if (error || !data) { if (error) console.error('❌ accept_challenge:', error); return { ok: false }; }
+  return data;
+}
+/** @param {string} id */
+export async function getChallengeBoard(id) {
+  const { data, error } = await supabase.rpc('get_challenge', { p_id: id });
+  if (error) { console.error('❌ get_challenge:', error); return null; }
+  return data;
+}
+/** My challenges inbox. @returns {Promise<any[]>} */
+export async function getMyChallenges() {
+  const { data, error } = await supabase.rpc('get_my_challenges');
+  if (error) { console.error('❌ get_my_challenges:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
+/** @param {string} id @param {string} letter */
+export async function challengeBuyLetter(id, letter) {
+  const { data, error } = await supabase.rpc('challenge_buy_letter', { p_id: id, p_letter: letter });
+  if (error) { console.error('❌ challenge_buy_letter:', error); return null; }
+  return data;
+}
+/** @param {string} id */
+export async function challengeReveal(id) {
+  const { data, error } = await supabase.rpc('challenge_reveal', { p_id: id });
+  if (error) { console.error('❌ challenge_reveal:', error); return null; }
+  return data;
+}
+/** @param {string} id @param {Record<string,string>} guess */
+export async function challengeSubmitGuess(id, guess) {
+  const { data, error } = await supabase.rpc('challenge_submit_guess', { p_id: id, p_guess: guess });
+  if (error) { console.error('❌ challenge_submit_guess:', error); return null; }
+  return data;
+}
+
 /** Whether the caller already has a session for today (drives the pre-game picker). */
 export async function dailySessionExists() {
   const { data, error } = await supabase.rpc('daily_session_exists');

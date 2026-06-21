@@ -6,6 +6,7 @@ import { fx } from '$lib/sound.js';
 import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, getDailyModifier, getDailyClue, getArcadeClue } from '$lib/stores/statsStore.js';
 import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNext, arcadeUsePowerup, arcadeCashout } from '$lib/stores/statsStore.js';
 import { freeplayStart, freeplayNext, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
+import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess } from '$lib/stores/statsStore.js';
 import { track } from '$lib/analytics.js';
 
 /* ================================
@@ -380,6 +381,87 @@ async function submitGuessFreeplay(state) {
   }
 }
 
+/* ===== Challenges (friend wager; same puzzle, score = leftover bankroll) ===== */
+/** @type {string|null} */
+let activeChallengeId = null;
+
+/** @param {any} board */
+function reconcileChallengeBoard(board) {
+  if (!board) return;
+  const prev = get(gameStore);
+  const finished = board.state !== 'active';
+  gameStore.set(/** @type {GameState} */ ({
+    ...prev, ...boardToState(board, prev),
+    gameMode: 'challenge',
+    gameState: finished ? board.state : 'default',
+    modifier: null, arcadeRun: null
+  }));
+  if (board.state === 'won') { setTimeout(() => launchConfetti(), 300); fx('win'); }
+  else if (finished) fx('bust');
+  else playMoveCue(prev, board);
+}
+
+/** Start playing a challenge created/accepted elsewhere. @param {any} resp @returns {boolean} */
+export function enterChallenge(resp) {
+  if (!resp?.ok || !resp.board) return false;
+  activeChallengeId = resp.challenge_id;
+  reconcileChallengeBoard(resp.board);
+  return true;
+}
+
+/** Create a challenge and drop into play. @param {string} code @param {string} category @param {number} wager */
+export async function startChallenge(code, category, wager) {
+  const resp = await createChallenge(code, category, wager);
+  if (resp?.ok) { track('challenge_create', { wager }); return enterChallenge(resp) ? resp : { ok: false, reason: 'board' }; }
+  return resp;
+}
+
+/** Accept an incoming challenge and drop into play. @param {string} id */
+export async function acceptAndPlayChallenge(id) {
+  const resp = await acceptChallenge(id);
+  if (resp?.ok) { track('challenge_accept'); return enterChallenge(resp) ? resp : { ok: false, reason: 'board' }; }
+  return resp;
+}
+
+/** Resume a challenge I've already started. @param {string} id */
+export async function resumeChallenge(id) {
+  const board = await getChallengeBoard(id);
+  if (board) { activeChallengeId = id; reconcileChallengeBoard(board); return true; }
+  return false;
+}
+
+/** @param {GameState} state */
+async function confirmPurchaseChallenge(state) {
+  const purchase = state.selectedPurchase;
+  if (!purchase || dailyInFlight || !activeChallengeId) return;
+  dailyInFlight = true;
+  try {
+    let board = null;
+    if (purchase.type === 'letter') board = await challengeBuyLetter(activeChallengeId, purchase.value ?? '');
+    else if (purchase.type === 'hint') board = await challengeReveal(activeChallengeId);
+    if (board) reconcileChallengeBoard(board);
+    else gameStore.update(s => ({ ...s, selectedPurchase: null, gameState: 'default' }));
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
+/** @param {GameState} state */
+async function submitGuessChallenge(state) {
+  if (state.gameState !== 'guess_mode' || dailyInFlight || !activeChallengeId) return;
+  /** @type {Record<string, string>} */
+  const guess = {};
+  for (const [k, v] of Object.entries(state.guessedLetters || {})) guess[k] = /** @type {string} */ (v);
+  if (Object.keys(guess).length === 0) return;
+  dailyInFlight = true;
+  try {
+    const board = await challengeSubmitGuess(activeChallengeId, guess);
+    if (board) reconcileChallengeBoard(board);
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
 /** Spend an earned power-up during the current arcade run. @param {string} powerup */
 export async function useArcadePowerup(powerup) {
   if (dailyInFlight) return;
@@ -536,6 +618,7 @@ export function confirmPurchase() {
   if (current.gameMode === 'daily') confirmPurchaseDaily(current);
   else if (current.gameMode === 'arcade') confirmPurchaseArcade(current);
   else if (current.gameMode === 'freeplay') confirmPurchaseFreeplay(current);
+  else if (current.gameMode === 'challenge') confirmPurchaseChallenge(current);
 }
 /* ================================
    Guess Mode Functions
@@ -636,6 +719,7 @@ export function submitGuess() {
   if (current.gameMode === 'daily') submitGuessDaily(current);
   else if (current.gameMode === 'arcade') submitGuessArcade(current);
   else if (current.gameMode === 'freeplay') submitGuessFreeplay(current);
+  else if (current.gameMode === 'challenge') submitGuessChallenge(current);
 }
 /* ================================
    Puzzle Fetch Functions
