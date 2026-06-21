@@ -8,7 +8,7 @@
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getDailyGhost, getDailyQuests } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getDailyGhost, getDailyQuests, addFriend } from '$lib/stores/statsStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
   import {
@@ -117,6 +117,15 @@
       dailyStatus = ds;
       menuDailyPlayed = ds.has_played_today;
       refreshQuests();
+
+      // Friend invite link: ?add=CODE → add them, then open the Friends board.
+      try {
+        const addCode = new URLSearchParams(window.location.search).get('add');
+        if (addCode) {
+          const res = await addFriend(addCode);
+          if (res?.ok) { track('friend_add', { via: 'link' }); goto('/leaderboard?mode=friends'); return; }
+        }
+      } catch { /* non-fatal */ }
 
       await tick();
       hasInitialized = true;

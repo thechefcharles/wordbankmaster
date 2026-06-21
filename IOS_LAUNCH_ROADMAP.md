@@ -30,8 +30,12 @@ Everything not on this list is intentionally *after* we have testers.
 - [x] **Daily Quests** (`/quests`) — 3 deterministic quests/day (same for everyone),
       progress from the events table (no engine changes), finish all 3 → claim a
       streak freeze. Menu card shows progress. (`supabase-quests.sql`.)
-- [ ] Next candidates: leagues/divisions for the leaderboard · cosmetic currency
-      + shop · profile screen · push notification (native).
+- [x] **Friends Daily leaderboard** (`/leaderboard` Friends tab) — shareable
+      friend code, add by code or `?add=CODE` invite link, you-vs-friends ranking
+      on today's Daily. (`supabase-friends.sql`.) Stepping stone to leagues.
+- [ ] Next candidates: pressure/blitz mode (user-requested) · leagues/divisions
+      (needs players + sweepstakes lock) · cosmetic currency + shop · profile
+      screen · push notification (native).
 
 ### Zero-friction testing (no TestFlight needed)
 WordBank is a live website, so the lowest-friction way to get friends testing is
