@@ -56,10 +56,10 @@
     return;
   }
 
-  // Use the current origin so the link works on whatever domain is serving the
-  // app (localhost in dev, the live Vercel domain in prod) — never a hardcoded
-  // (and now-deleted) project URL.
-  const redirectUrl = `${window.location.origin}/reset-password`;
+  // Route through the server callback, which exchanges the PKCE recovery code
+  // for a session (cookie) and then forwards to /reset-password. Using the
+  // current origin keeps it working on any domain (dev or the live Vercel one).
+  const redirectUrl = `${window.location.origin}/auth/callback?next=/reset-password`;
 
   const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
     redirectTo: redirectUrl

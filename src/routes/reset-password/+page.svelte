@@ -6,40 +6,33 @@
   let password = '';
   let confirmPassword = '';
   let message = '';
-  let token = '';
-  let refresh_token = '';
   let isTokenReady = false;
   let success = false;
 
   onMount(() => {
-    const hash = window.location.hash;
-    const params = new URLSearchParams(hash.slice(1));
-
-    token = params.get('access_token') ?? '';
-    refresh_token = params.get('refresh_token') ?? '';
-
-    console.log("🔍 Parsed access_token:", token);
-    console.log("🔍 Parsed refresh_token:", refresh_token);
-
-    if (!token || !refresh_token) {
-      message = '⛔ Invalid or missing reset token.';
-      console.warn(message);
+    // Supabase passes errors (expired/used link) back as query params.
+    const url = new URL(window.location.href);
+    const errDesc = url.searchParams.get('error_description');
+    if (errDesc) {
+      message = `⛔ ${decodeURIComponent(errDesc.replace(/\+/g, ' '))}`;
       return;
     }
 
-    supabase.auth.setSession({
-      access_token: token,
-      refresh_token
-    }).then(({ error }) => {
-      if (error) {
-        message = `❌ Auth failed: ${error.message}`;
-        console.error("❌ setSession error:", error.message);
-      } else {
-        isTokenReady = true;
-        message = '';
-        console.log("✅ Supabase session restored.");
-      }
+    // The /auth/callback route already exchanged the recovery code and set the
+    // session cookie before redirecting here, so we just need that session.
+    let settled = false;
+    const ready = () => { settled = true; isTokenReady = true; message = ''; };
+
+    supabase.auth.getSession().then(({ data }) => { if (data.session) ready(); });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) ready();
     });
+
+    const timer = setTimeout(() => {
+      if (!settled) message = '⛔ This reset link is invalid or has expired. Please request a new one.';
+    }, 3000);
+
+    return () => { clearTimeout(timer); sub.subscription.unsubscribe(); };
   });
 
   async function updatePassword() {
