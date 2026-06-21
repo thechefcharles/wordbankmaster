@@ -465,6 +465,9 @@
     <!-- 🏠 Main Menu (after sign-in) -->
     <div class="main-menu fade-up">
       <div class="menu-hero">
+        <button class="streak-chip" class:lit={(dailyStatus?.current_streak ?? 0) > 0} on:click={() => goto('/streak')} title="Your streak">
+          <span class="sc-flame">🔥</span>{dailyStatus?.current_streak ?? 0}
+        </button>
         <img class="menu-mark float" src="/logo-mark.png" alt="" width="84" height="84" />
         <img class="menu-wordmark" src="/wordmark-slogan.png" alt="WordBank — Spend Less. Think More." />
       </div>
@@ -964,7 +967,35 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
+    position: relative;
   }
+  .streak-chip {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--surface, rgba(255,255,255,0.05));
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.2s, box-shadow 0.2s;
+  }
+  .streak-chip:hover { transform: translateY(-1px); }
+  .streak-chip:active { transform: scale(0.96); }
+  .streak-chip .sc-flame { filter: grayscale(1) opacity(0.5); font-size: 1rem; }
+  .streak-chip.lit {
+    color: #fcd34d;
+    border-color: rgba(251, 191, 36, 0.45);
+    box-shadow: 0 0 14px rgba(251, 191, 36, 0.2);
+  }
+  .streak-chip.lit .sc-flame { filter: none; }
   .menu-mark {
     width: 84px;
     height: 84px;
