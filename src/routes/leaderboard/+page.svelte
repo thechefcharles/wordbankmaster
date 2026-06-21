@@ -5,55 +5,102 @@
   import {
     fetchDailyLeaderboard,
     fetchArcadeLeaderboard,
-    getMyFriendCode,
+    getMyUsername,
+    setUsername,
+    searchUsers,
     addFriend,
-    getFriendsDailyLeaderboard
+    getFriendsDailyLeaderboard,
+    getNetworthLeaderboard
   } from '$lib/stores/statsStore.js';
   import { track } from '$lib/analytics.js';
 
   /** @typedef {{ rank?: number, display_name?: string, score?: number, bankroll_left?: number, current_streak?: number, highest_streak?: number, total_played?: number, win_rate?: number }} DailyRow */
   /** @typedef {{ rank?: number, display_name?: string, banked?: number, furthest?: number, total?: number }} ArcadeRow */
 
-  /** @type {'daily' | 'arcade' | 'friends'} */
+  /** @type {'daily' | 'arcade' | 'friends' | 'networth'} */
   let mode = $state('daily');
 
-  // ---- Friends ----
-  let friendCode = $state('');
+  // ---- Username + Friends ----
+  let myUsername = $state('');
+  let usernameInput = $state('');
+  let usernameMsg = $state('');
+  let editingUsername = $state(false);
+  let usernameCopied = $state(false);
   /** @type {any[]} */
   let friendsData = $state([]);
-  let addCode = $state('');
+  let addQuery = $state('');
   let addMsg = $state('');
-  let codeCopied = $state(false);
+  /** @type {{username:string,is_friend:boolean}[]} */
+  let searchResults = $state([]);
+  /** @type {ReturnType<typeof setTimeout>|undefined} */
+  let searchTimer;
+  // ---- Net Worth ----
+  /** @type {'friends'|'global'} */
+  let networthScope = $state('friends');
+  /** @type {any[]} */
+  let networthData = $state([]);
 
   async function loadFriends() {
     try {
-      if (!friendCode) friendCode = (await getMyFriendCode()) ?? '';
+      if (!myUsername) myUsername = (await getMyUsername()) ?? '';
       friendsData = await getFriendsDailyLeaderboard();
     } catch (e) {
       error = (e instanceof Error ? e.message : String(e)) || 'Failed to load';
     }
   }
-  async function submitAddFriend() {
-    const code = addCode.trim().toUpperCase();
-    if (!code) return;
-    addMsg = 'Adding…';
-    const res = await addFriend(code);
+  async function loadNetworth() {
+    try {
+      if (!myUsername) myUsername = (await getMyUsername()) ?? '';
+      networthData = await getNetworthLeaderboard(networthScope);
+    } catch (e) {
+      error = (e instanceof Error ? e.message : String(e)) || 'Failed to load';
+    }
+  }
+  async function submitUsername() {
+    const name = usernameInput.trim();
+    if (!name) return;
+    usernameMsg = 'Saving…';
+    const res = await setUsername(name);
     if (res.ok) {
-      addMsg = `✓ Added ${res.friend_name || 'friend'}!`;
-      addCode = '';
+      myUsername = res.username ?? name;
+      usernameMsg = '';
+      editingUsername = false;
+      track('username_set');
+    } else {
+      usernameMsg = res.reason === 'taken' ? 'That username is taken.'
+        : res.reason === 'reserved' ? 'That username is reserved.'
+        : res.reason === 'invalid' ? '3–15 letters, numbers or _ only.'
+        : 'Could not save username.';
+    }
+  }
+  function onAddInput() {
+    addMsg = '';
+    clearTimeout(searchTimer);
+    const q = addQuery.trim();
+    if (q.length < 2) { searchResults = []; return; }
+    searchTimer = setTimeout(async () => { searchResults = await searchUsers(q); }, 220);
+  }
+  /** @param {string} username */
+  async function addByUsername(username) {
+    addMsg = 'Adding…';
+    const res = await addFriend(username);
+    if (res.ok) {
+      addMsg = `✓ Added ${res.friend_name || username}!`;
+      addQuery = ''; searchResults = [];
       track('friend_add');
       await loadFriends();
     } else {
-      addMsg = res.reason === 'not_found' ? 'No player with that code.'
-        : res.reason === 'self' ? "That's your own code 🙂"
+      addMsg = res.reason === 'not_found' ? 'No player with that username.'
+        : res.reason === 'self' ? "That's you 🙂"
         : 'Could not add friend.';
     }
   }
-  function shareCode() {
+  function shareUsername() {
+    if (!myUsername) return;
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://wordbanksvelte.vercel.app';
-    const text = `Add me on WordBank! Tap to add me + play today's puzzle: ${origin}/?add=${friendCode}`;
+    const text = `Add me on WordBank — I'm @${myUsername}. Play today's puzzle: ${origin}/?add=${myUsername}`;
     if (typeof navigator !== 'undefined' && navigator.share) { navigator.share({ text }).catch(() => {}); return; }
-    navigator.clipboard?.writeText(text).then(() => { codeCopied = true; setTimeout(() => codeCopied = false, 1800); }, () => {});
+    navigator.clipboard?.writeText(text).then(() => { usernameCopied = true; setTimeout(() => usernameCopied = false, 1800); }, () => {});
   }
   let dailyPeriod = $state('daily');
   /** @type {'score' | 'bankroll' | 'streak' | 'highest_streak' | 'puzzles' | 'win_pct'} */
@@ -106,6 +153,8 @@
       loadDaily().finally(() => { loading = false; });
     } else if (mode === 'arcade') {
       loadArcade().finally(() => { loading = false; });
+    } else if (mode === 'networth') {
+      loadNetworth().finally(() => { loading = false; });
     } else {
       loadFriends().finally(() => { loading = false; });
     }
@@ -118,6 +167,9 @@
     if (mode === 'arcade' && arcadePeriod) {
       loadArcade();
     }
+    if (mode === 'networth' && networthScope) {
+      loadNetworth();
+    }
   });
 
   // Open in daily tab when coming from daily finish (?mode=daily)
@@ -126,6 +178,7 @@
     if (modeParam === 'daily') mode = 'daily';
     else if (modeParam === 'arcade') mode = 'arcade';
     else if (modeParam === 'friends') mode = 'friends';
+    else if (modeParam === 'networth') mode = 'networth';
   });
 
   /** @param {unknown} n */
@@ -158,6 +211,13 @@
       onclick={() => { mode = 'friends'; }}
     >
       Friends
+    </button>
+    <button
+      class="tab-btn"
+      class:active={mode === 'networth'}
+      onclick={() => { mode = 'networth'; }}
+    >
+      💰 Net Worth
     </button>
   </div>
 
@@ -192,21 +252,55 @@
         </button>
       {/each}
     </div>
+  {:else if mode === 'networth'}
+    <p class="period-label">Richest players · Bank − Loan</p>
+    <div class="period-filters">
+      <button class="period-btn" class:active={networthScope === 'friends'} onclick={() => { networthScope = 'friends'; }}>Friends</button>
+      <button class="period-btn" class:active={networthScope === 'global'} onclick={() => { networthScope = 'global'; }}>Global</button>
+    </div>
   {:else}
     <p class="period-label">Today's Daily · you vs your friends</p>
     <div class="friend-panel">
       <div class="my-code">
-        <span class="mc-label">Your code</span>
-        <button class="code-pill" onclick={shareCode} title="Share your code">
-          {friendCode || '······'} <span class="share-ico">{codeCopied ? '✓' : '↗'}</span>
-        </button>
+        <span class="mc-label">Your username</span>
+        {#if myUsername && !editingUsername}
+          <button class="code-pill" onclick={shareUsername} title="Share your username">
+            @{myUsername} <span class="share-ico">{usernameCopied ? '✓' : '↗'}</span>
+          </button>
+          <button class="edit-uname" onclick={() => { editingUsername = true; usernameInput = myUsername; usernameMsg = ''; }}>edit</button>
+        {:else}
+          <div class="add-row">
+            <input class="code-input" placeholder="pick a username" bind:value={usernameInput} maxlength="15"
+              onkeydown={(e) => { if (e.key === 'Enter') submitUsername(); }} />
+            <button class="add-btn" onclick={submitUsername}>Save</button>
+          </div>
+          {#if usernameMsg}<p class="add-msg">{usernameMsg}</p>{/if}
+        {/if}
       </div>
-      <div class="add-row">
-        <input class="code-input" placeholder="Enter a friend's code" bind:value={addCode} maxlength="6"
-          onkeydown={(e) => { if (e.key === 'Enter') submitAddFriend(); }} />
-        <button class="add-btn" onclick={submitAddFriend}>Add</button>
-      </div>
-      {#if addMsg}<p class="add-msg">{addMsg}</p>{/if}
+
+      {#if myUsername}
+        <div class="add-row search-row">
+          <input class="code-input" placeholder="Find friends by username" bind:value={addQuery}
+            oninput={onAddInput} autocomplete="off" />
+        </div>
+        {#if searchResults.length}
+          <div class="search-results">
+            {#each searchResults as r}
+              <div class="search-item">
+                <span class="si-name">@{r.username}</span>
+                {#if r.is_friend}
+                  <span class="si-added">✓ Friend</span>
+                {:else}
+                  <button class="si-add" onclick={() => addByUsername(r.username)}>+ Add</button>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        {/if}
+        {#if addMsg}<p class="add-msg">{addMsg}</p>{/if}
+      {:else}
+        <p class="add-msg">Pick a username first — that's how friends find you.</p>
+      {/if}
     </div>
   {/if}
 
@@ -288,10 +382,38 @@
         </table>
       </div>
     {/if}
+  {:else if mode === 'networth'}
+    <!-- Net Worth: richest by Bank − Loan -->
+    {#if networthData.length === 0}
+      <p class="empty">{networthScope === 'friends' ? 'Add friends to see who’s richest!' : 'No players yet.'}</p>
+    {:else}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Player</th><th>Net Worth</th><th>Bank</th></tr>
+          </thead>
+          <tbody>
+            {#each networthData as row}
+              <tr class={row.is_me ? 'me-row' : ((row.rank ?? 0) <= 3 ? 'top-three' : '')}>
+                <td class="rank">
+                  {#if row.rank === 1}🥇{:else if row.rank === 2}🥈{:else if row.rank === 3}🥉{:else}{row.rank}{/if}
+                </td>
+                <td class="name">
+                  <span style={row.color ? `color:${row.color}` : ''}>{row.is_me ? 'You' : (row.name || 'Player')}</span>
+                  {#if row.title}<span class="nw-title">{row.title}</span>{/if}
+                </td>
+                <td class="score-cell" class:negative={(row.net_worth ?? 0) < 0}>${fmt(row.net_worth)}</td>
+                <td>${fmt(row.bank)}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    {/if}
   {:else}
     <!-- Friends: you + friends ranked by today's Daily score -->
     {#if friendsData.length <= 1}
-      <p class="empty">Add friends with their code above, then race them on today's Daily!</p>
+      <p class="empty">Find friends by username above, then race them on today's Daily!</p>
     {/if}
     {#if friendsData.length > 0}
       <div class="table-wrap">
@@ -320,8 +442,10 @@
       Daily: Score = bankroll × streak multiplier. Medals 🥇$700 / 🥈$400 / 🥉$100. 🔥 = 7+ day streak.
     {:else if mode === 'arcade'}
       Arcade: ranked by peak bankroll in a survival run, and how many puzzles you solved before going broke.
+    {:else if mode === 'networth'}
+      Net Worth = Bank − Loan. Pay off your loan and bank your winnings to climb. Titles & colors come from the Shop.
     {:else}
-      Friends: share your code to add friends — everyone plays the same Daily, so it's a head-to-head. "—" = hasn't played today.
+      Friends: pick a username, then search to add friends — everyone plays the same Daily, so it's head-to-head. "—" = hasn't played today.
     {/if}
   </p>
 </main>
@@ -506,13 +630,28 @@
   .add-row { display: flex; gap: 0.5rem; }
   .code-input {
     flex: 1; padding: 0.6rem 0.9rem; border-radius: 12px; border: 1px solid var(--border);
-    background: var(--surface); color: var(--text); font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em;
+    background: var(--surface); color: var(--text); font-size: 0.95rem;
   }
   .add-btn {
     padding: 0.6rem 1.2rem; border: none; border-radius: 12px; cursor: pointer; font-weight: 700;
     color: #06210f; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635));
   }
   .add-msg { text-align: center; font-size: 0.85rem; color: var(--text-muted); margin: 0; }
+  .edit-uname { background: none; border: none; color: var(--text-faint); font-size: 0.8rem; cursor: pointer; text-decoration: underline; }
+  .search-row { max-width: 420px; }
+  .search-results {
+    max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; gap: 0.35rem;
+    border: 1px solid var(--border); border-radius: 12px; padding: 0.4rem; background: var(--surface);
+  }
+  .search-item { display: flex; align-items: center; justify-content: space-between; padding: 0.35rem 0.5rem; }
+  .si-name { font-weight: 600; }
+  .si-added { color: var(--brand-2); font-size: 0.8rem; font-weight: 700; }
+  .si-add {
+    padding: 0.3rem 0.8rem; border: none; border-radius: 999px; cursor: pointer; font-weight: 700; font-size: 0.82rem;
+    color: #06210f; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635));
+  }
+  .nw-title { font-size: 0.72rem; color: var(--text-faint); margin-left: 0.4rem; white-space: nowrap; }
+  td.score-cell.negative { color: #f87171; }
   tr.me-row { background: rgba(56, 189, 248, 0.12); box-shadow: inset 0 0 0 1px rgba(56,189,248,0.25); }
   tr.me-row td.name { color: #7dd3fc; font-weight: 700; }
 
