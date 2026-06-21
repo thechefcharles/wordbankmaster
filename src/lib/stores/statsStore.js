@@ -318,10 +318,16 @@ export async function arcadeCashout() {
 }
 
 /* ===== Challenges (friend wagers) ===== */
-/** @param {string} code @param {string} category @param {number} wager */
-export async function createChallenge(code, category, wager) {
-  const { data, error } = await supabase.rpc('create_challenge', { p_code: code, p_category: category, p_wager: wager });
+/** @param {string} code @param {string} category @param {number} wager @param {string} [mode] */
+export async function createChallenge(code, category, wager, mode = 'score') {
+  const { data, error } = await supabase.rpc('create_challenge', { p_code: code, p_category: category, p_wager: wager, p_mode: mode });
   if (error || !data) { if (error) console.error('❌ create_challenge:', error); return { ok: false }; }
+  return data;
+}
+/** Force the server to re-check a challenge play (used when a Pressure timer expires). @param {string} id */
+export async function challengeCheck(id) {
+  const { data, error } = await supabase.rpc('challenge_check', { p_id: id });
+  if (error) { console.error('❌ challenge_check:', error); return null; }
   return data;
 }
 /** @param {string} id */

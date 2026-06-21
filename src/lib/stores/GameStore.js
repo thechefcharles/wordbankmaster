@@ -6,7 +6,7 @@ import { fx } from '$lib/sound.js';
 import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, getDailyModifier, getDailyClue, getArcadeClue } from '$lib/stores/statsStore.js';
 import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNext, arcadeUsePowerup, arcadeCashout } from '$lib/stores/statsStore.js';
 import { freeplayStart, freeplayNext, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
-import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess } from '$lib/stores/statsStore.js';
+import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
 import { track } from '$lib/analytics.js';
 
 /* ================================
@@ -39,7 +39,8 @@ import { track } from '$lib/analytics.js';
  *   arcadeRun?: any,
  *   arcadeCashedOut?: boolean,
  *   modifier?: string | null,
- *   clue?: string | null
+ *   clue?: string | null,
+ *   challengeInfo?: any
  * }} GameState
  */
 
@@ -76,7 +77,8 @@ export const gameStore = writable(/** @type {GameState} */ ({
   arcadeRun: null, // arcade gauntlet run state { state, banked, multiplier, position, total, furthest, last_gain }
   arcadeCashedOut: false, // true when the last arcade run ended via "Bank it" (vs bust)
   modifier: null, // today's shared Daily Modifier id (daily only)
-  clue: null // witty one-line hint for the current puzzle
+  clue: null, // witty one-line hint for the current puzzle
+  challengeInfo: null // { mode, started_at, limit_seconds, play_state, score } for the active challenge
 }));
 
 /* ================================
@@ -394,7 +396,8 @@ function reconcileChallengeBoard(board) {
     ...prev, ...boardToState(board, prev),
     gameMode: 'challenge',
     gameState: finished ? board.state : 'default',
-    modifier: null, arcadeRun: null
+    modifier: null, arcadeRun: null,
+    challengeInfo: board.challenge ?? prev.challengeInfo ?? null
   }));
   if (board.state === 'won') { setTimeout(() => launchConfetti(), 300); fx('win'); }
   else if (finished) fx('bust');
@@ -409,10 +412,10 @@ export function enterChallenge(resp) {
   return true;
 }
 
-/** Create a challenge and drop into play. @param {string} code @param {string} category @param {number} wager */
-export async function startChallenge(code, category, wager) {
-  const resp = await createChallenge(code, category, wager);
-  if (resp?.ok) { track('challenge_create', { wager }); return enterChallenge(resp) ? resp : { ok: false, reason: 'board' }; }
+/** Create a challenge and drop into play. @param {string} code @param {string} category @param {number} wager @param {string} [mode] */
+export async function startChallenge(code, category, wager, mode = 'score') {
+  const resp = await createChallenge(code, category, wager, mode);
+  if (resp?.ok) { track('challenge_create', { wager, mode }); return enterChallenge(resp) ? resp : { ok: false, reason: 'board' }; }
   return resp;
 }
 
@@ -428,6 +431,13 @@ export async function resumeChallenge(id) {
   const board = await getChallengeBoard(id);
   if (board) { activeChallengeId = id; reconcileChallengeBoard(board); return true; }
   return false;
+}
+
+/** Pressure mode: force the server to settle the active play when the clock expires. */
+export async function challengeTimeoutCheck() {
+  if (!activeChallengeId) return;
+  const board = await challengeCheck(activeChallengeId);
+  if (board) reconcileChallengeBoard(board);
 }
 
 /** @param {GameState} state */

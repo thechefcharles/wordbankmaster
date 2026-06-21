@@ -73,3 +73,15 @@ END; $$;
 --   records score (= bankroll) via _challenge_record_score and triggers _challenge_settle.
 -- get_my_challenges() — inbox (incoming/awaiting/settled); lazily voids+refunds expired opens.
 -- (Full bodies in the applied migrations challenges_phase_c[_play].)
+
+-- ── Phase D: Pressure mode (migration challenges_phase_d_pressure) ─────────────
+-- challenges.mode = 'score' (untimed; score = leftover bankroll) | 'pressure'.
+-- challenge_plays gains started_at (the per-player clock start; default now()).
+-- Pressure scoring: a 60s server-authoritative clock. Solve in time →
+--   score = bankroll + floor(60 - elapsed_seconds) * 10 (blends speed + thrift);
+--   exceed 60s unsolved → state 'lost', score 0. Score mode is unchanged.
+-- create_challenge gains p_mode (default 'score').
+-- _challenge_board now carries {challenge:{mode,started_at,limit_seconds,play_state,score}}
+--   and reports 'won'/'lost' (not just 'done') so timeouts render as a loss.
+-- challenge_check(id) — client calls this when its countdown hits 0 to force the
+--   server timeout check; get_challenge + get_my_challenges also resolve stale plays.
