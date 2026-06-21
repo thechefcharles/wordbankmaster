@@ -25,6 +25,15 @@ learning from testers (see *Deferred* at the bottom).
 
 Everything not on this list is intentionally *after* we have testers.
 
+### Zero-friction testing (no TestFlight needed)
+WordBank is a live website, so the lowest-friction way to get friends testing is
+just the **URL** — no app stores, no TestFlight, no downloads:
+`https://wordbanksvelte.vercel.app`. It's a polished **PWA** (manifest +
+apple-touch-icon + standalone meta), so "Share → Add to Home Screen" gives a
+real WordBank icon that opens full-screen. Same accounts/leaderboard as native.
+TestFlight is for the *App Store* track + native features (push), not a
+prerequisite for feedback.
+
 ---
 
 ## Where we are
