@@ -79,10 +79,11 @@ $fn$;
 
 -- get_daily_status returns streak + freezes for the My Account panel.
 DROP FUNCTION IF EXISTS public.get_daily_status(UUID);
+DROP FUNCTION IF EXISTS public.get_daily_status(UUID);
 CREATE OR REPLACE FUNCTION public.get_daily_status(p_user_id UUID)
 RETURNS TABLE (
   has_played_today BOOLEAN, last_daily_won BOOLEAN, daily_bankroll INT, arcade_bankroll INT,
-  current_streak INT, streak_freezes INT
+  current_streak INT, streak_freezes INT, today_score INT
 ) AS $fn$
 DECLARE v_uid UUID := auth.uid();
 BEGIN
@@ -94,7 +95,12 @@ BEGIN
     COALESCE(p.daily_bankroll, 0)::INT AS daily_bankroll,
     COALESCE(p.arcade_bankroll, 1000)::INT AS arcade_bankroll,
     COALESCE(p.current_win_streak, 0)::INT AS current_streak,
-    COALESCE(p.streak_freezes, 0)::INT AS streak_freezes
+    COALESCE(p.streak_freezes, 0)::INT AS streak_freezes,
+    COALESCE((
+      SELECT gr.score FROM public.game_results gr
+      WHERE gr.user_id = v_uid AND gr.game_mode = 'daily' AND gr.played_at::date = CURRENT_DATE
+      ORDER BY gr.played_at DESC LIMIT 1
+    ), 0)::INT AS today_score
   FROM public.profiles p WHERE p.id = v_uid;
 END;
 $fn$ LANGUAGE plpgsql SECURITY DEFINER;
