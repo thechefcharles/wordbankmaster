@@ -65,7 +65,10 @@ shipping **email/password only**.
       Native Google + Sign in with Apple are deferred to the bundled build.)*
 - [ ] **Signing + first run** (you, in Xcode): `npm run cap:open` → select your
       Team under Signing & Capabilities → run on a simulator/device.
-- [ ] App icon + launch screen (replace Capacitor defaults).
+- [x] **App icon + launch screen** = WordBank coin on dark bg (generated from
+      `static/logo-mark.png` via `scripts/make-ios-assets.cjs` + `@capacitor/assets`).
+      Home-screen label `CFBundleDisplayName` = WordBank. Regenerate with
+      `node scripts/make-ios-assets.cjs && npx capacitor-assets generate --ios`.
 - [ ] App Store Connect: create the app record; **Archive → upload** for TestFlight.
 
 ### How to build & test the iOS app
