@@ -29,6 +29,10 @@
       scores, bankrolls, win/loss, streaks, badges, and leaderboard standings.</li>
     <li><strong>Basic technical data:</strong> standard information needed to run the
       app reliably (e.g., that comes with normal network requests).</li>
+    <li><strong>Usage analytics:</strong> anonymous, first‑party events about how the
+      app is used (e.g., opening the app, starting/finishing a puzzle) so we can
+      understand engagement and improve the game. This stays in our own systems;
+      we don't use third‑party ad trackers.</li>
   </ul>
 
   <h2>What we do NOT collect</h2>

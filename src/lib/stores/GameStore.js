@@ -6,6 +6,7 @@ import { fx } from '$lib/sound.js';
 import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, getDailyModifier, getDailyClue, getArcadeClue } from '$lib/stores/statsStore.js';
 import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNext, arcadeUsePowerup } from '$lib/stores/statsStore.js';
 import { freeplayStart, freeplayNext, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
+import { track } from '$lib/analytics.js';
 
 /* ================================
    Types (JSDoc for checkJs)
@@ -185,6 +186,10 @@ function reconcileDailyBoard(board) {
   if (board.state === 'won') { setTimeout(() => launchConfetti(), 300); fx('win'); }
   else if (finished) fx('bust');
   else playMoveCue(prev, board);
+  // analytics: fire once, on the transition into a finished daily
+  if (finished && prev.gameState !== 'won' && prev.gameState !== 'lost') {
+    track('daily_result', { won: board.state === 'won', bankroll: board.bankroll ?? 0 });
+  }
 }
 
 /**
@@ -212,8 +217,10 @@ function reconcileArcadeBoard(resp) {
     setTimeout(() => launchConfetti(), 300);
     fx('win');
     if ((run.last_gain || 0) > 0) setTimeout(() => fx('multiplier'), 240);
+    if (prev.gameState !== 'won') track('arcade_solve', { position: run.position ?? 0, payout: run.last_gain ?? 0, earned: run.last_earn ?? null });
   } else if (run.state === 'over') {
     fx('bust');
+    if (prev.gameState !== 'lost') track('arcade_over', { peak: run.banked ?? 0, solved: run.furthest ?? 0 });
   } else {
     playMoveCue(prev, board);
   }
@@ -262,6 +269,7 @@ async function refreshArcadeClue() {
 /** Start or resume today's arcade gauntlet. */
 export async function fetchArcadeGame() {
   try {
+    track('arcade_start');
     const resp = await arcadeStart();
     if (!resp) { console.error('❌ arcade_start returned nothing'); return false; }
     reconcileArcadeBoard(resp);
@@ -313,6 +321,7 @@ async function refreshFreeplayClue() {
 /** Start Free Play in a category (random puzzle from it). @param {string} category */
 export async function fetchFreeplayGame(category) {
   try {
+    track('freeplay_start', { category });
     const board = await freeplayStart(category);
     if (!board) { console.error('❌ freeplay_start returned nothing'); return false; }
     reconcileFreeplayBoard(board);
@@ -620,6 +629,7 @@ export function submitGuess() {
  */
 export async function fetchDailyGame() {
   try {
+    track('daily_start');
     const board = await dailyStart();
     if (!board) {
       console.error('❌ daily_start returned no board');
