@@ -59,6 +59,25 @@ export async function getDailyStatus(userId) {
 }
 
 /**
+ * Streak overview: current/longest streak, freezes, and per-day daily outcomes
+ * (last ~10 weeks) for the calendar heatmap.
+ * @returns {Promise<{ current_streak:number, highest_streak:number, freezes:number, days:{d:string,won:boolean}[] }>}
+ */
+export async function getStreakOverview() {
+  const { data, error } = await supabase.rpc('get_streak_overview');
+  if (error || !data) {
+    if (error) console.error('❌ Error fetching streak overview:', error);
+    return { current_streak: 0, highest_streak: 0, freezes: 0, days: [] };
+  }
+  return {
+    current_streak: data.current_streak ?? 0,
+    highest_streak: data.highest_streak ?? 0,
+    freezes: data.freezes ?? 0,
+    days: Array.isArray(data.days) ? data.days : []
+  };
+}
+
+/**
  * Fetch daily leaderboard
  * @param {string} period - 'daily' | 'weekly' | 'monthly' | 'yearly'
  * @param {string} orderBy - 'bankroll' | 'streak' | 'puzzles' | 'win_pct'

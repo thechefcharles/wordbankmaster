@@ -121,7 +121,11 @@ team (this sets the provisioning automatically). Bundle id is `com.wordbank.app`
       needed for external TestFlight). Still TODO: enter the URL in App Store Connect
       + fill the App Privacy nutrition label.
 - [ ] **Age rating**, **Support URL**, screenshots, description, keywords.
-- [ ] **Push notifications** ("daily ready") — big retention lever + native value. [4.2]
+- [x] **Streak screen** (`/streak`) — Duolingo-style flame + current/longest +
+      "N days from your best" nudge + month calendar heatmap of daily wins/misses;
+      tappable streak chip on the menu. (`get_streak_overview` RPC.)
+- [ ] **Push notifications** ("daily ready") — big retention lever + native value;
+      the other half of the streak loop. Needs native APNs (bundled build). [4.2]
 - [ ] Native auth rework: native Google + password-reset deep-linking (custom URL
       scheme / universal links).
 - [ ] Full **App Review** pass.
