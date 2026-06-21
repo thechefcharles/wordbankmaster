@@ -113,8 +113,14 @@ Wagering virtual currency is fine **only if the currency has no real-money value
       **expiry** auto-voids+refunds. Play mirrors the daily engine. Menu
       **Challenges** modal (new challenge + inbox). (`supabase-challenges.sql`.)
       Verified: create+escrow, drop-into-play, full play→settle→payout (zero-sum).
-### Phase D — Pressure mode
-- [ ] Timed challenge variant (speed × bankroll scoring).
+### Phase D — Pressure mode  ✅ (PR #127)
+- [x] Timed challenge variant. `mode='pressure'`: a **60s per-player, server-authoritative
+      clock** (`challenge_plays.started_at`). Solve in time → **score = bankroll +
+      floor(60 − elapsed)×10** (blends speed + thrift); run out → **lost, score 0**.
+      Create form has a **Score / Pressure** toggle; play screen shows a live countdown
+      HUD (red-pulse under 10s) that calls `challenge_check` on expiry to settle.
+      Settles vs Score plays exactly the same (higher score wins the pot).
+      Verified by SQL sim: fast-solve 1350, timeout lost/0, settle creator-wins.
 ### Phase E — Spending + leaderboards + polish
 - [ ] Spend sinks: power-up shop (Arcade), cosmetics/avatars/accessories, high-stakes rooms.
 - [ ] **Net Worth leaderboard** (+ friends "richest"), challenge record board.
@@ -127,7 +133,7 @@ Wagering virtual currency is fine **only if the currency has no real-money value
 3. **Starting Bank** for new players (e.g. $5,000) + **min/max wager** limits.
 4. **Challenge no-show:** void+refund vs forfeit to whoever finished.
 5. **Daily / quest Bank bonus** sizes.
-6. **Pressure mode** specifics: clock per puzzle vs whole set; speed×bankroll scoring.
+6. ~~**Pressure mode** specifics~~ ✅ settled: single-puzzle 60s clock; score = bankroll + (60−elapsed)×10.
 7. **Bankruptcy floor / stipend** so broke players can re-enter.
 
 ---

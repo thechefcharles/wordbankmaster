@@ -1,10 +1,10 @@
 <script>
-  import { onMount, tick } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { browser } from '$app/environment';
   import { supabase } from '$lib/supabaseClient';
   import { get } from 'svelte/store';
 
-  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck } from '$lib/stores/GameStore.js';
   import { getMyChallenges } from '$lib/stores/statsStore.js';
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
@@ -222,6 +222,7 @@
   $: isDailyResult = $gameStore.gameMode === 'daily';
   $: isFreeplay = $gameStore.gameMode === 'freeplay';
   $: isChallenge = $gameStore.gameMode === 'challenge';
+  $: chScore = ($gameStore.challengeInfo?.score ?? Math.floor($gameStore.bankroll || 0));
   $: resultBankroll = Math.max(0, Math.floor($gameStore.bankroll || 0));
   $: resultMedal = medalFor(resultBankroll, resultWon);
   // Arcade rolling-survival run state
@@ -234,6 +235,31 @@
     if (cashingOut || arcadeWinnings <= 0) return;
     cashingOut = true;
     try { await arcadeCashOut(); } finally { cashingOut = false; }
+  }
+
+  // ⏱️ Pressure-mode challenge clock (server-authoritative; this just displays + triggers the check)
+  let pressureNow = browser ? Date.now() : 0;
+  /** @type {ReturnType<typeof setInterval>|undefined} */
+  let pressureTimer;
+  let pressureFired = false;
+  $: chInfo = $gameStore.gameMode === 'challenge' ? $gameStore.challengeInfo : null;
+  $: isPressure = chInfo?.mode === 'pressure';
+  $: pressureActive = isPressure && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost';
+  $: pressureRemaining = (() => {
+    if (!isPressure || !chInfo?.started_at) return 0;
+    const start = new Date(chInfo.started_at).getTime();
+    const limitMs = (chInfo.limit_seconds ?? 60) * 1000;
+    return Math.max(0, Math.ceil((start + limitMs - pressureNow) / 1000));
+  })();
+  $: if (pressureActive && pressureRemaining > 0) pressureFired = false;
+  $: if (pressureActive && pressureRemaining <= 0 && !pressureFired) firePressureTimeout();
+  async function firePressureTimeout() {
+    pressureFired = true;
+    await challengeTimeoutCheck();
+    // tolerate minor client/server clock skew — retry shortly if the play didn't settle
+    if ($gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost') {
+      setTimeout(() => { pressureFired = false; }, 1500);
+    }
   }
 
   let shareCopied = false;
@@ -272,7 +298,9 @@
     ['click', 'mousedown', 'touchstart'].forEach(event =>
       document.addEventListener(event, removeButtonFocus, true)
     );
+    pressureTimer = setInterval(() => { pressureNow = Date.now(); }, 250);
   });
+  onDestroy(() => clearInterval(pressureTimer));
 
   const TUTORIAL_KEY = 'wb_tutorial_seen';
   // First-run guided tutorial: show once a signed-in user reaches the menu.
@@ -379,6 +407,7 @@
   let chCode = '';
   let chCategory = '';
   let chWager = 500;
+  let chMode = 'score'; // 'score' (untimed) | 'pressure' (60s clock)
   let chMsg = '';
   let chBusy = false;
   async function openChallenges() {
@@ -391,7 +420,7 @@
     if (chBusy) return;
     if (!chCode.trim() || !chCategory) { chMsg = 'Pick a friend code and a category.'; return; }
     chBusy = true; chMsg = 'Creating…';
-    const res = await startChallenge(chCode.trim().toUpperCase(), chCategory, Math.floor(Number(chWager) || 0));
+    const res = await startChallenge(chCode.trim().toUpperCase(), chCategory, Math.floor(Number(chWager) || 0), chMode);
     chBusy = false;
     if (res?.ok) { launchChallengePlay(); }
     else {
@@ -673,6 +702,14 @@
           <p class="cat-sub">Wager your Bank head-to-head — same puzzle, best score wins the pot.</p>
 
           <div class="ch-new">
+            <div class="ch-modes">
+              <button type="button" class="ch-mode" class:active={chMode === 'score'} on:click={() => chMode = 'score'}>
+                🧠 Score<small>Untimed · most bankroll left wins</small>
+              </button>
+              <button type="button" class="ch-mode" class:active={chMode === 'pressure'} on:click={() => chMode = 'pressure'}>
+                ⏱️ Pressure<small>60s clock · speed + bankroll</small>
+              </button>
+            </div>
             <div class="ch-row">
               <input class="ch-input" placeholder="Friend code" bind:value={chCode} maxlength="6" />
               <select class="ch-input" bind:value={chCategory}>
@@ -693,7 +730,7 @@
                 <div class="ch-item">
                   <div class="ch-info">
                     <span class="ch-vs">{ch.is_creator ? 'You vs' : 'From'} {ch.opponent_name}</span>
-                    <span class="ch-meta">${ch.wager?.toLocaleString()} · {ch.category}</span>
+                    <span class="ch-meta">${ch.wager?.toLocaleString()} · {ch.category} · {ch.mode === 'pressure' ? '⏱️ Pressure' : '🧠 Score'}</span>
                   </div>
                   {#if ch.status === 'settled'}
                     <span class="ch-result {ch.result}">{ch.result === 'win' ? 'Won 🏆' : ch.result === 'loss' ? 'Lost' : 'Tie'}{#if ch.my_score != null} · ${ch.my_score} vs ${ch.their_score}{/if}</span>
@@ -793,6 +830,14 @@
           💰 Bank ${arcadeWinnings.toLocaleString()} <span class="bib-sub">end run, keep winnings</span>
         </button>
       {/if}
+    {/if}
+
+    <!-- ⏱️ Pressure-mode challenge clock -->
+    {#if pressureActive}
+      <div class="pressure-hud" class:danger={pressureRemaining <= 10}>
+        <span class="ph-clock">⏱️ {pressureRemaining}s</span>
+        <span class="ph-label">Pressure — solve fast for a bigger score</span>
+      </div>
     {/if}
 
     <!-- 🌍 Category + witty clue -->
@@ -910,9 +955,14 @@
             </div>
           {:else if isChallenge}
             <!-- Challenge result (settles when the friend plays) -->
-            <div class="result-medal">⚔️</div>
-            <h2>Challenge played!</h2>
-            <p class="result-sub">You scored ${resultBankroll.toLocaleString()} · {$gameStore.currentPhrase}</p>
+            <div class="result-medal">{resultWon ? (isPressure ? '⏱️' : '⚔️') : '⌛'}</div>
+            <h2>{resultWon ? 'Challenge played!' : "Time's up!"}</h2>
+            {#if resultWon}
+              <p class="result-sub">You scored ${chScore.toLocaleString()} · {$gameStore.currentPhrase}</p>
+              {#if isPressure}<p class="arcade-earn">Bankroll ${resultBankroll.toLocaleString()} + speed bonus</p>{/if}
+            {:else}
+              <p class="result-sub">Ran out of time — scored $0 · {$gameStore.currentPhrase}</p>
+            {/if}
             <p class="arcade-gain">We'll settle the pot once your friend plays.</p>
             <div class="result-actions">
               <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; openChallenges(); }}>Challenges</button>
@@ -987,6 +1037,17 @@
     max-width: 360px;
     margin: 0 auto 14px;
   }
+  .pressure-hud {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    width: 100%; max-width: 360px; margin: 0 auto 14px; padding: 0.5rem 1rem;
+    border: 1px solid rgba(251,191,36,0.4); border-radius: 14px;
+    background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(251,191,36,0.03));
+  }
+  .pressure-hud .ph-clock { font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; color: #fbbf24; line-height: 1; font-variant-numeric: tabular-nums; }
+  .pressure-hud .ph-label { font-size: 0.72rem; color: var(--text-muted); }
+  .pressure-hud.danger { border-color: rgba(248,113,113,0.6); background: linear-gradient(135deg, rgba(248,113,113,0.16), rgba(248,113,113,0.04)); animation: pressurePulse 1s ease-in-out infinite; }
+  .pressure-hud.danger .ph-clock { color: #f87171; }
+  @keyframes pressurePulse { 0%,100% { box-shadow: 0 0 0 rgba(248,113,113,0); } 50% { box-shadow: 0 0 16px rgba(248,113,113,0.35); } }
   .bank-it-btn {
     display: inline-flex;
     align-items: baseline;
@@ -1327,6 +1388,15 @@
   /* Challenges modal */
   .ch-modal { max-width: 440px; }
   .ch-new { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+  .ch-modes { display: flex; gap: 0.5rem; }
+  .ch-mode {
+    flex: 1; display: flex; flex-direction: column; gap: 0.15rem; align-items: flex-start;
+    padding: 0.55rem 0.7rem; border-radius: 10px; cursor: pointer; text-align: left;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    font-weight: 700; font-size: 0.9rem; transition: border-color 0.15s, background 0.15s;
+  }
+  .ch-mode small { font-weight: 500; font-size: 0.68rem; color: var(--text-muted); }
+  .ch-mode.active { border-color: rgba(251,191,36,0.6); background: linear-gradient(135deg, rgba(251,191,36,0.14), rgba(251,191,36,0.04)); box-shadow: 0 0 12px rgba(251,191,36,0.15); }
   .ch-row { display: flex; gap: 0.5rem; }
   .ch-input {
     flex: 1; min-width: 0; padding: 0.6rem 0.8rem; border-radius: 10px; border: 1px solid var(--border);
