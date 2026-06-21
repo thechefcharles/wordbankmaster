@@ -18,11 +18,24 @@
       return;
     }
 
-    // The /auth/callback route already exchanged the recovery code and set the
-    // session cookie before redirecting here, so we just need that session.
     let settled = false;
     const ready = () => { settled = true; isTokenReady = true; message = ''; };
 
+    // Fallback: if the email template links here directly with a token_hash
+    // (instead of via /auth/confirm), verify it client-side. token_hash needs no
+    // local code verifier, so this works cross-device too.
+    const tokenHash = url.searchParams.get('token_hash');
+    const otpType = url.searchParams.get('type');
+    if (tokenHash && otpType) {
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: /** @type {any} */ (otpType) })
+        .then(({ error }) => {
+          if (error) message = `⛔ ${error.message}`;
+          else ready();
+        });
+      return;
+    }
+
+    // Otherwise the session was already established (e.g. by /auth/confirm).
     supabase.auth.getSession().then(({ data }) => { if (data.session) ready(); });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) ready();
