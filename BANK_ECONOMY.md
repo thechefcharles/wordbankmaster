@@ -82,15 +82,33 @@ Wagering virtual currency is fine **only if the currency has no real-money value
 - Maybe a **premium tier** (stats, cosmetics) — never a competitive edge, never Bank.
 - The Bank itself stays **100% earned**, forever.
 
-## Build phases
-- [ ] **A — Persistent Bank:** `profiles.bank`, seed new users, show on menu/profile,
-      earn from Daily win + quest bonus.
-- [ ] **B — Arcade cash-out:** "Bank it" + press-your-luck; route winnings to the Bank.
-- [ ] **C — Challenges (Score mode + wager):** matches table, seeded puzzle sets,
-      escrow, accept/play/settle, surface pending challenges.
-- [ ] **D — Pressure mode** variant.
-- [ ] **E — Polish:** challenge history, notifications, friends "richest" flex,
-      username search (the friend *code* already covers adding people).
+## Locked decisions (2026-06)
+- ✅ **Loan + Net Worth confirmed.** Start with a **$5,000 loan**; **Net Worth = Bank − loan**
+  is the headline number and the front-page leaderboard.
+- ✅ One account / one Bank. Daily stays free/fair/clean. Two-currency firewall
+  (Bank earned-only/virtual; real money = cosmetics only). Wagered challenges = clean.
+- Defaults (tune in playtest): starting loan **$5,000**, min wager **$100**, daily-win
+  bonus **$500 × streak**, quest reward **$1,000**, Arcade cash-out = **full round bankroll**.
+
+## Build roadmap
+### Phase A — Persistent Bank + loan + Net Worth  ✅ (PR #124)
+- [x] `profiles.bank` + `profiles.loan`; lazy-seed new/existing users (bank 5000, loan 5000 → Net Worth 0).
+- [x] `bank_ledger` table (auditable history) + `_bank_credit(uid, delta, reason)` helper.
+- [x] `get_bank()` (balance + loan + net worth + recent ledger) and `repay_loan(amount)`.
+- [x] First earn source: **quest reward pays Bank** (+$1,000) instead of a freeze.
+- [x] Menu **Net Worth chip** → **/bank** screen: Bank, Loan, Net Worth, "pay back loan", history.
+      (`supabase-bank.sql`.)
+### Phase B — Earn faucets + Arcade cash-out
+- [ ] Daily-win bonus → Bank ($500 × streak). Achievements/milestone payouts. Optional daily "interest"/stipend.
+- [ ] **Arcade "Bank it"** (press-your-luck): cash the round bankroll into your Bank; bust = lose only house money.
+### Phase C — Challenges (Score mode + wager)
+- [ ] `matches` table + deterministic seeded puzzle set; create/accept with **escrow**; play → settle (winner takes pot, tie refunds); 48h expiry; surface pending challenges.
+### Phase D — Pressure mode
+- [ ] Timed challenge variant (speed × bankroll scoring).
+### Phase E — Spending + leaderboards + polish
+- [ ] Spend sinks: power-up shop (Arcade), cosmetics/avatars/accessories, high-stakes rooms.
+- [ ] **Net Worth leaderboard** (+ friends "richest"), challenge record board.
+- [ ] Cosmetics for real money (firewall), challenge history/notifications, username search.
 
 ## Open decisions 🔒 (let's settle these as we build)
 1. **Naming:** persistent = "Bank", per-round = "bankroll"? Or rename one (e.g. "Vault")

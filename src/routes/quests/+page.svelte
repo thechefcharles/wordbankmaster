@@ -36,7 +36,7 @@
     if (res?.ok) {
       track('quest_reward_claimed');
       fx('win');
-      claimedMsg = '❄️ Streak Freeze earned!';
+      claimedMsg = `💰 +$${(res.amount ?? 1000).toLocaleString()} to your Bank!`;
       q = { ...q, reward_claimed: true };
     } else if (res?.reason === 'claimed') {
       q = { ...q, reward_claimed: true };
@@ -80,11 +80,11 @@
       {:else if q.all_done}
         <span class="r-title">All quests done! 🎉</span>
         <button class="claim-btn" on:click={claim} disabled={claiming}>
-          {claiming ? 'Claiming…' : 'Claim ❄️ Streak Freeze'}
+          {claiming ? 'Claiming…' : 'Claim 💰 $1,000'}
         </button>
       {:else}
-        <span class="r-title">Finish all 3 to earn ❄️ a Streak Freeze</span>
-        <span class="r-sub">Protects your streak on a missed day.</span>
+        <span class="r-title">Finish all 3 to earn 💰 $1,000</span>
+        <span class="r-sub">Straight into your Bank.</span>
       {/if}
     </div>
   {/if}

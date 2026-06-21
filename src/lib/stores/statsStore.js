@@ -76,6 +76,21 @@ export async function getDailyQuests() {
   };
 }
 
+/** My Bank: balance, outstanding loan, net worth, recent ledger.
+ * @returns {Promise<{ bank:number, loan:number, net_worth:number, ledger:any[] }>} */
+export async function getBank() {
+  const { data, error } = await supabase.rpc('get_bank');
+  if (error || !data) { if (error) console.error('❌ get_bank:', error); return { bank: 0, loan: 0, net_worth: 0, ledger: [] }; }
+  return { bank: data.bank ?? 0, loan: data.loan ?? 0, net_worth: data.net_worth ?? 0, ledger: Array.isArray(data.ledger) ? data.ledger : [] };
+}
+
+/** Pay down the starting loan from your Bank. @param {number} amount @returns {Promise<any>} */
+export async function repayLoan(amount) {
+  const { data, error } = await supabase.rpc('repay_loan', { p_amount: amount });
+  if (error) { console.error('❌ repay_loan:', error); return null; }
+  return data;
+}
+
 /** My shareable friend code (generated on first call). @returns {Promise<string|null>} */
 export async function getMyFriendCode() {
   const { data, error } = await supabase.rpc('get_my_friend_code');
@@ -97,7 +112,7 @@ export async function getFriendsDailyLeaderboard() {
   return Array.isArray(data) ? data : [];
 }
 
-/** Claim the all-quests-done reward (a streak freeze). @returns {Promise<{ok:boolean, reason?:string, freezes?:number}>} */
+/** Claim the all-quests-done reward (pays Bank). @returns {Promise<{ok:boolean, reason?:string, amount?:number, bank?:number}>} */
 export async function claimQuestReward() {
   const { data, error } = await supabase.rpc('claim_quest_reward');
   if (error || !data) { if (error) console.error('❌ claim_quest_reward:', error); return { ok: false }; }

@@ -8,7 +8,7 @@
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getDailyGhost, getDailyQuests, addFriend } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getDailyGhost, getDailyQuests, addFriend, getBank } from '$lib/stores/statsStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
   import {
@@ -53,6 +53,11 @@
       const q = await getDailyQuests();
       questProgress = { done: q.quests.filter((x) => x.done).length, total: q.quests.length || 3, all_done: q.all_done, reward_claimed: q.reward_claimed };
     } catch { /* non-fatal */ }
+  }
+  /** Net Worth for the menu chip. */
+  let netWorth = /** @type {number|null} */ (null);
+  async function refreshBank() {
+    try { netWorth = (await getBank()).net_worth; } catch { /* non-fatal */ }
   }
 
   // ✅ Load Supabase user profile and sync bankroll (creates profile if missing)
@@ -117,6 +122,7 @@
       dailyStatus = ds;
       menuDailyPlayed = ds.has_played_today;
       refreshQuests();
+      refreshBank();
 
       // Friend invite link: ?add=CODE → add them, then open the Friends board.
       try {
@@ -378,6 +384,7 @@
     // Refresh the daily completion indicator (e.g. just finished today's daily).
     getDailyStatus(currentUser.id).then((s) => { dailyStatus = s; menuDailyPlayed = s.has_played_today; });
     refreshQuests();
+    refreshBank();
   }
 
   let showMyAccount = false;
@@ -484,6 +491,9 @@
     <!-- 🏠 Main Menu (after sign-in) -->
     <div class="main-menu fade-up">
       <div class="menu-hero">
+        <button class="bank-chip" on:click={() => goto('/bank')} title="Your Bank">
+          <span class="bc-coin">💰</span>{netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}
+        </button>
         <button class="streak-chip" class:lit={(dailyStatus?.current_streak ?? 0) > 0} on:click={() => goto('/streak')} title="Your streak">
           <span class="sc-flame">🔥</span>{dailyStatus?.current_streak ?? 0}
         </button>
@@ -998,6 +1008,27 @@
     text-align: center;
     position: relative;
   }
+  .bank-chip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--surface, rgba(255,255,255,0.05));
+    border: 1px solid rgba(163, 230, 53, 0.35);
+    color: var(--brand-2);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.2s;
+  }
+  .bank-chip:hover { transform: translateY(-1px); }
+  .bank-chip:active { transform: scale(0.96); }
+  .bank-chip .bc-coin { font-size: 1rem; }
   .streak-chip {
     position: absolute;
     top: 0;
