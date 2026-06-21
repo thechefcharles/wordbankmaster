@@ -106,8 +106,13 @@ Wagering virtual currency is fine **only if the currency has no real-money value
 - [ ] (later) Achievements/milestone payouts · optional daily "interest"/stipend.
       NOTE: cash-out banks *winnings above the house stake*, not the full bankroll
       (prevents free-money from instant cashouts; supersedes the earlier default).
-### Phase C — Challenges (Score mode + wager)
-- [ ] `matches` table + deterministic seeded puzzle set; create/accept with **escrow**; play → settle (winner takes pot, tie refunds); 48h expiry; surface pending challenges.
+### Phase C — Challenges (Score mode + wager)  ✅ (PR #126)
+- [x] `challenges` + `challenge_plays`; **create** (escrow + you play) / **accept**
+      (escrow + play); both play the **same puzzle**; **score = bankroll left on
+      solve** (0 if unsolved); higher score **wins the pot**, tie refunds; 48h
+      **expiry** auto-voids+refunds. Play mirrors the daily engine. Menu
+      **Challenges** modal (new challenge + inbox). (`supabase-challenges.sql`.)
+      Verified: create+escrow, drop-into-play, full play→settle→payout (zero-sum).
 ### Phase D — Pressure mode
 - [ ] Timed challenge variant (speed × bankroll scoring).
 ### Phase E — Spending + leaderboards + polish
