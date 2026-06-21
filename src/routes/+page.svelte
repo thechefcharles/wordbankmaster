@@ -8,7 +8,7 @@
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { hasPlayedDailyToday, getDailyStatus, getDailyGhost } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getDailyGhost } from '$lib/stores/statsStore.js';
   import { modifierInfo } from '$lib/powerups.js';
   import {
     saveGameToLocalStorage,
@@ -42,6 +42,9 @@
   let savedGameInfo = /** @type {{ gameMode: string, gameState: string } | null} */ (null);
   /** When showing menu: has user already played daily today? */
   let menuDailyPlayed = false;
+  /** Today's daily result for the menu indicator (won/lost + score). */
+  let dailyStatus = /** @type {{ has_played_today: boolean, last_daily_won: boolean|null, daily_bankroll: number, arcade_bankroll: number, current_streak: number, streak_freezes: number, today_score: number } | null} */ (null);
+  $: dailyDone = menuDailyPlayed && !(savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost');
 
   // ✅ Load Supabase user profile and sync bankroll (creates profile if missing)
   /** @param {string} userId */
@@ -100,7 +103,9 @@
       // Daily and arcade are both server-authoritative now — start from the menu.
       showMainMenu = true;
       savedGameInfo = null;
-      menuDailyPlayed = await hasPlayedDailyToday(session.user.id);
+      const ds = await getDailyStatus(session.user.id);
+      dailyStatus = ds;
+      menuDailyPlayed = ds.has_played_today;
 
       await tick();
       hasInitialized = true;
@@ -350,6 +355,8 @@
     saveGameToLocalStorage();
     savedGameInfo = getSavedGameInfo(currentUser.id);
     showMainMenu = true;
+    // Refresh the daily completion indicator (e.g. just finished today's daily).
+    getDailyStatus(currentUser.id).then((s) => { dailyStatus = s; menuDailyPlayed = s.has_played_today; });
   }
 
   let showMyAccount = false;
@@ -462,16 +469,23 @@
       <div class="main-menu-buttons stagger">
         <button
           class="menu-card primary sheen"
+          class:done={dailyDone}
           style="--i: 0"
-          class:disabled={menuDailyPlayed && !(savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost')}
+          class:disabled={dailyDone}
           on:click={handleMenuDaily}
         >
-          <span class="mc-icon">🎯</span>
+          <span class="mc-icon">{#if dailyDone}{dailyStatus?.last_daily_won ? '✅' : '❌'}{:else}🎯{/if}</span>
           <span class="mc-body">
-            <span class="mc-title">{#if savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost'}Resume Daily{:else}Daily Puzzle{/if}</span>
-            <span class="mc-sub">One puzzle a day · ranked</span>
+            <span class="mc-title">{#if savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost'}Resume Daily{:else if dailyDone}Daily Complete{:else}Daily Puzzle{/if}</span>
+            <span class="mc-sub">
+              {#if dailyDone}
+                {dailyStatus?.last_daily_won ? 'Solved' : 'Missed'} · Score {dailyStatus?.today_score?.toLocaleString() ?? 0} · back tomorrow
+              {:else}
+                One puzzle a day · ranked
+              {/if}
+            </span>
           </span>
-          <span class="mc-arrow">→</span>
+          <span class="mc-arrow">{dailyDone ? '🔒' : '→'}</span>
         </button>
         <button class="menu-card" style="--i: 1" on:click={handleMenuArcade}>
           <span class="mc-icon">🕹️</span>
@@ -542,9 +556,23 @@
         <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showStreakMessage = false}></button>
         <div class="modal-content main-menu-modal">
           <button class="close-btn" on:click={() => showStreakMessage = false}>❌</button>
-          <h2>Come Back Tomorrow</h2>
-          <p class="streak-message">Come back tomorrow to continue your streak!</p>
-          <button class="main-menu-btn" on:click={() => showStreakMessage = false}>OK</button>
+          <div class="cbt-medal">{dailyStatus?.last_daily_won ? '✅' : '❌'}</div>
+          <h2>{dailyStatus?.last_daily_won ? 'Daily Solved!' : 'Daily Done'}</h2>
+          <p class="cbt-result">
+            {dailyStatus?.last_daily_won ? 'You solved today’s puzzle.' : 'Not today — better luck next time.'}
+          </p>
+          <div class="cbt-stats">
+            <div class="cbt-stat"><span class="cbt-val">{dailyStatus?.today_score?.toLocaleString() ?? 0}</span><span class="cbt-cap">Score</span></div>
+            <div class="cbt-stat"><span class="cbt-val">${dailyStatus?.daily_bankroll?.toLocaleString() ?? 0}</span><span class="cbt-cap">Banked</span></div>
+            {#if (dailyStatus?.current_streak ?? 0) > 0}
+              <div class="cbt-stat"><span class="cbt-val">🔥 {dailyStatus?.current_streak}</span><span class="cbt-cap">Streak</span></div>
+            {/if}
+          </div>
+          <p class="streak-message">
+            {#if (dailyStatus?.current_streak ?? 0) > 0}Come back tomorrow for a new puzzle and keep your streak alive!{:else}Come back tomorrow for a new puzzle!{/if}
+          </p>
+          <button class="main-menu-btn" on:click={() => { showStreakMessage = false; goToDailyLeaderboard(); }}>View Leaderboard</button>
+          <button class="main-menu-btn ghost-btn" on:click={() => showStreakMessage = false}>Close</button>
         </div>
       </div>
     {/if}
@@ -983,6 +1011,17 @@
     box-shadow: var(--glow-brand);
   }
   .menu-card.disabled { opacity: 0.45; cursor: not-allowed; }
+  /* Completed daily: not faded like a dead disabled card — clearly "done", still
+     tappable to see the result. Overrides .disabled (declared after it). */
+  .menu-card.done {
+    opacity: 1;
+    cursor: pointer;
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    box-shadow: none;
+  }
+  .menu-card.done.primary .mc-icon { background: rgba(255, 255, 255, 0.06); border: 1px solid var(--border); }
+  .menu-card.done .mc-sub { color: var(--brand-2); font-weight: 600; }
   .mc-icon {
     width: 46px;
     height: 46px;
@@ -1095,6 +1134,27 @@
     font-size: 1.05rem;
     color: var(--text-muted);
   }
+  .cbt-medal { font-size: 2.6rem; line-height: 1; margin-bottom: 0.3rem; }
+  .cbt-result { font-size: 0.95rem; color: var(--text-muted); margin: 0.2rem 0 0; }
+  .cbt-stats {
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+    margin: 1.1rem 0 0.2rem;
+  }
+  .cbt-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 78px;
+    padding: 0.6rem 0.5rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 13px;
+  }
+  .cbt-val { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; color: var(--brand-2); }
+  .cbt-cap { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint); }
   .account-email {
     font-size: 0.95rem;
     color: var(--text-muted);

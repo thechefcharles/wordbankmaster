@@ -44,7 +44,7 @@ export async function getDailyStatus(userId) {
   });
   if (error) {
     console.error('❌ Error fetching daily status:', error);
-    return { has_played_today: false, last_daily_won: null, daily_bankroll: 0, arcade_bankroll: 1000, current_streak: 0, streak_freezes: 0 };
+    return { has_played_today: false, last_daily_won: null, daily_bankroll: 0, arcade_bankroll: 1000, current_streak: 0, streak_freezes: 0, today_score: 0 };
   }
   const row = Array.isArray(data) ? data[0] : data;
   return {
@@ -53,7 +53,8 @@ export async function getDailyStatus(userId) {
     daily_bankroll: row?.daily_bankroll ?? 0,
     arcade_bankroll: row?.arcade_bankroll ?? 1000,
     current_streak: row?.current_streak ?? 0,
-    streak_freezes: row?.streak_freezes ?? 0
+    streak_freezes: row?.streak_freezes ?? 0,
+    today_score: row?.today_score ?? 0
   };
 }
 
