@@ -4,7 +4,7 @@
   import { supabase } from '$lib/supabaseClient';
   import { get } from 'svelte/store';
 
-  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut } from '$lib/stores/GameStore.js';
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
@@ -226,6 +226,13 @@
   $: arun = $gameStore.arcadeRun;
   $: arcadeMult = ((arun?.multiplier ?? 100) / 100).toFixed(2);
   $: arcadePayout = Math.round(500 * (arun?.multiplier ?? 100) / 100); // next solve is worth this
+  $: arcadeWinnings = Math.max(0, Math.floor(($gameStore.bankroll ?? 0) - 1500)); // bankable above the house stake
+  let cashingOut = false;
+  async function handleBankIt() {
+    if (cashingOut || arcadeWinnings <= 0) return;
+    cashingOut = true;
+    try { await arcadeCashOut(); } finally { cashingOut = false; }
+  }
 
   let shareCopied = false;
   function buildShareText() {
@@ -672,6 +679,11 @@
         <div class="ah-cell ah-mult"><span class="ah-val">×{arcadeMult}</span><span class="ah-label">Streak</span></div>
         <div class="ah-cell"><span class="ah-val ah-gold">+${arcadePayout.toLocaleString()}</span><span class="ah-label">Solve</span></div>
       </div>
+      {#if $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost' && arcadeWinnings > 0}
+        <button class="bank-it-btn" on:click={handleBankIt} disabled={cashingOut}>
+          💰 Bank ${arcadeWinnings.toLocaleString()} <span class="bib-sub">end run, keep winnings</span>
+        </button>
+      {/if}
     {/if}
 
     <!-- 🌍 Category + witty clue -->
@@ -801,10 +813,18 @@
                 <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
                 <button class="next-puzzle-button" on:click={handleArcadeContinue}>Continue</button>
               </div>
+            {:else if $gameStore.arcadeCashedOut}
+              <div class="result-medal">💰</div>
+              <h2>Cashed Out! +${(arun?.last_gain ?? 0).toLocaleString()}</h2>
+              <p class="result-sub">Banked into your account · {arun?.furthest ?? 0} {(arun?.furthest ?? 0) === 1 ? 'puzzle' : 'puzzles'} solved</p>
+              <div class="result-actions">
+                <button class="share-btn" on:click={() => goto('/bank')}>View Bank</button>
+                <button class="next-puzzle-button" on:click={handleArcadeNewRun}>New Run</button>
+              </div>
             {:else}
               <div class="result-medal">🏁</div>
               <h2>Run Over</h2>
-              <p class="result-sub">You ran out of cash.</p>
+              <p class="result-sub">Busted before you could bank it.</p>
               <div class="result-bankroll">
                 <span class="rb-label">Peak Bankroll</span>
                 <span class="rb-amount">${(arun?.banked ?? 0).toLocaleString()}</span>
@@ -848,6 +868,27 @@
     max-width: 360px;
     margin: 0 auto 14px;
   }
+  .bank-it-btn {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0 auto 14px;
+    padding: 0.6rem 1.3rem;
+    border: 1px solid rgba(163, 230, 53, 0.5);
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(52,211,153,0.16), rgba(163,230,53,0.08));
+    color: var(--brand-2);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    box-shadow: 0 0 16px rgba(163, 230, 53, 0.18);
+    transition: transform 0.15s, box-shadow 0.2s;
+  }
+  .bank-it-btn:hover { transform: translateY(-1px); box-shadow: 0 0 22px rgba(163, 230, 53, 0.3); }
+  .bank-it-btn:active { transform: scale(0.97); }
+  .bank-it-btn:disabled { opacity: 0.6; }
+  .bib-sub { font-family: var(--font-ui); font-weight: 500; font-size: 0.72rem; color: var(--text-faint); }
   .ah-cell {
     flex: 1;
     display: flex;
