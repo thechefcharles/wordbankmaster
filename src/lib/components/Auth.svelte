@@ -3,6 +3,7 @@
   import { user, userProfile } from '$lib/stores/userStore.js';
   import { gameStore } from '$lib/stores/GameStore.js';
   import { saveGameToLocalStorage } from '$lib/stores/localGameUtils.js';
+  import { track } from '$lib/analytics.js';
   import { onMount } from 'svelte';
 
   let email = '';
@@ -47,6 +48,7 @@
         return;
       }
 
+      track(isLogin ? 'login' : 'signup', { platform: isNativeApp ? 'ios' : 'web' });
       user.set(/** @type {{ id: string }} */ (data.user));
 
       const profile = await loadUserProfile(data.user.id);

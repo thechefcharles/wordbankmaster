@@ -54,8 +54,11 @@ shipping **email/password only**.
 - [x] Apple Developer Program enrollment ($99/yr).
 - [ ] Reserve the app name in App Store Connect; pick bundle id
       (e.g. `com.wordbank.app`).
-- [ ] *(optional, nice-to-have before testers)* **Analytics** — Supabase `events`
-      table or PostHog, to get activation/retention baselines. *(see Data & KPIs)*
+- [x] **Analytics** — first-party event pipeline (`supabase-analytics.sql`
+      `events` table + `log_event` RPC; client `src/lib/analytics.js` `track()`).
+      Instruments app_open / signup / login / daily_start / daily_result /
+      arcade_start / arcade_solve / arcade_over / freeplay_start. KPI queries in
+      the SQL file; queryable via the Supabase service role.
 - [ ] *(optional)* **Crash/error reporting** — Sentry.
 - [ ] ~~Entity / LLC decision~~ → **deferred** (Individual account covers TestFlight).
 

@@ -9,6 +9,7 @@
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
   import { getDailyStatus, getDailyGhost } from '$lib/stores/statsStore.js';
+  import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
   import {
     saveGameToLocalStorage,
@@ -84,6 +85,7 @@
   // ✅ Main logic on initial mount
   onMount(async () => {
     initError = null;
+    track('app_open');
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
       if (!session || error) {
