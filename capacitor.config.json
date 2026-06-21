@@ -2,6 +2,7 @@
   "appId": "com.wordbank.app",
   "appName": "WordBank",
   "webDir": "www",
+  "appendUserAgent": "WordBankApp",
   "server": {
     "url": "https://wordbanksvelte.vercel.app",
     "cleartext": false
