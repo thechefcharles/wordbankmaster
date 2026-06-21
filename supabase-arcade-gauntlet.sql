@@ -1020,3 +1020,24 @@ BEGIN
   RETURN public._arcade_response(v_uid);
 END; $fn$;
 GRANT EXECUTE ON FUNCTION public.arcade_start() TO authenticated;
+
+-- ============================================================
+-- Bank economy Phase B: Arcade "Bank it" cash-out. Banks your winnings (bankroll
+-- above the $1,500 house stake) into your persistent Bank and ends the run; bust
+-- before banking = $0. See BANK_ECONOMY.md + supabase-bank.sql.
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.arcade_cashout()
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER AS $fn$
+DECLARE v_uid UUID := auth.uid(); r public.arcade_runs; v_win BIGINT;
+BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'arcade_cashout: not authenticated'; END IF;
+  SELECT * INTO r FROM public.arcade_runs WHERE user_id = v_uid AND run_date = CURRENT_DATE FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'arcade_cashout: no run'; END IF;
+  IF r.state <> 'active' THEN RETURN public._arcade_response(v_uid); END IF;
+  v_win := GREATEST(0, r.bankroll - 1500);
+  IF v_win > 0 THEN PERFORM public._bank_credit(v_uid, v_win, 'arcade_cashout'); END IF;
+  UPDATE public.arcade_runs SET state = 'over', last_gain = v_win, updated_at = NOW()
+  WHERE user_id = v_uid AND run_date = CURRENT_DATE;
+  RETURN public._arcade_response(v_uid);
+END; $fn$;
+GRANT EXECUTE ON FUNCTION public.arcade_cashout() TO authenticated;

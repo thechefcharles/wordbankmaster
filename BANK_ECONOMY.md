@@ -98,9 +98,14 @@ Wagering virtual currency is fine **only if the currency has no real-money value
 - [x] First earn source: **quest reward pays Bank** (+$1,000) instead of a freeze.
 - [x] Menu **Net Worth chip** → **/bank** screen: Bank, Loan, Net Worth, "pay back loan", history.
       (`supabase-bank.sql`.)
-### Phase B — Earn faucets + Arcade cash-out
-- [ ] Daily-win bonus → Bank ($500 × streak). Achievements/milestone payouts. Optional daily "interest"/stipend.
-- [ ] **Arcade "Bank it"** (press-your-luck): cash the round bankroll into your Bank; bust = lose only house money.
+### Phase B — Earn faucets + Arcade cash-out  ✅ (PR #125)
+- [x] **Daily-win bonus → Bank** ($500 × streak), in `_finalize_daily`.
+- [x] **Arcade "Bank it"** (press-your-luck): banks your **winnings = bankroll − $1,500 house
+      stake** into your Bank and ends the run; **bust before banking = $0**. `arcade_cashout()` +
+      a "Bank $X" button on the arcade HUD + a "Cashed Out!" result modal (vs "Run Over").
+- [ ] (later) Achievements/milestone payouts · optional daily "interest"/stipend.
+      NOTE: cash-out banks *winnings above the house stake*, not the full bankroll
+      (prevents free-money from instant cashouts; supersedes the earlier default).
 ### Phase C — Challenges (Score mode + wager)
 - [ ] `matches` table + deterministic seeded puzzle set; create/accept with **escrow**; play → settle (winner takes pot, tie refunds); 48h expiry; surface pending challenges.
 ### Phase D — Pressure mode

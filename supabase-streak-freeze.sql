@@ -69,6 +69,7 @@ BEGIN
     win_streak = GREATEST(user_weekly_stats.win_streak, v_current_streak);
 
   IF p_won THEN
+    PERFORM public._bank_credit(p_uid, 500 * GREATEST(v_current_streak, 1), 'daily_win');  -- Bank bonus
     IF COALESCE(p_incorrect_count, 0) = 0 THEN PERFORM public._award_badge(p_uid, 'flawless'); END IF;
     IF v_bankroll >= 700 THEN PERFORM public._award_badge(p_uid, 'gold_bank'); END IF;
     IF v_current_streak >= 7 THEN PERFORM public._award_badge(p_uid, 'streak_7'); END IF;

@@ -310,6 +310,12 @@ export async function arcadeUsePowerup(powerup) {
   if (error) { console.error('❌ arcade_use_powerup error:', error); return null; }
   return data;
 }
+/** Cash out the current arcade run's winnings into your Bank. @returns {Promise<any>} */
+export async function arcadeCashout() {
+  const { data, error } = await supabase.rpc('arcade_cashout');
+  if (error) { console.error('❌ arcade_cashout error:', error); return null; }
+  return data;
+}
 
 /** Whether the caller already has a session for today (drives the pre-game picker). */
 export async function dailySessionExists() {

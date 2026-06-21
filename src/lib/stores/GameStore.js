@@ -4,7 +4,7 @@ import { writable, get } from 'svelte/store';
 import confetti from 'canvas-confetti';
 import { fx } from '$lib/sound.js';
 import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, getDailyModifier, getDailyClue, getArcadeClue } from '$lib/stores/statsStore.js';
-import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNext, arcadeUsePowerup } from '$lib/stores/statsStore.js';
+import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNext, arcadeUsePowerup, arcadeCashout } from '$lib/stores/statsStore.js';
 import { freeplayStart, freeplayNext, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
 import { track } from '$lib/analytics.js';
 
@@ -36,6 +36,7 @@ import { track } from '$lib/analytics.js';
  *   gameMode: string,
  *   freeReveals?: number,
  *   arcadeRun?: any,
+ *   arcadeCashedOut?: boolean,
  *   modifier?: string | null,
  *   clue?: string | null
  * }} GameState
@@ -72,6 +73,7 @@ export const gameStore = writable(/** @type {GameState} */ ({
   gameMode: 'daily', // 'daily' | 'arcade'
   freeReveals: 0, // owned Free Reveal power-ups (daily)
   arcadeRun: null, // arcade gauntlet run state { state, banked, multiplier, position, total, furthest, last_gain }
+  arcadeCashedOut: false, // true when the last arcade run ended via "Bank it" (vs bust)
   modifier: null, // today's shared Daily Modifier id (daily only)
   clue: null // witty one-line hint for the current puzzle
 }));
@@ -210,6 +212,7 @@ function reconcileArcadeBoard(resp) {
     gameMode: 'arcade',
     gameState: gs,
     arcadeRun: run,
+    arcadeCashedOut: false,
     freeReveals: 0,
     modifier: null
   }));
@@ -384,6 +387,23 @@ export async function useArcadePowerup(powerup) {
   try {
     const resp = await arcadeUsePowerup(powerup);
     if (resp) reconcileArcadeBoard(resp);
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
+/** Cash out the current arcade run's winnings into your Bank (ends the run). */
+export async function arcadeCashOut() {
+  if (dailyInFlight) return;
+  dailyInFlight = true;
+  try {
+    const resp = await arcadeCashout();
+    if (resp) {
+      reconcileArcadeBoard(resp);
+      // reconcile cleared the flag; mark this as a cash-out so the modal differs from a bust
+      gameStore.update(s => ({ ...s, arcadeCashedOut: true }));
+      fx('multiplier');
+    }
   } finally {
     dailyInFlight = false;
   }
