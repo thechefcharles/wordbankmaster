@@ -146,9 +146,10 @@ team (this sets the provisioning automatically). Bundle id is `com.wordbank.app`
 - [ ] LLC vs Individual + Organization Apple account (D-U-N-S). Only needed before
       real prizes/payouts; Individual covers TestFlight.
 
-**Sweepstakes prize system** (deferred — design captured below so we don't lose it):
-- [ ] Build only after testers + lawyer review. Framework retained in the
-      *Sweepstakes (deferred design)* section at the bottom.
+**~~Sweepstakes prize system~~ — DROPPED (2026-06).** Replaced by the bank
+economy + friend wagering — see **BANK_ECONOMY.md**. (No real-money prize draw,
+so no Official Rules / state registration / 18+ gate needed for that reason.)
+The sweepstakes design notes below are kept only for history.
 
 ---
 
