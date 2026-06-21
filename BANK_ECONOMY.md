@@ -102,7 +102,99 @@ Wagering virtual currency is fine **only if the currency has no real-money value
 6. **Pressure mode** specifics: clock per puzzle vs whole set; speed×bankroll scoring.
 7. **Bankruptcy floor / stipend** so broke players can re-enter.
 
+---
+
+# Expanded economy — loan, faucets/sinks, accounts, leaderboards (2026-06)
+
+### One account, one Bank
+**ONE account per player, ONE persistent Bank, used across every mode.** No
+per-mode wallets, no alt accounts. Your identity + Bank are the spine of the game.
+
+### Daily stays clean (the skill anchor) — answers "same experience for everyone?"
+Split the modes instead of compromising the Daily:
+- **Daily = free, identical for all, no pay-to-win, pure skill.** Small Bank reward
+  for winning. This is the fair competitive anchor — *protect it.*
+- **Arcade / Free Play / Challenges = the economy sandbox** — personalized puzzles,
+  buy power-ups, spend money. (A *challenge* still uses the same puzzles for its two
+  opponents; different pairs get different sets — that's fine.)
+
+### Starting capital: the loan (keep it friendly)
+- New players take a **$5,000 loan from "The House"** — flavor for starting capital +
+  an early goal.
+- **No spiraling interest, no lockout** — you can always earn for free (Daily/Arcade);
+  pay it back whenever. Paying it off is a satisfying milestone.
+- **Net Worth = Bank − outstanding loan** → the headline wealth number.
+
+### Two-currency firewall (the legal + fairness backbone)
+- **Bank ($)** — earned-only, virtual. Runs the whole in-game economy (wagers,
+  power-ups, cosmetics, entry). **Never purchasable with real money. Never cashable.**
+- **Real money** — buys **cosmetics only** (skins / avatars / accessories) and maybe a
+  premium tier. **Never buys Bank, never an edge.**
+- This firewall is what keeps it both **non-gambling** and **non-pay-to-win.**
+
+### Full economy map
+**Faucets (earn Bank)**
+| Source | Notes |
+|---|---|
+| Starting loan | one-time $5,000 (owed back) |
+| Arcade cash-out | the main grind (press-your-luck) |
+| Daily win bonus | small, streak-scaled |
+| Quest rewards | daily quests pay Bank |
+| Achievements | one-time milestone payouts |
+| Daily interest / stipend | small daily "your Bank earns interest" — also the broke-player safety net |
+| Challenge winnings | **redistributes** between players, not new money |
+
+**Sinks (spend Bank)**
+| Sink | Notes |
+|---|---|
+| Wagers | stake in challenges (can lose) — redistributes |
+| Power-ups | buy/pre-stock for **Arcade** (NOT Daily, NOT wagered challenges) |
+| Cosmetics | avatars, accessories, themes, tile skins, win animations — the big sink |
+| High-stakes entry | optional premium rooms with a buy-in |
+| Loan payback | clears your debt |
+| Streak freeze | buy protection (currently earned) |
+
+⚠️ **Economy health:** wagers *redistribute* money but don't destroy it, so the true
+sinks are **cosmetics + power-up consumption + entry fees + loan payback.** Those have
+to keep pace with the faucets (arcade/interest) or balances inflate to meaninglessness.
+
+### Power-ups & fairness in wagers
+- **Wagered challenges = CLEAN** (no bought power-ups) → the bet is pure skill on the
+  same puzzles. Otherwise the richer player just buys the win (snowball).
+- **Arcade = power-ups allowed** (your solo grind).
+- (Optional later: a separate "powered" challenge type both players opt into.)
+
+### Entry fees (answers "pay to enter each mode?")
+- **Daily = free** (the fair anchor — never paywalled).
+- **Arcade = free** (it's the faucet; it *gives* house money).
+- **Challenges:** the **wager IS the entry fee** (the natural sink).
+- **High-stakes rooms:** optional premium variants with a buy-in (extra sink for the skilled).
+
+### Leaderboards, restructured (expect big changes — that's fine)
+- **Daily** — pure skill (today's daily score). Unchanged anchor.
+- **Net Worth** — total Bank − loan. The new headline "richest" board.
+- **Challenge record** — wins / total winnings (PvP).
+- **Arcade** — biggest single cash-out / longest run.
+- Friends versions of each.
+
+### Don't-overwhelm rollout
+Layer it in: **Bank + arcade cash-out + clean wager** first; then loan framing,
+power-up shop, cosmetics/avatars, interest, and the new leaderboards over time.
+
+### Open decisions (expanded)
+- Loan: interest-free? amount? required or optional?
+- Daily interest: flat stipend vs % of balance (% makes the rich richer — careful)?
+- Power-ups in challenges at all, or strictly Arcade?
+- Cosmetics: buyable with Bank, real money, or both?
+- Headline leaderboard: **Net Worth** vs raw Bank?
+- Does the loan/debt framing feel fun or stressful for a word game? (gut-check with testers)
+
 ## Notes / decisions log
 - 2026-06: pivoted from sweepstakes → bank economy + friend wagering. Async-first
   challenges. Bank = earned-only virtual, never sold/cashed. Friends (codes +
   daily head-to-head) already shipped as the social base.
+- 2026-06: leaned harder into banking theme — one account/one Bank; $5,000 starting
+  **loan** (Net Worth = Bank − loan); two-currency firewall (Bank earned-only vs real
+  money = cosmetics only); Daily kept free/fair/clean while Arcade/Free Play/Challenges
+  are the economy sandbox; full faucet/sink map; wagered challenges stay clean (no
+  power-ups). Leaderboards add a Net Worth board.
