@@ -199,7 +199,8 @@
   let shareCopied = false;
   function buildShareText() {
     const br = '$' + resultBankroll.toLocaleString();
-    const link = 'https://wordbanksvelte1.vercel.app';
+    // Link to the live origin (never a hardcoded/deleted project URL).
+    const link = typeof window !== 'undefined' ? window.location.origin : '';
     if (isDailyResult) {
       return `🏦 WordBank Daily #${puzzleNumber}\n${resultMedal.emoji} ${resultWon ? resultMedal.name + ' — ' : ''}${br} banked\n${link}`;
     }

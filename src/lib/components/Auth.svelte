@@ -56,10 +56,10 @@
     return;
   }
 
-  const redirectUrl =
-    import.meta.env.DEV
-      ? 'http://localhost:5173/reset-password'
-      : 'https://wordbanksvelte1.vercel.app/reset-password';
+  // Use the current origin so the link works on whatever domain is serving the
+  // app (localhost in dev, the live Vercel domain in prod) — never a hardcoded
+  // (and now-deleted) project URL.
+  const redirectUrl = `${window.location.origin}/reset-password`;
 
   const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
     redirectTo: redirectUrl
@@ -96,9 +96,7 @@
   }
 
   async function signInWithGoogle() {
-    const redirectUrl = import.meta.env.DEV
-      ? 'http://localhost:5173/auth/callback'
-      : 'https://wordbanksvelte1.vercel.app/auth/callback';
+    const redirectUrl = `${window.location.origin}/auth/callback`;
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: redirectUrl }

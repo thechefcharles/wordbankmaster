@@ -395,4 +395,21 @@
     font-size: 0.82rem;
     color: var(--text-faint);
   }
+
+  /* ---- Mobile: fit the table without horizontal scroll ---- */
+  @media (max-width: 560px) {
+    .leaderboard-page { padding: 1.6rem 0.5rem 2.5rem; }
+    h1 { font-size: 1.5rem; }
+    .tab-btn { padding: 0.5rem 1.15rem; font-size: 0.9rem; }
+    .back-btn { margin-bottom: 1.2rem; }
+    .table-wrap { backdrop-filter: none; }
+    table { min-width: 0; }
+    th, td { padding: 0.55rem 0.45rem; font-size: 0.82rem; }
+    th { font-size: 0.6rem; }
+    td.rank { width: 30px; }
+    /* The daily table has 8 columns — too wide for a phone. Keep the essentials
+       (#, Player, Score, Bankroll) and hide Streak/Best/Plays/Win%. The Arcade
+       table only has 4 columns, so these selectors are a no-op there. */
+    th:nth-child(n+5), td:nth-child(n+5) { display: none; }
+  }
 </style>
