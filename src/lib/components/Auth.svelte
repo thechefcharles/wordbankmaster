@@ -56,12 +56,11 @@
     return;
   }
 
-  // Route through /auth/confirm, which verifies the email OTP (token_hash) and
-  // forwards to /reset-password. token_hash needs no local code verifier, so the
-  // link works cross-device. Origin-aware so it's correct in dev and prod.
-  // NOTE: requires the Supabase "Reset Password" email template to link to
-  //   {{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=recovery
-  const redirectUrl = `${window.location.origin}/auth/confirm?next=/reset-password`;
+  // The reset email links straight to /reset-password with a one-time token_hash
+  // (cross-device, no code verifier). redirectTo is just the allow-listed landing
+  // page; the actual link is built by the Supabase email template, which must be:
+  //   {{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&type=recovery
+  const redirectUrl = `${window.location.origin}/reset-password`;
 
   const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
     redirectTo: redirectUrl
