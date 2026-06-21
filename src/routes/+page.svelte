@@ -8,7 +8,7 @@
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getDailyGhost } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getDailyGhost, getDailyQuests } from '$lib/stores/statsStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
   import {
@@ -46,6 +46,14 @@
   /** Today's daily result for the menu indicator (won/lost + score). */
   let dailyStatus = /** @type {{ has_played_today: boolean, last_daily_won: boolean|null, daily_bankroll: number, arcade_bankroll: number, current_streak: number, streak_freezes: number, today_score: number } | null} */ (null);
   $: dailyDone = menuDailyPlayed && !(savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost');
+  /** Daily-quest progress for the menu card. */
+  let questProgress = { done: 0, total: 3, all_done: false, reward_claimed: false };
+  async function refreshQuests() {
+    try {
+      const q = await getDailyQuests();
+      questProgress = { done: q.quests.filter((x) => x.done).length, total: q.quests.length || 3, all_done: q.all_done, reward_claimed: q.reward_claimed };
+    } catch { /* non-fatal */ }
+  }
 
   // ✅ Load Supabase user profile and sync bankroll (creates profile if missing)
   /** @param {string} userId */
@@ -108,6 +116,7 @@
       const ds = await getDailyStatus(session.user.id);
       dailyStatus = ds;
       menuDailyPlayed = ds.has_played_today;
+      refreshQuests();
 
       await tick();
       hasInitialized = true;
@@ -359,6 +368,7 @@
     showMainMenu = true;
     // Refresh the daily completion indicator (e.g. just finished today's daily).
     getDailyStatus(currentUser.id).then((s) => { dailyStatus = s; menuDailyPlayed = s.has_played_today; });
+    refreshQuests();
   }
 
   let showMyAccount = false;
@@ -492,7 +502,17 @@
           </span>
           <span class="mc-arrow">{dailyDone ? '🔒' : '→'}</span>
         </button>
-        <button class="menu-card" style="--i: 1" on:click={handleMenuArcade}>
+        <button class="menu-card" class:done={questProgress.all_done} style="--i: 1" on:click={() => goto('/quests')}>
+          <span class="mc-icon">{questProgress.all_done ? '🏆' : '📋'}</span>
+          <span class="mc-body">
+            <span class="mc-title">Daily Quests</span>
+            <span class="mc-sub">
+              {#if questProgress.all_done && !questProgress.reward_claimed}All done — claim your reward!{:else}{questProgress.done}/{questProgress.total} complete today{/if}
+            </span>
+          </span>
+          <span class="mc-arrow">{#if questProgress.all_done && !questProgress.reward_claimed}🎁{:else}→{/if}</span>
+        </button>
+        <button class="menu-card" style="--i: 2" on:click={handleMenuArcade}>
           <span class="mc-icon">🕹️</span>
           <span class="mc-body">
             <span class="mc-title">{#if savedGameInfo?.gameMode === 'arcade' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost'}Resume Arcade{:else}Arcade Mode{/if}</span>
@@ -500,7 +520,7 @@
           </span>
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 2" on:click={handleMenuFreeplay}>
+        <button class="menu-card" style="--i: 3" on:click={handleMenuFreeplay}>
           <span class="mc-icon">🎲</span>
           <span class="mc-body">
             <span class="mc-title">Free Play</span>
@@ -508,7 +528,7 @@
           </span>
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 3" on:click={() => goto('/badges')}>
+        <button class="menu-card" style="--i: 4" on:click={() => goto('/badges')}>
           <span class="mc-icon">🏅</span>
           <span class="mc-body">
             <span class="mc-title">Badges</span>
@@ -516,7 +536,7 @@
           </span>
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 4" on:click={handleMenuLeaderboard}>
+        <button class="menu-card" style="--i: 5" on:click={handleMenuLeaderboard}>
           <span class="mc-icon">🏆</span>
           <span class="mc-body">
             <span class="mc-title">Leaderboard</span>
@@ -524,7 +544,7 @@
           </span>
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 5" on:click={handleMenuMyAccount}>
+        <button class="menu-card" style="--i: 6" on:click={handleMenuMyAccount}>
           <span class="mc-icon">👤</span>
           <span class="mc-body">
             <span class="mc-title">My Account</span>

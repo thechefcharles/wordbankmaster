@@ -59,6 +59,31 @@ export async function getDailyStatus(userId) {
 }
 
 /**
+ * Today's 3 daily quests (same for everyone) + progress + reward state.
+ * @returns {Promise<{ quests:{id:string,emoji:string,label:string,target:number,progress:number,done:boolean}[], all_done:boolean, reward_claimed:boolean, resets_in_seconds:number }>}
+ */
+export async function getDailyQuests() {
+  const { data, error } = await supabase.rpc('get_daily_quests');
+  if (error || !data) {
+    if (error) console.error('❌ Error fetching daily quests:', error);
+    return { quests: [], all_done: false, reward_claimed: false, resets_in_seconds: 0 };
+  }
+  return {
+    quests: Array.isArray(data.quests) ? data.quests : [],
+    all_done: !!data.all_done,
+    reward_claimed: !!data.reward_claimed,
+    resets_in_seconds: data.resets_in_seconds ?? 0
+  };
+}
+
+/** Claim the all-quests-done reward (a streak freeze). @returns {Promise<{ok:boolean, reason?:string, freezes?:number}>} */
+export async function claimQuestReward() {
+  const { data, error } = await supabase.rpc('claim_quest_reward');
+  if (error || !data) { if (error) console.error('❌ claim_quest_reward:', error); return { ok: false }; }
+  return data;
+}
+
+/**
  * Streak overview: current/longest streak, freezes, and per-day daily outcomes
  * (last ~10 weeks) for the calendar heatmap.
  * @returns {Promise<{ current_streak:number, highest_streak:number, freezes:number, days:{d:string,won:boolean}[] }>}

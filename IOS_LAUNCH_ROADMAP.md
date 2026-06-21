@@ -25,6 +25,14 @@ learning from testers (see *Deferred* at the bottom).
 
 Everything not on this list is intentionally *after* we have testers.
 
+### Engagement features shipped (Duolingo-inspired)
+- [x] **Streak screen** (`/streak`) + menu flame chip.
+- [x] **Daily Quests** (`/quests`) — 3 deterministic quests/day (same for everyone),
+      progress from the events table (no engine changes), finish all 3 → claim a
+      streak freeze. Menu card shows progress. (`supabase-quests.sql`.)
+- [ ] Next candidates: leagues/divisions for the leaderboard · cosmetic currency
+      + shop · profile screen · push notification (native).
+
 ### Zero-friction testing (no TestFlight needed)
 WordBank is a live website, so the lowest-friction way to get friends testing is
 just the **URL** — no app stores, no TestFlight, no downloads:
