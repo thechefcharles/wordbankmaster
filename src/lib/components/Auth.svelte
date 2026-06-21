@@ -56,10 +56,12 @@
     return;
   }
 
-  // Route through the server callback, which exchanges the PKCE recovery code
-  // for a session (cookie) and then forwards to /reset-password. Using the
-  // current origin keeps it working on any domain (dev or the live Vercel one).
-  const redirectUrl = `${window.location.origin}/auth/callback?next=/reset-password`;
+  // Route through /auth/confirm, which verifies the email OTP (token_hash) and
+  // forwards to /reset-password. token_hash needs no local code verifier, so the
+  // link works cross-device. Origin-aware so it's correct in dev and prod.
+  // NOTE: requires the Supabase "Reset Password" email template to link to
+  //   {{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=recovery
+  const redirectUrl = `${window.location.origin}/auth/confirm?next=/reset-password`;
 
   const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
     redirectTo: redirectUrl
