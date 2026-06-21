@@ -1,0 +1,12 @@
+{
+  "appId": "com.wordbank.app",
+  "appName": "WordBank",
+  "webDir": "www",
+  "server": {
+    "url": "https://wordbanksvelte.vercel.app",
+    "cleartext": false
+  },
+  "ios": {
+    "contentInset": "always"
+  }
+}

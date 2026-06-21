@@ -1,90 +1,125 @@
 # WordBank — iOS Launch Roadmap
 
-**Goal:** get WordBank from a SvelteKit/Vercel web app to TestFlight, then the
-real iOS App Store, with the data and legal structure to (eventually) run a
-monthly sweepstakes prize.
+**Goal (now):** get WordBank from a SvelteKit/Vercel web app **onto TestFlight in
+front of real test users**, as fast as is sensible. Full App Store submission,
+the sweepstakes prize, and the LLC/entity work are **deferred** until after we're
+learning from testers (see *Deferred* at the bottom).
 
 **Status legend:** ✅ done · 🔄 doing · ⬜ todo · 🔒 blocked/needs decision
 **Living doc** — check items off as we ship; keep notes inline.
 
-> ⚠️ Not legal advice. The sweepstakes section is a framework only — the Official
-> Rules must be reviewed by a promotions attorney before any prize goes out.
+---
+
+## 🎯 Critical path to first TestFlight (the only thing that matters right now)
+1. Capacitor wrapper + a bundle-able **static/SPA build** of the front-end.
+2. **Auth that works in the bundled app for testers** — v1 = **email + password
+   only** (works client-side against Supabase, no web redirects). Hide Google +
+   the web reset-link flow in the native build for now. *(This avoids the whole
+   OAuth/deep-link rework AND the Sign in with Apple requirement — those are only
+   triggered by offering third-party social login, which v1 won't.)*
+3. App icon + launch screen + bundle id.
+4. Build in Xcode → upload to App Store Connect → **Internal TestFlight** (up to
+   100 testers, **no review**, available as soon as the build processes).
+5. Optional next: **External TestFlight** (up to 10k) — needs a lighter Beta App
+   Review (privacy policy URL + basic compliance), so do it once the basics land.
+
+Everything not on this list is intentionally *after* we have testers.
 
 ---
 
 ## Where we are
 - ✅ Web app feature-complete enough to test (daily, arcade survival, free play,
-  badges, leaderboard, 720 puzzles, auth + password reset working).
-- ✅ Apple Developer Program account exists.
+  badges, leaderboard, 720 puzzles, auth + password reset working on web).
+- ✅ Apple Developer Program account exists (Individual is fine for TestFlight —
+  no entity/LLC decision needed yet).
 - ⬜ Everything below.
 
 **The core reality:** Apple won't accept a plain web link / thin PWA (Guideline
 4.2). We wrap the front-end in **Capacitor** (native shell, bundled UI, native
-APIs). The biggest single task is **reworking auth for native** (the SSR routes
-`/auth/callback` + `/auth/confirm` don't exist inside a bundled app).
+APIs). For v1 we sidestep the hardest part (native OAuth/deep-link auth) by
+shipping **email/password only**.
 
 ---
 
-## Phase 0 — Foundations (do now, in parallel)
+## Phase 0 — Foundations (light; don't block on these)
 - [x] Apple Developer Program enrollment ($99/yr).
-- [ ] **Entity decision** 🔒 — Individual vs LLC + Organization account (needs a
-      free D-U-N-S number, ~1–2 wks). LLC recommended before real prizes/payouts.
-      Decide who the App Store "seller" + sweepstakes "Sponsor" is. *(see Open
-      Decisions)*
-- [ ] **Analytics** — wire PostHog (free tier) **or** a Supabase `events` table
-      into the web app now, so we have baselines before testers. *(see Data & KPIs)*
-- [ ] **Crash/error reporting** — Sentry (web now, native later).
 - [ ] Reserve the app name in App Store Connect; pick bundle id
-      (e.g. `com.<entity>.wordbank`).
+      (e.g. `com.wordbank.app`).
+- [ ] *(optional, nice-to-have before testers)* **Analytics** — Supabase `events`
+      table or PostHog, to get activation/retention baselines. *(see Data & KPIs)*
+- [ ] *(optional)* **Crash/error reporting** — Sentry.
+- [ ] ~~Entity / LLC decision~~ → **deferred** (Individual account covers TestFlight).
 
-## Phase 1 — Native shell + compliance must-haves
-*(These are the items that otherwise get you rejected — front-load them.)*
-- [ ] **Capacitor wrapper** — add Capacitor, produce a **static/SPA build** of the
-      front-end (currently `adapter-vercel` SSR; need a bundle-able build), open
-      in Xcode, run on a device.
-- [ ] **Native auth rework** 🔒 — replace web OAuth redirects with native flow:
-      Supabase + Capacitor, custom URL scheme / universal links for deep-linking
-      back into the app. Decide: keep email/password + add native Google, or
-      simplify.
-- [ ] **Sign in with Apple** — REQUIRED because we offer Google login (Guideline
-      4.8). Add it (or drop Google).
-- [ ] **In-app account deletion** — REQUIRED for sign-up apps (5.1.1(v)). Add a
-      "Delete my account" flow + a server RPC that purges profile/sessions/results.
-- [ ] **Push notifications** — "your daily puzzle is ready" (APNs via Capacitor).
-      Doubles as the #1 retention lever AND helps satisfy 4.2 "native value".
-- [ ] Native polish: app icon, launch screen, safe-area insets, status bar,
-      haptics (already have web haptics — verify on device).
-- [ ] App Store Connect: create the app record, upload first build (Xcode/Transporter).
+## Phase 1 — Native shell to get a testable build 🔄
+- [x] **Capacitor wrapper added** — `@capacitor/core` + `ios` + `cli`,
+      `capacitor.config.json`, generated `ios/` Xcode project (SPM, no CocoaPods).
+- [x] **v1 load strategy = remote URL.** `server.url` points the native app at the
+      live site (`wordbanksvelte.vercel.app`). Zero auth rework, instant iteration
+      (web deploys reflect in the app with no resubmit), testers use the real app.
+      `www/index.html` is the offline fallback. *Tradeoff:* Apple discourages
+      pure-remote apps for the PUBLIC store (4.2) → **convert to a bundled build +
+      native auth before public submission** (deferred item below). Fine for
+      TestFlight.
+- [x] **v1 auth = email + password** — works in the webview with no redirects.
+      *(Google OAuth inside a webview is unreliable; testers use email/password.
+      Native Google + Sign in with Apple are deferred to the bundled build.)*
+- [ ] **Signing + first run** (you, in Xcode): `npm run cap:open` → select your
+      Team under Signing & Capabilities → run on a simulator/device.
+- [ ] App icon + launch screen (replace Capacitor defaults).
+- [ ] App Store Connect: create the app record; **Archive → upload** for TestFlight.
 
-## Phase 2 — TestFlight
+### How to build & test the iOS app
+```bash
+npm run cap:sync      # copy config/web-assets into the iOS project (run after config changes)
+npm run cap:open      # open ios/App in Xcode
+```
+In Xcode: **App target → Signing & Capabilities → Team** = your Apple Developer
+team (this sets the provisioning automatically). Bundle id is `com.wordbank.app`
+(change in `capacitor.config.json` *and* Xcode if you want a different one; then
+`npm run cap:sync`).
+- **Run on simulator/device:** pick a destination, press ▶.
+- **Ship to TestFlight:** Product → Destination = *Any iOS Device*, then
+  **Product → Archive** → Distribute App → App Store Connect → Upload. The build
+  appears in App Store Connect → TestFlight after processing; add Internal testers.
+
+## Phase 2 — TestFlight (the goal)
 - [ ] **Internal testing** — add testers by Apple ID (up to 100); available right
-      after build processes, no review.
-- [ ] **External testing** — up to 10,000 testers; requires a (lighter) **Beta App
-      Review**. Need: privacy policy URL, test notes, contact.
+      after the build processes, **no review**. ← first real test users land here.
+- [ ] **External testing** — up to 10,000; needs a lighter **Beta App Review**
+      (privacy policy URL + basics). Do once Phase 1 is solid.
 - [ ] Tester feedback channel (TestFlight feedback + a simple form/Discord).
-- [ ] Watch the KPI dashboard; iterate on activation + D1/D7 retention.
-
-## Phase 3 — App Store submission prep
-- [ ] **Privacy policy** (hosted page) + **App Privacy nutrition label** in App
-      Store Connect (email, gameplay, analytics, etc.).
-- [ ] **Age rating** — set honestly; **18+ gate** once a sweepstakes exists.
-- [ ] **Support URL** + marketing page, screenshots, description, keywords.
-- [ ] Full **App Review** pass (4.2 functionality, 4.8 Sign in with Apple, 5.1.1
-      account deletion, 5.3 if sweepstakes is in-build).
-- [ ] Decide: ship the game **first**, turn the sweepstakes on later (less
-      rejection surface), vs. include it at launch with proper rules.
-
-## Phase 4 — Sweepstakes + launch
-- [ ] Finalize sweepstakes (see section below) — entity, Official Rules, AMOE,
-      18+ gate, anti-fraud, winner verification.
-- [ ] Public launch.
-- [ ] Run the first monthly draw; verify winner; issue gift card; 1099/W-9 if
-      thresholds hit.
+- [ ] Watch activation + D1/D7 retention; iterate.
 
 ---
 
-## Compliance checklist (rejection-risk — must all be true at submit)
-- [ ] Sign in with Apple offered (because Google login exists). [4.8]
+## ⏸️ Deferred — after we have test users (do NOT block TestFlight on these)
+*Pulled out of the critical path per decision (2026-06): get to testers first.*
+
+**Store-submission compliance** (needed for public App Store, not for TestFlight):
+- [ ] **Sign in with Apple** — required *if/when* we re-add Google or other social login. [4.8]
+- [ ] **In-app account deletion** — required for sign-up apps. [5.1.1(v)] Flow +
+      server RPC purging profile/sessions/results.
+- [ ] **Privacy policy** + **App Privacy nutrition label**.
+- [ ] **Age rating**, **Support URL**, screenshots, description, keywords.
+- [ ] **Push notifications** ("daily ready") — big retention lever + native value. [4.2]
+- [ ] Native auth rework: native Google + password-reset deep-linking (custom URL
+      scheme / universal links).
+- [ ] Full **App Review** pass.
+
+**Entity / business** (deferred):
+- [ ] LLC vs Individual + Organization Apple account (D-U-N-S). Only needed before
+      real prizes/payouts; Individual covers TestFlight.
+
+**Sweepstakes prize system** (deferred — design captured below so we don't lose it):
+- [ ] Build only after testers + lawyer review. Framework retained in the
+      *Sweepstakes (deferred design)* section at the bottom.
+
+---
+
+## Compliance checklist (for PUBLIC App Store submission — not TestFlight)
+*Internal TestFlight needs none of these; external TestFlight needs a privacy
+policy + basics. Full list kept here for when we submit publicly.*
+- [ ] Sign in with Apple — only if we re-add Google / social login. [4.8]
 - [ ] In-app account deletion. [5.1.1(v)]
 - [ ] Privacy policy + accurate App Privacy label. [5.1.1]
 - [ ] App feels native / adds value beyond a website (push, etc.). [4.2]
@@ -106,7 +141,11 @@ Track:
 
 ---
 
-## Sweepstakes prize system (framework — lawyer-review required)
+## Sweepstakes (deferred design — build later, lawyer-review required)
+> ⏸️ **Deferred** (2026-06): not in the path to test users. Captured so we don't
+> lose the design. ⚠️ Not legal advice — Official Rules must be reviewed by a
+> promotions attorney before any prize goes out.
+
 **Concept:** monthly gift card to a **randomly drawn winner from the top 10**
 leaderboard (skill to qualify + chance to win).
 
@@ -135,16 +174,15 @@ winner (auditable, deterministic seed stored).
 
 ---
 
-## Open decisions 🔒
-1. **Entity:** Individual (move now, convert later) vs LLC + Org account (liability
-   shield, better Sponsor) — needed before real prizes.
-2. **Analytics tool:** PostHog vs in-house Supabase `events`.
-3. **Auth on native:** keep Google + add Sign in with Apple, vs Apple + email only.
-4. **Sweepstakes at launch vs after** (rejection-surface tradeoff).
-5. **Prize cadence/value** for the first draw.
-6. **Geo scope:** US-only first? (simplifies sweepstakes law.)
+## Open decisions 🔒 (none block the critical path)
+1. **Analytics tool:** PostHog vs in-house Supabase `events` (optional before testers).
+2. **App name + bundle id** for App Store Connect.
+- *Deferred decisions* (entity/LLC, native Google + Sign in with Apple, sweepstakes
+  timing, prize value, geo scope) intentionally parked until after we have testers.
 
 ## Notes / decisions log
-- 2026-06: roadmap created. Apple Developer account already in hand; everything
-  else todo. Web app + Supabase backend are the foundation; iOS is a Capacitor
-  wrapper over the same front-end + backend.
+- 2026-06: roadmap created. Apple Developer account already in hand.
+- 2026-06: **decision — get to test users (TestFlight) first.** Sweepstakes, LLC/
+  entity, and full store-compliance deferred. v1 native auth = **email/password
+  only** (hide Google + web reset link in the native build) to skip the OAuth/
+  deep-link rework and the Sign in with Apple requirement for v1.
