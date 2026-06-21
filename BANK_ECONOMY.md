@@ -51,7 +51,8 @@ no gambling.**
 
 ## Challenges (the headline)
 **Async, friend-vs-friend, same puzzles, winner takes the pot.**
-1. **Create:** pick a friend, a **category**, a **mode** (Score / Pressure), a **wager**.
+1. **Create:** pick a friend **by username** (typeahead search), a **category**, a
+   **mode** (Score / Pressure), a **wager**.
 2. Both stakes are **escrowed** up front (can't bet money you don't have).
 3. Both get the **exact same puzzle set** (deterministic seed from the match id —
    same category, puzzles, order).
@@ -121,10 +122,18 @@ Wagering virtual currency is fine **only if the currency has no real-money value
       HUD (red-pulse under 10s) that calls `challenge_check` on expiry to settle.
       Settles vs Score plays exactly the same (higher score wins the pot).
       Verified by SQL sim: fast-solve 1350, timeout lost/0, settle creator-wins.
-### Phase E — Spending + leaderboards + polish
-- [ ] Spend sinks: power-up shop (Arcade), cosmetics/avatars/accessories, high-stakes rooms.
-- [ ] **Net Worth leaderboard** (+ friends "richest"), challenge record board.
-- [ ] Cosmetics for real money (firewall), challenge history/notifications, username search.
+### Phase E — Spending + leaderboards + polish  ◑ (PR #128)
+- [x] **Usernames replace friend codes:** claimable `@username` (set in Friends tab
+      + My Account), add friends by **username typeahead search**, challenge by
+      username. `_display_name()` (username → full_name → email) used everywhere.
+      (`supabase-social.sql`.)
+- [x] **Cosmetics shop** (`/shop`) — the Bank's first spend sink. Titles + name
+      colors, **earned-Bank-only** (firewall) & **no pay-to-win**; auto-equip on
+      buy, equip/unequip; they flex on the boards. (`supabase-shop.sql`.)
+- [x] **Net Worth leaderboard** (Bank − Loan), Friends + Global scopes, with
+      equipped title/color flair. New tab on the Leaderboard page.
+- [ ] Deferred: avatars/accessories, high-stakes rooms, power-up shop (Arcade),
+      challenge history/notifications, real-money cosmetics, Net-Worth medals.
 
 ## Open decisions 🔒 (let's settle these as we build)
 1. **Naming:** persistent = "Bank", per-round = "bankroll"? Or rename one (e.g. "Vault")
@@ -135,6 +144,7 @@ Wagering virtual currency is fine **only if the currency has no real-money value
 5. **Daily / quest Bank bonus** sizes.
 6. ~~**Pressure mode** specifics~~ ✅ settled: single-puzzle 60s clock; score = bankroll + (60−elapsed)×10.
 7. **Bankruptcy floor / stipend** so broke players can re-enter.
+8. ~~**Friend identity**~~ ✅ settled: claimable **@username** + typeahead search (codes retired).
 
 ---
 

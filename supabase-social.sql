@@ -1,0 +1,25 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Username-based social identity (migration: friends_by_username)           ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Replaces the old 6-char friend_code with a claimable @username. Friends are
+-- added by username (typeahead search), and challenges target a username.
+--
+-- profiles.username TEXT + UNIQUE INDEX on lower(username).
+--
+-- _display_name(uid)  → username → auth full_name → email prefix → 'Player'.
+--                       Used everywhere a player name is shown (friends board,
+--                       challenge inbox, net-worth board).
+-- get_my_username()   → my username (null until claimed).
+-- set_username(name)  → claim/change; 3–15 chars [A-Za-z0-9_], case-insensitive
+--                       unique, a few reserved words blocked.
+--                       {ok} | {ok:false, reason: invalid|reserved|taken|auth}.
+-- search_users(query) → up to 8 username-prefix matches (min 2 chars), excludes
+--                       self, flags existing friends: [{username, is_friend}].
+-- add_friend(username)→ resolves by username, inserts the symmetric friendship.
+--                       (Old add_friend(p_code) dropped.)
+--
+-- create_challenge(p_username, …) now resolves the opponent by username.
+-- get_friends_daily_leaderboard / get_my_challenges use _display_name.
+--
+-- The legacy friend_code column + get_my_friend_code() are left in place but
+-- unused by the app. (Full bodies in the applied migration.)

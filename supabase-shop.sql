@@ -1,0 +1,27 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Phase E: cosmetics shop + Net Worth leaderboard                           ║
+-- ║  (migration: phase_e_cosmetics_networth)                                   ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- The Bank's first spending sink. Cosmetics are EARNED-BANK-ONLY (never bought
+-- with real money — preserves the two-currency firewall) and purely visual
+-- (no pay-to-win); they flex on the leaderboards.
+--
+-- Tables:
+--   cosmetics(id, kind 'title'|'color', label, value, price, sort)  -- catalog, public read
+--   user_cosmetics(user_id, cosmetic_id, acquired_at)               -- ownership, self read
+--   profiles.equipped_title / equipped_color                        -- equipped cosmetic ids
+--
+-- Catalog seed: 5 titles ($2k–$100k) + 5 name colors ($5k each).
+--
+-- RPCs:
+--   get_shop()            → { bank, items:[{id,kind,label,value,price,owned,equipped}] }
+--   buy_cosmetic(id)      → spends Bank via _bank_credit('cosmetic_buy'), grants +
+--                           auto-equips. {ok} | reason no_item|owned|insufficient|auth.
+--   equip_cosmetic(id)    → equip an owned cosmetic (by kind slot).
+--   unequip_cosmetic(kind)→ clear the title or color slot.
+--
+-- get_networth_leaderboard(scope 'friends'|'global')
+--   → top 50 by net worth (bank − loan), with equipped title/color for flair:
+--     [{rank, name, net_worth, bank, title, color, is_me}].
+--
+-- (Full bodies in the applied migration.)

@@ -91,16 +91,30 @@ export async function repayLoan(amount) {
   return data;
 }
 
-/** My shareable friend code (generated on first call). @returns {Promise<string|null>} */
-export async function getMyFriendCode() {
-  const { data, error } = await supabase.rpc('get_my_friend_code');
-  if (error) { console.error('❌ get_my_friend_code:', error); return null; }
+/** My chosen username (null until claimed). @returns {Promise<string|null>} */
+export async function getMyUsername() {
+  const { data, error } = await supabase.rpc('get_my_username');
+  if (error) { console.error('❌ get_my_username:', error); return null; }
   return data ?? null;
 }
 
-/** Add a friend by code. @param {string} code @returns {Promise<{ok:boolean, reason?:string, friend_name?:string}>} */
-export async function addFriend(code) {
-  const { data, error } = await supabase.rpc('add_friend', { p_code: code });
+/** Claim / change my username. @param {string} name @returns {Promise<{ok:boolean, reason?:string, username?:string}>} */
+export async function setUsername(name) {
+  const { data, error } = await supabase.rpc('set_username', { p_username: name });
+  if (error || !data) { if (error) console.error('❌ set_username:', error); return { ok: false }; }
+  return data;
+}
+
+/** Username typeahead search. @param {string} query @returns {Promise<{username:string,is_friend:boolean}[]>} */
+export async function searchUsers(query) {
+  const { data, error } = await supabase.rpc('search_users', { p_query: query });
+  if (error) { console.error('❌ search_users:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
+
+/** Add a friend by username. @param {string} username @returns {Promise<{ok:boolean, reason?:string, friend_name?:string}>} */
+export async function addFriend(username) {
+  const { data, error } = await supabase.rpc('add_friend', { p_username: username });
   if (error || !data) { if (error) console.error('❌ add_friend:', error); return { ok: false }; }
   return data;
 }
@@ -110,6 +124,39 @@ export async function getFriendsDailyLeaderboard() {
   const { data, error } = await supabase.rpc('get_friends_daily_leaderboard');
   if (error) { console.error('❌ get_friends_daily_leaderboard:', error); return []; }
   return Array.isArray(data) ? data : [];
+}
+
+/** Net Worth leaderboard (bank − loan). @param {'friends'|'global'} scope @returns {Promise<any[]>} */
+export async function getNetworthLeaderboard(scope = 'friends') {
+  const { data, error } = await supabase.rpc('get_networth_leaderboard', { p_scope: scope });
+  if (error) { console.error('❌ get_networth_leaderboard:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
+
+/* ===== Cosmetics shop (Bank spending sink; earned-Bank-only, no pay-to-win) ===== */
+/** Shop catalog + owned/equipped flags + my Bank. @returns {Promise<{bank:number, items:any[]}>} */
+export async function getShop() {
+  const { data, error } = await supabase.rpc('get_shop');
+  if (error || !data) { if (error) console.error('❌ get_shop:', error); return { bank: 0, items: [] }; }
+  return { bank: data.bank ?? 0, items: Array.isArray(data.items) ? data.items : [] };
+}
+/** Buy a cosmetic with Bank. @param {string} id @returns {Promise<{ok:boolean, reason?:string}>} */
+export async function buyCosmetic(id) {
+  const { data, error } = await supabase.rpc('buy_cosmetic', { p_id: id });
+  if (error || !data) { if (error) console.error('❌ buy_cosmetic:', error); return { ok: false }; }
+  return data;
+}
+/** Equip an owned cosmetic. @param {string} id @returns {Promise<{ok:boolean, reason?:string}>} */
+export async function equipCosmetic(id) {
+  const { data, error } = await supabase.rpc('equip_cosmetic', { p_id: id });
+  if (error || !data) { if (error) console.error('❌ equip_cosmetic:', error); return { ok: false }; }
+  return data;
+}
+/** Unequip the current title or color. @param {'title'|'color'} kind @returns {Promise<{ok:boolean}>} */
+export async function unequipCosmetic(kind) {
+  const { data, error } = await supabase.rpc('unequip_cosmetic', { p_kind: kind });
+  if (error || !data) { if (error) console.error('❌ unequip_cosmetic:', error); return { ok: false }; }
+  return data;
 }
 
 /** Claim the all-quests-done reward (pays Bank). @returns {Promise<{ok:boolean, reason?:string, amount?:number, bank?:number}>} */

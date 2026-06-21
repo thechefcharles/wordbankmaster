@@ -9,7 +9,7 @@
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getDailyGhost, getDailyQuests, addFriend, getBank } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getDailyGhost, getDailyQuests, addFriend, searchUsers, getMyUsername, setUsername, getBank } from '$lib/stores/statsStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
   import {
@@ -125,11 +125,11 @@
       refreshQuests();
       refreshBank();
 
-      // Friend invite link: ?add=CODE → add them, then open the Friends board.
+      // Friend invite link: ?add=USERNAME → add them, then open the Friends board.
       try {
-        const addCode = new URLSearchParams(window.location.search).get('add');
-        if (addCode) {
-          const res = await addFriend(addCode);
+        const addName = new URLSearchParams(window.location.search).get('add');
+        if (addName) {
+          const res = await addFriend(addName);
           if (res?.ok) { track('friend_add', { via: 'link' }); goto('/leaderboard?mode=friends'); return; }
         }
       } catch { /* non-fatal */ }
@@ -404,27 +404,39 @@
   let showChallenges = false;
   /** @type {any[]} */
   let myChallenges = [];
-  let chCode = '';
+  let chOpp = '';
   let chCategory = '';
   let chWager = 500;
   let chMode = 'score'; // 'score' (untimed) | 'pressure' (60s clock)
   let chMsg = '';
   let chBusy = false;
+  /** @type {{username:string,is_friend:boolean}[]} */
+  let chResults = [];
+  /** @type {ReturnType<typeof setTimeout>|undefined} */
+  let chSearchTimer;
   async function openChallenges() {
     if (!get(user)?.id) return;
     chMsg = '';
     showChallenges = true;
     myChallenges = await getMyChallenges();
   }
+  function onChOppInput() {
+    clearTimeout(chSearchTimer);
+    const q = chOpp.trim();
+    if (q.length < 2) { chResults = []; return; }
+    chSearchTimer = setTimeout(async () => { chResults = await searchUsers(q); }, 220);
+  }
+  /** @param {string} username */
+  function pickChOpp(username) { chOpp = username; chResults = []; }
   async function submitNewChallenge() {
     if (chBusy) return;
-    if (!chCode.trim() || !chCategory) { chMsg = 'Pick a friend code and a category.'; return; }
+    if (!chOpp.trim() || !chCategory) { chMsg = 'Pick an opponent and a category.'; return; }
     chBusy = true; chMsg = 'Creating…';
-    const res = await startChallenge(chCode.trim().toUpperCase(), chCategory, Math.floor(Number(chWager) || 0), chMode);
+    const res = await startChallenge(chOpp.trim(), chCategory, Math.floor(Number(chWager) || 0), chMode);
     chBusy = false;
     if (res?.ok) { launchChallengePlay(); }
     else {
-      chMsg = res?.reason === 'no_friend' ? 'No player with that code.'
+      chMsg = res?.reason === 'no_friend' ? 'No player with that username.'
         : res?.reason === 'insufficient' ? "Not enough in your Bank for that wager."
         : res?.reason === 'min_wager' ? 'Minimum wager is $100.'
         : res?.reason === 'self' ? "You can't challenge yourself."
@@ -481,13 +493,34 @@
   let showStreakMessage = false;
   let accountStreak = 0;
   let accountFreezes = 0;
+  let maUsername = '';
+  let maInput = '';
+  let maEditing = false;
+  let maMsg = '';
   async function handleMenuMyAccount() {
     showMyAccount = true;
+    maMsg = '';
     const u = get(user);
     if (u?.id) {
       const status = await getDailyStatus(u.id);
       accountStreak = status.current_streak ?? 0;
       accountFreezes = status.streak_freezes ?? 0;
+      maUsername = (await getMyUsername()) ?? '';
+      maEditing = !maUsername;
+      maInput = maUsername;
+    }
+  }
+  async function saveMaUsername() {
+    const name = maInput.trim();
+    if (!name) return;
+    maMsg = 'Saving…';
+    const res = await setUsername(name);
+    if (res.ok) { maUsername = res.username ?? name; maEditing = false; maMsg = ''; track('username_set'); }
+    else {
+      maMsg = res.reason === 'taken' ? 'That username is taken.'
+        : res.reason === 'reserved' ? 'That username is reserved.'
+        : res.reason === 'invalid' ? '3–15 letters, numbers or _ only.'
+        : 'Could not save username.';
     }
   }
   /** @param {KeyboardEvent} e */
@@ -653,7 +686,15 @@
           </span>
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 6" on:click={handleMenuLeaderboard}>
+        <button class="menu-card" style="--i: 6" on:click={() => goto('/shop')}>
+          <span class="mc-icon">🛍️</span>
+          <span class="mc-body">
+            <span class="mc-title">Shop</span>
+            <span class="mc-sub">Spend your Bank on flair</span>
+          </span>
+          <span class="mc-arrow">→</span>
+        </button>
+        <button class="menu-card" style="--i: 7" on:click={handleMenuLeaderboard}>
           <span class="mc-icon">🏆</span>
           <span class="mc-body">
             <span class="mc-title">Leaderboard</span>
@@ -661,7 +702,7 @@
           </span>
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 7" on:click={handleMenuMyAccount}>
+        <button class="menu-card" style="--i: 8" on:click={handleMenuMyAccount}>
           <span class="mc-icon">👤</span>
           <span class="mc-body">
             <span class="mc-title">My Account</span>
@@ -710,8 +751,19 @@
                 ⏱️ Pressure<small>60s clock · speed + bankroll</small>
               </button>
             </div>
+            <div class="ch-search-wrap">
+              <input class="ch-input" placeholder="Opponent username" bind:value={chOpp} on:input={onChOppInput} autocomplete="off" />
+              {#if chResults.length}
+                <div class="ch-results">
+                  {#each chResults as r}
+                    <button type="button" class="ch-result-item" on:click={() => pickChOpp(r.username)}>
+                      @{r.username}{#if r.is_friend} <span class="ch-friend-tag">friend</span>{/if}
+                    </button>
+                  {/each}
+                </div>
+              {/if}
+            </div>
             <div class="ch-row">
-              <input class="ch-input" placeholder="Friend code" bind:value={chCode} maxlength="6" />
               <select class="ch-input" bind:value={chCategory}>
                 <option value="" disabled selected>Category</option>
                 {#each CATEGORIES as c}<option value={c.value}>{c.emoji} {c.label}</option>{/each}
@@ -784,6 +836,18 @@
             <p class="account-email">{$user.email}</p>
           {/if}
 
+          <div class="ma-username">
+            {#if maUsername && !maEditing}
+              <span class="ma-uname">@{maUsername}</span>
+              <button class="ma-edit" on:click={() => { maEditing = true; maInput = maUsername; maMsg = ''; }}>edit</button>
+            {:else}
+              <input class="ma-input" placeholder="pick a username" bind:value={maInput} maxlength="15"
+                on:keydown={(e) => { if (e.key === 'Enter') saveMaUsername(); }} />
+              <button class="ma-save" on:click={saveMaUsername}>Save</button>
+            {/if}
+          </div>
+          {#if maMsg}<p class="ma-msg">{maMsg}</p>{/if}
+
           <div class="account-stats">
             <div class="stat-chip"><span class="stat-emoji">🔥</span> {accountStreak}<span class="stat-cap">day streak</span></div>
             <div class="stat-chip" title="Auto-protects your streak across one missed day. Earn one every 7-day streak.">
@@ -792,6 +856,7 @@
           </div>
 
           <button class="main-menu-btn ghost-btn" on:click={() => goto('/badges')}>🏅 View Badges</button>
+          <button class="main-menu-btn ghost-btn" on:click={() => goto('/shop')}>🛍️ Shop</button>
           <button class="main-menu-btn" on:click={() => { showMyAccount = false; handleLogout(); }}>Log Out</button>
         </div>
       </div>
@@ -1397,6 +1462,18 @@
   }
   .ch-mode small { font-weight: 500; font-size: 0.68rem; color: var(--text-muted); }
   .ch-mode.active { border-color: rgba(251,191,36,0.6); background: linear-gradient(135deg, rgba(251,191,36,0.14), rgba(251,191,36,0.04)); box-shadow: 0 0 12px rgba(251,191,36,0.15); }
+  .ch-search-wrap { position: relative; display: flex; flex-direction: column; }
+  .ch-search-wrap .ch-input { width: 100%; }
+  .ch-results {
+    display: flex; flex-direction: column; gap: 2px; margin-top: 4px;
+    border: 1px solid var(--border); border-radius: 10px; padding: 4px; background: var(--surface);
+  }
+  .ch-result-item {
+    text-align: left; padding: 0.45rem 0.6rem; border: none; border-radius: 8px; cursor: pointer;
+    background: none; color: var(--text); font-weight: 600; font-size: 0.9rem;
+  }
+  .ch-result-item:hover { background: rgba(255,255,255,0.06); }
+  .ch-friend-tag { font-size: 0.7rem; color: var(--brand-2); font-weight: 700; }
   .ch-row { display: flex; gap: 0.5rem; }
   .ch-input {
     flex: 1; min-width: 0; padding: 0.6rem 0.8rem; border-radius: 10px; border: 1px solid var(--border);
@@ -1506,6 +1583,15 @@
     color: var(--text-muted);
     margin: 0.5rem 0 0 0;
   }
+  .ma-username { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin: 0.7rem 0 0.2rem; }
+  .ma-uname { font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; color: var(--brand-2); }
+  .ma-edit { background: none; border: none; color: var(--text-faint); font-size: 0.8rem; cursor: pointer; text-decoration: underline; }
+  .ma-input {
+    padding: 0.5rem 0.8rem; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 0.95rem; max-width: 180px;
+  }
+  .ma-save { padding: 0.5rem 1rem; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; color: #06210f; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); }
+  .ma-msg { text-align: center; font-size: 0.82rem; color: #f87171; margin: 0.2rem 0 0; }
 
   .bankroll-container {
     display: flex;

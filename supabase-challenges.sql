@@ -64,8 +64,9 @@ BEGIN
   UPDATE public.challenges SET status = 'settled', winner_id = v_winner, settled_at = now() WHERE id = p_id;
 END; $$;
 
--- create_challenge(code, category, wager) — escrows the creator, picks a puzzle from
---   the category, opens the challenge, and starts the creator's play.
+-- create_challenge(username, category, wager, mode) — escrows the creator, picks a
+--   puzzle from the category, opens the challenge, and starts the creator's play.
+--   (Opponent resolved by USERNAME since migration friends_by_username.)
 -- accept_challenge(id) — escrows the opponent + starts their play (idempotent resume).
 -- get_challenge(id) — masked board for the caller's play.
 -- challenge_buy_letter / challenge_reveal / challenge_submit_guess — mirror daily_*,
