@@ -47,7 +47,8 @@ import { track } from '$lib/analytics.js';
  *   makeupDate?: string | null,
  *   dailyResult?: any,
  *   climbInfo?: any,
- *   matchInfo?: any
+ *   matchInfo?: any,
+ *   dailyAttendance?: { amount:number, day:number } | null
  * }} GameState
  */
 
@@ -88,7 +89,8 @@ export const gameStore = writable(/** @type {GameState} */ ({
   challengeInfo: null, // { mode, started_at, limit_seconds, play_state, score } for the active challenge
   makeupDate: null, // YYYY-MM-DD of the make-up day being played (makeup mode only)
   climbInfo: null, // { bounty, heat, attempts, spent, position, stuck, last_gain, state } (climb mode)
-  matchInfo: null // { position, pack_size, total_score, last_score, done, status } (challenge match)
+  matchInfo: null, // { position, pack_size, total_score, last_score, done, status } (challenge match)
+  dailyAttendance: null // { amount, day } — transient attendance reward toast (daily start)
 }));
 
 /* ================================
@@ -1046,6 +1048,11 @@ export async function fetchDailyGame() {
       return false;
     }
     reconcileDailyBoard(board);
+    // Attendance reward (paid once on the first open of the day) → transient toast.
+    const ab = /** @type {any} */ (board);
+    if (ab.attendance != null) {
+      gameStore.update(s => ({ ...s, dailyAttendance: { amount: ab.attendance, day: ab.attendance_day } }));
+    }
     // Today's shared modifier (same for everyone) — drives the banner + key pricing.
     try {
       const [mod, clue] = await Promise.all([getDailyModifier(), getDailyClue()]);

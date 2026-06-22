@@ -1,0 +1,45 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  v3 R3: Daily spends REAL Cash + attendance rewards                          ║
+-- ║  (migration: v3_r3_daily_real_cash_attendance — applied via MCP)            ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Third slice of the WORDBANK_MASTER_V3.md teardown. The Daily stops using the
+-- fake $1,000 play-budget and runs on your persistent Cash balance.
+--
+-- daily_sessions += spent INT (cumulative real-Cash letter spend this puzzle).
+--
+-- daily_start:
+--   • Advances the PLAY-STREAK here now (showing up counts; losses don't break
+--     it) — moved out of _finalize_daily so the streak tracks ATTENDANCE, not wins.
+--   • Pays the ATTENDANCE reward: base $50 + milestone (day%30→$1500, %14→$500,
+--     %7→$250, day3→$100). Once per day (first session creation). Streak badges
+--     (streak_7/30) fire here too. Returns {attendance, attendance_day} on the board.
+--   • No fake budget — the board's "bankroll" field is now your REAL bank.
+--
+-- daily_buy_letter: spends REAL Cash (UPDATE profiles.bank -= cost), accumulates
+--   session.spent; can't afford ⇒ blocked. Board shows real bank.
+--
+-- _daily_resolve_and_return: WIN-ONLY now (free guesses ⇒ no cash-based loss; the
+--   daily ends on solve or you just leave). Daily-result payload drops no_reveals,
+--   adds spent.
+--
+-- _finalize_daily(uid, won, SPENT, incorrect): refunds the letter-spend + pays an
+--   efficiency reward = $100 floor + $600 × (clean .25 + no-vowel .25 + first-try
+--   .25). Net on a solve is ALWAYS ≥ +$100 → the Daily is a true safety net you
+--   can't lose Cash on. No more leftover×streak score; streak rewards are the
+--   attendance milestones. (Dropped gold_bank badge / daily_bankroll writes.)
+--
+-- Verified (rolled-back SQL sim, Chef untouched): start → +$150 attendance;
+--   buy letter → −$90 real Cash, spent=90; solve → +$90 refund +$550 reward
+--   → net exactly +$550 over the post-attendance balance, state won.
+--
+-- CLIMB was already real-Cash (climb_buy_letter spends profiles.bank, bounty
+--   credits it) — confirmed, no change. CHALLENGES keep their per-puzzle budget
+--   until R4 (where wager = spending cap + lowest-spend-settle is the whole point).
+-- MAKEUP is intentionally left on its fake budget (no Cash deposit, per spec).
+--
+-- Client: daily HUD now shows real Cash (board.bankroll = bank); attendance toast
+--   on first daily open of the day; result modal drops "No reveals", shows spend
+--   refunded; "Your Cash" framing.
+--
+-- KNOBS (tune later): attendance base/milestones, reward floor $100 / base $600,
+--   the 3 efficiency multipliers. The 'extra_bank' daily modifier is now a no-op.
