@@ -1,0 +1,16 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Phase 9: streaks rule + new badges (migration: streaks_badges_v2)          ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Streak now SURVIVES a played loss — it breaks only on a MISSED day.
+--   _finalize_daily: continuity is based on last_daily_play_date (yesterday →
+--   +1; 2 days ago + a freeze → spend it; else reset to 1). A loss keeps the
+--   streak (no win bonus / reward); last_daily_win_date only advances on a win.
+--   Freezes still earned every 7 days.
+--
+-- New badge awards (catalog mirrored in src/lib/badges.js):
+--   climb_50 / climb_100 / climb_500 — in climb_next on reaching that position.
+--   debt_free — in repay_loan when a loan is cleared to $0.
+--   hustler   — in _match_settle when a winner's lifetime challenge wins hit 10.
+--
+-- Verified (SQL sim): a played LOSS with last-play=yesterday → streak 5 → 6 (not
+-- reset); take + fully repay a loan → Debt-Free badge awarded. Test user restored.

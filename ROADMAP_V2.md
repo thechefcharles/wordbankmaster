@@ -202,7 +202,7 @@ correctly, stats live on Profile (not the board), daily placement card shows.
 
 ---
 
-## Phase 9 — Streaks & Badges
+## Phase 9 — Streaks & Badges  ✅
 
 **Goal:** v2 streak rule + the new badge set.
 **Depends on:** P3 (Daily payout) — can run parallel.
