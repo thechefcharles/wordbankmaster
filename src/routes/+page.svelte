@@ -1040,6 +1040,7 @@
             </div>
           </div>
 
+          <button class="main-menu-btn ghost-btn" on:click={() => goto('/profile')}>📊 Profile &amp; Stats</button>
           <button class="main-menu-btn ghost-btn" on:click={() => goto('/badges')}>🏅 View Badges</button>
           <button class="main-menu-btn ghost-btn" on:click={() => goto('/groups')}>👥 Groups</button>
           <button class="main-menu-btn ghost-btn" on:click={() => goto('/shop')}>🛍️ Shop</button>

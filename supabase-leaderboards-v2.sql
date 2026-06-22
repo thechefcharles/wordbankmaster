@@ -1,0 +1,23 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Phase 8: leaderboards v2 + profile (migration: leaderboards_v2)            ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Three boards × scope (Global / Friends / a Group), personal stats on a Profile.
+--
+-- networth_snapshots(user_id, week_start, net_worth)  -- start-of-week baseline,
+--   stamped lazily by _bank_credit on the first economy activity of the week.
+--
+-- get_wealth_leaderboard(scope, period 'week'|'all', group)
+--   week → Net Worth GAINED this week (nw − week-start snapshot); all → Net Worth
+--   (Cash − Loan). Includes Cash + title/color flair + is_me. Top 50.
+-- get_climb_leaderboard(scope, group)  -- furthest Climb position.
+-- get_daily_board(scope, group)        -- today's Daily Score.
+-- get_profile_stats()                  -- streak, longest, win %, puzzles solved,
+--   climb position, challenge wins, badges, Net Worth/Cash/Loan.
+-- Scope condition is inlined: 'global' | 'friends' (friendships) | 'group' (members).
+--
+-- Verified: all four return data (wealth 11, daily 31, profile streak/climb wired).
+--
+-- Client: /leaderboard rebuilt to 3 tabs (Wealth/Daily/Climb) × a scope select
+-- (Friends/Global/my groups), Wealth defaulting to This-Week-gained — replaces the
+-- old 4-tab + periods + sort + Arcade board. New /profile page (stats moved off the
+-- board). Contextual daily-placement card = a small follow-up.

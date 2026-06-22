@@ -432,11 +432,31 @@ export async function climbLeave() {
   if (error) { console.error('❌ climb_leave:', error); return null; }
   return data;
 }
-/** @param {'friends'|'global'} scope @returns {Promise<any[]>} */
-export async function getClimbLeaderboard(scope = 'friends') {
-  const { data, error } = await supabase.rpc('get_climb_leaderboard', { p_scope: scope });
+/** @param {string} scope @param {string|null} [group] @returns {Promise<any[]>} */
+export async function getClimbLeaderboard(scope = 'friends', group = null) {
+  const { data, error } = await supabase.rpc('get_climb_leaderboard', { p_scope: scope, p_group: group });
   if (error) { console.error('❌ get_climb_leaderboard:', error); return []; }
   return Array.isArray(data) ? data : [];
+}
+
+/* ===== Leaderboards v2 (3 boards × scope) ===== */
+/** @param {string} scope @param {'week'|'all'} period @param {string|null} [group] @returns {Promise<any[]>} */
+export async function getWealthLeaderboard(scope = 'friends', period = 'week', group = null) {
+  const { data, error } = await supabase.rpc('get_wealth_leaderboard', { p_scope: scope, p_period: period, p_group: group });
+  if (error) { console.error('❌ get_wealth_leaderboard:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
+/** @param {string} scope @param {string|null} [group] @returns {Promise<any[]>} */
+export async function getDailyBoard(scope = 'friends', group = null) {
+  const { data, error } = await supabase.rpc('get_daily_board', { p_scope: scope, p_group: group });
+  if (error) { console.error('❌ get_daily_board:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
+/** @returns {Promise<any|null>} */
+export async function getProfileStats() {
+  const { data, error } = await supabase.rpc('get_profile_stats');
+  if (error) { console.error('❌ get_profile_stats:', error); return null; }
+  return data;
 }
 
 /* ===== Power-ups (catalog + buy + use-in-Climb) ===== */
