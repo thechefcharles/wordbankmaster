@@ -137,6 +137,18 @@ export async function leaveGroup(id) {
   if (error || !data) { if (error) console.error('❌ leave_group:', error); return { ok: false }; }
   return data;
 }
+/** @param {string} groupId @returns {Promise<any[]>} */
+export async function getGroupMessages(groupId) {
+  const { data, error } = await supabase.rpc('get_group_messages', { p_group_id: groupId });
+  if (error) { console.error('❌ get_group_messages:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
+/** @param {string} groupId @param {string} body @returns {Promise<{ok:boolean, reason?:string}>} */
+export async function sendGroupMessage(groupId, body) {
+  const { data, error } = await supabase.rpc('send_group_message', { p_group_id: groupId, p_body: body });
+  if (error || !data) { if (error) console.error('❌ send_group_message:', error); return { ok: false }; }
+  return data;
+}
 
 /* ===== Notifications ===== */
 /** @returns {Promise<{items:any[], unread_count:number}>} */
