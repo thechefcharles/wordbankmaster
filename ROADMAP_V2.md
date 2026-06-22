@@ -217,7 +217,7 @@ climb grants the milestone.
 
 ---
 
-## Phase 10 — Anti-cheat, balance & polish
+## Phase 10 — Anti-cheat, balance & polish  ◑ (bankruptcy + daily-placement done; tuning awaits playtest)
 
 **Goal:** keep wagers fair, tune the economy, ship legal copy, optional bankruptcy.
 **Depends on:** everything.

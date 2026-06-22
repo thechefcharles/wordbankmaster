@@ -9,7 +9,7 @@
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getDailyGhost, getDailyQuests, addFriend, searchUsers, getMyUsername, setUsername, getBank } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getDailyGhost, getDailyQuests, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard } from '$lib/stores/statsStore.js';
   import { unreadCount, notifications, markAllNotificationsRead, refreshNotifications } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
@@ -265,6 +265,17 @@
   }
   $: climbHeat = ((climb?.heat ?? 100) / 100).toFixed(1);
   $: dr = $gameStore.dailyResult; // { score, clean, no_vowels, first_try, no_reveals }
+  /** @type {{rank:number, total:number}|null} */
+  let dailyPlacement = null;
+  $: if (showResultModal && isDailyResult && resultWon && dr && dailyPlacement === null) loadDailyPlacement();
+  async function loadDailyPlacement() {
+    dailyPlacement = { rank: 0, total: 0 }; // guard against re-fire
+    try {
+      const board = await getDailyBoard('friends');
+      const me = board.find((/** @type {any} */ r) => r.is_me);
+      dailyPlacement = { rank: me?.rank ?? 0, total: board.length };
+    } catch { dailyPlacement = { rank: 0, total: 0 }; }
+  }
   let climbBorrowing = false;
   async function handleClimbBorrow() {
     if (climbBorrowing) return;
@@ -590,6 +601,7 @@
   function goToMainMenu() {
     const currentUser = get(user);
     if (!currentUser?.id) return;
+    dailyPlacement = null;
     // Leaving a make-up: clear it so we land on the menu, not back in the make-up.
     if ($gameStore.gameMode === 'makeup') {
       localStorage.setItem('gameMode', 'daily');
@@ -1247,6 +1259,9 @@
                 <span class="eff" class:on={dr.first_try}>{dr.first_try ? '✓' : '✗'} First try</span>
                 <span class="eff" class:on={dr.no_reveals}>{dr.no_reveals ? '✓' : '✗'} No reveals</span>
               </div>
+              {#if dailyPlacement && dailyPlacement.rank > 0 && dailyPlacement.total > 1}
+                <p class="daily-placement">{dailyPlacement.rank === 1 ? '🥇' : dailyPlacement.rank === 2 ? '🥈' : dailyPlacement.rank === 3 ? '🥉' : '🏅'} #{dailyPlacement.rank} of {dailyPlacement.total} among friends today</p>
+              {/if}
             {:else}
               <div class="result-bankroll">
                 <span class="rb-label">Banked</span>
@@ -2363,6 +2378,7 @@
     color: var(--text-faint); background: var(--surface); border: 1px solid var(--border);
   }
   .eff.on { color: var(--brand-2); border-color: rgba(163,230,53,0.45); background: rgba(163,230,53,0.08); }
+  .daily-placement { font-family: var(--font-display); font-weight: 700; font-size: 0.9rem; color: #fcd34d; margin: 0 0 14px; }
   .ghost-compare {
     margin: 2px auto 16px;
     padding: 10px 14px;

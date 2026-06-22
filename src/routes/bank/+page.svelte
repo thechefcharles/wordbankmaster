@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { getBank, repayLoan, takeLoan, setAutoRepay } from '$lib/stores/statsStore.js';
+  import { getBank, repayLoan, takeLoan, setAutoRepay, declareBankruptcy } from '$lib/stores/statsStore.js';
   import { track } from '$lib/analytics.js';
   import { fx } from '$lib/sound.js';
 
@@ -63,6 +63,17 @@
     const res = await setAutoRepay(!b.auto_repay);
     busy = false;
     if (res) b = res;
+  }
+
+  let bankruptMsg = '';
+  async function goBankrupt() {
+    if (busy || !b) return;
+    if (!confirm('Declare bankruptcy? This wipes your loan but resets your Cash to $1,000 and erases your Net Worth. Once per 30 days.')) return;
+    busy = true; bankruptMsg = '';
+    const res = await declareBankruptcy();
+    busy = false;
+    if (res && res.ok !== false && res.bank != null) { b = res; fx('bust'); track('bankruptcy'); }
+    else { bankruptMsg = res?.reason === 'cooldown' ? 'You already declared bankruptcy in the last 30 days.' : res?.reason === 'solvent' ? "You're not in the red." : 'Could not declare bankruptcy.'; }
   }
 </script>
 
@@ -128,6 +139,14 @@
     {/if}
 
     <p class="hint">Cash is in-game money — earn it by playing, risk it in the Cash Game, wager friends, and spend it on power-ups &amp; cosmetics. It can't be bought with real money or cashed out.</p>
+
+    {#if b.in_the_red}
+      <div class="bankrupt-box">
+        <p class="loan-copy">Underwater? <strong>Declare bankruptcy</strong> to wipe the debt and start fresh at $1,000 — but you lose your Net Worth, and it's only allowed once every 30 days.</p>
+        <button class="bankrupt-btn" disabled={busy} on:click={goBankrupt}>Declare Bankruptcy</button>
+        {#if bankruptMsg}<p class="add-msg">{bankruptMsg}</p>{/if}
+      </div>
+    {/if}
   {/if}
 </main>
 
@@ -154,6 +173,10 @@
 
   .loan-box { margin-top: 1.4rem; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; text-align: left; }
   .loan-copy { margin: 0 0 0.8rem; color: var(--text-muted); font-size: 0.9rem; }
+  .add-msg { text-align: center; font-size: 0.82rem; color: #f87171; margin: 0.5rem 0 0; }
+  .bankrupt-box { margin-top: 1.4rem; padding: 1rem; border: 1px dashed rgba(251,113,133,0.5); border-radius: 16px; text-align: left; }
+  .bankrupt-btn { width: 100%; padding: 0.65rem; border: 1px solid rgba(251,113,133,0.5); border-radius: 12px; background: rgba(251,113,133,0.1); color: #fb7185; cursor: pointer; font-weight: 700; }
+  .bankrupt-btn:disabled { opacity: 0.5; }
   .pay-row { display: flex; gap: 0.5rem; }
   .amt { flex: 1; min-width: 0; padding: 0.6rem 0.8rem; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2, rgba(255,255,255,0.04)); color: var(--text); }
   .pay-btn { padding: 0.6rem 1rem; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; color: #06210f; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); }

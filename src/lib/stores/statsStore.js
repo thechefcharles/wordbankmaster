@@ -107,6 +107,13 @@ export async function setAutoRepay(on) {
   return data;
 }
 
+/** Declare bankruptcy (only when in the red) — wipes debt, resets to $1,000, 30-day cooldown. @returns {Promise<any>} */
+export async function declareBankruptcy() {
+  const { data, error } = await supabase.rpc('declare_bankruptcy');
+  if (error || !data) { if (error) console.error('❌ declare_bankruptcy:', error); return { ok: false }; }
+  return data;
+}
+
 /** My chosen username (null until claimed). @returns {Promise<string|null>} */
 export async function getMyUsername() {
   const { data, error } = await supabase.rpc('get_my_username');
