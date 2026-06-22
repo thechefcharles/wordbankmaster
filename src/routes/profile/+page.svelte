@@ -25,8 +25,8 @@
   {:else if s}
     <h1>{s.username ? '@' + s.username : 'Your Profile'}</h1>
     <p class="nw-label">Net Worth</p>
-    <div class="nw" class:neg={s.net_worth < 0}>{fmt(s.net_worth)}</div>
-    <p class="nw-sub">{fmt(s.cash)} Cash · {fmt(s.loan)} owed</p>
+    <div class="nw">{fmt(s.net_worth)}</div>
+    <p class="nw-sub">Your Cash — this is your score</p>
 
     <div class="grid">
       <div class="stat"><span class="sv">🔥 {s.current_streak}</span><span class="sc">Day streak</span></div>
@@ -64,7 +64,6 @@
   h1 { font-family: var(--font-display); font-size: 1.6rem; margin: 0.3rem 0 0.8rem; }
   .nw-label { color: var(--text-faint); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 0; }
   .nw { font-family: var(--font-display); font-weight: 800; font-size: 2.6rem; line-height: 1.1; color: var(--brand-2); }
-  .nw.neg { color: #fb7185; }
   .nw-sub { color: var(--text-faint); font-size: 0.82rem; margin: 0.2rem 0 1.4rem; }
   .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.6rem; }
   .stat { display: flex; flex-direction: column; gap: 3px; padding: 0.8rem 0.4rem; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }

@@ -32,9 +32,9 @@
     },
     {
       icon: '🏦',
-      title: 'Your Bank',
+      title: 'Your Cash',
       isNew: true,
-      body: 'New: everyone starts with a $5,000 loan from the house. Win games to grow your Bank — your Net Worth is your Bank minus what you still owe. Pay the house back to climb.'
+      body: 'You start with $2,000 Cash. Buy as few letters as you can to solve — spend less, keep more. Your Cash balance is your Net Worth: the score you brag about.'
     },
     {
       icon: '⚔️',

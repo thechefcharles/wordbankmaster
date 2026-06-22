@@ -10,7 +10,6 @@ export const BADGES = {
   climb_50:  { emoji: '🧗', name: 'Climber',     desc: 'Reached puzzle #50 in the Cash Game' },
   climb_100: { emoji: '🏔️', name: 'Mountaineer', desc: 'Reached puzzle #100 in the Cash Game' },
   climb_500: { emoji: '🚀', name: 'Summit',      desc: 'Reached puzzle #500 in the Cash Game' },
-  debt_free: { emoji: '💸', name: 'Debt-Free',   desc: 'Paid off a loan in full' },
   hustler:   { emoji: '🤝', name: 'Hustler',     desc: 'Won 10 challenges' },
 };
 

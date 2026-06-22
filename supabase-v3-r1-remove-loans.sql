@@ -1,0 +1,39 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  v3 R1: Net Worth = Cash · seed $2,000 · remove the loan system            ║
+-- ║  (migration: v3_r1_remove_loans — applied via MCP)                          ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- First slice of the WORDBANK_MASTER_V3.md teardown. Loans are gone entirely.
+--
+-- CHANGED functions:
+--   _ensure_bank      → seeds new accounts at bank = 2000 (was 1000); no loan.
+--   _bank_credit      → dropped the auto-repay skim; networth_snapshots stamps
+--                       Net Worth = bank (was bank − loan).
+--   get_bank          → no _accrue_interest; net_worth = bank. Still returns
+--                       loan:0 / auto_repay:false / in_the_red:false / loan_cap:0
+--                       for back-compat with the deployed client during rollout.
+--   get_networth_leaderboard / get_wealth_leaderboard / get_profile_stats /
+--   get_group         → Net Worth = bank everywhere (dropped the − loan term).
+--
+-- DROPPED functions (client no longer calls them):
+--   _accrue_interest, take_loan, repay_loan, set_auto_repay, declare_bankruptcy
+--
+-- KEPT FOR NOW (drop in a later cleanup once the new client is fully deployed):
+--   profiles.loan, profiles.loan_accrued_at, profiles.auto_repay,
+--   profiles.last_bankruptcy_at  — physical columns left in place so the
+--   currently-deployed client doesn't hard-break in the deploy window.
+--
+-- DEFERRED to the R7 cutover (with the refreshed tutorial): the mass reset of
+--   EXISTING players' Cash to the $2,000 baseline. We don't reset live balances
+--   mid-rebuild — new accounts seed at 2000; everyone resets once, at cutover.
+--
+-- Client changes in this slice:
+--   bank/+page.svelte    → pure Cash wallet (balance + ledger); no loan/borrow/
+--                          repay/auto-repay/bankruptcy/in-the-red UI.
+--   statsStore.js        → getBank() returns { bank, net_worth, ledger };
+--                          removed repayLoan/takeLoan/setAutoRepay/declareBankruptcy.
+--   GameStore.js         → removed climbBorrow + takeLoan import.
+--   +page.svelte         → Climb "stuck" panel is now "Leave & earn" (no Borrow).
+--   profile/+page.svelte → Net Worth = Cash; dropped "owed"/negative styling.
+--   badges.js            → removed debt_free badge.
+--   Tutorial.svelte      → "Your Cash" slide (start $2,000, spend-less-keep-more);
+--                          full tutorial refresh still comes in R7.
