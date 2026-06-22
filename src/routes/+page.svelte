@@ -4,7 +4,7 @@
   import { supabase } from '$lib/supabaseClient';
   import { get } from 'svelte/store';
 
-  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbBorrow, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck } from '$lib/stores/GameStore.js';
   import { getMyChallenges, getPowerups, getMyMatches, getMyGroups, getMatch } from '$lib/stores/statsStore.js';
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
@@ -275,13 +275,6 @@
       const me = board.find((/** @type {any} */ r) => r.is_me);
       dailyPlacement = { rank: me?.rank ?? 0, total: board.length };
     } catch { dailyPlacement = { rank: 0, total: 0 }; }
-  }
-  let climbBorrowing = false;
-  async function handleClimbBorrow() {
-    if (climbBorrowing) return;
-    climbBorrowing = true;
-    // Borrow roughly enough to afford a couple of letters / get unstuck.
-    try { await climbBorrow(500); await refreshClimbPups(); } finally { climbBorrowing = false; }
   }
   /** @type {any[]} */
   let climbPups = [];
@@ -1154,10 +1147,9 @@
       {/if}
       {#if climb.stuck && $gameStore.gameState !== 'won'}
         <div class="climb-stuck">
-          <span class="cs-text">Out of guesses &amp; Cash — borrow to finish, or leave.</span>
+          <span class="cs-text">Out of Cash for this one — leave and earn in the Daily, then come back to finish it.</span>
           <div class="cs-actions">
-            <button class="cs-borrow" on:click={handleClimbBorrow} disabled={climbBorrowing}>💵 Borrow $500</button>
-            <button class="cs-leave" on:click={goToMainMenu}>Leave</button>
+            <button class="cs-leave" on:click={goToMainMenu}>Leave &amp; earn</button>
           </div>
         </div>
       {/if}
@@ -1508,8 +1500,6 @@
   }
   .cs-text { font-size: 0.82rem; color: #fca5a5; }
   .cs-actions { display: flex; gap: 8px; justify-content: center; }
-  .cs-borrow { padding: 0.5rem 1rem; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; color: #06210f; background: linear-gradient(135deg,#fbbf24,#f59e0b); }
-  .cs-borrow:disabled { opacity: 0.5; }
   .cs-leave { padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-weight: 700; color: var(--text-muted); background: transparent; }
   .arcade-gain { font-family: var(--font-display); font-weight: 700; color: var(--brand-2); margin: -8px 0 14px; font-size: 1rem; }
   .arcade-earn {

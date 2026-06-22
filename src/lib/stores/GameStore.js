@@ -8,7 +8,7 @@ import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNe
 import { freeplayStart, freeplayNext, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
 import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
 import { makeupStart, makeupBuyLetter, makeupReveal, makeupSubmitGuess } from '$lib/stores/statsStore.js';
-import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, takeLoan, getPowerups, buyPowerup, climbUsePowerup } from '$lib/stores/statsStore.js';
+import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, getPowerups, buyPowerup, climbUsePowerup } from '$lib/stores/statsStore.js';
 import { createMatch, acceptMatch, matchStart, matchBuyLetter, matchReveal, matchSubmitGuess, matchCheck } from '$lib/stores/statsStore.js';
 import { track } from '$lib/analytics.js';
 
@@ -663,21 +663,6 @@ export async function climbPowerup(id, owned) {
     }
     const board = await climbUsePowerup(id);
     if (board) reconcileClimbBoard(board);
-  } finally {
-    dailyInFlight = false;
-  }
-}
-
-/** Borrow mid-climb, then refresh the board with the new Cash. @param {number} amount */
-export async function climbBorrow(amount) {
-  if (dailyInFlight) return;
-  dailyInFlight = true;
-  try {
-    const res = await takeLoan(Math.floor(amount || 0));
-    if (res && res.ok !== false) {
-      const board = await climbStart(); // returns the board with updated Cash
-      if (board) reconcileClimbBoard(board);
-    }
   } finally {
     dailyInFlight = false;
   }
