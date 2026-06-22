@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { getMyGroups, getGroup, createGroup, joinGroup, leaveGroup, getGroupMessages, sendGroupMessage } from '$lib/stores/statsStore.js';
+  import { supabase } from '$lib/supabaseClient.js';
   import { track } from '$lib/analytics.js';
 
   /** @type {any[]} */
@@ -23,18 +24,23 @@
   /** @type {HTMLElement|undefined} */
   let chatScroll = $state();
 
-  // Poll messages while a group is open.
+  // Live chat while a group is open: Supabase Realtime for instant messages, with a
+  // slow poll as a safety net (catches anything missed if the socket drops).
   $effect(() => {
     const g = open;
     if (!g?.id) { messages = []; return; }
     let alive = true;
-    const tick = async () => {
+    const reload = async () => {
       const m = await getGroupMessages(g.id);
       if (alive && open?.id === g.id) messages = m;
     };
-    tick();
-    const iv = setInterval(tick, 6000);
-    return () => { alive = false; clearInterval(iv); };
+    reload();
+    const channel = supabase
+      .channel(`group:${g.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'group_messages', filter: `group_id=eq.${g.id}` }, reload)
+      .subscribe();
+    const iv = setInterval(reload, 30000);
+    return () => { alive = false; clearInterval(iv); supabase.removeChannel(channel); };
   });
   // Keep the chat scrolled to the latest message.
   $effect(() => { messages; if (chatScroll) chatScroll.scrollTop = chatScroll.scrollHeight; });

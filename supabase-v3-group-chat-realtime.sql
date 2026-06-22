@@ -1,0 +1,14 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Group chat → Supabase Realtime (instant messages)                          ║
+-- ║  (migration: v3_group_chat_realtime)                                        ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Upgrades the chat from 6s polling to live websocket push.
+-- 1) SELECT RLS policy: group members can read their groups' messages directly
+--    (Realtime enforces RLS; without a policy a subscriber sees nothing). Inserts
+--    still go only through send_group_message (no INSERT policy).
+-- 2) ALTER PUBLICATION supabase_realtime ADD TABLE group_messages (idempotent).
+--
+-- Client (/groups): the chat $effect now opens a Supabase channel subscribed to
+-- INSERTs on group_messages filtered by group_id → on a new message it reloads
+-- instantly. A 30s poll remains as a safety net if the socket drops. Channel is
+-- torn down (removeChannel) when the group view closes.
