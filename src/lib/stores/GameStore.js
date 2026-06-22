@@ -9,6 +9,7 @@ import { freeplayStart, freeplayNext, freeplayBuyLetter, freeplayReveal, freepla
 import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
 import { makeupStart, makeupBuyLetter, makeupReveal, makeupSubmitGuess } from '$lib/stores/statsStore.js';
 import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, takeLoan, getPowerups, buyPowerup, climbUsePowerup } from '$lib/stores/statsStore.js';
+import { createMatch, acceptMatch, matchStart, matchBuyLetter, matchReveal, matchSubmitGuess } from '$lib/stores/statsStore.js';
 import { track } from '$lib/analytics.js';
 
 /* ================================
@@ -45,7 +46,8 @@ import { track } from '$lib/analytics.js';
  *   challengeInfo?: any,
  *   makeupDate?: string | null,
  *   dailyResult?: any,
- *   climbInfo?: any
+ *   climbInfo?: any,
+ *   matchInfo?: any
  * }} GameState
  */
 
@@ -85,7 +87,8 @@ export const gameStore = writable(/** @type {GameState} */ ({
   clue: null, // witty one-line hint for the current puzzle
   challengeInfo: null, // { mode, started_at, limit_seconds, play_state, score } for the active challenge
   makeupDate: null, // YYYY-MM-DD of the make-up day being played (makeup mode only)
-  climbInfo: null // { bounty, heat, attempts, spent, position, stuck, last_gain, state } (climb mode)
+  climbInfo: null, // { bounty, heat, attempts, spent, position, stuck, last_gain, state } (climb mode)
+  matchInfo: null // { position, pack_size, total_score, last_score, done, status } (challenge match)
 }));
 
 /* ================================
@@ -680,6 +683,92 @@ export async function climbBorrow(amount) {
   }
 }
 
+/* ===== Challenge Builder match play (pack of puzzles vs friends/group) ===== */
+/** @type {string|null} */
+let activeMatchId = null;
+
+/** @param {any} board */
+function reconcileMatchBoard(board) {
+  if (!board) return;
+  const prev = get(gameStore);
+  const match = board.match || {};
+  const done = match.done === true;
+  gameStore.set(/** @type {GameState} */ ({
+    ...prev, ...(done ? {} : boardToState(board, prev)),
+    gameMode: 'match',
+    gameState: done ? 'won' : 'default',
+    modifier: null, arcadeRun: null,
+    matchInfo: match
+  }));
+  if (done) { setTimeout(() => launchConfetti(), 250); fx('win'); }
+  else if ((match.last_score ?? 0) > 0 && (match.position ?? 1) > (prev.matchInfo?.position ?? 0)) { fx('win'); }
+  else playMoveCue(prev, board);
+}
+
+/** Create a match and drop into play. @param {any} opts @returns {Promise<any>} */
+export async function startMatch(opts) {
+  const resp = await createMatch(opts);
+  if (resp?.ok && resp.match) {
+    track('match_create', { wager: opts.wager ?? 0, pack: opts.pack_size ?? 1 });
+    const id = resp.match.id;
+    activeMatchId = id;
+    const board = await matchStart(id);
+    if (board) reconcileMatchBoard(board);
+  }
+  return resp;
+}
+
+/** Accept (escrow) an invited match and start playing. @param {string} id @returns {Promise<boolean>} */
+export async function acceptAndPlayMatch(id) {
+  const resp = await acceptMatch(id);
+  if (!resp?.ok) return false;
+  track('match_accept');
+  activeMatchId = id;
+  const board = await matchStart(id);
+  if (board) reconcileMatchBoard(board);
+  return true;
+}
+
+/** Resume a match I'm already in. @param {string} id @returns {Promise<boolean>} */
+export async function resumeMatch(id) {
+  activeMatchId = id;
+  const board = await matchStart(id);
+  if (board) { reconcileMatchBoard(board); return true; }
+  return false;
+}
+
+/** @param {GameState} state */
+async function confirmPurchaseMatch(state) {
+  const purchase = state.selectedPurchase;
+  if (!purchase || dailyInFlight || !activeMatchId) return;
+  dailyInFlight = true;
+  try {
+    let board = null;
+    if (purchase.type === 'letter') board = await matchBuyLetter(activeMatchId, purchase.value ?? '');
+    else if (purchase.type === 'hint') board = await matchReveal(activeMatchId);
+    if (board) reconcileMatchBoard(board);
+    else gameStore.update(s => ({ ...s, selectedPurchase: null, gameState: 'default' }));
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
+/** @param {GameState} state */
+async function submitGuessMatch(state) {
+  if (state.gameState !== 'guess_mode' || dailyInFlight || !activeMatchId) return;
+  /** @type {Record<string, string>} */
+  const guess = {};
+  for (const [k, v] of Object.entries(state.guessedLetters || {})) guess[k] = /** @type {string} */ (v);
+  if (Object.keys(guess).length === 0) return;
+  dailyInFlight = true;
+  try {
+    const board = await matchSubmitGuess(activeMatchId, guess);
+    if (board) reconcileMatchBoard(board);
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
 /** Spend an earned power-up during the current arcade run. @param {string} powerup */
 export async function useArcadePowerup(powerup) {
   if (dailyInFlight) return;
@@ -839,6 +928,7 @@ export function confirmPurchase() {
   else if (current.gameMode === 'challenge') confirmPurchaseChallenge(current);
   else if (current.gameMode === 'makeup') confirmPurchaseMakeup(current);
   else if (current.gameMode === 'climb') confirmPurchaseClimb(current);
+  else if (current.gameMode === 'match') confirmPurchaseMatch(current);
 }
 /* ================================
    Guess Mode Functions
@@ -942,6 +1032,7 @@ export function submitGuess() {
   else if (current.gameMode === 'challenge') submitGuessChallenge(current);
   else if (current.gameMode === 'makeup') submitGuessMakeup(current);
   else if (current.gameMode === 'climb') submitGuessClimb(current);
+  else if (current.gameMode === 'match') submitGuessMatch(current);
 }
 /* ================================
    Puzzle Fetch Functions

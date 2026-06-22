@@ -517,6 +517,65 @@ export async function arcadeCashout() {
   return data;
 }
 
+/* ===== Challenge Builder (configurable N-player packs) ===== */
+/**
+ * @param {{ opponent?:string|null, group_id?:string|null, categories?:string[], pack_size?:number,
+ *   mode?:string, wager?:number, payout?:string, window_seconds?:number }} opts
+ * @returns {Promise<{ok:boolean, reason?:string, match?:any}>}
+ */
+export async function createMatch(opts) {
+  const { data, error } = await supabase.rpc('create_match', {
+    p_opponent: opts.opponent ?? null, p_group_id: opts.group_id ?? null,
+    p_categories: opts.categories ?? [], p_pack_size: opts.pack_size ?? 1,
+    p_mode: opts.mode ?? 'standard', p_wager: opts.wager ?? 0,
+    p_payout: opts.payout ?? 'winner', p_window_seconds: opts.window_seconds ?? 172800
+  });
+  if (error || !data) { if (error) console.error('❌ create_match:', error); return { ok: false }; }
+  return data;
+}
+/** @param {string} id @returns {Promise<{ok:boolean, reason?:string, match?:any}>} */
+export async function acceptMatch(id) {
+  const { data, error } = await supabase.rpc('accept_match', { p_id: id });
+  if (error || !data) { if (error) console.error('❌ accept_match:', error); return { ok: false }; }
+  return data;
+}
+/** @param {string} id @returns {Promise<any|null>} */
+export async function getMatch(id) {
+  const { data, error } = await supabase.rpc('get_match', { p_id: id });
+  if (error) { console.error('❌ get_match:', error); return null; }
+  return data;
+}
+/** @returns {Promise<any[]>} */
+export async function getMyMatches() {
+  const { data, error } = await supabase.rpc('get_my_matches');
+  if (error) { console.error('❌ get_my_matches:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
+/** @param {string} id @returns {Promise<any|null>} */
+export async function matchStart(id) {
+  const { data, error } = await supabase.rpc('match_start', { p_id: id });
+  if (error) { console.error('❌ match_start:', error); return null; }
+  return data;
+}
+/** @param {string} id @param {string} letter @returns {Promise<any|null>} */
+export async function matchBuyLetter(id, letter) {
+  const { data, error } = await supabase.rpc('match_buy_letter', { p_id: id, p_letter: letter });
+  if (error) { console.error('❌ match_buy_letter:', error); return null; }
+  return data;
+}
+/** @param {string} id @returns {Promise<any|null>} */
+export async function matchReveal(id) {
+  const { data, error } = await supabase.rpc('match_reveal', { p_id: id });
+  if (error) { console.error('❌ match_reveal:', error); return null; }
+  return data;
+}
+/** @param {string} id @param {Record<string,string>} guess @returns {Promise<any|null>} */
+export async function matchSubmitGuess(id, guess) {
+  const { data, error } = await supabase.rpc('match_submit_guess', { p_id: id, p_guess: guess });
+  if (error) { console.error('❌ match_submit_guess:', error); return null; }
+  return data;
+}
+
 /* ===== Challenges (friend wagers) ===== */
 /** @param {string} username @param {string} category @param {number} wager @param {string} [mode] */
 export async function createChallenge(username, category, wager, mode = 'score') {
