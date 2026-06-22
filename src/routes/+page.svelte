@@ -35,6 +35,7 @@
   // UI state
   let showTutorial = false;
   let playOpen = false;
+  let progressOpen = false;
   let blitzSoon = false;
   let showResultModal = false;
   let hasTriggeredModal = false;
@@ -932,29 +933,33 @@
           {#if challengeCount > 0}<span class="mc-stat" title="{challengeCount} waiting">{challengeCount}</span>{/if}
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 2" on:click={() => goto('/quests')}>
-          <span class="mc-icon">{questProgress.all_done ? '🏆' : '📋'}</span>
-          <span class="mc-title">Daily Quests</span>
-          {#if questProgress.all_done && !questProgress.reward_claimed}<span class="mc-stat">🎁</span>{:else}<span class="mc-stat">{questProgress.done}/{questProgress.total}</span>{/if}
-          <span class="mc-arrow">→</span>
+        <!-- 📈 PROGRESS — quests, leaderboard, achievements in one expandable card -->
+        <button class="menu-card sheen" class:open={progressOpen} style="--i: 2" on:click={() => { progressOpen = !progressOpen; fx('tap'); }}>
+          <span class="mc-icon">📈</span>
+          <span class="mc-title">Progress</span>
+          {#if questProgress.all_done && !questProgress.reward_claimed}<span class="mc-stat" title="Quest reward ready">🎁</span>{/if}
+          <span class="mc-arrow">{progressOpen ? '▾' : '▸'}</span>
         </button>
-        <button class="menu-card" style="--i: 3" on:click={handleMenuLeaderboard}>
-          <span class="mc-icon">🏆</span><span class="mc-title">Leaderboard</span><span class="mc-arrow">→</span>
-        </button>
-        <button class="menu-card" style="--i: 4" on:click={() => goto('/shop')}>
+        {#if progressOpen}
+          <div class="play-modes progress-modes">
+            <button class="play-mode" on:click={() => goto('/quests')}>
+              <span class="pm-ic">📋</span><span class="pm-t">Daily Quests</span>
+              {#if questProgress.all_done && !questProgress.reward_claimed}<span class="pm-tag">🎁 Claim</span>{:else}<span class="pm-tag">{questProgress.done}/{questProgress.total}</span>{/if}
+            </button>
+            <button class="play-mode" on:click={handleMenuLeaderboard}>
+              <span class="pm-ic">📊</span><span class="pm-t">Leaderboard</span>
+            </button>
+            <button class="play-mode" on:click={() => goto('/badges')}>
+              <span class="pm-ic">🏅</span><span class="pm-t">Achievements</span>
+            </button>
+          </div>
+        {/if}
+        <button class="menu-card" style="--i: 3" on:click={() => goto('/shop')}>
           <span class="mc-icon">🛍️</span><span class="mc-title">Shop</span><span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 5" on:click={() => goto('/badges')}>
-          <span class="mc-icon">🏅</span><span class="mc-title">Achievements</span><span class="mc-arrow">→</span>
-        </button>
-        <button class="menu-card" style="--i: 6" on:click={handleMenuMyAccount}>
+        <button class="menu-card" style="--i: 4" on:click={handleMenuMyAccount}>
           <span class="mc-icon">👤</span><span class="mc-title">My Account</span><span class="mc-arrow">→</span>
         </button>
-        <!-- subtle utility footer (was the floating icon cluster) -->
-        <div class="menu-footer">
-          <button on:click={() => { toggleSound(); if ($soundEnabled) fx('select'); }} title="Sound &amp; haptics">{$soundEnabled ? '🔊' : '🔇'} Sound</button>
-          <button on:click={() => showTutorial = true} title="How to play">❓ How to play</button>
-        </div>
       </div>
     </div>
 
@@ -1173,9 +1178,15 @@
           </div>
 
           <button class="main-menu-btn ghost-btn" on:click={() => goto('/profile')}>📊 Profile &amp; Stats</button>
-          <button class="main-menu-btn ghost-btn" on:click={() => goto('/badges')}>🏅 View Badges</button>
           <button class="main-menu-btn ghost-btn" on:click={() => goto('/groups')}>👥 Groups</button>
-          <button class="main-menu-btn ghost-btn" on:click={() => goto('/shop')}>🛍️ Shop</button>
+
+          <div class="ma-section-label">Settings</div>
+          <button class="main-menu-btn ghost-btn ma-toggle" on:click={() => { toggleSound(); if ($soundEnabled) fx('select'); }}>
+            <span>{$soundEnabled ? '🔊' : '🔇'} Sound &amp; Haptics</span>
+            <span class="ma-toggle-state">{$soundEnabled ? 'On' : 'Off'}</span>
+          </button>
+          <button class="main-menu-btn ghost-btn" on:click={() => { showMyAccount = false; showTutorial = true; }}>❓ How to Play</button>
+
           <button class="main-menu-btn" on:click={() => { showMyAccount = false; handleLogout(); }}>Log Out</button>
         </div>
       </div>
@@ -1808,8 +1819,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 3.5rem 1.1rem 2rem;
-    gap: 2rem;
+    padding: 2rem 1.1rem 1.2rem;
+    gap: 1.2rem;
   }
   .menu-hero {
     display: flex;
@@ -1878,7 +1889,7 @@
   }
   .streak-chip.lit .sc-flame { filter: none; }
   .menu-mark {
-    width: min(54vw, 208px);
+    width: min(46vw, 172px);
     height: auto;
     object-fit: contain;
     margin-bottom: 4px;
@@ -1952,6 +1963,7 @@
   .daily-chip.won   { color: #34d399; border-color: rgba(52,211,153,0.5);  background: rgba(52,211,153,0.14); }
   .daily-chip.lost  { color: #fb7185; border-color: rgba(251,113,133,0.5); background: rgba(251,113,133,0.14); }
   .daily-chip.prog  { color: #fbbf24; border-color: rgba(251,191,36,0.5);  background: rgba(251,191,36,0.14); }
+  .progress-modes { border-left-color: rgba(251,191,36,0.3); }
   .mc-arrow { color: var(--text-faint); font-size: 1.1rem; transition: transform 0.2s, color 0.2s; }
   .mc-count {
     min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px;
@@ -2225,6 +2237,16 @@
     font-size: 0.95rem;
     color: var(--text-muted);
     margin: 0.5rem 0 0 0;
+  }
+  .ma-section-label {
+    text-align: left; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-faint); margin: 1rem 0 0.1rem; padding-left: 0.2rem;
+  }
+  .ma-toggle { display: flex; align-items: center; gap: 0.5rem; }
+  .ma-toggle-state {
+    margin-left: auto; font-size: 0.72rem; font-weight: 800; color: var(--brand-2);
+    background: rgba(163,230,53,0.12); border: 1px solid rgba(163,230,53,0.35);
+    padding: 2px 8px; border-radius: 999px;
   }
   .ma-username { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin: 0.7rem 0 0.2rem; }
   .ma-uname { font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; color: var(--brand-2); }
