@@ -22,11 +22,13 @@
 --   daily ends on solve or you just leave). Daily-result payload drops no_reveals,
 --   adds spent.
 --
--- _finalize_daily(uid, won, SPENT, incorrect): refunds the letter-spend + pays an
---   efficiency reward = $100 floor + $600 × (clean .25 + no-vowel .25 + first-try
---   .25). Net on a solve is ALWAYS ≥ +$100 → the Daily is a true safety net you
---   can't lose Cash on. No more leftover×streak score; streak rewards are the
---   attendance milestones. (Dropped gold_bank badge / daily_bankroll writes.)
+-- _finalize_daily(uid, won, SPENT, incorrect): pays an efficiency reward =
+--   $150 floor + $650 × (clean .25 + no-vowel .25 + first-try .25), $150–$637.
+--   (R3b correction: NO spend refund — net = reward − spent, so over-buying costs
+--   you and spending the least wins. Attendance, paid at start, is the guaranteed
+--   income floor that keeps the Daily a safety net even on a sloppy solve.)
+--   No more leftover×streak score; streak rewards are the attendance milestones.
+--   (Dropped gold_bank badge / daily_bankroll writes.)
 --
 -- Verified (rolled-back SQL sim, Chef untouched): start → +$150 attendance;
 --   buy letter → −$90 real Cash, spent=90; solve → +$90 refund +$550 reward

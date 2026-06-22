@@ -1256,7 +1256,7 @@
               <div class="daily-score">
                 <span class="ds-label">Daily Reward</span>
                 <span class="ds-amount">{(dr.score ?? 0).toLocaleString()}</span>
-                <span class="ds-cash">+${(dr.score ?? 0).toLocaleString()} to your Cash{#if dr.spent} · ${dr.spent.toLocaleString()} spent refunded{/if}</span>
+                <span class="ds-cash">+${(dr.score ?? 0).toLocaleString()}{#if dr.spent} · −${dr.spent.toLocaleString()} spent · net {(dr.score ?? 0) - dr.spent >= 0 ? '+' : '−'}${Math.abs((dr.score ?? 0) - dr.spent).toLocaleString()}{/if}</span>
               </div>
               <div class="eff-chips">
                 <span class="eff" class:on={dr.clean}>{dr.clean ? '✓' : '✗'} Clean</span>
