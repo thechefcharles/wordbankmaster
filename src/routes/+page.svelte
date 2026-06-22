@@ -4,8 +4,8 @@
   import { supabase } from '$lib/supabaseClient';
   import { get } from 'svelte/store';
 
-  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbBorrow } from '$lib/stores/GameStore.js';
-  import { getMyChallenges } from '$lib/stores/statsStore.js';
+  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbBorrow, climbPowerup } from '$lib/stores/GameStore.js';
+  import { getMyChallenges, getPowerups } from '$lib/stores/statsStore.js';
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
@@ -249,7 +249,20 @@
     if (climbBorrowing) return;
     climbBorrowing = true;
     // Borrow roughly enough to afford a couple of letters / get unstuck.
-    try { await climbBorrow(500); } finally { climbBorrowing = false; }
+    try { await climbBorrow(500); await refreshClimbPups(); } finally { climbBorrowing = false; }
+  }
+  /** @type {any[]} */
+  let climbPups = [];
+  const PUP_ICON = /** @type {Record<string,string>} */ ({ free_reveal: '🔍', half_off: '🏷️', extra_attempt: '➕', insurance: '🛟', heat_shield: '🛡️', double_down: '⚡' });
+  async function refreshClimbPups() {
+    try { const r = await getPowerups(); climbPups = r.items.filter((/** @type {any} */ i) => i.kind === 'climb'); } catch { /* non-fatal */ }
+  }
+  /** @param {any} item */
+  async function handleClimbPup(item) {
+    const cash = $gameStore.bankroll ?? 0;
+    if (item.owned <= 0 && cash < item.price) return; // can't afford to buy
+    await climbPowerup(item.id, item.owned > 0);
+    await refreshClimbPups();
   }
   $: makeupLabel = (() => {
     const d = $gameStore.makeupDate;
@@ -402,6 +415,7 @@
     if (ok) {
       hasInitialized = true;
       showMainMenu = false;
+      refreshClimbPups();
     } else {
       initError = 'Cash Game failed to load.';
     }
@@ -1025,6 +1039,17 @@
         <div class="ch-cell"><span class="ch-val ch-gold">${(climb.bounty ?? 0).toLocaleString()}</span><span class="ch-label">Bounty</span></div>
         <div class="ch-cell" class:hot={(climb.heat ?? 100) > 100}><span class="ch-val">×{climbHeat}</span><span class="ch-label">Heat</span></div>
       </div>
+      {#if climb.state === 'active' && climbPups.length}
+        <div class="climb-pups">
+          {#each climbPups as item}
+            <button class="cp" disabled={item.owned <= 0 && ($gameStore.bankroll ?? 0) < item.price}
+              on:click={() => handleClimbPup(item)} title={item.name}>
+              <span class="cp-ic">{PUP_ICON[item.id] ?? '✨'}</span>
+              <span class="cp-tag">{item.owned > 0 ? '×' + item.owned : '$' + item.price}</span>
+            </button>
+          {/each}
+        </div>
+      {/if}
       {#if climb.stuck && $gameStore.gameState !== 'won'}
         <div class="climb-stuck">
           <span class="cs-text">Out of guesses &amp; Cash — borrow to finish, or leave.</span>
@@ -1340,6 +1365,16 @@
   .ch-cell.hot .ch-val { color: #fbbf24; }
   .ch-gold { color: #fcd34d; }
   .ch-label { font-size: 0.55rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
+  .climb-pups { display: flex; gap: 6px; width: 100%; max-width: 360px; margin: 0 auto 12px; justify-content: space-between; }
+  .cp {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 7px 2px;
+    border-radius: 10px; cursor: pointer; border: 1px solid var(--border); background: var(--surface);
+    transition: transform 0.1s, border-color 0.15s;
+  }
+  .cp:hover:not(:disabled) { transform: translateY(-1px); border-color: rgba(251,191,36,0.5); }
+  .cp:disabled { opacity: 0.4; cursor: default; }
+  .cp-ic { font-size: 1.1rem; line-height: 1; }
+  .cp-tag { font-size: 0.6rem; font-weight: 700; color: var(--text-faint); }
   .climb-stuck {
     display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 360px; margin: 0 auto 12px; padding: 0.8rem;
     border: 1px solid rgba(248,113,113,0.45); border-radius: 14px; background: rgba(248,113,113,0.08); text-align: center;

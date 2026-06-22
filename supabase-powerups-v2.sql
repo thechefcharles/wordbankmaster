@@ -1,0 +1,31 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Phase 5: power-up economy (migration: powerups_v2)                         ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Two-pool, consumable power-ups (supersedes the legacy supabase-powerups.sql).
+-- Cash Game tools are BOUGHT with Cash (buy + use mid-puzzle); Free Play tools
+-- will be EARNED by feats (Phase 5b).
+--
+-- powerups(id, name, kind 'climb'|'blitz', effect_key, price)  -- catalog (public read).
+--   Climb: free_reveal $80, half_off $120, extra_attempt $120, insurance $150,
+--          heat_shield $100, double_down $250. Blitz time-tools seeded (effects in P7).
+-- user_powerups_v2(user_id, powerup_id, pool 'cash'|'freeplay', qty)  -- self-read.
+--
+-- get_powerups()        -> { cash, items:[{id,name,kind,price,owned(cash-pool)}] }.
+-- buy_powerup(id)       -> -price 'powerup_buy', qty++ in cash pool.
+-- climb_use_powerup(id) -> consume a cash-pool charge, apply the effect, re-resolve:
+--   free_reveal (free best-letter), extra_attempt (+1), half_off / insurance /
+--   heat_shield / double_down (flag on climb_state.active_powerups). _award_powerup
+--   (uid,id,pool) for Free Play feats (5b).
+--
+-- Climb engine now honours the flags:
+--   climb_buy_letter   -- half_off → letters cost ×0.5.
+--   climb_submit_guess -- heat_shield → a wrong guess won't reset heat.
+--   _climb_resolve     -- double_down → bounty ×2 on solve; insurance → refund the
+--     letter-spend before a stuck verdict (often un-sticks you).
+--
+-- Verified (SQL sim): double_down → $620 bounty paid $1,240; half_off → $80 letter
+-- charged $40; insurance on a would-be-stuck → refunded $300 (cash $5→$305, back to
+-- active). Test user reset.
+--
+-- Client: in-Climb power-up tray (tap to use if owned, else buy+use). Free Play
+-- earned set = Phase 5b; the cosmetics Shop stays separate.

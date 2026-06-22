@@ -8,7 +8,7 @@ import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNe
 import { freeplayStart, freeplayNext, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
 import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
 import { makeupStart, makeupBuyLetter, makeupReveal, makeupSubmitGuess } from '$lib/stores/statsStore.js';
-import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, takeLoan } from '$lib/stores/statsStore.js';
+import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, takeLoan, getPowerups, buyPowerup, climbUsePowerup } from '$lib/stores/statsStore.js';
 import { track } from '$lib/analytics.js';
 
 /* ================================
@@ -647,6 +647,22 @@ export async function climbAdvance() {
 /** Leave the Cash Game (clears heat; position + Cash persist). */
 export async function climbLeaveGame() {
   try { await climbLeave(); } catch { /* non-fatal */ }
+}
+
+/** Use a power-up in the Climb — buys it first if you don't own one. @param {string} id @param {boolean} owned */
+export async function climbPowerup(id, owned) {
+  if (dailyInFlight) return;
+  dailyInFlight = true;
+  try {
+    if (!owned) {
+      const res = await buyPowerup(id);
+      if (!res || res.ok === false) return;
+    }
+    const board = await climbUsePowerup(id);
+    if (board) reconcileClimbBoard(board);
+  } finally {
+    dailyInFlight = false;
+  }
 }
 
 /** Borrow mid-climb, then refresh the board with the new Cash. @param {number} amount */

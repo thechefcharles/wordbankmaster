@@ -118,7 +118,7 @@ finish; leave → heat cleared, position persists; two users share puzzle #N.
 
 ---
 
-## Phase 5 — Power-ups economy
+## Phase 5 — Power-ups economy  ◑ (Cash Game tools + tray done; Free Play earned = 5b)
 
 **Goal:** the catalog — bought-with-Cash in Climb (mid-puzzle), earned-by-feats in Free Play.
 **Depends on:** P4 (Climb hooks).
