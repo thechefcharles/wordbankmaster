@@ -959,19 +959,19 @@
           <h2 class="sub-title">⚔️ Challenge Friends</h2>
         </div>
         <div class="main-menu-buttons stagger">
-          <button class="menu-card" style="--i: 0" on:click={() => goto('/friends')}>
-            <span class="mc-icon">👥</span><span class="mc-title">Friends</span>
-            {#if friendReqCount > 0}<span class="mc-stat" title="{friendReqCount} friend request{friendReqCount === 1 ? '' : 's'}">{friendReqCount}</span>{/if}
-            <span class="mc-arrow">→</span>
-          </button>
-          <button class="menu-card" style="--i: 1" on:click={() => goto('/groups')}>
-            <span class="mc-icon">👨‍👩‍👧‍👦</span><span class="mc-title">Groups</span><span class="mc-arrow">→</span>
-          </button>
-          <button class="menu-card primary" style="--i: 2" on:click={openChallenges}>
+          <button class="menu-card primary" style="--i: 0" on:click={openChallenges}>
             <span class="mc-icon">⚔️</span>
             <span class="mc-title">Start Challenge</span>
             {#if challengeCount > 0}<span class="mc-stat" title="{challengeCount} waiting">{challengeCount}</span>{/if}
             <span class="mc-arrow">→</span>
+          </button>
+          <button class="menu-card" style="--i: 1" on:click={() => goto('/friends')}>
+            <span class="mc-icon">👥</span><span class="mc-title">Friends</span>
+            {#if friendReqCount > 0}<span class="mc-stat" title="{friendReqCount} friend request{friendReqCount === 1 ? '' : 's'}">{friendReqCount}</span>{/if}
+            <span class="mc-arrow">→</span>
+          </button>
+          <button class="menu-card" style="--i: 2" on:click={() => goto('/groups')}>
+            <span class="mc-icon">👨‍👩‍👧‍👦</span><span class="mc-title">Groups</span><span class="mc-arrow">→</span>
           </button>
         </div>
 
@@ -981,19 +981,19 @@
           <h2 class="sub-title">📈 Progress</h2>
         </div>
         <div class="main-menu-buttons stagger">
-          <button class="menu-card" style="--i: 0" on:click={() => goto('/profile')}>
-            <span class="mc-icon">📊</span><span class="mc-title">Stats</span><span class="mc-arrow">→</span>
+          <button class="menu-card" style="--i: 0" on:click={handleMenuLeaderboard}>
+            <span class="mc-icon">🏆</span><span class="mc-title">Leaderboard</span><span class="mc-arrow">→</span>
           </button>
-          <button class="menu-card" style="--i: 1" on:click={() => goto('/quests')}>
+          <button class="menu-card" style="--i: 1" on:click={() => goto('/badges')}>
+            <span class="mc-icon">🏅</span><span class="mc-title">Achievements</span><span class="mc-arrow">→</span>
+          </button>
+          <button class="menu-card" style="--i: 2" on:click={() => goto('/quests')}>
             <span class="mc-icon">📋</span><span class="mc-title">Daily Quests</span>
             {#if questProgress.all_done && !questProgress.reward_claimed}<span class="mc-stat">🎁</span>{:else}<span class="mc-stat">{questProgress.done}/{questProgress.total}</span>{/if}
             <span class="mc-arrow">→</span>
           </button>
-          <button class="menu-card" style="--i: 2" on:click={handleMenuLeaderboard}>
-            <span class="mc-icon">📊</span><span class="mc-title">Leaderboard</span><span class="mc-arrow">→</span>
-          </button>
-          <button class="menu-card" style="--i: 3" on:click={() => goto('/badges')}>
-            <span class="mc-icon">🏅</span><span class="mc-title">Achievements</span><span class="mc-arrow">→</span>
+          <button class="menu-card" style="--i: 3" on:click={() => goto('/profile')}>
+            <span class="mc-icon">📊</span><span class="mc-title">Stats</span><span class="mc-arrow">→</span>
           </button>
         </div>
       {/if}
