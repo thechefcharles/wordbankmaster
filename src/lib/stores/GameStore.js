@@ -48,7 +48,7 @@ import { track } from '$lib/analytics.js';
  *   dailyResult?: any,
  *   climbInfo?: any,
  *   matchInfo?: any,
- *   dailyAttendance?: { amount:number, day:number } | null
+ *   cashToast?: { amount:number, label:string } | null
  * }} GameState
  */
 
@@ -90,7 +90,7 @@ export const gameStore = writable(/** @type {GameState} */ ({
   makeupDate: null, // YYYY-MM-DD of the make-up day being played (makeup mode only)
   climbInfo: null, // { bounty, heat, attempts, spent, position, stuck, last_gain, state } (climb mode)
   matchInfo: null, // { position, pack_size, total_score, last_score, done, status } (challenge match)
-  dailyAttendance: null // { amount, day } — transient attendance reward toast (daily start)
+  cashToast: null // { amount, label } — transient Cash-earned toast (attendance / free-play reward)
 }));
 
 /* ================================
@@ -325,7 +325,11 @@ function reconcileFreeplayBoard(board) {
     gameState: finished ? board.state : 'default',
     modifier: null, arcadeRun: null
   }));
-  if (board.state === 'won') { setTimeout(() => launchConfetti(), 300); fx('win'); }
+  if (board.state === 'won') {
+    setTimeout(() => launchConfetti(), 300); fx('win');
+    const rw = /** @type {any} */ (board).freeplay_reward;
+    if (rw > 0) gameStore.update(s => ({ ...s, cashToast: { amount: rw, label: 'Free Play reward' } }));
+  }
   else if (finished) fx('bust');
   else playMoveCue(prev, board);
 }
@@ -1046,8 +1050,8 @@ export async function fetchDailyGame() {
     reconcileDailyBoard(board);
     // Attendance reward (paid once on the first open of the day) → transient toast.
     const ab = /** @type {any} */ (board);
-    if (ab.attendance != null) {
-      gameStore.update(s => ({ ...s, dailyAttendance: { amount: ab.attendance, day: ab.attendance_day } }));
+    if (ab.attendance != null && ab.attendance > 0) {
+      gameStore.update(s => ({ ...s, cashToast: { amount: ab.attendance, label: `Day ${ab.attendance_day} streak · for showing up` } }));
     }
     // Today's shared modifier (same for everyone) — drives the banner + key pricing.
     try {

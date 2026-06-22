@@ -244,12 +244,12 @@
   $: isFreeplay = $gameStore.gameMode === 'freeplay';
   $: isChallenge = $gameStore.gameMode === 'challenge';
   $: isMakeup = $gameStore.gameMode === 'makeup';
-  // Auto-dismiss the attendance toast after a few seconds.
+  // Auto-dismiss the Cash-earned toast after a few seconds.
   /** @type {ReturnType<typeof setTimeout>|undefined} */
   let _attTimer;
-  $: if ($gameStore.dailyAttendance) {
+  $: if ($gameStore.cashToast) {
     clearTimeout(_attTimer);
-    _attTimer = setTimeout(() => gameStore.update(s => ({ ...s, dailyAttendance: null })), 4500);
+    _attTimer = setTimeout(() => gameStore.update(s => ({ ...s, cashToast: null })), 4000);
   }
   $: isClimb = $gameStore.gameMode === 'climb';
   $: climb = $gameStore.climbInfo; // { bounty, heat, spent, position, stuck, last_gain, state, pups_locked, equipped }
@@ -749,9 +749,9 @@
   <Tutorial on:close={dismissTutorial} />
 {/if}
 
-{#if $gameStore.dailyAttendance}
-  <button class="attendance-toast" on:click={() => gameStore.update(s => ({ ...s, dailyAttendance: null }))}>
-    📅 Day {$gameStore.dailyAttendance.day} streak · <strong>+${$gameStore.dailyAttendance.amount.toLocaleString()}</strong> for showing up
+{#if $gameStore.cashToast}
+  <button class="attendance-toast" on:click={() => gameStore.update(s => ({ ...s, cashToast: null }))}>
+    <strong>+${$gameStore.cashToast.amount.toLocaleString()}</strong> · {$gameStore.cashToast.label}
   </button>
 {/if}
 
@@ -821,7 +821,7 @@
           <span class="mc-icon">🎲</span>
           <span class="mc-body">
             <span class="mc-title">Free Play</span>
-            <span class="mc-sub">Pick a category · unranked</span>
+            <span class="mc-sub">Free to play · earn a little Cash</span>
           </span>
           <span class="mc-arrow">→</span>
         </button>
