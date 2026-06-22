@@ -893,7 +893,7 @@
             </button>
           </div>
         </div>
-        <img class="menu-mark float" src="/logo-mark.png" alt="" width="84" height="84" />
+        <img class="menu-mark float" src="/logo-coin.png" alt="" width="84" height="84" />
         <img class="menu-wordmark" src="/wordmark-slogan.png" alt="WordBank — Spend Less. Think More." />
       </div>
       <div class="main-menu-buttons stagger">

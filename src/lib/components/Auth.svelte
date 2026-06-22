@@ -159,7 +159,7 @@
 <div class="auth-screen">
   <div class="auth-card glass fade-up">
     <div class="brand">
-      <img class="mark" src="/logo-mark.png" alt="" width="72" height="72" />
+      <img class="mark" src="/logo-coin.png" alt="" width="140" height="140" />
       <img class="wordmark" src="/wordmark-slogan.png" alt="WordBank — Spend Less. Think More." />
     </div>
 
@@ -245,12 +245,12 @@
   .brand { margin-bottom: 22px; }
 
   .mark {
-    width: 72px;
-    height: 72px;
+    width: min(44vw, 160px);
+    height: auto;
     object-fit: contain;
-    margin: 0 auto 12px;
+    margin: 0 auto 6px;
     display: block;
-    filter: drop-shadow(0 6px 20px rgba(52, 211, 153, 0.28));
+    filter: drop-shadow(0 8px 26px rgba(251, 191, 36, 0.4));
   }
 
   .wordmark {
