@@ -7,6 +7,11 @@ export const BADGES = {
   streak_30: { emoji: '👑', name: 'Iron Will',     desc: '30-day daily streak' },
   week_complete:  { emoji: '🗓️', name: 'Perfect Week',  desc: 'Played every day of a calendar week' },
   month_complete: { emoji: '📅', name: 'Perfect Month', desc: 'Played every day of a calendar month' },
+  climb_50:  { emoji: '🧗', name: 'Climber',     desc: 'Reached puzzle #50 in the Cash Game' },
+  climb_100: { emoji: '🏔️', name: 'Mountaineer', desc: 'Reached puzzle #100 in the Cash Game' },
+  climb_500: { emoji: '🚀', name: 'Summit',      desc: 'Reached puzzle #500 in the Cash Game' },
+  debt_free: { emoji: '💸', name: 'Debt-Free',   desc: 'Paid off a loan in full' },
+  hustler:   { emoji: '🤝', name: 'Hustler',     desc: 'Won 10 challenges' },
 };
 
 /** @param {string} id */
