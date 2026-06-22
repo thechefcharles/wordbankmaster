@@ -1,0 +1,35 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Phase 4: Cash Game / the Climb (migrations climb_4a_foundation, climb_4b)  ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- A persistent, forward-only, SHARED-ORDER climb played with your real Cash.
+-- No runs, no restart, no pot — par/bounty payout + a heat multiplier.
+--
+-- climb_sequence(position, puzzle_id)  -- fixed shuffle of all 720 puzzles, same
+--   order for everyone (ORDER BY md5(id)).
+-- climb_state(user_id PK, position, puzzle_id, revealed_positions, incorrect_letters,
+--   attempts_remaining=3, heat_x100=100, spent, last_gain, active_powerups,
+--   state active|solved|stuck|complete).  RLS self-read.
+--
+-- _climb_puzzle_at(pos)  -- puzzle at a sequence position (null past the end).
+-- _climb_bounty(pid)     -- round_to_$10( 0.65 × Σ distinct letter_cost ).
+-- _climb_board(uid)      -- masked board (your real Cash IS the bankroll) +
+--   { climb:{bounty,heat,attempts,spent,position,stuck,last_gain,state} }.
+-- _climb_resolve(uid)    -- on solve: pay bounty × heat (once), state=solved,
+--   heat +10 (cap 200); else flag stuck when attempts<=0 AND can't afford the
+--   cheapest unrevealed letter; recover to active otherwise.
+--
+-- Actions (all spend real Cash via _bank_credit):
+--   climb_start()        -- ensure state at position 1; resume otherwise.
+--   climb_buy_letter(l)  -- -cost 'climb_letter'; reveal/incorrect; resolve.
+--   climb_reveal()       -- paid $150 best-letter reveal.
+--   climb_submit_guess(j)-- correct positions stick; wrong → attempts−1 + heat=100.
+--   climb_next()         -- advance after a solve (heat PERSISTS across puzzles).
+--   climb_leave()        -- clear heat (position + Cash persist).
+-- get_climb_leaderboard(scope) -- furthest position reached (friends/global).
+-- take_loan() now also resets climb heat (borrowing breaks your hot streak).
+--
+-- Verified (SQL sim): start bounty $620/heat ×1.0 → buy −$80 → solve +$620
+-- (cash $1,540, heat ×1.1, net +$540) → advance #2 (heat persists) → broke+0
+-- attempts → stuck (heat reset) → loan $500 → recover to active. Test user reset.
+--
+-- (Power-up effects = Phase 5; Climb leaderboard UI = Phase 8.)
