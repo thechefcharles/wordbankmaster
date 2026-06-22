@@ -9,7 +9,7 @@ import { freeplayStart, freeplayNext, freeplayBuyLetter, freeplayReveal, freepla
 import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
 import { makeupStart, makeupBuyLetter, makeupReveal, makeupSubmitGuess } from '$lib/stores/statsStore.js';
 import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, takeLoan, getPowerups, buyPowerup, climbUsePowerup } from '$lib/stores/statsStore.js';
-import { createMatch, acceptMatch, matchStart, matchBuyLetter, matchReveal, matchSubmitGuess } from '$lib/stores/statsStore.js';
+import { createMatch, acceptMatch, matchStart, matchBuyLetter, matchReveal, matchSubmitGuess, matchCheck } from '$lib/stores/statsStore.js';
 import { track } from '$lib/analytics.js';
 
 /* ================================
@@ -727,6 +727,13 @@ export async function acceptAndPlayMatch(id) {
   const board = await matchStart(id);
   if (board) reconcileMatchBoard(board);
   return true;
+}
+
+/** Blitz: force the server to lock the score when the clock expires. */
+export async function matchTimeoutCheck() {
+  if (!activeMatchId) return;
+  const board = await matchCheck(activeMatchId);
+  if (board) reconcileMatchBoard(board);
 }
 
 /** Resume a match I'm already in. @param {string} id @returns {Promise<boolean>} */

@@ -40,3 +40,13 @@
 -- Verified 6c (SQL sim): solve puzzle 1 → score 1,900 (= $1,000 × 1.9 eff), advance
 -- to #2; settle Chef 1500 vs War 900 → Chef wins $400 pot (1000→1200, War 1000→800),
 -- status settled, notified. Cleaned up. Builder UI + results card = 6d.
+
+-- ── Phase 7: Blitz (migration challenge_builder_blitz) ────────────────────────
+-- mode='blitz' on a match: one clock for the whole pack (30s × pack_size), combo
+-- scoring instead of efficiency. challenge_participants += started_at, combo_x100.
+-- match_start stamps the clock; _match_tick locks the score (done) once expired
+-- (guards every play action); match_check(id) is the client's countdown-expiry call.
+-- _match_resolve_and_advance: blitz solve = round(300 × combo); combo +0.25 (cap
+-- ×3.0), resets on a failed puzzle. _match_board carries started_at/clock_seconds/
+-- combo for the countdown. Verified (SQL sim): start clock 60s, solve → 300 +
+-- combo ×1.25, clock expiry → done @ 300.

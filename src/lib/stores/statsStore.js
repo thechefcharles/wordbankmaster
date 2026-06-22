@@ -595,6 +595,12 @@ export async function matchSubmitGuess(id, guess) {
   if (error) { console.error('❌ match_submit_guess:', error); return null; }
   return data;
 }
+/** Force the server to settle a Blitz match when its clock expires. @param {string} id */
+export async function matchCheck(id) {
+  const { data, error } = await supabase.rpc('match_check', { p_id: id });
+  if (error) { console.error('❌ match_check:', error); return null; }
+  return data;
+}
 
 /* ===== Challenges (friend wagers) ===== */
 /** @param {string} username @param {string} category @param {number} wager @param {string} [mode] */
