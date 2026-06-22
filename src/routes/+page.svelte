@@ -263,6 +263,16 @@
   $: matchBlitz = isMatch && matchInfo?.mode === 'blitz' && !matchInfo?.done;
   $: matchCombo = ((matchInfo?.combo ?? 100) / 100).toFixed(2);
   let matchExpiredFired = false;
+  // Climb live: Spent · Payout (bounty × heat) · Net.
+  $: climbLive = (isClimb && climb && climb.state === 'active')
+    ? (() => { const pay = Math.round((climb.bounty ?? 0) * (climb.heat ?? 100) / 100); const sp = climb.spent ?? 0; return { spent: sp, payout: pay, net: pay - sp }; })()
+    : null;
+  // Challenge live: Spent of your wager budget — lowest spend wins (standard only).
+  $: matchLive = (isMatch && matchInfo && !matchInfo.done && matchInfo.mode !== 'blitz')
+    ? { spent: matchInfo.spent ?? 0, budget: matchInfo.budget ?? 0 } : null;
+  // Free Play live: clean status + the trickle you'd earn.
+  $: freeLive = ($gameStore.gameMode === 'freeplay' && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost')
+    ? { clean: ($gameStore.incorrectLetters?.length ?? 0) === 0 } : null;
   $: matchRemaining = (() => {
     if (!matchBlitz || !matchInfo?.started_at) return 0;
     const start = new Date(matchInfo.started_at).getTime();
@@ -1175,6 +1185,31 @@
             <span class="dl-pip" class:on={dLive.clean}>✦ Clean</span>
             <span class="dl-pip" class:on={dLive.no_vowels}>✦ No Vowels</span>
             <span class="dl-pip" class:on={dLive.first_try}>✦ First Try</span>
+          </div>
+        </div>
+      {/if}
+      {#if climbLive}
+        <div class="daily-live">
+          <div class="dl-row">
+            <span class="dl-stat">Spent <b>${climbLive.spent.toLocaleString()}</b></span>
+            <span class="dl-stat">Payout <b>${climbLive.payout.toLocaleString()}</b></span>
+            <span class="dl-net" class:pos={climbLive.net >= 0} class:neg={climbLive.net < 0}>Net {climbLive.net >= 0 ? '+' : '−'}${Math.abs(climbLive.net).toLocaleString()}</span>
+          </div>
+        </div>
+      {/if}
+      {#if matchLive}
+        <div class="daily-live">
+          <div class="dl-row">
+            <span class="dl-stat">Spent <b>${matchLive.spent.toLocaleString()}</b> of ${matchLive.budget.toLocaleString()}</span>
+            <span class="dl-net pos">🏆 Lowest spend wins</span>
+          </div>
+        </div>
+      {/if}
+      {#if freeLive}
+        <div class="daily-live">
+          <div class="dl-row">
+            <span class="dl-stat">Solve {freeLive.clean ? 'clean ' : ''}for <b>+${freeLive.clean ? 50 : 25}</b></span>
+            <span class="dl-pip" class:on={freeLive.clean} style="flex:0 0 auto;">✦ Clean</span>
           </div>
         </div>
       {/if}
