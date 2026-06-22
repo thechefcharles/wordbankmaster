@@ -365,9 +365,9 @@ export async function arcadeCashout() {
 }
 
 /* ===== Challenges (friend wagers) ===== */
-/** @param {string} code @param {string} category @param {number} wager @param {string} [mode] */
-export async function createChallenge(code, category, wager, mode = 'score') {
-  const { data, error } = await supabase.rpc('create_challenge', { p_code: code, p_category: category, p_wager: wager, p_mode: mode });
+/** @param {string} username @param {string} category @param {number} wager @param {string} [mode] */
+export async function createChallenge(username, category, wager, mode = 'score') {
+  const { data, error } = await supabase.rpc('create_challenge', { p_username: username, p_category: category, p_wager: wager, p_mode: mode });
   if (error || !data) { if (error) console.error('❌ create_challenge:', error); return { ok: false }; }
   return data;
 }
