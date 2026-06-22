@@ -671,8 +671,9 @@
     <!-- 🏠 Main Menu (after sign-in) -->
     <div class="main-menu fade-up">
       <div class="menu-hero">
-        <button class="bank-chip" on:click={() => goto('/bank')} title="Your Bank">
+        <button class="bank-chip" on:click={() => goto('/bank')} title="Cash & Net Worth">
           <span class="bc-coin">💰</span>{netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}
+          <span class="bc-tag">net worth</span>
         </button>
         <button class="streak-chip" class:lit={(dailyStatus?.current_streak ?? 0) > 0} on:click={() => goto('/streak')} title="Your streak">
           <span class="sc-flame">🔥</span>{dailyStatus?.current_streak ?? 0}
@@ -1431,6 +1432,7 @@
   .bank-chip:hover { transform: translateY(-1px); }
   .bank-chip:active { transform: scale(0.96); }
   .bank-chip .bc-coin { font-size: 1rem; }
+  .bank-chip .bc-tag { font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); }
   .streak-chip {
     position: absolute;
     top: 0;
