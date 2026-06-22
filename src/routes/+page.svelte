@@ -1878,11 +1878,11 @@
   }
   .streak-chip.lit .sc-flame { filter: none; }
   .menu-mark {
-    width: min(48vw, 190px);
+    width: min(86vw, 360px);
     height: auto;
     object-fit: contain;
-    margin-bottom: 8px;
-    filter: drop-shadow(0 8px 30px rgba(251, 191, 36, 0.42));
+    margin-bottom: 4px;
+    filter: drop-shadow(0 10px 38px rgba(251, 191, 36, 0.45));
   }
   .menu-wordmark {
     width: min(80vw, 300px);
