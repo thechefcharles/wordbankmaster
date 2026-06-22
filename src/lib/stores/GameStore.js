@@ -7,6 +7,7 @@ import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, getDailyModi
 import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNext, arcadeUsePowerup, arcadeCashout } from '$lib/stores/statsStore.js';
 import { freeplayStart, freeplayNext, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
 import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
+import { makeupStart, makeupBuyLetter, makeupReveal, makeupSubmitGuess } from '$lib/stores/statsStore.js';
 import { track } from '$lib/analytics.js';
 
 /* ================================
@@ -40,7 +41,8 @@ import { track } from '$lib/analytics.js';
  *   arcadeCashedOut?: boolean,
  *   modifier?: string | null,
  *   clue?: string | null,
- *   challengeInfo?: any
+ *   challengeInfo?: any,
+ *   makeupDate?: string | null
  * }} GameState
  */
 
@@ -78,7 +80,8 @@ export const gameStore = writable(/** @type {GameState} */ ({
   arcadeCashedOut: false, // true when the last arcade run ended via "Bank it" (vs bust)
   modifier: null, // today's shared Daily Modifier id (daily only)
   clue: null, // witty one-line hint for the current puzzle
-  challengeInfo: null // { mode, started_at, limit_seconds, play_state, score } for the active challenge
+  challengeInfo: null, // { mode, started_at, limit_seconds, play_state, score } for the active challenge
+  makeupDate: null // YYYY-MM-DD of the make-up day being played (makeup mode only)
 }));
 
 /* ================================
@@ -472,6 +475,93 @@ async function submitGuessChallenge(state) {
   }
 }
 
+/* ===== Make-up daily (play a past missed day; no streak/Bank, badges only) ===== */
+/** @type {string|null} */
+let activeMakeupDate = null;
+
+/** @param {any} board */
+function reconcileMakeupBoard(board) {
+  if (!board) return;
+  const prev = get(gameStore);
+  const finished = board.state !== 'active';
+  gameStore.set(/** @type {GameState} */ ({
+    ...prev, ...boardToState(board, prev),
+    gameMode: 'makeup',
+    gameState: finished ? board.state : 'default',
+    modifier: null, arcadeRun: null,
+    makeupDate: board.makeup?.date ?? prev.makeupDate ?? activeMakeupDate
+  }));
+  if (board.state === 'won') { setTimeout(() => launchConfetti(), 300); fx('win'); }
+  else if (finished) fx('bust');
+  else playMoveCue(prev, board);
+  if (finished && prev.gameState !== 'won' && prev.gameState !== 'lost') {
+    track('makeup_result', { won: board.state === 'won', date: board.makeup?.date });
+  }
+}
+
+/** Begin (or resume) a make-up for a past date. @param {string} date YYYY-MM-DD */
+export async function enterMakeup(date) {
+  track('makeup_start', { date });
+  const board = await makeupStart(date);
+  if (!board) return false;
+  activeMakeupDate = date;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('gameMode', 'makeup');
+    localStorage.setItem('makeupDate', date);
+  }
+  reconcileMakeupBoard(board);
+  return true;
+}
+
+/** Re-enter the make-up game on the home route (deep link / refresh). */
+export async function fetchMakeupGame() {
+  try {
+    if (!activeMakeupDate && typeof localStorage !== 'undefined') {
+      activeMakeupDate = localStorage.getItem('makeupDate');
+    }
+    if (!activeMakeupDate) return false;
+    const board = await makeupStart(activeMakeupDate);
+    if (!board) return false;
+    reconcileMakeupBoard(board);
+    return true;
+  } catch (err) {
+    console.error('❌ Error starting make-up:', err instanceof Error ? err.message : String(err));
+    return false;
+  }
+}
+
+/** @param {GameState} state */
+async function confirmPurchaseMakeup(state) {
+  const purchase = state.selectedPurchase;
+  if (!purchase || dailyInFlight || !activeMakeupDate) return;
+  dailyInFlight = true;
+  try {
+    let board = null;
+    if (purchase.type === 'letter') board = await makeupBuyLetter(activeMakeupDate, purchase.value ?? '');
+    else if (purchase.type === 'hint') board = await makeupReveal(activeMakeupDate);
+    if (board) reconcileMakeupBoard(board);
+    else gameStore.update(s => ({ ...s, selectedPurchase: null, gameState: 'default' }));
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
+/** @param {GameState} state */
+async function submitGuessMakeup(state) {
+  if (state.gameState !== 'guess_mode' || dailyInFlight || !activeMakeupDate) return;
+  /** @type {Record<string, string>} */
+  const guess = {};
+  for (const [k, v] of Object.entries(state.guessedLetters || {})) guess[k] = /** @type {string} */ (v);
+  if (Object.keys(guess).length === 0) return;
+  dailyInFlight = true;
+  try {
+    const board = await makeupSubmitGuess(activeMakeupDate, guess);
+    if (board) reconcileMakeupBoard(board);
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
 /** Spend an earned power-up during the current arcade run. @param {string} powerup */
 export async function useArcadePowerup(powerup) {
   if (dailyInFlight) return;
@@ -629,6 +719,7 @@ export function confirmPurchase() {
   else if (current.gameMode === 'arcade') confirmPurchaseArcade(current);
   else if (current.gameMode === 'freeplay') confirmPurchaseFreeplay(current);
   else if (current.gameMode === 'challenge') confirmPurchaseChallenge(current);
+  else if (current.gameMode === 'makeup') confirmPurchaseMakeup(current);
 }
 /* ================================
    Guess Mode Functions
@@ -730,6 +821,7 @@ export function submitGuess() {
   else if (current.gameMode === 'arcade') submitGuessArcade(current);
   else if (current.gameMode === 'freeplay') submitGuessFreeplay(current);
   else if (current.gameMode === 'challenge') submitGuessChallenge(current);
+  else if (current.gameMode === 'makeup') submitGuessMakeup(current);
 }
 /* ================================
    Puzzle Fetch Functions

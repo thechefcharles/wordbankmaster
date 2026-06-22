@@ -4,7 +4,7 @@
   import { supabase } from '$lib/supabaseClient';
   import { get } from 'svelte/store';
 
-  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame } from '$lib/stores/GameStore.js';
   import { getMyChallenges } from '$lib/stores/statsStore.js';
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
@@ -117,6 +117,14 @@
         return;
       }
 
+      // Make-up daily launched from the streak calendar → drop straight into the board.
+      if (localStorage.getItem('gameMode') === 'makeup' && localStorage.getItem('makeupDate')) {
+        showMainMenu = false;
+        hasInitialized = true;
+        await fetchMakeupGame();
+        return;
+      }
+
       // Daily and arcade are both server-authoritative now — start from the menu.
       showMainMenu = true;
       savedGameInfo = null;
@@ -164,6 +172,8 @@
     } else if (gameMode === 'freeplay') {
       // Free Play isn't deep-link restorable — send back to the menu to re-pick.
       showMainMenu = true;
+    } else if (gameMode === 'makeup') {
+      fetchMakeupGame().then((ok) => { if (!ok) showMainMenu = true; });
     } else {
       fetchDailyGame().then((ok) => {
         if (!ok) initError = "Daily puzzle failed to load.";
@@ -227,6 +237,13 @@
   $: isDailyResult = $gameStore.gameMode === 'daily';
   $: isFreeplay = $gameStore.gameMode === 'freeplay';
   $: isChallenge = $gameStore.gameMode === 'challenge';
+  $: isMakeup = $gameStore.gameMode === 'makeup';
+  $: makeupLabel = (() => {
+    const d = $gameStore.makeupDate;
+    if (!d) return '';
+    const dt = new Date(d + 'T00:00:00');
+    return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  })();
   $: chScore = ($gameStore.challengeInfo?.score ?? Math.floor($gameStore.bankroll || 0));
   $: resultBankroll = Math.max(0, Math.floor($gameStore.bankroll || 0));
   $: resultMedal = medalFor(resultBankroll, resultWon);
@@ -505,6 +522,11 @@
   function goToMainMenu() {
     const currentUser = get(user);
     if (!currentUser?.id) return;
+    // Leaving a make-up: clear it so we land on the menu, not back in the make-up.
+    if ($gameStore.gameMode === 'makeup') {
+      localStorage.setItem('gameMode', 'daily');
+      localStorage.removeItem('makeupDate');
+    }
     saveGameToLocalStorage();
     savedGameInfo = getSavedGameInfo(currentUser.id);
     showMainMenu = true;
@@ -967,6 +989,14 @@
       </div>
     {/if}
 
+    <!-- 🗓️ Make-up daily banner -->
+    {#if isMakeup}
+      <div class="makeup-banner">
+        <span class="mb-tag">🗓️ Make-up</span>
+        <span class="mb-text">Playing {makeupLabel} · fills your calendar (no streak/Bank)</span>
+      </div>
+    {/if}
+
     <!-- 🌍 Category + witty clue -->
     <div class="puzzle-meta">
       {#if $gameStore.category}<span class="category-chip">{$gameStore.category}</span>{/if}
@@ -1080,6 +1110,22 @@
               <button class="share-btn" on:click={() => { showResultModal = false; showCategorySelect = true; }}>Categories</button>
               <button class="next-puzzle-button" on:click={handleFreeplayContinue}>Next</button>
             </div>
+          {:else if isMakeup}
+            <!-- Make-up daily result (calendar fill; no streak/Bank) -->
+            {#if resultWon}
+              <div class="result-medal">🗓️</div>
+              <h2>Made it up!</h2>
+              <p class="result-sub">{makeupLabel} is on your calendar · {$gameStore.currentPhrase}</p>
+              <p class="arcade-gain">Counts toward 🗓️ Perfect Week / 📅 Perfect Month.</p>
+            {:else}
+              <div class="result-medal">💸</div>
+              <h2>Out of Cash</h2>
+              <p class="result-sub">The answer was {$gameStore.currentPhrase}</p>
+            {/if}
+            <div class="result-actions">
+              <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); goto('/streak'); }}>Calendar</button>
+              <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Menu</button>
+            </div>
           {:else if isChallenge}
             <!-- Challenge result (settles when the friend plays) -->
             <div class="result-medal">{resultWon ? (isPressure ? '⏱️' : '⚔️') : '⌛'}</div>
@@ -1175,6 +1221,14 @@
   .pressure-hud.danger { border-color: rgba(248,113,113,0.6); background: linear-gradient(135deg, rgba(248,113,113,0.16), rgba(248,113,113,0.04)); animation: pressurePulse 1s ease-in-out infinite; }
   .pressure-hud.danger .ph-clock { color: #f87171; }
   @keyframes pressurePulse { 0%,100% { box-shadow: 0 0 0 rgba(248,113,113,0); } 50% { box-shadow: 0 0 16px rgba(248,113,113,0.35); } }
+  .makeup-banner {
+    display: flex; align-items: center; gap: 8px; justify-content: center;
+    width: 100%; max-width: 360px; margin: 0 auto 12px; padding: 0.5rem 0.9rem;
+    border: 1px solid rgba(56,189,248,0.4); border-radius: 12px;
+    background: linear-gradient(135deg, rgba(56,189,248,0.12), rgba(56,189,248,0.03));
+  }
+  .makeup-banner .mb-tag { font-family: var(--font-display); font-weight: 800; font-size: 0.8rem; color: #38bdf8; white-space: nowrap; }
+  .makeup-banner .mb-text { font-size: 0.74rem; color: var(--text-muted); }
   .bank-it-btn {
     display: inline-flex;
     align-items: baseline;

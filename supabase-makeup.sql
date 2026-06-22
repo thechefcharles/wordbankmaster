@@ -1,0 +1,29 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Make-up daily puzzles (migration: makeup_daily)                            ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Chess-style "play a past missed day" from the streak calendar.
+-- LOCKED RULES: make-ups do NOT repair the live consecutive-day streak and pay
+-- NO Bank deposit — they only fill the calendar + earn week/month badges.
+-- Playable window = the CURRENT calendar month (past days only).
+--
+-- _puzzle_id_for_date(date)  -- like _todays_puzzle_id but for any date; assigns +
+--                               persists a deterministic puzzle in daily_puzzle_schedule.
+-- _check_calendar_badges(uid, date)  -- awards 'week_complete' (7-day Mon–Sun fully
+--   played) / 'month_complete' (every day of the month played) from daily_sessions
+--   coverage. Future days can't be played, so these only complete once elapsed.
+-- _finalize_daily  -- now also calls _check_calendar_badges (live daily counts too).
+--
+-- Make-up engine (mirrors the daily engine, keyed on an arbitrary puzzle_date):
+--   makeup_start(date)        -- guards: not future, current month; create or resume.
+--   makeup_buy_letter(date,l) / makeup_reveal(date) / makeup_submit_guess(date,j)
+--   _makeup_resolve_and_return -- marks won/lost; on finish awards calendar badges +
+--     category solve. NEVER touches streak / Bank / game_results / weekly_stats.
+--   Board = _daily_board(...) || { makeup: { date } } for the client HUD.
+--
+-- get_streak_overview  -- calendar 'days' now sourced from daily_sessions (puzzle_date,
+--   state) so make-ups appear on their actual day (was game_results.played_at).
+--
+-- Badges: 'week_complete' (🗓️ Perfect Week), 'month_complete' (📅 Perfect Month)
+-- added to src/lib/badges.js. Client: streak calendar cells are tappable (▶) for
+-- missed past days; GameStore 'makeup' mode (enterMakeup/fetchMakeup) launches the
+-- board on the home route. (Full bodies in the applied migration.)

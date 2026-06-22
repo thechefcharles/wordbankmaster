@@ -331,6 +331,34 @@ export async function dailyStart(powerups = []) {
   return data;
 }
 
+/* ===== Make-up daily (play a past missed day in the current month) =====
+   No streak repair, no Bank deposit — fills the calendar + earns week/month badges.
+   Each returns a daily board with an extra { makeup: { date } } marker. */
+/** @param {string} date YYYY-MM-DD @returns {Promise<any>} */
+export async function makeupStart(date) {
+  const { data, error } = await supabase.rpc('makeup_start', { p_date: date });
+  if (error) { console.error('❌ makeup_start error:', error); return null; }
+  return data;
+}
+/** @param {string} date @param {string} letter @returns {Promise<any>} */
+export async function makeupBuyLetter(date, letter) {
+  const { data, error } = await supabase.rpc('makeup_buy_letter', { p_date: date, p_letter: letter });
+  if (error) { console.error('❌ makeup_buy_letter error:', error); return null; }
+  return data;
+}
+/** @param {string} date @returns {Promise<any>} */
+export async function makeupReveal(date) {
+  const { data, error } = await supabase.rpc('makeup_reveal', { p_date: date });
+  if (error) { console.error('❌ makeup_reveal error:', error); return null; }
+  return data;
+}
+/** @param {string} date @param {Record<string,string>} guess @returns {Promise<any>} */
+export async function makeupSubmitGuess(date, guess) {
+  const { data, error } = await supabase.rpc('makeup_submit_guess', { p_date: date, p_guess: guess });
+  if (error) { console.error('❌ makeup_submit_guess error:', error); return null; }
+  return data;
+}
+
 /* ===== Arcade Press-Your-Luck gauntlet (server-authoritative) =====
    Each returns { board, run } where run = { state, banked, multiplier, position,
    total, furthest, last_gain }. */
