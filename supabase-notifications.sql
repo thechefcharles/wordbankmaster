@@ -1,0 +1,24 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Cross-screen notifications (migration: notifications)                      ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Persistent per-user notifications, surfaced as a global bell + toast pop-ups
+-- that show on ANY screen (poller mounted in +layout.svelte).
+--
+-- Table:
+--   notifications(id, user_id, type, title, body, data jsonb, read_at, created_at)
+--   RLS: SELECT own only. Writes go through SECURITY DEFINER helpers.
+--
+-- _notify(uid, type, title, body, data)  -- insert a notification
+-- get_notifications()   -> { items:[{id,type,title,body,data,read,created_at}], unread_count }  (latest 30)
+-- mark_notifications_read()  -> marks all of my unread read
+--
+-- Hooks (server-authoritative, so they fire no matter how the action happens):
+--   create_challenge   -> _notify(opponent, 'challenge_incoming', '⚔️ New challenge', …)
+--   _challenge_settle  -> _notify(BOTH players, 'challenge_result', win/lose/tie + amount + scores)
+--
+-- Client: src/lib/stores/notificationStore.js polls every 45s + on tab focus,
+-- raises new unread items as <Toaster/> pop-ups, and exposes unreadCount for the
+-- 🔔 bell on the home top bar. (data.challenge_id deep-links to the Challenges inbox.)
+--
+-- Future: swap polling for Supabase Realtime (instant in-app) and native push
+-- (closed-app) on the same table — no schema change needed.

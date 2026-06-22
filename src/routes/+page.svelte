@@ -10,6 +10,7 @@
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
   import { getDailyStatus, getDailyGhost, getDailyQuests, addFriend, searchUsers, getMyUsername, setUsername, getBank } from '$lib/stores/statsStore.js';
+  import { unreadCount, notifications, markAllNotificationsRead, refreshNotifications } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
   import {
@@ -124,14 +125,18 @@
       menuDailyPlayed = ds.has_played_today;
       refreshQuests();
       refreshBank();
+      refreshChallengeCount();
 
       // Friend invite link: ?add=USERNAME → add them, then open the Friends board.
       try {
-        const addName = new URLSearchParams(window.location.search).get('add');
+        const params = new URLSearchParams(window.location.search);
+        const addName = params.get('add');
         if (addName) {
           const res = await addFriend(addName);
           if (res?.ok) { track('friend_add', { via: 'link' }); goto('/leaderboard?mode=friends'); return; }
         }
+        // Deep link from a notification toast → open the Challenges inbox.
+        if (params.get('challenges')) openChallenges();
       } catch { /* non-fatal */ }
 
       await tick();
@@ -406,6 +411,7 @@
   let showChallenges = false;
   /** @type {any[]} */
   let myChallenges = [];
+  let challengeCount = 0; // challenges awaiting my play (badge on the Challenges card)
   let chOpp = '';
   let chCategory = '';
   let chWager = 500;
@@ -416,11 +422,28 @@
   let chResults = [];
   /** @type {ReturnType<typeof setTimeout>|undefined} */
   let chSearchTimer;
+  /** Count of challenges that need my action, for the menu badge. */
+  async function refreshChallengeCount() {
+    if (!get(user)?.id) return;
+    try {
+      const list = await getMyChallenges();
+      myChallenges = list;
+      challengeCount = list.filter((c) => c.needs_my_play).length;
+    } catch { /* non-fatal */ }
+  }
   async function openChallenges() {
     if (!get(user)?.id) return;
     chMsg = '';
     showChallenges = true;
     myChallenges = await getMyChallenges();
+    challengeCount = myChallenges.filter((c) => c.needs_my_play).length;
+  }
+
+  // ===== Notifications panel (bell) =====
+  let showNotifications = false;
+  async function openNotifications() {
+    showNotifications = true;
+    await markAllNotificationsRead();
   }
   function onChOppInput() {
     clearTimeout(chSearchTimer);
@@ -489,6 +512,8 @@
     getDailyStatus(currentUser.id).then((s) => { dailyStatus = s; menuDailyPlayed = s.has_played_today; });
     refreshQuests();
     refreshBank();
+    refreshChallengeCount();
+    refreshNotifications();
   }
 
   let showMyAccount = false;
@@ -572,6 +597,14 @@
   {#if loggedIn && !showMainMenu}
     <button class="icon-button subtle-button" title="Main menu" on:click={goToMainMenu}>
       ☰
+    </button>
+  {/if}
+
+  <!-- 🔔 Notifications -->
+  {#if loggedIn}
+    <button class="icon-button subtle-button bell-button" title="Notifications" on:click={openNotifications}>
+      🔔
+      {#if $unreadCount > 0}<span class="bell-badge">{$unreadCount > 9 ? '9+' : $unreadCount}</span>{/if}
     </button>
   {/if}
 
@@ -678,6 +711,9 @@
             <span class="mc-title">Challenges</span>
             <span class="mc-sub">Wager your Bank vs friends</span>
           </span>
+          {#if challengeCount > 0}
+            <span class="mc-count" title="{challengeCount} waiting for you">{challengeCount}</span>
+          {/if}
           <span class="mc-arrow">→</span>
         </button>
         <button class="menu-card" style="--i: 5" on:click={() => goto('/badges')}>
@@ -794,6 +830,30 @@
                     <span class="ch-waiting">Waiting…</span>
                   {/if}
                 </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      </div>
+    {/if}
+
+    <!-- 🔔 Notifications panel -->
+    {#if showNotifications}
+      <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Notifications">
+        <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showNotifications = false}></button>
+        <div class="modal-content main-menu-modal ch-modal">
+          <button class="close-btn" on:click={() => showNotifications = false}>❌</button>
+          <h2>🔔 Notifications</h2>
+          {#if $notifications.length === 0}
+            <p class="cat-sub">No notifications yet. Challenge a friend to get started!</p>
+          {:else}
+            <div class="notif-list">
+              {#each $notifications as n (n.id)}
+                <button class="notif-item" class:fresh={!n.read}
+                  on:click={() => { showNotifications = false; if (n.data?.challenge_id) openChallenges(); }}>
+                  <span class="ni-title">{n.title}</span>
+                  <span class="ni-body">{n.body}</span>
+                </button>
               {/each}
             </div>
           {/if}
@@ -1422,6 +1482,31 @@
   .mc-title { font-family: var(--font-display); font-weight: 600; font-size: 1.06rem; }
   .mc-sub { font-size: 0.8rem; color: var(--text-muted); }
   .mc-arrow { color: var(--text-faint); font-size: 1.1rem; transition: transform 0.2s, color 0.2s; }
+  .mc-count {
+    min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px;
+    display: inline-grid; place-items: center; font-family: var(--font-display);
+    font-weight: 800; font-size: 0.78rem; color: #06210f; line-height: 1;
+    background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635));
+    box-shadow: 0 0 12px rgba(52,211,153,0.4);
+  }
+  /* notification bell */
+  .bell-button { position: relative; }
+  .bell-badge {
+    position: absolute; top: -4px; right: -4px; min-width: 17px; height: 17px;
+    padding: 0 4px; border-radius: 999px; display: grid; place-items: center;
+    font-size: 0.62rem; font-weight: 800; color: #fff; line-height: 1;
+    background: #f43f5e; box-shadow: 0 0 0 2px var(--bg, #0a0e14);
+  }
+  /* notifications panel */
+  .notif-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 60vh; overflow-y: auto; }
+  .notif-item {
+    text-align: left; display: flex; flex-direction: column; gap: 2px;
+    padding: 0.7rem 0.85rem; border-radius: 12px; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+  }
+  .notif-item.fresh { border-color: rgba(163,230,53,0.45); background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(163,230,53,0.03)); }
+  .ni-title { font-family: var(--font-display); font-weight: 700; font-size: 0.92rem; }
+  .ni-body { font-size: 0.82rem; color: var(--text-muted); }
   .menu-card:hover:not(.disabled) .mc-arrow { transform: translateX(3px); color: var(--brand-2); }
 
   /* Modal action button (reused brand button) */
