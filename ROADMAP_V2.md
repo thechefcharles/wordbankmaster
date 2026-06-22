@@ -82,7 +82,7 @@ auto-repay skims a win. Playwright: loan UI + In-the-Red badge render.
 
 ---
 
-## Phase 4 — Cash Game / the Climb  ★ critical path
+## Phase 4 — Cash Game / the Climb  ◑ (4a–4d done; board UI in P8)  ★ critical path
 
 **Goal:** replace Arcade with the persistent forward-only **Climb** (par/bounty + heat, real Cash).
 **Depends on:** P1, P2 (mid-puzzle loans).
