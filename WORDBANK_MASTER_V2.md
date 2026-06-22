@@ -1,7 +1,10 @@
 # WordBank — Master Design (v2)
 
-> **The authoritative spec.** Supersedes `ECONOMY_V2.md` and `BANK_ECONOMY.md`
-> (kept for history). Anything that contradicts this doc is out of date.
+> ⚠️ **SUPERSEDED by `WORDBANK_MASTER_V3.md`.** v3 removes loans, the fake play-budget,
+> the reveal button, and the guess cap; makes Cash one persistent balance and the objective
+> "solve spending the least." Read v3 first. This doc is kept for history.
+>
+> _(Originally: the authoritative spec, superseding `ECONOMY_V2.md` and `BANK_ECONOMY.md`.)_
 
 ---
 
