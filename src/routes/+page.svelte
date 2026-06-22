@@ -1131,10 +1131,12 @@
 
     <!-- 🎰 Cash Game (Climb) HUD -->
     {#if isClimb && climb}
-      <div class="climb-hud">
-        <div class="ch-cell"><span class="ch-val">#{climb.position}</span><span class="ch-label">Climb</span></div>
-        <div class="ch-cell"><span class="ch-val ch-gold">${(climb.bounty ?? 0).toLocaleString()}</span><span class="ch-label">Bounty</span></div>
-        <div class="ch-cell" class:hot={(climb.heat ?? 100) > 100}><span class="ch-val">×{climbHeat}</span><span class="ch-label">Heat</span></div>
+      <div class="climb-top">
+        <span class="climb-level">🧗 Climb&nbsp;#{climb.position}</span>
+        <div class="heat-meter" class:hot={(climb.heat ?? 100) > 100}>
+          <span class="heat-fill" style="width:{Math.min(100, Math.max(0, (climb.heat ?? 100) - 100))}%"></span>
+          <span class="heat-x">🔥 ×{climbHeat}</span>
+        </div>
       </div>
       {#if climb.state === 'active' && selfPups.length}
         <p class="cp-hint">Your power-ups · tap to use · stock up in the Shop</p>
@@ -1252,7 +1254,10 @@
       {#if dLive}
         <p class="live-line">Worth ${dLive.reward.toLocaleString()} · spent ${dLive.spent.toLocaleString()} · profit <b class:lose={dLive.net < 0}>{dLive.net >= 0 ? '+' : '−'}${Math.abs(dLive.net).toLocaleString()}</b></p>
       {:else if climbLive}
-        <p class="live-line">Worth ${climbLive.payout.toLocaleString()} · spent ${climbLive.spent.toLocaleString()} · profit <b class:lose={climbLive.net < 0}>{climbLive.net >= 0 ? '+' : '−'}${Math.abs(climbLive.net).toLocaleString()}</b></p>
+        <div class="prize-panel" class:loss={climbLive.net < 0}>
+          <span class="pz-prize">🏆 ${climbLive.payout.toLocaleString()}</span>
+          <span class="pz-keep">{climbLive.net >= 0 ? `keep +$${climbLive.net.toLocaleString()} if you solve` : `losing $${Math.abs(climbLive.net).toLocaleString()} — ease off`}</span>
+        </div>
       {:else if matchLive}
         <p class="live-line">Spent <b>${matchLive.spent.toLocaleString()}</b> of ${matchLive.budget.toLocaleString()} · 🏆 spend the least to win</p>
       {:else if freeLive}
@@ -2198,6 +2203,36 @@
   .live-line { margin: 9px auto 0; text-align: center; font-size: 0.82rem; color: var(--text-muted); }
   .live-line b { display: inline-block; font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; color: var(--brand-2); }
   .live-line b.lose { color: #fb7185; }
+
+  /* Cash Game (Climb) gamified HUD */
+  .climb-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; max-width: 360px; margin: 0 auto 14px; }
+  .climb-level {
+    font-family: var(--font-display); font-weight: 800; font-size: 0.95rem; white-space: nowrap;
+    padding: 6px 14px; border-radius: 999px; color: var(--brand-2);
+    background: rgba(163,230,53,0.1); border: 1px solid rgba(163,230,53,0.35);
+  }
+  .heat-meter {
+    position: relative; flex: 1; height: 30px; max-width: 180px; border-radius: 999px; overflow: hidden;
+    background: rgba(255,255,255,0.06); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+  }
+  .heat-fill {
+    position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px;
+    background: linear-gradient(90deg, #fb923c, #f43f5e); transition: width 0.4s var(--ease-out, ease); opacity: 0.85;
+  }
+  .heat-x { position: relative; z-index: 1; font-family: var(--font-display); font-weight: 800; font-size: 0.85rem; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+  .heat-meter.hot { border-color: rgba(251,146,60,0.6); box-shadow: 0 0 16px rgba(251,146,60,0.3); }
+
+  .prize-panel {
+    display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 12px auto 0; max-width: 320px;
+    padding: 12px 18px; border-radius: 16px;
+    background: linear-gradient(135deg, rgba(251,191,36,0.16), rgba(251,191,36,0.04));
+    border: 1px solid rgba(251,191,36,0.45); box-shadow: 0 0 24px rgba(251,191,36,0.12);
+  }
+  .prize-panel.loss { background: linear-gradient(135deg, rgba(251,113,133,0.14), rgba(251,113,133,0.03)); border-color: rgba(251,113,133,0.45); box-shadow: none; }
+  .pz-prize { font-family: var(--font-display); font-weight: 800; font-size: 1.9rem; line-height: 1; color: #fcd34d; text-shadow: 0 0 16px rgba(251,191,36,0.45); }
+  .prize-panel.loss .pz-prize { color: #fb7185; text-shadow: none; }
+  .pz-keep { font-size: 0.78rem; font-weight: 600; color: var(--brand-2); }
+  .prize-panel.loss .pz-keep { color: #fb7185; }
 
   .bankroll-amount {
     display: inline-flex;
