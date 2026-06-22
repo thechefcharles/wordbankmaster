@@ -50,6 +50,13 @@
   /** Today's daily result for the menu indicator (won/lost + score). */
   let dailyStatus = /** @type {{ has_played_today: boolean, last_daily_won: boolean|null, daily_bankroll: number, arcade_bankroll: number, current_streak: number, streak_freezes: number, today_score: number } | null} */ (null);
   $: dailyDone = menuDailyPlayed && !(savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost');
+  $: dailyInProgress = savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost';
+  // At-a-glance Daily status chip for the Play Now card (main menu).
+  $: dailyChip = dailyInProgress
+    ? { cls: 'prog', label: '⏳ Daily' }
+    : dailyDone
+      ? (dailyStatus?.last_daily_won ? { cls: 'won', label: '✅ Daily' } : { cls: 'lost', label: '❌ Daily' })
+      : { cls: 'ready', label: '🎯 Daily' };
   /** Daily-quest progress for the menu card. */
   let questProgress = { done: 0, total: 3, all_done: false, reward_claimed: false };
   async function refreshQuests() {
@@ -779,6 +786,7 @@
         <button class="menu-card primary sheen" class:open={playOpen} style="--i: 0" on:click={() => { playOpen = !playOpen; fx('tap'); }}>
           <span class="mc-icon">🎮</span>
           <span class="mc-title">Play Now</span>
+          <span class="daily-chip {dailyChip.cls}">{dailyChip.label}</span>
           <span class="mc-arrow">{playOpen ? '▾' : '▸'}</span>
         </button>
         {#if playOpen}
@@ -1804,6 +1812,16 @@
   }
   .mc-title { flex: 1; font-family: var(--font-display); font-weight: 600; font-size: 1.06rem; }
   .mc-stat { font-family: var(--font-display); font-weight: 800; font-size: 0.95rem; color: var(--brand-2); margin-right: 2px; }
+  /* Daily status chip on the Play Now card */
+  .daily-chip {
+    font-size: 0.68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+    border: 1px solid var(--border); background: rgba(0,0,0,0.25); color: var(--text);
+  }
+  .daily-chip.won   { color: #34d399; border-color: rgba(52,211,153,0.5);  background: rgba(52,211,153,0.14); }
+  .daily-chip.lost  { color: #fb7185; border-color: rgba(251,113,133,0.5); background: rgba(251,113,133,0.14); }
+  .daily-chip.prog  { color: #fbbf24; border-color: rgba(251,191,36,0.5);  background: rgba(251,191,36,0.14); }
+  .daily-chip.ready { color: var(--brand-2); border-color: rgba(163,230,53,0.5); background: rgba(163,230,53,0.14); animation: dailyPulse 2s ease-in-out infinite; }
+  @keyframes dailyPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(163,230,53,0.45); } 50% { box-shadow: 0 0 0 5px rgba(163,230,53,0); } }
   .mc-arrow { color: var(--text-faint); font-size: 1.1rem; transition: transform 0.2s, color 0.2s; }
   .mc-count {
     min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px;
