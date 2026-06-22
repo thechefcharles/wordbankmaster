@@ -448,11 +448,12 @@
   async function handleMenuDaily() {
     const currentUser = get(user);
     if (!currentUser?.id) return;
-    // Finished today's daily already -> show streak message (server enforces one/day).
-    if (menuDailyPlayed) {
+    // Already solved today -> show the results / come-back summary.
+    if (dailyDone) {
       showStreakMessage = true;
       return;
     }
+    // Otherwise start fresh, or resume an in-progress daily (dailyStart resumes).
     await startDaily();
   }
 
@@ -784,7 +785,7 @@
         </button>
         {#if playOpen}
           <div class="play-modes">
-            <button class="play-mode daily" class:done={dailyDone} disabled={dailyDone} on:click={handleMenuDaily}>
+            <button class="play-mode daily" class:done={dailyDone} on:click={handleMenuDaily}>
               <span class="pm-ic">🎯</span>
               <span class="pm-t">{dailyInProgress ? 'Resume Daily' : 'Daily'}</span>
               {#if dailyDone}
@@ -998,20 +999,19 @@
         <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showStreakMessage = false}></button>
         <div class="modal-content main-menu-modal">
           <button class="close-btn" on:click={() => showStreakMessage = false}>❌</button>
-          <div class="cbt-medal">{dailyStatus?.last_daily_won ? '✅' : '❌'}</div>
-          <h2>{dailyStatus?.last_daily_won ? 'Daily Solved!' : 'Daily Done'}</h2>
+          <div class="cbt-medal">{dailyStatus?.last_daily_won ? '✅' : '🏁'}</div>
+          <h2>{dailyStatus?.last_daily_won ? 'Daily Solved!' : "Today's Daily Done"}</h2>
           <p class="cbt-result">
-            {dailyStatus?.last_daily_won ? 'You solved today’s puzzle.' : 'Not today — better luck next time.'}
+            {dailyStatus?.last_daily_won ? "Nice work — you've finished today's puzzle." : "You've already played today's puzzle."}
           </p>
           <div class="cbt-stats">
-            <div class="cbt-stat"><span class="cbt-val">{dailyStatus?.today_score?.toLocaleString() ?? 0}</span><span class="cbt-cap">Score</span></div>
-            <div class="cbt-stat"><span class="cbt-val">${dailyStatus?.daily_bankroll?.toLocaleString() ?? 0}</span><span class="cbt-cap">Banked</span></div>
+            <div class="cbt-stat"><span class="cbt-val">+${dailyStatus?.today_score?.toLocaleString() ?? 0}</span><span class="cbt-cap">Reward</span></div>
             {#if (dailyStatus?.current_streak ?? 0) > 0}
-              <div class="cbt-stat"><span class="cbt-val">🔥 {dailyStatus?.current_streak}</span><span class="cbt-cap">Streak</span></div>
+              <div class="cbt-stat"><span class="cbt-val">🔥 {dailyStatus?.current_streak}</span><span class="cbt-cap">Day streak</span></div>
             {/if}
           </div>
           <p class="streak-message">
-            {#if (dailyStatus?.current_streak ?? 0) > 0}Come back tomorrow for a new puzzle and keep your streak alive!{:else}Come back tomorrow for a new puzzle!{/if}
+            {#if (dailyStatus?.current_streak ?? 0) > 0}Come back tomorrow for a new puzzle to keep your 🔥 {dailyStatus?.current_streak}-day streak alive!{:else}Come back tomorrow for a fresh puzzle and start a streak!{/if}
           </p>
           <button class="main-menu-btn" on:click={() => { showStreakMessage = false; goToDailyLeaderboard(); }}>View Leaderboard</button>
           <button class="main-menu-btn ghost-btn" on:click={() => showStreakMessage = false}>Close</button>
