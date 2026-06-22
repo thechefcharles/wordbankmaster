@@ -592,6 +592,18 @@ export async function matchSabotage(id, target, powerup) {
   if (error) { console.error('❌ match_sabotage:', error); return null; }
   return data;
 }
+/** @param {string} matchId @returns {Promise<any[]>} */
+export async function getMatchMessages(matchId) {
+  const { data, error } = await supabase.rpc('get_match_messages', { p_match_id: matchId });
+  if (error) { console.error('❌ get_match_messages:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
+/** @param {string} matchId @param {string} body @returns {Promise<{ok:boolean, reason?:string}>} */
+export async function sendMatchMessage(matchId, body) {
+  const { data, error } = await supabase.rpc('send_match_message', { p_match_id: matchId, p_body: body });
+  if (error || !data) { if (error) console.error('❌ send_match_message:', error); return { ok: false }; }
+  return data;
+}
 /** @param {string} id @param {Record<string,string>} guess @returns {Promise<any|null>} */
 export async function matchSubmitGuess(id, guess) {
   const { data, error } = await supabase.rpc('match_submit_guess', { p_id: id, p_guess: guess });

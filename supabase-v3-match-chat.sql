@@ -1,0 +1,20 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Per-match chat (1v1 + group challenges)                                    ║
+-- ║  (migration: v3_match_chat)                                                 ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Every challenge — 1v1 or group — now has its own chat thread (separate from the
+-- general group room). match_messages table (FK challenge_matches CASCADE), RLS on
+-- with a SELECT policy for match participants (enables Realtime); inserts via RPC.
+-- Added to the supabase_realtime publication.
+--
+-- send_match_message(match_id, body): participant-only, trim + cap 500.
+-- get_match_messages(match_id, limit): participant-only, recent N oldest-first
+--   {id, name, is_me, body, at}.
+--
+-- Verified (rolled-back sim): both participants see the thread ordered + trimmed,
+--   is_me correct; a non-participant's send rejected ('not_participant').
+--
+-- Client: matchInfo now carries the match id (injected client-side in
+--   reconcileMatchBoard from activeMatchId). The match game screen has a floating 💬
+--   button (unread dot) → opens a "Trash talk" chat modal (same bubbles as group
+--   chat) wired to Realtime on match_id + a 20s fallback poll, torn down on leave.
