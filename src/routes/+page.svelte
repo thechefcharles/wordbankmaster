@@ -4,7 +4,7 @@
   import { supabase } from '$lib/supabaseClient';
   import { get } from 'svelte/store';
 
-  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbBorrow, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbBorrow, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck } from '$lib/stores/GameStore.js';
   import { getMyChallenges, getPowerups, getMyMatches, getMyGroups, getMatch } from '$lib/stores/statsStore.js';
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
@@ -247,7 +247,22 @@
   $: isClimb = $gameStore.gameMode === 'climb';
   $: climb = $gameStore.climbInfo; // { bounty, heat, attempts, spent, position, stuck, last_gain, state }
   $: isMatch = $gameStore.gameMode === 'match';
-  $: matchInfo = $gameStore.matchInfo; // { position, pack_size, total_score, last_score, done }
+  $: matchInfo = $gameStore.matchInfo; // { position, pack_size, total_score, last_score, done, mode, started_at, clock_seconds, combo }
+  $: matchBlitz = isMatch && matchInfo?.mode === 'blitz' && !matchInfo?.done;
+  $: matchCombo = ((matchInfo?.combo ?? 100) / 100).toFixed(2);
+  let matchExpiredFired = false;
+  $: matchRemaining = (() => {
+    if (!matchBlitz || !matchInfo?.started_at) return 0;
+    const start = new Date(matchInfo.started_at).getTime();
+    const clockMs = (matchInfo.clock_seconds ?? 60) * 1000;
+    return Math.max(0, Math.ceil((start + clockMs - pressureNow) / 1000));
+  })();
+  $: if (matchBlitz && matchRemaining > 0) matchExpiredFired = false;
+  $: if (matchBlitz && matchRemaining <= 0 && !matchExpiredFired) fireMatchTimeout();
+  async function fireMatchTimeout() {
+    matchExpiredFired = true;
+    await matchTimeoutCheck();
+  }
   $: climbHeat = ((climb?.heat ?? 100) / 100).toFixed(1);
   $: dr = $gameStore.dailyResult; // { score, clean, no_vowels, first_try, no_reveals }
   let climbBorrowing = false;
@@ -470,6 +485,7 @@
   let matchResults = null; // a settled match's results being viewed
   // Builder form
   let mbTarget = 'friend'; // 'friend' | 'group'
+  let mbMode = 'standard'; // 'standard' | 'blitz'
   let mbOpponent = '';
   let mbGroupId = '';
   /** @type {string[]} */
@@ -527,7 +543,7 @@
     const res = await startMatch({
       opponent: mbTarget === 'friend' ? mbOpponent.trim() : null,
       group_id: mbTarget === 'group' ? mbGroupId : null,
-      categories: mbCategories, pack_size: mbPackSize,
+      categories: mbCategories, pack_size: mbPackSize, mode: mbMode,
       wager: Math.floor(Number(mbWager) || 0), payout: mbPayout, window_seconds: mbWindow
     });
     mbBusy = false;
@@ -907,6 +923,12 @@
                 </select>
               {/if}
 
+              <!-- Standard vs Blitz -->
+              <div class="ch-modes">
+                <button type="button" class="ch-mode" class:active={mbMode === 'standard'} on:click={() => mbMode = 'standard'}>🧠 Standard<small>efficiency · spend less</small></button>
+                <button type="button" class="ch-mode" class:active={mbMode === 'blitz'} on:click={() => mbMode = 'blitz'}>⚡ Blitz<small>timed · combo speed</small></button>
+              </div>
+
               <!-- Categories (optional) -->
               <div class="ch-cats">
                 {#each CATEGORIES as c}
@@ -1134,6 +1156,10 @@
       <div class="climb-hud">
         <div class="ch-cell"><span class="ch-val">{matchInfo.position}/{matchInfo.pack_size}</span><span class="ch-label">Puzzle</span></div>
         <div class="ch-cell"><span class="ch-val ch-gold">{(matchInfo.total_score ?? 0).toLocaleString()}</span><span class="ch-label">Score</span></div>
+        {#if matchBlitz}
+          <div class="ch-cell"><span class="ch-val">×{matchCombo}</span><span class="ch-label">Combo</span></div>
+          <div class="ch-cell" class:hot={matchRemaining <= 10}><span class="ch-val">⏱️{matchRemaining}</span><span class="ch-label">Time</span></div>
+        {/if}
       </div>
     {/if}
 

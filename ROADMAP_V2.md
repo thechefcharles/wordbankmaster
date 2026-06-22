@@ -170,7 +170,7 @@ math; no-show forfeits ante; friendly pays nothing; spoiler-lock hides until pla
 
 ---
 
-## Phase 7 — Blitz
+## Phase 7 — Blitz  ✅ (Builder Blitz mode; solo Free-Play Blitz = tail)
 
 **Goal:** timed variant (one clock per pack) in Challenges + a Free-Play practice; time tools.
 **Depends on:** P5 (time-tool power-ups), P6 (challenge packs).
