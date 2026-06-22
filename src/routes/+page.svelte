@@ -1154,20 +1154,13 @@
       </div>
     {/if}
 
-    <!-- 🌍 Category + witty clue -->
+    <!-- 🌍 Category + today's modifier chip + witty clue -->
     <div class="puzzle-meta">
       {#if $gameStore.category}<span class="category-chip">{$gameStore.category}</span>{/if}
+      {#if dailyMod}<span class="mod-chip" title={dailyMod.name + ' — ' + dailyMod.blurb}>{dailyMod.emoji} {dailyMod.name}</span>{/if}
     </div>
     {#if $gameStore.clue}
       <p class="puzzle-clue">{$gameStore.clue}</p>
-    {/if}
-
-    <!-- ✨ Today's shared Daily Modifier (same for every player) -->
-    {#if dailyMod}
-      <div class="daily-modifier" title={dailyMod.blurb}>
-        <span class="dm-emoji">{dailyMod.emoji}</span>
-        <span class="dm-text"><span class="dm-name">{dailyMod.name}</span><span class="dm-blurb">{dailyMod.blurb}</span></span>
-      </div>
     {/if}
 
 
@@ -1196,43 +1189,13 @@
         </div>
       </div>
       {#if dLive}
-        <div class="daily-live">
-          <div class="dl-row">
-            <span class="dl-stat">Spent <b>${dLive.spent.toLocaleString()}</b></span>
-            <span class="dl-stat" class:flash={rewardFlash}>Reward <b>${dLive.reward.toLocaleString()}</b></span>
-            <span class="dl-net" class:pos={dLive.net >= 0} class:neg={dLive.net < 0}>Net {dLive.net >= 0 ? '+' : '−'}${Math.abs(dLive.net).toLocaleString()}</span>
-          </div>
-          <div class="dl-pips">
-            <span class="dl-pip" class:on={dLive.clean}>✦ Clean</span>
-            <span class="dl-pip" class:on={dLive.no_vowels}>✦ No Vowels</span>
-            <span class="dl-pip" class:on={dLive.first_try}>✦ First Try</span>
-          </div>
-        </div>
-      {/if}
-      {#if climbLive}
-        <div class="daily-live">
-          <div class="dl-row">
-            <span class="dl-stat">Spent <b>${climbLive.spent.toLocaleString()}</b></span>
-            <span class="dl-stat">Payout <b>${climbLive.payout.toLocaleString()}</b></span>
-            <span class="dl-net" class:pos={climbLive.net >= 0} class:neg={climbLive.net < 0}>Net {climbLive.net >= 0 ? '+' : '−'}${Math.abs(climbLive.net).toLocaleString()}</span>
-          </div>
-        </div>
-      {/if}
-      {#if matchLive}
-        <div class="daily-live">
-          <div class="dl-row">
-            <span class="dl-stat">Spent <b>${matchLive.spent.toLocaleString()}</b> of ${matchLive.budget.toLocaleString()}</span>
-            <span class="dl-net pos">🏆 Lowest spend wins</span>
-          </div>
-        </div>
-      {/if}
-      {#if freeLive}
-        <div class="daily-live">
-          <div class="dl-row">
-            <span class="dl-stat">Solve {freeLive.clean ? 'clean ' : ''}for <b>+${freeLive.clean ? 50 : 25}</b></span>
-            <span class="dl-pip" class:on={freeLive.clean} style="flex:0 0 auto;">✦ Clean</span>
-          </div>
-        </div>
+        <p class="live-line" class:flash={rewardFlash}>Solve now to win <b>+${dLive.reward.toLocaleString()}</b></p>
+      {:else if climbLive}
+        <p class="live-line">Solve now to win <b>+${climbLive.payout.toLocaleString()}</b></p>
+      {:else if matchLive}
+        <p class="live-line">Spent <b>${matchLive.spent.toLocaleString()}</b> of ${matchLive.budget.toLocaleString()} · 🏆 spend the least to win</p>
+      {:else if freeLive}
+        <p class="live-line">Solve {freeLive.clean ? 'clean ' : ''}to win <b>+${freeLive.clean ? 50 : 25}</b></p>
       {/if}
     </section>
 
@@ -1577,27 +1540,18 @@
     text-wrap: balance;
   }
 
-  .daily-modifier {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    margin: -10px auto 20px;
-    padding: 8px 16px;
-    border-radius: var(--r-pill, 999px);
-    background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(163, 230, 53, 0.1));
-    border: 1px solid rgba(251, 191, 36, 0.32);
-    box-shadow: 0 0 18px rgba(251, 191, 36, 0.12);
-  }
-  .dm-emoji { font-size: 1.25rem; line-height: 1; }
-  .dm-text { display: flex; flex-direction: column; text-align: left; line-height: 1.2; }
-  .dm-name {
+  /* Today's shared modifier — a small chip next to the category */
+  .mod-chip {
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 0.82rem;
+    font-size: 0.74rem;
     color: #fcd34d;
-    letter-spacing: 0.01em;
+    background: rgba(251, 191, 36, 0.12);
+    border: 1px solid rgba(251, 191, 36, 0.32);
+    padding: 5px 11px;
+    border-radius: var(--r-pill, 999px);
+    white-space: nowrap;
   }
-  .dm-blurb { font-family: var(--font-ui); font-size: 0.7rem; color: var(--text-muted); }
 
   .phrase-section {
     width: 100%;
@@ -2158,30 +2112,15 @@
     color: var(--text-faint);
   }
 
-  /* Live Daily efficiency HUD */
-  .daily-live {
-    margin: 10px auto 0; max-width: 340px; display: flex; flex-direction: column; gap: 6px;
-    padding: 8px 12px; border-radius: 14px;
-    background: var(--surface, rgba(255,255,255,0.04)); border: 1px solid var(--border);
-  }
-  .dl-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--text-muted); }
-  .dl-stat b { display: inline-block; font-family: var(--font-display); color: var(--text); font-weight: 700; }
-  .dl-stat.flash b { animation: rewardDrop 0.7s var(--ease-out, ease); }
+  /* Live "solve now to win" line (all modes) */
+  .live-line { margin: 9px auto 0; text-align: center; font-size: 0.82rem; color: var(--text-muted); }
+  .live-line b { display: inline-block; font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; color: var(--brand-2); }
+  .live-line.flash b { animation: rewardDrop 0.7s var(--ease-out, ease); }
   @keyframes rewardDrop {
     0%   { color: #fb7185; transform: scale(1.35); text-shadow: 0 0 14px rgba(251,113,133,0.85); }
     55%  { color: #fb7185; }
-    100% { color: var(--text); transform: scale(1); text-shadow: none; }
+    100% { color: var(--brand-2); transform: scale(1); text-shadow: none; }
   }
-  .dl-net { font-family: var(--font-display); font-weight: 800; font-size: 0.9rem; }
-  .dl-net.pos { color: var(--brand-2); }
-  .dl-net.neg { color: #fb7185; }
-  .dl-pips { display: flex; justify-content: space-between; gap: 6px; }
-  .dl-pip {
-    flex: 1; text-align: center; font-size: 0.66rem; font-weight: 700; padding: 3px 4px; border-radius: 999px;
-    color: var(--text-faint); background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-    transition: color 0.2s, border-color 0.2s, background 0.2s;
-  }
-  .dl-pip.on { color: var(--brand-2); border-color: rgba(163,230,53,0.45); background: rgba(163,230,53,0.08); }
 
   .bankroll-amount {
     display: inline-flex;
