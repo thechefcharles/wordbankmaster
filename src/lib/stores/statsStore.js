@@ -112,6 +112,19 @@ export async function searchUsers(query) {
   return Array.isArray(data) ? data : [];
 }
 
+/* ===== Notifications ===== */
+/** @returns {Promise<{items:any[], unread_count:number}>} */
+export async function getNotifications() {
+  const { data, error } = await supabase.rpc('get_notifications');
+  if (error || !data) { if (error) console.error('❌ get_notifications:', error); return { items: [], unread_count: 0 }; }
+  return { items: Array.isArray(data.items) ? data.items : [], unread_count: data.unread_count ?? 0 };
+}
+/** Mark all my notifications read. */
+export async function markNotificationsRead() {
+  const { error } = await supabase.rpc('mark_notifications_read');
+  if (error) console.error('❌ mark_notifications_read:', error);
+}
+
 /** Add a friend by username. @param {string} username @returns {Promise<{ok:boolean, reason?:string, friend_name?:string}>} */
 export async function addFriend(username) {
   const { data, error } = await supabase.rpc('add_friend', { p_username: username });
