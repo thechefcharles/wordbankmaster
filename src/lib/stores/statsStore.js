@@ -518,7 +518,7 @@ export async function arcadeCashout() {
 /* ===== Challenge Builder (configurable N-player packs) ===== */
 /**
  * @param {{ opponent?:string|null, group_id?:string|null, categories?:string[], pack_size?:number,
- *   mode?:string, wager?:number, payout?:string, window_seconds?:number }} opts
+ *   mode?:string, wager?:number, payout?:string, window_seconds?:number, items_allowed?:boolean }} opts
  * @returns {Promise<{ok:boolean, reason?:string, match?:any}>}
  */
 export async function createMatch(opts) {
@@ -526,7 +526,8 @@ export async function createMatch(opts) {
     p_opponent: opts.opponent ?? null, p_group_id: opts.group_id ?? null,
     p_categories: opts.categories ?? [], p_pack_size: opts.pack_size ?? 1,
     p_mode: opts.mode ?? 'standard', p_wager: opts.wager ?? 0,
-    p_payout: opts.payout ?? 'winner', p_window_seconds: opts.window_seconds ?? 172800
+    p_payout: opts.payout ?? 'winner', p_window_seconds: opts.window_seconds ?? 172800,
+    p_items_allowed: opts.items_allowed ?? false
   });
   if (error || !data) { if (error) console.error('❌ create_match:', error); return { ok: false }; }
   return data;
@@ -565,6 +566,12 @@ export async function matchBuyLetter(id, letter) {
 export async function matchReveal(id) {
   const { data, error } = await supabase.rpc('match_reveal', { p_id: id });
   if (error) { console.error('❌ match_reveal:', error); return null; }
+  return data;
+}
+/** Use an owned power-up in a match (if items are allowed). @param {string} id @param {string} powerup @returns {Promise<any|null>} */
+export async function matchUsePowerup(id, powerup) {
+  const { data, error } = await supabase.rpc('match_use_powerup', { p_id: id, p_powerup: powerup });
+  if (error) { console.error('❌ match_use_powerup:', error); return null; }
   return data;
 }
 /** @param {string} id @param {Record<string,string>} guess @returns {Promise<any|null>} */

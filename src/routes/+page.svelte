@@ -4,7 +4,7 @@
   import { supabase } from '$lib/supabaseClient';
   import { get } from 'svelte/store';
 
-  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup } from '$lib/stores/GameStore.js';
   import { getMyChallenges, getPowerups, getMyMatches, getMyGroups, getMatch } from '$lib/stores/statsStore.js';
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
@@ -260,7 +260,7 @@
   $: isClimb = $gameStore.gameMode === 'climb';
   $: climb = $gameStore.climbInfo; // { bounty, heat, spent, position, stuck, last_gain, state, pups_locked, equipped }
   $: isMatch = $gameStore.gameMode === 'match';
-  $: matchInfo = $gameStore.matchInfo; // { position, pack_size, total_score, last_score, done, mode, solved, spent, budget, wager, started_at, clock_seconds, combo }
+  $: matchInfo = $gameStore.matchInfo; // { position, pack_size, total_score, last_score, done, mode, solved, spent, budget, wager, items_allowed, used_powerups, started_at, clock_seconds, combo }
   $: matchBlitz = isMatch && matchInfo?.mode === 'blitz' && !matchInfo?.done;
   $: matchCombo = ((matchInfo?.combo ?? 100) / 100).toFixed(2);
   let matchExpiredFired = false;
@@ -522,6 +522,7 @@
   let mbWager = 0;
   let mbPayout = 'winner'; // 'winner' | 'top3' | 'even'
   let mbWindow = 172800; // seconds
+  let mbItemsAllowed = false; // host toggle: allow power-ups in this challenge
   let mbMsg = '';
   let mbBusy = false;
   /** @type {{username:string,is_friend:boolean}[]} */
@@ -572,7 +573,8 @@
       opponent: mbTarget === 'friend' ? mbOpponent.trim() : null,
       group_id: mbTarget === 'group' ? mbGroupId : null,
       categories: mbCategories, pack_size: mbPackSize, mode: mbMode,
-      wager: Math.floor(Number(mbWager) || 0), payout: mbPayout, window_seconds: mbWindow
+      wager: Math.floor(Number(mbWager) || 0), payout: mbPayout, window_seconds: mbWindow,
+      items_allowed: mbItemsAllowed
     });
     mbBusy = false;
     if (res?.ok) { launchMatchPlay(); }
@@ -601,6 +603,14 @@
     localStorage.setItem('gameMode', 'match');
     hasInitialized = true;
     showMainMenu = false;
+    refreshClimbPups(); // load owned power-ups for the match tray
+  }
+  /** @param {any} item */
+  async function handleMatchPup(item) {
+    const used = (matchInfo?.used_powerups ?? []).includes(item.id);
+    if ((item.owned ?? 0) <= 0 || used) return;
+    await matchPowerup(item.id);
+    await refreshClimbPups();
   }
 
   // After solving / going broke in Free Play, load the next puzzle in the category.
@@ -924,6 +934,10 @@
                   <select class="ch-input" bind:value={mbWindow}>{#each WINDOWS as w}<option value={w.s}>{w.l}</option>{/each}</select>
                 </label>
               </div>
+              <button class="ch-toggle" class:on={mbItemsAllowed} on:click={() => { mbItemsAllowed = !mbItemsAllowed; fx('tap'); }}>
+                <span class="ch-tog-box">{mbItemsAllowed ? '✓' : ''}</span>
+                ⚡ Allow power-ups — players can bring & use items they own
+              </button>
               <p class="ch-objective">Your wager is your spending budget (min $500). Buy as few letters as you can — <strong>solve spending the least and you take the pot.</strong> Guesses are free.</p>
               <button class="ch-create" disabled={mbBusy} on:click={submitNewMatch} style="width:100%;">Send challenge ⚔️</button>
               {#if mbMsg}<p class="add-msg">{mbMsg}</p>{/if}
@@ -1138,6 +1152,20 @@
           <div class="ch-cell" class:hot={matchRemaining <= 10}><span class="ch-val">⏱️{matchRemaining}</span><span class="ch-label">Time</span></div>
         {/if}
       </div>
+      {#if matchInfo.items_allowed && climbPups.length}
+        <p class="cp-hint">Your power-ups · tap to use — the group is notified</p>
+        <div class="climb-pups">
+          {#each climbPups as item}
+            {@const used = (matchInfo.used_powerups ?? []).includes(item.id)}
+            {@const owned = item.owned ?? 0}
+            <button class="cp" class:equipped={used} class:empty={owned <= 0 && !used}
+              disabled={owned <= 0 || used} on:click={() => handleMatchPup(item)} title={item.name}>
+              <span class="cp-ic">{PUP_ICON[item.id] ?? '✨'}</span>
+              <span class="cp-tag">{used ? '✓' : owned > 0 ? '×' + owned : '—'}</span>
+            </button>
+          {/each}
+        </div>
+      {/if}
     {/if}
 
     <!-- 🌍 Category + today's modifier chip + witty clue -->
@@ -1883,6 +1911,16 @@
   .ch-create:disabled { opacity: 0.6; }
   .ch-objective { font-size: 0.74rem; line-height: 1.4; color: var(--text-muted); margin: 0 0 10px; }
   .ch-objective strong { color: var(--brand-2); }
+  .ch-toggle {
+    display: flex; align-items: center; gap: 8px; width: 100%; margin: 2px 0 10px; padding: 0;
+    background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 0.8rem; text-align: left; font-weight: 600;
+  }
+  .ch-toggle.on { color: var(--brand-2); }
+  .ch-tog-box {
+    width: 20px; height: 20px; flex-shrink: 0; border-radius: 6px; display: grid; place-items: center;
+    border: 1px solid var(--border); background: var(--surface-2, rgba(255,255,255,0.04)); color: #06210f; font-size: 0.75rem; font-weight: 800;
+  }
+  .ch-toggle.on .ch-tog-box { background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); border-color: transparent; }
   .ch-cats { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
   .ch-cat { width: 34px; height: 34px; border-radius: 9px; cursor: pointer; font-size: 1rem; border: 1px solid var(--border); background: var(--surface); opacity: 0.5; transition: opacity 0.15s, border-color 0.15s; }
   .ch-cat.on { opacity: 1; border-color: rgba(163,230,53,0.55); background: rgba(163,230,53,0.08); }

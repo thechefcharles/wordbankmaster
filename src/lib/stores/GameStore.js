@@ -9,7 +9,7 @@ import { freeplayStart, freeplayNext, freeplayBuyLetter, freeplayReveal, freepla
 import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
 import { makeupStart, makeupBuyLetter, makeupReveal, makeupSubmitGuess } from '$lib/stores/statsStore.js';
 import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, getPowerups, buyPowerup, climbUsePowerup } from '$lib/stores/statsStore.js';
-import { createMatch, acceptMatch, matchStart, matchBuyLetter, matchReveal, matchSubmitGuess, matchCheck } from '$lib/stores/statsStore.js';
+import { createMatch, acceptMatch, matchStart, matchBuyLetter, matchReveal, matchSubmitGuess, matchCheck, matchUsePowerup } from '$lib/stores/statsStore.js';
 import { track } from '$lib/analytics.js';
 
 /* ================================
@@ -707,6 +707,18 @@ export async function startMatch(opts) {
     if (board) reconcileMatchBoard(board);
   }
   return resp;
+}
+
+/** Use an owned power-up in the active match (if items allowed). @param {string} powerupId */
+export async function matchPowerup(powerupId) {
+  if (dailyInFlight || !activeMatchId) return;
+  dailyInFlight = true;
+  try {
+    const board = await matchUsePowerup(activeMatchId, powerupId);
+    if (board) reconcileMatchBoard(board);
+  } finally {
+    dailyInFlight = false;
+  }
 }
 
 /** Accept (escrow) an invited match and start playing. @param {string} id @returns {Promise<boolean>} */
