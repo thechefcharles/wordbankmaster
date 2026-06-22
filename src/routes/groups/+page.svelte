@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { getMyGroups, getGroup, createGroup, joinGroup, leaveGroup, getGroupMessages, sendGroupMessage } from '$lib/stores/statsStore.js';
+  import { getMyGroups, getGroup, createGroup, leaveGroup, addGroupMember, removeGroupMember, renameGroup, listFriends, getGroupMessages, sendGroupMessage } from '$lib/stores/statsStore.js';
   import { supabase } from '$lib/supabaseClient.js';
   import { track } from '$lib/analytics.js';
 
@@ -12,9 +12,21 @@
   let loading = $state(true);
   let busy = $state(false);
   let newName = $state('');
-  let joinCode = $state('');
   let msg = $state('');
-  let codeCopied = $state(false);
+
+  // rename
+  let renaming = $state(false);
+  let renameInput = $state('');
+
+  // add-friends picker
+  /** @type {{username:string,name:string}[]} */
+  let friends = $state([]);
+  let showAdd = $state(false);
+  let addMsg = $state('');
+
+  let availableFriends = $derived(
+    open ? friends.filter((f) => !open.members.some((/** @type {any} */ m) => (m.username ?? '').toLowerCase() === (f.username ?? '').toLowerCase())) : []
+  );
 
   // --- group chat ---
   /** @type {any[]} */
@@ -24,8 +36,7 @@
   /** @type {HTMLElement|undefined} */
   let chatScroll = $state();
 
-  // Live chat while a group is open: Supabase Realtime for instant messages, with a
-  // slow poll as a safety net (catches anything missed if the socket drops).
+  // Live chat: Supabase Realtime + slow poll safety net.
   $effect(() => {
     const g = open;
     if (!g?.id) { messages = []; return; }
@@ -42,7 +53,6 @@
     const iv = setInterval(reload, 30000);
     return () => { alive = false; clearInterval(iv); supabase.removeChannel(channel); };
   });
-  // Keep the chat scrolled to the latest message.
   $effect(() => { messages; if (chatScroll) chatScroll.scrollTop = chatScroll.scrollHeight; });
 
   async function sendMessage() {
@@ -65,34 +75,55 @@
     busy = true; msg = '';
     const res = await createGroup(name);
     busy = false;
-    if (res.ok) { newName = ''; track('group_create'); await refresh(); open = res.group; }
+    if (res.ok) { newName = ''; track('group_create'); await refresh(); await openGroup(res.group); }
     else { msg = res.reason === 'name' ? 'Name must be 2–24 characters.' : 'Could not create group.'; }
   }
-  async function join() {
-    const code = joinCode.trim().toUpperCase();
-    if (!code || busy) return;
-    busy = true; msg = '';
-    const res = await joinGroup(code);
-    busy = false;
-    if (res.ok) { joinCode = ''; track('group_join'); await refresh(); open = res.group; }
-    else { msg = res.reason === 'not_found' ? 'No group with that code.' : 'Could not join.'; }
+
+  /** @param {any} g */
+  async function openGroup(g) {
+    open = g; renaming = false; showAdd = false; addMsg = '';
+    if (!friends.length) friends = await listFriends();
   }
   /** @param {string} id */
-  async function view(id) { open = await getGroup(id); }
+  async function view(id) { await openGroup(await getGroup(id)); }
+
+  function backToList() { open = null; renaming = false; showAdd = false; }
+
   async function leave() {
     if (!open || busy) return;
     busy = true;
     await leaveGroup(open.id);
     busy = false;
-    open = null;
+    backToList();
     await refresh();
   }
-  function share() {
-    if (!open) return;
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const text = `Join my WordBank group "${open.name}" — code ${open.join_code}\n${origin}/groups`;
-    if (typeof navigator !== 'undefined' && navigator.share) { navigator.share({ text }).catch(() => {}); return; }
-    navigator.clipboard?.writeText(text).then(() => { codeCopied = true; setTimeout(() => codeCopied = false, 1800); }, () => {});
+
+  function startRename() { renameInput = open.name; renaming = true; }
+  async function saveRename() {
+    const name = renameInput.trim();
+    if (!name || busy) return;
+    busy = true;
+    const res = await renameGroup(open.id, name);
+    busy = false;
+    if (res.ok) { open = res.group; renaming = false; await refresh(); }
+  }
+
+  /** @param {string} username */
+  async function addMember(username) {
+    if (busy) return;
+    busy = true; addMsg = '';
+    const res = await addGroupMember(open.id, username);
+    busy = false;
+    if (res.ok) { open = res.group; await refresh(); }
+    else { addMsg = res.reason === 'not_friend' ? 'You can only add friends.' : res.reason === 'already_member' ? 'Already in the group.' : 'Could not add.'; }
+  }
+  /** @param {string} username */
+  async function removeMember(username) {
+    if (busy) return;
+    busy = true;
+    const res = await removeGroupMember(open.id, username);
+    busy = false;
+    if (res.ok) { open = res.group; await refresh(); }
   }
 </script>
 
@@ -100,27 +131,57 @@
 
 <main class="groups-page">
   {#if open}
-    <button class="back-btn" onclick={() => (open = null)}>← Groups</button>
+    <button class="back-btn" onclick={backToList}>← Groups</button>
     <div class="g-head">
-      <h1>{open.name}</h1>
-      <button class="code-pill" onclick={share} title="Share invite code">{open.join_code} <span class="share-ico">{codeCopied ? '✓' : '↗'}</span></button>
+      {#if renaming}
+        <input class="rename-input" bind:value={renameInput} maxlength="24" onkeydown={(e) => { if (e.key === 'Enter') saveRename(); }} />
+        <button class="g-btn sm" onclick={saveRename} disabled={busy}>Save</button>
+      {:else}
+        <h1>{open.name}</h1>
+        {#if open.is_owner}<button class="rename-btn" onclick={startRename} title="Rename group">✏️</button>{/if}
+      {/if}
     </div>
     <p class="sub">Net Worth · {open.members.length} member{open.members.length === 1 ? '' : 's'}</p>
+
     <div class="table-wrap">
       <table>
-        <thead><tr><th>#</th><th>Player</th><th>Net Worth</th><th>Cash</th></tr></thead>
+        <thead><tr><th>#</th><th>Player</th><th>Net Worth</th><th>Cash</th>{#if open.is_owner}<th></th>{/if}</tr></thead>
         <tbody>
           {#each open.members as m}
             <tr class={m.is_me ? 'me-row' : ((m.rank ?? 0) <= 3 ? 'top-three' : '')}>
               <td class="rank">{#if m.rank === 1}🥇{:else if m.rank === 2}🥈{:else if m.rank === 3}🥉{:else}{m.rank}{/if}</td>
-              <td class="name"><span style={m.color ? `color:${m.color}` : ''}>{m.is_me ? 'You' : m.name}</span>{#if m.title}<span class="nw-title">{m.title}</span>{/if}</td>
+              <td class="name"><span style={m.color ? `color:${m.color}` : ''}>{m.is_me ? 'You' : m.name}</span>{#if m.is_owner}<span class="owner-tag">owner</span>{/if}{#if m.title}<span class="nw-title">{m.title}</span>{/if}</td>
               <td class="score-cell" class:neg={(m.net_worth ?? 0) < 0}>{fmt(m.net_worth)}</td>
               <td>{fmt(m.cash)}</td>
+              {#if open.is_owner}<td class="rm-cell">{#if !m.is_owner}<button class="rm-btn" onclick={() => removeMember(m.username)} disabled={busy} title="Remove">✕</button>{/if}</td>{/if}
             </tr>
           {/each}
         </tbody>
       </table>
     </div>
+
+    <!-- ➕ Add friends -->
+    <button class="add-toggle" onclick={() => { showAdd = !showAdd; addMsg = ''; }}>
+      {showAdd ? '×' : '＋'} Add friends
+    </button>
+    {#if showAdd}
+      <div class="add-panel">
+        {#if availableFriends.length}
+          {#each availableFriends as f}
+            <div class="add-row">
+              <span class="uname">@{f.username}</span>
+              <button class="g-btn sm" onclick={() => addMember(f.username)} disabled={busy}>Add</button>
+            </div>
+          {/each}
+        {:else if friends.length === 0}
+          <p class="add-empty">No friends yet — add some in <button class="link" onclick={() => goto('/friends')}>Friends</button>.</p>
+        {:else}
+          <p class="add-empty">All your friends are already in this group.</p>
+        {/if}
+        {#if addMsg}<p class="msg">{addMsg}</p>{/if}
+      </div>
+    {/if}
+
     <!-- 💬 Group chat -->
     <div class="chat">
       <h2 class="chat-title">💬 Chat</h2>
@@ -147,7 +208,7 @@
   {:else}
     <button class="back-btn" onclick={() => goto('/')}>← Menu</button>
     <h1>👥 Groups</h1>
-    <p class="sub">Your crews. Everyone's Net Worth, ranked.</p>
+    <p class="sub">Your crews. Everyone's Net Worth, ranked. Add friends — no codes.</p>
 
     {#if loading}
       <p class="loading">Loading…</p>
@@ -156,23 +217,19 @@
         <div class="g-list">
           {#each groups as g}
             <button class="g-card" onclick={() => view(g.id)}>
-              <div class="gc-body"><span class="gc-name">{g.name}</span><span class="gc-meta">{g.members} member{g.members === 1 ? '' : 's'} · {g.join_code}</span></div>
+              <div class="gc-body"><span class="gc-name">{g.name}</span><span class="gc-meta">{g.members} member{g.members === 1 ? '' : 's'}</span></div>
               <span class="gc-arrow">→</span>
             </button>
           {/each}
         </div>
       {:else}
-        <p class="empty">No groups yet — create one or join with a code.</p>
+        <p class="empty">No groups yet — create one and add your friends.</p>
       {/if}
 
       <div class="g-forms">
         <div class="g-row">
           <input class="g-input" placeholder="New group name" bind:value={newName} maxlength="24" onkeydown={(e) => { if (e.key === 'Enter') create(); }} />
           <button class="g-btn" onclick={create} disabled={busy}>Create</button>
-        </div>
-        <div class="g-row">
-          <input class="g-input" placeholder="Join code" bind:value={joinCode} maxlength="6" onkeydown={(e) => { if (e.key === 'Enter') join(); }} />
-          <button class="g-btn ghost" onclick={join} disabled={busy}>Join</button>
         </div>
         {#if msg}<p class="msg">{msg}</p>{/if}
       </div>
@@ -186,9 +243,10 @@
   h1 { font-family: var(--font-display); font-size: 1.7rem; margin: 0; }
   .sub { color: var(--text-muted); font-size: 0.9rem; margin: 0.2rem 0 1.2rem; }
   .loading, .empty { color: var(--text-muted); padding: 1.5rem 0; text-align: center; }
-  .g-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
-  .code-pill { font-family: var(--font-display); font-weight: 800; letter-spacing: 0.1em; padding: 0.45rem 0.9rem; border-radius: 999px; cursor: pointer; color: var(--brand-2); background: rgba(163,230,53,0.1); border: 1px solid rgba(163,230,53,0.4); display: inline-flex; align-items: center; gap: 0.4rem; }
-  .share-ico { font-size: 0.8rem; opacity: 0.8; }
+  .g-head { display: flex; align-items: center; gap: 0.6rem; }
+  .rename-btn { background: none; border: none; cursor: pointer; font-size: 1rem; opacity: 0.7; }
+  .rename-btn:hover { opacity: 1; }
+  .rename-input { flex: 1; min-width: 0; padding: 0.5rem 0.8rem; border-radius: 12px; border: 1px solid rgba(251,191,36,0.5); background: var(--surface); color: var(--text); font-size: 1.1rem; font-family: var(--font-display); font-weight: 700; }
   .g-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.2rem; }
   .g-card { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.9rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; cursor: pointer; text-align: left; }
   .g-card:hover { border-color: rgba(163,230,53,0.4); }
@@ -200,7 +258,7 @@
   .g-row { display: flex; gap: 0.5rem; }
   .g-input { flex: 1; min-width: 0; padding: 0.6rem 0.9rem; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 0.95rem; }
   .g-btn { padding: 0.6rem 1.2rem; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; color: #06210f; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); }
-  .g-btn.ghost { background: transparent; color: var(--brand-2); border: 1px solid rgba(163,230,53,0.4); }
+  .g-btn.sm { padding: 0.45rem 0.9rem; font-size: 0.85rem; }
   .g-btn:disabled { opacity: 0.5; }
   .msg { text-align: center; color: #f87171; font-size: 0.85rem; margin: 0.3rem 0 0; }
   .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; }
@@ -214,7 +272,18 @@
   td.score-cell.neg { color: #fb7185; }
   tr.me-row { background: rgba(56,189,248,0.1); }
   tr.me-row td.name { color: #7dd3fc; }
+  .owner-tag { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em; color: #fbbf24; background: rgba(251,191,36,0.12); border-radius: 999px; padding: 1px 6px; margin-left: 0.4rem; }
   .nw-title { font-size: 0.7rem; color: var(--text-faint); margin-left: 0.4rem; white-space: nowrap; }
+  .rm-cell { width: 30px; text-align: right; }
+  .rm-btn { background: none; border: none; color: var(--text-faint); cursor: pointer; font-size: 0.85rem; padding: 2px 4px; }
+  .rm-btn:hover { color: #fb7185; }
+  .add-toggle { margin-top: 0.9rem; width: 100%; padding: 0.7rem; border: 1px dashed var(--border-strong, rgba(255,255,255,0.18)); border-radius: 12px; background: transparent; color: var(--brand-2); cursor: pointer; font-weight: 700; font-size: 0.9rem; }
+  .add-panel { margin-top: 0.5rem; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); overflow: hidden; }
+  .add-row { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 0.9rem; border-bottom: 1px solid var(--border); }
+  .add-row:last-child { border-bottom: none; }
+  .add-empty { color: var(--text-muted); font-size: 0.85rem; padding: 0.9rem; text-align: center; }
+  .link { background: none; border: none; color: var(--brand-2); cursor: pointer; text-decoration: underline; font-size: inherit; }
+  .uname { font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; }
   .leave-btn { margin-top: 1.2rem; padding: 0.6rem 1.2rem; border: 1px solid rgba(251,113,133,0.4); border-radius: 12px; background: transparent; color: #fb7185; cursor: pointer; font-weight: 600; font-size: 0.85rem; }
   .leave-btn:disabled { opacity: 0.5; }
   /* group chat */

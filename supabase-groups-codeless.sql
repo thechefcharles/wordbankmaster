@@ -1,0 +1,23 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Codeless, friend-based groups  (migration: groups_codeless_friend_member) ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Groups are now built by adding FRIENDS — join-codes are no longer used in the
+-- app (the groups.join_code column + join_group() RPC remain but are dead).
+--
+-- get_group(id)        → now includes per-member `username` + `is_owner` so the
+--                        UI can manage membership. (Dropped join_code from the
+--                        returned payload.)
+-- add_group_member(    → any group member can add one of THEIR friends.
+--   group_id, username)  Guards: not_member | not_found | self | not_friend |
+--                        already_member. Returns {ok, group}.
+-- remove_group_member( → owner removes another member (not self). Guards:
+--   group_id, username)  not_owner | owner | not_found. Returns {ok, group}.
+-- rename_group(        → owner renames (2–24 chars). Guards: name | not_owner.
+--   group_id, name)      Returns {ok, group}.
+--
+-- create_group / get_my_groups / leave_group unchanged. create_group still mints
+-- a join_code (column is NOT NULL) but nothing reads it now.
+--
+-- Verified via rolled-back JWT-impersonation: create → add non-friend (blocked)
+-- → befriend → add → already_member → rename → non-owner rename (blocked) →
+-- remove. Full bodies are in the applied migration.

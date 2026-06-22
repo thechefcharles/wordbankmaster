@@ -137,6 +137,24 @@ export async function leaveGroup(id) {
   if (error || !data) { if (error) console.error('❌ leave_group:', error); return { ok: false }; }
   return data;
 }
+/** Add one of your friends to a group. @param {string} groupId @param {string} username @returns {Promise<{ok:boolean, reason?:string, group?:any}>} */
+export async function addGroupMember(groupId, username) {
+  const { data, error } = await supabase.rpc('add_group_member', { p_group_id: groupId, p_username: username });
+  if (error || !data) { if (error) console.error('❌ add_group_member:', error); return { ok: false }; }
+  return data;
+}
+/** Owner removes a member. @param {string} groupId @param {string} username @returns {Promise<{ok:boolean, reason?:string, group?:any}>} */
+export async function removeGroupMember(groupId, username) {
+  const { data, error } = await supabase.rpc('remove_group_member', { p_group_id: groupId, p_username: username });
+  if (error || !data) { if (error) console.error('❌ remove_group_member:', error); return { ok: false }; }
+  return data;
+}
+/** Owner renames a group. @param {string} groupId @param {string} name @returns {Promise<{ok:boolean, reason?:string, group?:any}>} */
+export async function renameGroup(groupId, name) {
+  const { data, error } = await supabase.rpc('rename_group', { p_group_id: groupId, p_name: name });
+  if (error || !data) { if (error) console.error('❌ rename_group:', error); return { ok: false }; }
+  return data;
+}
 /** @param {string} groupId @returns {Promise<any[]>} */
 export async function getGroupMessages(groupId) {
   const { data, error } = await supabase.rpc('get_group_messages', { p_group_id: groupId });
