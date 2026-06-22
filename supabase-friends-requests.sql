@@ -1,0 +1,30 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Friends: request → accept  (migration: friends_request_accept)            ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Upgrades the old instant `add_friend` to a request/accept model WITHOUT
+-- touching any leaderboard reader. Accepted friends still live in the symmetric
+-- two-row `friendships(user_id, friend_id)` table (so get_*_leaderboard,
+-- get_daily_board, get_friends_daily_leaderboard, search_users' is_friend, etc.
+-- keep working unchanged). Pending requests live in a NEW table.
+--
+-- TABLE  friend_requests(requester, addressee, created_at)  PK(requester,addressee)
+--        RLS enabled, no policies — access only via the SECURITY DEFINER RPCs.
+--
+-- add_friend(username)              → sends a request; AUTO-ACCEPTS if the other
+--                                     person already requested you. Returns
+--                                     {ok, status: requested|friends, friend_name}
+--                                     | {ok:false, reason: auth|empty|not_found|
+--                                        self|already_friends}.
+-- respond_friend_request(username,  → accept (insert symmetric friendship) or
+--   accept bool)                      decline (drop the request). {ok,status}.
+-- remove_friend(username)           → unfriend both directions + clear requests.
+-- list_friends()                    → [{username, name}]  (accepted only).
+-- list_friend_requests()            → {incoming:[…], outgoing:[…]}.
+-- get_friend_request_count()        → int incoming (menu badge).
+-- search_users(query)               → now also returns `status`:
+--                                     friends | pending_out | pending_in | none
+--                                     (keeps is_friend for back-compat).
+--
+-- Verified end-to-end via rolled-back JWT-impersonation (request → inbox →
+-- accept → symmetric friends → already_friends → remove). Full bodies are in the
+-- applied migration.
