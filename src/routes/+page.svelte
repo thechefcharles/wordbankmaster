@@ -254,7 +254,7 @@
   $: isClimb = $gameStore.gameMode === 'climb';
   $: climb = $gameStore.climbInfo; // { bounty, heat, attempts, spent, position, stuck, last_gain, state }
   $: isMatch = $gameStore.gameMode === 'match';
-  $: matchInfo = $gameStore.matchInfo; // { position, pack_size, total_score, last_score, done, mode, started_at, clock_seconds, combo }
+  $: matchInfo = $gameStore.matchInfo; // { position, pack_size, total_score, last_score, done, mode, solved, spent, budget, wager, started_at, clock_seconds, combo }
   $: matchBlitz = isMatch && matchInfo?.mode === 'blitz' && !matchInfo?.done;
   $: matchCombo = ((matchInfo?.combo ?? 100) / 100).toFixed(2);
   let matchExpiredFired = false;
@@ -906,9 +906,9 @@
                 <div class="ch-item">
                   <div class="ch-info">
                     <span class="ch-vs">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + (i + 1)} {p.is_me ? 'You' : p.name}</span>
-                    <span class="ch-meta">{p.state === 'done' ? 'finished' : p.state}</span>
+                    <span class="ch-meta">{p.state === 'done' ? `solved ${p.solved ?? 0}/${matchResults.pack_size}` : p.state}</span>
                   </div>
-                  <span class="ch-result">{p.score != null ? p.score.toLocaleString() : '—'}</span>
+                  <span class="ch-result">{p.spent != null ? '$' + p.spent.toLocaleString() + ' spent' : '—'}</span>
                 </div>
               {/each}
             </div>
@@ -972,6 +972,7 @@
                   <select class="ch-input" bind:value={mbWindow}>{#each WINDOWS as w}<option value={w.s}>{w.l}</option>{/each}</select>
                 </label>
               </div>
+              <p class="ch-objective">Your wager is your spending budget (min $500). Buy as few letters as you can — <strong>solve spending the least and you take the pot.</strong> Guesses are free.</p>
               <button class="ch-create" disabled={mbBusy} on:click={submitNewMatch} style="width:100%;">Send challenge ⚔️</button>
               {#if mbMsg}<p class="add-msg">{mbMsg}</p>{/if}
             </div>
@@ -1172,7 +1173,11 @@
     {#if isMatch && matchInfo && !matchInfo.done}
       <div class="climb-hud">
         <div class="ch-cell"><span class="ch-val">{matchInfo.position}/{matchInfo.pack_size}</span><span class="ch-label">Puzzle</span></div>
-        <div class="ch-cell"><span class="ch-val ch-gold">{(matchInfo.total_score ?? 0).toLocaleString()}</span><span class="ch-label">Score</span></div>
+        {#if matchInfo.mode === 'blitz'}
+          <div class="ch-cell"><span class="ch-val ch-gold">{(matchInfo.total_score ?? 0).toLocaleString()}</span><span class="ch-label">Score</span></div>
+        {:else}
+          <div class="ch-cell"><span class="ch-val ch-gold">${(matchInfo.spent ?? 0).toLocaleString()}</span><span class="ch-label">Spent</span></div>
+        {/if}
         {#if matchBlitz}
           <div class="ch-cell"><span class="ch-val">×{matchCombo}</span><span class="ch-label">Combo</span></div>
           <div class="ch-cell" class:hot={matchRemaining <= 10}><span class="ch-val">⏱️{matchRemaining}</span><span class="ch-label">Time</span></div>
@@ -1308,8 +1313,8 @@
             <!-- Challenge match: finished the whole pack -->
             <div class="result-medal">⚔️</div>
             <h2>Challenge complete!</h2>
-            <p class="result-sub">You scored {(matchInfo?.total_score ?? 0).toLocaleString()} across {matchInfo?.pack_size} puzzle{matchInfo?.pack_size === 1 ? '' : 's'}</p>
-            <p class="arcade-gain">{matchInfo?.status === 'settled' ? 'Settled — check the results.' : "We'll settle once everyone plays."}</p>
+            <p class="result-sub">{#if matchInfo?.mode === 'blitz'}You scored {(matchInfo?.total_score ?? 0).toLocaleString()} across {matchInfo?.pack_size} puzzle{matchInfo?.pack_size === 1 ? '' : 's'}{:else}You solved {matchInfo?.solved ?? 0}/{matchInfo?.pack_size} spending ${(matchInfo?.spent ?? 0).toLocaleString()}{/if}</p>
+            <p class="arcade-gain">{matchInfo?.status === 'settled' ? 'Settled — check the results.' : "Lowest spend wins — we'll settle once everyone plays."}</p>
             <div class="result-actions">
               <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); openChallenges(); }}>Challenges</button>
               <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Menu</button>
@@ -1881,6 +1886,8 @@
   }
   .ch-create { padding: 0.6rem 1rem; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; color: #06210f; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); }
   .ch-create:disabled { opacity: 0.6; }
+  .ch-objective { font-size: 0.74rem; line-height: 1.4; color: var(--text-muted); margin: 0 0 10px; }
+  .ch-objective strong { color: var(--brand-2); }
   .ch-cats { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
   .ch-cat { width: 34px; height: 34px; border-radius: 9px; cursor: pointer; font-size: 1rem; border: 1px solid var(--border); background: var(--surface); opacity: 0.5; transition: opacity 0.15s, border-color 0.15s; }
   .ch-cat.on { opacity: 1; border-color: rgba(163,230,53,0.55); background: rgba(163,230,53,0.08); }

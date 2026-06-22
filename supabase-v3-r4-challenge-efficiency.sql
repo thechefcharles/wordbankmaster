@@ -1,0 +1,37 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  v3 R4: Challenges = efficiency (wager = spending budget, lowest spend wins) ║
+-- ║  (migrations: v3_r4_challenge_efficiency, _settle_notification,              ║
+-- ║   _get_match_solved_spent — applied via MCP)                                ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Fourth slice of WORDBANK_MASTER_V3.md. The heart of the competitive redesign:
+-- your wager is your stake AND your spending cap, and lowest spend to solve wins.
+--
+-- challenge_participants += solved INT.
+--
+-- BUDGET = GREATEST(wager, 500). Set on the participant when they go active
+--   (create_match host / accept_match opponent), stored in bankroll. It CARRIES
+--   across the whole pack (no per-puzzle reset in standard). match_buy_letter
+--   already caps spend at bankroll, so you can never spend past your wager.
+--   Friendly (wager 0) matches get the $500 floor budget; min wager stays $100.
+--
+-- PACK: competitive puzzles now require ≥8 letters (char_length(replace(phrase,
+--   ' ',''))) so you can't blind-guess a competitive phrase (integrity rule #1).
+--
+-- _match_resolve_and_advance (standard): only SOLVING advances (guesses are free,
+--   no budget-loss). On solve: solved++, total_score = solved×1,000,000 +
+--   budget_left → ranks by (most solved, least spent). Budget carries to the next
+--   puzzle. Blitz keeps its combo/speed scoring (budget resets per puzzle).
+--
+-- _match_board / get_match: expose solved, spent (= budget − bankroll), budget,
+--   wager for the UI. _match_settle pays the same (winner/top3/even by total_score
+--   = the efficiency rank); notification now reads "Solved X/N" not the raw score.
+--
+-- Verified (rolled-back SQL sim, Chef & Warpocket untouched): 1-puzzle $500 duel,
+--   Chef free-guess solve spent $0 (score 1000500), Warpocket spent $140 (score
+--   1000360) → Chef took the $1000 pot, net +$500 / −$500. Lowest spend wins. ✓
+--
+-- Client: match HUD shows "Spent $X" (was raw Score) for standard; result modal +
+--   results card show "solved X/N · $Y spent"; the main Cash HUD shows your
+--   remaining budget. Challenge Builder explains the objective.
+--
+-- KNOBS: budget floor $500, min-length 8, min wager $100.
