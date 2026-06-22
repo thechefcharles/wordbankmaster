@@ -1,0 +1,23 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Challenge payouts: just two — Winner-take-all + Podium (3·2·1)             ║
+-- ║  (migration: v3_payout_winner_or_podium)                                    ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Replaces the old winner/top3/even options with exactly two:
+--   'winner' — 1st takes the whole pot.
+--   'podium' — 3·2·1 (needs ≥3 paid finishers; else falls back to winner-take-all):
+--       3rd: their wager back. 2nd: double their wager (when the pot allows).
+--       1st: the rest. Always keeps 1st ≥ 2nd:
+--       remaining = pot − wager(3rd); if remaining ≥ 4×wager → 2nd = 2×wager,
+--       1st = remaining − 2×wager (matches the literal 3·2·1 for ~6+ players);
+--       else 1st = round(remaining×0.6), 2nd = the rest (graceful for 3–5 players,
+--       where the pot is too small to fully double 2nd). Non-finishers fund the pot.
+--
+-- create_match: p_payout now coerces to 'podium' or 'winner' (dropped top3/even).
+--
+-- Verified (rolled-back sim): create_match stores 'podium'; a 1v1 podium with one
+--   finisher falls back to winner-take-all (winner net +$200 on a $200 wager).
+--   6-player math (W=100, pot 600): 1st $300, 2nd $200, 3rd $100, rest $0.
+--
+-- Client: builder payout select = Winner takes all / Podium (3·2·1); "Challenges"
+--   renamed to "Challenge Friends" throughout the UI; results card shows the
+--   readable payout label.

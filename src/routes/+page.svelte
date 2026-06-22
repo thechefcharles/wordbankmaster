@@ -825,7 +825,7 @@
         {/if}
         <button class="menu-card" style="--i: 1" on:click={openChallenges}>
           <span class="mc-icon">⚔️</span>
-          <span class="mc-title">Challenges</span>
+          <span class="mc-title">Challenge Friends</span>
           {#if challengeCount > 0}<span class="mc-stat" title="{challengeCount} waiting">{challengeCount}</span>{/if}
           <span class="mc-arrow">→</span>
         </button>
@@ -877,7 +877,7 @@
 
     <!-- Challenges: wager vs friends -->
     {#if showChallenges}
-      <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Challenges">
+      <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Challenge Friends">
         <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showChallenges = false}></button>
         <div class="modal-content main-menu-modal ch-modal">
           <button class="close-btn" on:click={() => { if (matchResults) matchResults = null; else showChallenges = false; }}>❌</button>
@@ -885,7 +885,7 @@
           {#if matchResults}
             <!-- Results card -->
             <h2>🏆 Results</h2>
-            <p class="cat-sub">{matchResults.pack_size} puzzle{matchResults.pack_size === 1 ? '' : 's'}{#if matchResults.wager > 0} · ${matchResults.wager?.toLocaleString()} {matchResults.payout}{/if}</p>
+            <p class="cat-sub">{matchResults.pack_size} puzzle{matchResults.pack_size === 1 ? '' : 's'}{#if matchResults.wager > 0} · ${matchResults.wager?.toLocaleString()} · {matchResults.payout === 'podium' ? 'podium 3·2·1' : 'winner-take-all'}{/if}</p>
             <div class="ch-list">
               {#each matchResults.participants as p, i}
                 <div class="ch-item">
@@ -899,7 +899,7 @@
             </div>
             <button class="ch-create" on:click={() => matchResults = null} style="width:100%;margin-top:0.8rem;">Back</button>
           {:else}
-            <h2>⚔️ Challenges</h2>
+            <h2>⚔️ Challenge Friends</h2>
             <p class="cat-sub">Build a match — a pack of puzzles vs a friend or a group. Same puzzles for everyone.</p>
 
             <div class="ch-new">
@@ -946,7 +946,7 @@
                   <select class="ch-input" bind:value={mbPackSize}>{#each [1, 3, 5, 10] as n}<option value={n}>{n}</option>{/each}</select>
                 </label>
                 <label class="ch-field"><span>Payout</span>
-                  <select class="ch-input" bind:value={mbPayout}><option value="winner">Winner takes all</option><option value="top3">Top 3 split</option><option value="even">Even split</option></select>
+                  <select class="ch-input" bind:value={mbPayout}><option value="winner">Winner takes all</option><option value="podium">Podium (3·2·1)</option></select>
                 </label>
               </div>
               <div class="ch-row">
@@ -1343,7 +1343,7 @@
             <p class="result-sub">{#if matchInfo?.mode === 'blitz'}You scored {(matchInfo?.total_score ?? 0).toLocaleString()} across {matchInfo?.pack_size} puzzle{matchInfo?.pack_size === 1 ? '' : 's'}{:else}You solved {matchInfo?.solved ?? 0}/{matchInfo?.pack_size} spending ${(matchInfo?.spent ?? 0).toLocaleString()}{/if}</p>
             <p class="arcade-gain">{matchInfo?.status === 'settled' ? 'Settled — check the results.' : "Lowest spend wins — we'll settle once everyone plays."}</p>
             <div class="result-actions">
-              <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); openChallenges(); }}>Challenges</button>
+              <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); openChallenges(); }}>Challenge Friends</button>
               <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Menu</button>
             </div>
           {:else if isFreeplay}
@@ -1389,7 +1389,7 @@
             {/if}
             <p class="arcade-gain">We'll settle the pot once your friend plays.</p>
             <div class="result-actions">
-              <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; openChallenges(); }}>Challenges</button>
+              <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; openChallenges(); }}>Challenge Friends</button>
               <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Menu</button>
             </div>
           {:else}
