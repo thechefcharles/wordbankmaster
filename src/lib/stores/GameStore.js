@@ -689,7 +689,7 @@ function reconcileMatchBoard(board) {
     gameState: done ? 'won' : 'default',
     modifier: null, arcadeRun: null,
     clue: done ? prev.clue : (board.clue ?? null),
-    matchInfo: match
+    matchInfo: { ...match, id: activeMatchId }
   }));
   if (done) { setTimeout(() => launchConfetti(), 250); fx('win'); }
   else if ((match.last_score ?? 0) > 0 && (match.position ?? 1) > (prev.matchInfo?.position ?? 0)) { fx('win'); }

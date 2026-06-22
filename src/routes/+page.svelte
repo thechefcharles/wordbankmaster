@@ -9,7 +9,7 @@
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getDailyGhost, getDailyQuests, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getDailyGhost, getDailyQuests, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage } from '$lib/stores/statsStore.js';
   import { unreadCount, notifications, markAllNotificationsRead, refreshNotifications } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
@@ -328,6 +328,61 @@
     const pid = pendingSabotage; pendingSabotage = null;
     await matchSabotageOpponent(oppId, pid); await refreshClimbPups();
   }
+
+  // --- per-match chat (1v1 + group challenges) ---
+  let matchChatOpen = false;
+  let matchChatUnread = false;
+  /** @type {any[]} */
+  let matchMessages = [];
+  let matchChatInput = '';
+  let matchChatBusy = false;
+  /** @type {string|null} */
+  let matchChatId = null;
+  /** @type {any} */
+  let matchChannel = null;
+  /** @type {ReturnType<typeof setInterval>|undefined} */
+  let matchChatPoll;
+  /** @type {HTMLElement|undefined} */
+  let matchChatScroll;
+
+  async function loadMatchMsgs() {
+    if (!matchChatId) return;
+    const prevLen = matchMessages.length;
+    const m = await getMatchMessages(matchChatId);
+    if (matchChatId == null) return;
+    matchMessages = m;
+    if (!matchChatOpen && m.length > prevLen) matchChatUnread = true;
+    if (matchChatOpen) tick().then(() => { if (matchChatScroll) matchChatScroll.scrollTop = matchChatScroll.scrollHeight; });
+  }
+  function teardownMatchChat() {
+    if (matchChannel) { supabase.removeChannel(matchChannel); matchChannel = null; }
+    clearInterval(matchChatPoll);
+    matchChatId = null; matchMessages = []; matchChatOpen = false; matchChatUnread = false;
+  }
+  /** @param {string|null|undefined} id */
+  function syncMatchChat(id) {
+    if (id === matchChatId) return;
+    teardownMatchChat();
+    if (!id) return;
+    matchChatId = id;
+    loadMatchMsgs();
+    matchChannel = supabase.channel(`match:${id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'match_messages', filter: `match_id=eq.${id}` }, loadMatchMsgs)
+      .subscribe();
+    matchChatPoll = setInterval(loadMatchMsgs, 20000);
+  }
+  $: syncMatchChat(isMatch ? matchInfo?.id : null);
+  function openMatchChat() { matchChatOpen = true; matchChatUnread = false; loadMatchMsgs(); }
+  async function sendMatchChat() {
+    const body = matchChatInput.trim();
+    if (!body || matchChatBusy || !matchChatId) return;
+    matchChatBusy = true;
+    const res = await sendMatchMessage(matchChatId, body);
+    matchChatBusy = false;
+    if (res.ok) { matchChatInput = ''; await loadMatchMsgs(); }
+  }
+  onDestroy(teardownMatchChat);
+
   /** @param {any} item */
   async function handleClimbPup(item) {
     const usedThisPuzzle = (climb?.equipped ?? []).includes(item.id);
@@ -751,6 +806,39 @@
 <!-- ← Back to main menu (every non-menu screen) -->
 {#if loggedIn && hasInitialized && !showMainMenu}
   <button class="menu-back-btn" title="Main menu" on:click={goToMainMenu}>← Menu</button>
+{/if}
+
+<!-- 💬 Match chat (1v1 + group challenges) -->
+{#if isMatch && matchInfo}
+  <button class="match-chat-btn" title="Match chat" on:click={openMatchChat}>
+    💬{#if matchChatUnread}<span class="mc-dot"></span>{/if}
+  </button>
+{/if}
+{#if matchChatOpen}
+  <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Match chat">
+    <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => matchChatOpen = false}></button>
+    <div class="modal-content chat-modal">
+      <button class="close-btn" on:click={() => matchChatOpen = false}>❌</button>
+      <h2 class="chat-h">💬 Trash talk</h2>
+      <div class="chat-msgs" bind:this={matchChatScroll}>
+        {#if matchMessages.length}
+          {#each matchMessages as m}
+            <div class="cmsg" class:mine={m.is_me}>
+              {#if !m.is_me}<span class="cm-name">{m.name}</span>{/if}
+              <span class="cm-body">{m.body}</span>
+            </div>
+          {/each}
+        {:else}
+          <p class="chat-empty">No messages yet — start the smack talk 👀</p>
+        {/if}
+      </div>
+      <div class="chat-input-row">
+        <input class="chat-input" placeholder="Message…" maxlength="500" bind:value={matchChatInput}
+          on:keydown={(e) => { if (e.key === 'Enter') sendMatchChat(); }} />
+        <button class="chat-send" on:click={sendMatchChat} disabled={matchChatBusy || !matchChatInput.trim()}>Send</button>
+      </div>
+    </div>
+  </div>
 {/if}
 
 <!-- 📜 Guided tutorial (first run + replayable from ❓) -->
@@ -1897,6 +1985,32 @@
     border: 1px solid var(--border-strong, var(--border)); backdrop-filter: blur(10px);
   }
   .menu-back-btn:hover { border-color: var(--brand-2); }
+  /* match chat */
+  .match-chat-btn {
+    position: fixed; top: 12px; right: 14px; z-index: 1000;
+    width: 42px; height: 42px; border-radius: 999px; cursor: pointer; font-size: 1.1rem;
+    background: var(--surface-strong, rgba(20,28,40,0.85)); border: 1px solid var(--border-strong, var(--border)); backdrop-filter: blur(10px);
+  }
+  .match-chat-btn:hover { border-color: var(--brand-2); }
+  .mc-dot { position: absolute; top: 6px; right: 6px; width: 10px; height: 10px; border-radius: 999px; background: #f43f5e; box-shadow: 0 0 0 2px var(--bg, #0a0e14); }
+  .chat-modal { max-width: 440px; }
+  .chat-h { font-family: var(--font-display); font-size: 1.15rem; margin: 0 0 0.8rem; }
+  .chat-msgs {
+    display: flex; flex-direction: column; gap: 6px; height: 300px; overflow-y: auto;
+    padding: 0.8rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); text-align: left;
+  }
+  .chat-empty { color: var(--text-faint); font-size: 0.85rem; text-align: center; margin: auto; }
+  .cmsg {
+    max-width: 80%; align-self: flex-start; display: flex; flex-direction: column; gap: 1px;
+    padding: 0.45rem 0.7rem; border-radius: 12px; background: var(--surface-2, rgba(255,255,255,0.05)); border: 1px solid var(--border);
+  }
+  .cmsg.mine { align-self: flex-end; background: rgba(163,230,53,0.12); border-color: rgba(163,230,53,0.3); }
+  .cm-name { font-size: 0.66rem; font-weight: 700; color: var(--brand-2); }
+  .cm-body { font-size: 0.88rem; color: var(--text); word-break: break-word; }
+  .chat-input-row { display: flex; gap: 0.5rem; margin-top: 0.7rem; }
+  .chat-input { flex: 1; min-width: 0; padding: 0.6rem 0.9rem; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 0.95rem; }
+  .chat-send { padding: 0.6rem 1.1rem; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; color: #06210f; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); }
+  .chat-send:disabled { opacity: 0.5; }
   /* notification bell */
   .bell-button { position: relative; }
   .bell-badge {
