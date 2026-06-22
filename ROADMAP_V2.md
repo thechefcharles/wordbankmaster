@@ -140,7 +140,7 @@ Down doubles bounty; Free-Play feat awards to FP pool only (never spendable in C
 
 ---
 
-## Phase 6 — Challenge Builder + Groups
+## Phase 6 — Challenge Builder + Groups  ◑ (6a Groups done; Builder = 6b-d)
 
 **Goal:** one configurable challenge (1v1/group, packs, wager/friendly, payouts, response
 window) + persistent Groups with scoped leaderboards.

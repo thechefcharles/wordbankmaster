@@ -975,6 +975,7 @@
           </div>
 
           <button class="main-menu-btn ghost-btn" on:click={() => goto('/badges')}>🏅 View Badges</button>
+          <button class="main-menu-btn ghost-btn" on:click={() => goto('/groups')}>👥 Groups</button>
           <button class="main-menu-btn ghost-btn" on:click={() => goto('/shop')}>🛍️ Shop</button>
           <button class="main-menu-btn" on:click={() => { showMyAccount = false; handleLogout(); }}>Log Out</button>
         </div>

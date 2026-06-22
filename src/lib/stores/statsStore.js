@@ -128,6 +128,38 @@ export async function searchUsers(query) {
   return Array.isArray(data) ? data : [];
 }
 
+/* ===== Groups ===== */
+/** @returns {Promise<any[]>} */
+export async function getMyGroups() {
+  const { data, error } = await supabase.rpc('get_my_groups');
+  if (error) { console.error('❌ get_my_groups:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
+/** @param {string} id @returns {Promise<any|null>} */
+export async function getGroup(id) {
+  const { data, error } = await supabase.rpc('get_group', { p_id: id });
+  if (error) { console.error('❌ get_group:', error); return null; }
+  return data;
+}
+/** @param {string} name @returns {Promise<{ok:boolean, reason?:string, group?:any}>} */
+export async function createGroup(name) {
+  const { data, error } = await supabase.rpc('create_group', { p_name: name });
+  if (error || !data) { if (error) console.error('❌ create_group:', error); return { ok: false }; }
+  return data;
+}
+/** @param {string} code @returns {Promise<{ok:boolean, reason?:string, group?:any}>} */
+export async function joinGroup(code) {
+  const { data, error } = await supabase.rpc('join_group', { p_code: code });
+  if (error || !data) { if (error) console.error('❌ join_group:', error); return { ok: false }; }
+  return data;
+}
+/** @param {string} id @returns {Promise<{ok:boolean}>} */
+export async function leaveGroup(id) {
+  const { data, error } = await supabase.rpc('leave_group', { p_id: id });
+  if (error || !data) { if (error) console.error('❌ leave_group:', error); return { ok: false }; }
+  return data;
+}
+
 /* ===== Notifications ===== */
 /** @returns {Promise<{items:any[], unread_count:number}>} */
 export async function getNotifications() {
