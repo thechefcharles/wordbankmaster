@@ -9,7 +9,7 @@
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getDailyGhost, getDailyQuests, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getDailyGhost, getDailyQuests, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount } from '$lib/stores/statsStore.js';
   import { unreadCount, notifications, markAllNotificationsRead, refreshNotifications } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
@@ -602,6 +602,7 @@
   /** @type {any[]} */
   let myGroups = [];
   let challengeCount = 0; // matches awaiting my play (badge on the Challenges card)
+  let friendReqCount = 0; // incoming friend requests (badge on Friends)
   /** @type {any|null} */
   let matchResults = null; // a settled match's results being viewed
   // Builder form
@@ -630,6 +631,7 @@
     try {
       myMatches = await getMyMatches();
       challengeCount = myMatches.filter((m) => m.status === 'open' && m.my_state !== 'done').length;
+      friendReqCount = await getFriendRequestCount();
     } catch { /* non-fatal */ }
   }
   async function openChallenges() {
@@ -904,7 +906,7 @@
           <button class="menu-card" style="--i: 1" on:click={() => { menuView = 'challenge'; fx('tap'); }}>
             <span class="mc-icon">⚔️</span>
             <span class="mc-title">Challenge Friends</span>
-            {#if challengeCount > 0}<span class="mc-stat" title="{challengeCount} waiting">{challengeCount}</span>{/if}
+            {#if challengeCount + friendReqCount > 0}<span class="mc-stat" title="{challengeCount} match{challengeCount === 1 ? '' : 'es'}, {friendReqCount} friend request{friendReqCount === 1 ? '' : 's'}">{challengeCount + friendReqCount}</span>{/if}
             <span class="mc-arrow">→</span>
           </button>
           <button class="menu-card" style="--i: 2" on:click={() => { menuView = 'progress'; fx('tap'); }}>
@@ -955,7 +957,9 @@
         </div>
         <div class="main-menu-buttons stagger">
           <button class="menu-card" style="--i: 0" on:click={() => goto('/friends')}>
-            <span class="mc-icon">👥</span><span class="mc-title">Friends</span><span class="mc-arrow">→</span>
+            <span class="mc-icon">👥</span><span class="mc-title">Friends</span>
+            {#if friendReqCount > 0}<span class="mc-stat" title="{friendReqCount} friend request{friendReqCount === 1 ? '' : 's'}">{friendReqCount}</span>{/if}
+            <span class="mc-arrow">→</span>
           </button>
           <button class="menu-card" style="--i: 1" on:click={() => goto('/groups')}>
             <span class="mc-icon">👨‍👩‍👧‍👦</span><span class="mc-title">Groups</span><span class="mc-arrow">→</span>

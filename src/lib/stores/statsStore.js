@@ -163,11 +163,46 @@ export async function markNotificationsRead() {
   if (error) console.error('❌ mark_notifications_read:', error);
 }
 
-/** Add a friend by username. @param {string} username @returns {Promise<{ok:boolean, reason?:string, friend_name?:string}>} */
+/** Send a friend request by username (auto-accepts if they already requested you). @param {string} username @returns {Promise<{ok:boolean, reason?:string, status?:string, friend_name?:string}>} */
 export async function addFriend(username) {
   const { data, error } = await supabase.rpc('add_friend', { p_username: username });
   if (error || !data) { if (error) console.error('❌ add_friend:', error); return { ok: false }; }
   return data;
+}
+
+/** Accept or decline an incoming request. @param {string} username @param {boolean} accept @returns {Promise<{ok:boolean, reason?:string, status?:string}>} */
+export async function respondFriendRequest(username, accept) {
+  const { data, error } = await supabase.rpc('respond_friend_request', { p_username: username, p_accept: accept });
+  if (error || !data) { if (error) console.error('❌ respond_friend_request:', error); return { ok: false }; }
+  return data;
+}
+
+/** Unfriend by username. @param {string} username @returns {Promise<{ok:boolean}>} */
+export async function removeFriend(username) {
+  const { data, error } = await supabase.rpc('remove_friend', { p_username: username });
+  if (error || !data) { if (error) console.error('❌ remove_friend:', error); return { ok: false }; }
+  return data;
+}
+
+/** My accepted friends. @returns {Promise<{username:string,name:string}[]>} */
+export async function listFriends() {
+  const { data, error } = await supabase.rpc('list_friends');
+  if (error) { console.error('❌ list_friends:', error); return []; }
+  return data ?? [];
+}
+
+/** Pending requests. @returns {Promise<{incoming:{username:string,name:string}[], outgoing:{username:string,name:string}[]}>} */
+export async function listFriendRequests() {
+  const { data, error } = await supabase.rpc('list_friend_requests');
+  if (error) { console.error('❌ list_friend_requests:', error); return { incoming: [], outgoing: [] }; }
+  return data ?? { incoming: [], outgoing: [] };
+}
+
+/** Count of incoming friend requests (menu badge). @returns {Promise<number>} */
+export async function getFriendRequestCount() {
+  const { data, error } = await supabase.rpc('get_friend_request_count');
+  if (error) { console.error('❌ get_friend_request_count:', error); return 0; }
+  return data ?? 0;
 }
 
 /** Me + friends ranked by today's Daily score. @returns {Promise<any[]>} */
