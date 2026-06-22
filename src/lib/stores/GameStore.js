@@ -698,6 +698,7 @@ function reconcileMatchBoard(board) {
     gameMode: 'match',
     gameState: done ? 'won' : 'default',
     modifier: null, arcadeRun: null,
+    clue: done ? prev.clue : (board.clue ?? null),
     matchInfo: match
   }));
   if (done) { setTimeout(() => launchConfetti(), 250); fx('win'); }
