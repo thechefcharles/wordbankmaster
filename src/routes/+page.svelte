@@ -1995,7 +1995,18 @@
     border-color: var(--border-strong);
     box-shadow: var(--shadow-md);
   }
-  .menu-card:active:not(.disabled) { transform: scale(0.99); }
+  .menu-card:active:not(.disabled),
+  .menu-card:focus-visible:not(.disabled) {
+    transform: scale(0.985);
+    border-color: #fde047;
+    outline: none;
+    box-shadow:
+      0 0 0 2.5px rgba(253, 224, 71, 1),
+      0 0 24px rgba(251, 191, 36, 1),
+      0 0 52px rgba(251, 191, 36, 0.85),
+      0 0 96px rgba(251, 191, 36, 0.55),
+      0 0 150px rgba(251, 191, 36, 0.3);
+  }
   .menu-card.primary {
     border-color: rgba(163, 230, 53, 0.4);
     background: linear-gradient(135deg, rgba(52, 211, 153, 0.16), rgba(163, 230, 53, 0.06));
