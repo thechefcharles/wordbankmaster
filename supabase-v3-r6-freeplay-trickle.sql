@@ -1,0 +1,25 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  v3 R6: Free Play = the broke-recovery safety net (capped Cash trickle)     ║
+-- ║  (migration: v3_r6_freeplay_trickle — applied via MCP)                      ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Sixth slice of WORDBANK_MASTER_V3.md. Free Play stays free (fake budget, no real
+-- Cash spent on letters) but a solve now pays a SMALL, capped Cash trickle — the
+-- way a broke player grinds back to the risk engines.
+--
+-- _freeplay_resolve: on the first win of a session, credit a Cash trickle =
+--   $25, or $50 for a CLEAN solve (no wrong-letter buys), capped at $300/day across
+--   Free Play (cap measured from sum of today's 'freeplay_reward' bank_ledger rows).
+--   Deliberately minimum-wage so Free Play never cannibalizes the Cash Game /
+--   Challenges. Response carries 'freeplay_reward' for the client toast.
+--
+-- Verified (rolled-back SQL sim, Chef untouched): clean solve → +$50; with $290
+--   already earned today → next solve capped to +$10.
+--
+-- Client: a generic Cash-earned toast (renamed dailyAttendance → cashToast) now
+--   covers BOTH the Daily attendance reward and the Free Play reward. Free Play menu
+--   card reads "Free to play · earn a little Cash". Ledger labels freeplay_reward.
+--
+-- DEFERRED (R6b, deferred since v2 as "5b"): Free Play EARNED power-ups — won by
+--   feats in Free Play (user_powerups_v2 'freeplay' pool, _award_powerup) and used
+--   in Free Play. Not built; Free Play currently has no power-up use. The capped
+--   trickle (the user's explicit "earn money from free play" ask) is the R6 core.
