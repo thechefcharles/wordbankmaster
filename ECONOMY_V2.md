@@ -1,3 +1,5 @@
+> **SUPERSEDED by `WORDBANK_MASTER_V2.md`** — kept for history only.
+
 # WordBank Economy v2 — "Cash, Loans & Net Worth" revamp
 
 > **Status:** spec for sign-off (supersedes `BANK_ECONOMY.md`).
