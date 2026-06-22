@@ -20,6 +20,23 @@
 --   I'm 'done' or the match is 'settled'.
 -- get_my_matches()   -- inbox.
 --
--- Verified (SQL sim): Chef creates a 2-puzzle $200 winner match vs Warpocket →
+-- Verified 6b (SQL sim): Chef creates a 2-puzzle $200 winner match vs Warpocket →
 -- escrow $1000→$800, pack=2, 2 players; War sees the invite, accepts (escrow
 -- $800), spoiler-lock hides Chef's score (null) while War is mid-match. Cleaned up.
+--
+-- ── Phase 6c: play engine + settle (migration challenge_builder_6c_play) ───────
+-- Each participant plays the pack one puzzle at a time on a fake $1,000 budget
+-- (mirrors the Daily efficiency engine). Per-puzzle score = round(leftover × eff),
+-- summed into total_score; advance through the pack, then state='done'.
+--   match_start / match_buy_letter / match_reveal / match_submit_guess(id,…)
+--   _match_board (current puzzle + {match:{position,pack_size,total_score,last_score}})
+--   _match_resolve_and_advance (score + advance or finish → _match_maybe_settle)
+-- _match_settle(id): rank PAID participants by total_score; pay the pot
+--   (wager × paid) by payout rule — winner (tie → split), top3 (50/30/20 when ≥3,
+--   else winner), even (split among finishers; no-shows forfeit); <2 paid → refund.
+--   Notifies everyone with their standing. get_my_matches lazily settles expired
+--   matches (past settles_at).
+--
+-- Verified 6c (SQL sim): solve puzzle 1 → score 1,900 (= $1,000 × 1.9 eff), advance
+-- to #2; settle Chef 1500 vs War 900 → Chef wins $400 pot (1000→1200, War 1000→800),
+-- status settled, notified. Cleaned up. Builder UI + results card = 6d.
