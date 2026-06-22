@@ -22,6 +22,23 @@
       isNativeApp = !!(c && (c.isNativePlatform ? c.isNativePlatform() : c.isNative))
         || /WordBankApp/i.test(navigator.userAgent);
     } catch { isNativeApp = false; }
+
+    // Surface a failed OAuth/callback round-trip (set by /auth/callback).
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const ae = params.get('auth_error');
+      if (ae) {
+        errorMsg = ae === 'exchange' || ae === 'nocode'
+          ? 'Sign-in didn’t complete — please try again, or use email & password.'
+          : ae === 'config'
+          ? 'Sign-in is temporarily unavailable. Please try again shortly.'
+          : `Google sign-in was cancelled or blocked: ${decodeURIComponent(ae)}`;
+        // strip the param so it doesn't stick around on refresh
+        params.delete('auth_error');
+        const qs = params.toString();
+        window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
+      }
+    } catch { /* non-fatal */ }
   });
 
   let showReset = false;
@@ -112,11 +129,30 @@
   }
 
   async function signInWithGoogle() {
-    const redirectUrl = `${window.location.origin}/auth/callback`;
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: redirectUrl }
-    });
+    errorMsg = '';
+    isLoading = true;
+    try {
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          // Let the user pick which Google account (avoids silently reusing the wrong one).
+          queryParams: { prompt: 'select_account' }
+        }
+      });
+      if (error) {
+        // Surface failures instead of doing nothing (provider disabled, redirect not
+        // allow-listed, popup blocked, etc.).
+        errorMsg = `Google sign-in failed: ${error.message}`;
+        track('google_signin_error', { message: error.message });
+        isLoading = false;
+      }
+      // On success the browser navigates to Google — no further code runs here.
+    } catch (e) {
+      errorMsg = 'Google sign-in failed. Try again, or use email & password.';
+      isLoading = false;
+    }
   }
 </script>
 
