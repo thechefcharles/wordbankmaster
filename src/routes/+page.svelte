@@ -519,9 +519,15 @@
   async function handleMenuDaily() {
     const currentUser = get(user);
     if (!currentUser?.id) return;
-    // Already solved today -> show the results / come-back summary.
-    if (dailyDone) {
-      showStreakMessage = true;
+    // Status loads non-blocking after login — make sure we know it before deciding,
+    // so an already-completed daily shows the summary instead of re-opening + "winning".
+    if (!dailyStatus) {
+      dailyStatus = await getDailyStatus(currentUser.id);
+      menuDailyPlayed = dailyStatus.has_played_today;
+    }
+    const inProgress = savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost';
+    if (dailyStatus?.has_played_today && !inProgress) {
+      showStreakMessage = true;  // already solved today → come-back summary
       return;
     }
     // Otherwise start fresh, or resume an in-progress daily (dailyStart resumes).
