@@ -244,6 +244,13 @@
   $: isFreeplay = $gameStore.gameMode === 'freeplay';
   $: isChallenge = $gameStore.gameMode === 'challenge';
   $: isMakeup = $gameStore.gameMode === 'makeup';
+  // Auto-dismiss the attendance toast after a few seconds.
+  /** @type {ReturnType<typeof setTimeout>|undefined} */
+  let _attTimer;
+  $: if ($gameStore.dailyAttendance) {
+    clearTimeout(_attTimer);
+    _attTimer = setTimeout(() => gameStore.update(s => ({ ...s, dailyAttendance: null })), 4500);
+  }
   $: isClimb = $gameStore.gameMode === 'climb';
   $: climb = $gameStore.climbInfo; // { bounty, heat, attempts, spent, position, stuck, last_gain, state }
   $: isMatch = $gameStore.gameMode === 'match';
@@ -739,6 +746,12 @@
 <!-- 📜 Guided tutorial (first run + replayable from ❓) -->
 {#if showTutorial}
   <Tutorial on:close={dismissTutorial} />
+{/if}
+
+{#if $gameStore.dailyAttendance}
+  <button class="attendance-toast" on:click={() => gameStore.update(s => ({ ...s, dailyAttendance: null }))}>
+    📅 Day {$gameStore.dailyAttendance.day} streak · <strong>+${$gameStore.dailyAttendance.amount.toLocaleString()}</strong> for showing up
+  </button>
 {/if}
 
 <main>
@@ -1241,15 +1254,14 @@
             <p class="result-sub">Daily #{puzzleNumber}{#if resultWon} · {resultMedal.name}{/if}</p>
             {#if resultWon && dr}
               <div class="daily-score">
-                <span class="ds-label">Daily Score</span>
+                <span class="ds-label">Daily Reward</span>
                 <span class="ds-amount">{(dr.score ?? 0).toLocaleString()}</span>
-                <span class="ds-cash">+${(dr.score ?? 0).toLocaleString()} to your Cash</span>
+                <span class="ds-cash">+${(dr.score ?? 0).toLocaleString()} to your Cash{#if dr.spent} · ${dr.spent.toLocaleString()} spent refunded{/if}</span>
               </div>
               <div class="eff-chips">
                 <span class="eff" class:on={dr.clean}>{dr.clean ? '✓' : '✗'} Clean</span>
                 <span class="eff" class:on={dr.no_vowels}>{dr.no_vowels ? '✓' : '✗'} No vowels</span>
                 <span class="eff" class:on={dr.first_try}>{dr.first_try ? '✓' : '✗'} First try</span>
-                <span class="eff" class:on={dr.no_reveals}>{dr.no_reveals ? '✓' : '✗'} No reveals</span>
               </div>
               {#if dailyPlacement && dailyPlacement.rank > 0 && dailyPlacement.total > 1}
                 <p class="daily-placement">{dailyPlacement.rank === 1 ? '🥇' : dailyPlacement.rank === 2 ? '🥈' : dailyPlacement.rank === 3 ? '🥉' : '🏅'} #{dailyPlacement.rank} of {dailyPlacement.total} among friends today</p>
@@ -1394,6 +1406,17 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
   @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700&display=swap');
+
+  .attendance-toast {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+    z-index: 2000; padding: 0.6rem 1.1rem; border-radius: 999px; cursor: pointer;
+    font-family: var(--font-ui); font-size: 0.85rem; color: #06210f;
+    background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635));
+    border: none; box-shadow: var(--glow-brand, 0 8px 24px rgba(52,211,153,0.4));
+    animation: attDrop 0.4s var(--ease-spring, ease) both;
+  }
+  .attendance-toast strong { font-family: var(--font-display); }
+  @keyframes attDrop { from { transform: translate(-50%, -60px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
 
