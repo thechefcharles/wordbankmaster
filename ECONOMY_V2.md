@@ -18,7 +18,11 @@
 | **Cash Game** *(was Arcade)* | Solo vs the house — risk real Cash, press your luck | High, uncapped | The **engine**: big wins/losses, where loans matter |
 | **Hustle Your Friends** *(was Challenges)* | Wager Cash head-to-head + **Group games** | Player-set | PvP **transfer** + viral growth |
 
-Tagline still holds: **"Spend Less. Think More."**
+**Blitz** is a *timed variant*, not a fifth mode — the same game against a clock,
+available across Free Play, Cash Game, and PvP (see §5B). Speed/instinct/volume
+instead of patient spend-optimization.
+
+Tagline still holds: **"Spend Less. Think More."** (Blitz flips it: **"Think Fast."**)
 
 ---
 
@@ -166,13 +170,55 @@ pot (gone on a bust). Banked pot > letters spent ⇒ you grew Net Worth and can 
 
 ---
 
-## 6. Power-ups — strategic sink
+## 5B. Blitz — the timed variant (Free / Cash / PvP)
+
+A clock turns "spend less, think more" into "**think fast.**" A genuinely different
+skill (speed/instinct/volume vs patient optimization) — the rapid-chess to the Cash
+Game's classical. Implemented as a **timed flavor of existing modes, not a 5th mode**,
+reusing the Cash Game engine + the PvP-Pressure timer already built.
+
+**Three tiers (match the existing risk ladder):**
+- **Free Blitz** (in/by Free Play): no Cash at stake, pure score-chase + a **speed
+  leaderboard**. Pays **no real Cash** (or a tiny capped daily trickle) — the accessible,
+  addictive "one more run" mode and the anti-inflation-safe one.
+- **Cash Blitz** (a Cash Game table): real Cash, timed — the casino's "turbo table."
+  Self-balancing because letters still cost real Cash.
+- **PvP Pressure** (already shipped in Hustle Your Friends): the timed head-to-head wager.
+  *(Optionally rename "Pressure" → "Blitz" for one consistent concept.)*
+
+**Earning algo (different from Cash Game — rewards speed/volume, not thrift):**
+```
+~90 seconds. Solve as many puzzles as you can.
+prize_per_solve = base × combo_mult × speed_bonus
+  combo_mult : grows with consecutive solves, DECAYS on a stall/miss
+  speed_bonus: faster solve on a puzzle → bigger prize
+wrong guess  = −time penalty (e.g. −5s), NOT an end-the-run bust
+letters      = still cost Cash (Cash Blitz), so reckless speed-buying drains you
+run ends at 0:00; you keep everything banked.
+```
+Time pressure replaces the bank/bust decision; a miss costs **seconds**, not your pot.
+
+**Streaks (two layers):**
+- **In-run combo** — consecutive quick solves build a multiplier that decays the moment
+  you stall. The heartbeat of a run.
+- **Daily Blitz streak** — played Blitz N days running → small meta bonus / its own board.
+  Kept *separate* from the Daily-puzzle streak so they don't tangle.
+
+---
+
+## 6. Power-ups — strategic sink (mode-flavored)
 
 - **Bought with Cash, consumable, per-run.** Only a rare few are earned.
-- The intended loop: **borrow → buy power-ups → gamble in the Cash Game → out-earn the
-  loan (or dig deeper).**
-- Starter set: Insurance, Double-or-Nothing, Vowel Vision, Pot Lock, Reveal (paid).
-- Priced so each is a genuine risk/reward bet, not a flat tax.
+- The intended loop: **borrow → buy power-ups → gamble → out-earn the loan (or dig deeper).**
+- **Two toolkits, by mode:**
+  - **Risk tools (Cash Game Classic):** Insurance (refund letter-spend on a bust),
+    Double-or-Nothing (2× next prize, miss busts the pot), Pot Lock (bank a % so a bust
+    can't wipe all of it), Vowel Vision (cheap vowels), Reveal (paid).
+  - **Time tools (Blitz):** +Time (add seconds), Freeze (pause the clock), Skip (drop a
+    brutal puzzle without breaking combo), Combo Shield (one miss won't reset combo),
+    Auto-Vowel (instant vowels — saves seconds).
+- Priced so each is a genuine bet, not a flat tax. Two toolkits = a richer shop and a
+  deeper "what do I buy for this run?" decision.
 
 ---
 
@@ -209,8 +255,9 @@ Its own per-round practice bankroll. No real-board ranking (optional cosmetic
 | Sign-up $1,000 | Letter-spend lost on Cash-Game busts |
 | Daily paycheck (capped) | **Loan interest** (~5%/day) |
 | Cash-Game banked pots | Cosmetics (real flex sink) |
-| Quests | Power-ups (consumable) |
-| — | Wager *losses* (player-to-player transfer, net-zero) |
+| Quests | Power-ups (consumable, incl. Blitz time-tools) |
+| Cash Blitz banked runs | Wager *losses* (player-to-player transfer, net-zero) |
+| *(Free Blitz pays $0 — anti-inflation)* | — |
 
 Watch metric: **median Net Worth growth/week.** If it runs away → enable the Cash-Game
 per-day prize soft cap and/or steepen difficulty scaling.
@@ -222,6 +269,7 @@ per-day prize soft cap and/or steepen difficulty scaling.
 - **Weekly Net-Worth Gained** — *headline*, resets weekly (newcomers compete).
 - **All-time Net Worth** — hall of fame.
 - **Daily Score** — today's shared puzzle (fair skill comparison + sharing).
+- **Blitz speed board** — most solved / best combo run (Free Blitz, no Cash).
 - **Group results cards** — per group game.
 - All rows show **Cash-on-hand + Net Worth** (+ "In the Red" flag), title/color flair.
 
@@ -236,7 +284,8 @@ per-day prize soft cap and/or steepen difficulty scaling.
 - Daily payout: efficiency formula replaces `500 × streak`.
 - Arcade → **Cash Game**: real-Cash play + pot/multiplier (was free $1,500 seed).
 - Challenges → **Hustle Your Friends** (+ groups).
-- Power-ups: shift from earned to bought/consumable.
+- Power-ups: shift from earned to bought/consumable; gain a **time-tool** category.
+- New **Blitz** timed variant (Free / Cash / PvP) reusing the existing PvP-Pressure timer.
 - Net Worth leaderboard gains a **weekly** sibling and becomes the headline.
 
 ---
@@ -252,7 +301,11 @@ per-day prize soft cap and/or steepen difficulty scaling.
   Score = paycheck + shareable, $100 floor; retire `500 × streak`. ☐
 - **Phase 4 — Cash Game.** Rename Arcade; real-Cash play; pot + multiplier press-your-
   luck; bank/bust; loan mid-game; payout tuning. ☐
-- **Phase 5 — Power-ups economy.** Buy-with-Cash, consumable, strategic set + shop. ☐
+- **Phase 5 — Power-ups economy.** Buy-with-Cash, consumable, strategic set + shop
+  (risk tools first; time tools land with Blitz). ☐
+- **Phase 5B — Blitz variant.** Timed flavor reusing the Cash Game engine + PvP timer:
+  Free Blitz (no Cash, speed board) + Cash Blitz (turbo table) + time-tool power-ups +
+  combo/Blitz-streak. ☐
 - **Phase 6 — Hustle Your Friends.** Rename Challenges; ante caps/tiers; then **Group
   challenges** (async link, friendly + pot, spoiler lock, results card). ☐
 - **Phase 7 — Free Play wall-off.** Fake money, zero economy ties. ☐
@@ -271,6 +324,8 @@ per-day prize soft cap and/or steepen difficulty scaling.
 - Power-up prices & effect magnitudes.
 - Wager tiers; weekly-board reset timing.
 - Whether to ship the bankruptcy option at launch or in v2.
+- **Blitz:** clock length (~90s?), combo-growth & decay rate, time-penalty per miss,
+  whether Free Blitz pays $0 or a tiny capped trickle.
 
 ---
 
