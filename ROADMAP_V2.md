@@ -185,7 +185,7 @@ time tools work; server rejects an over-time score.
 
 ---
 
-## Phase 8 — Leaderboards & Profile
+## Phase 8 — Leaderboards & Profile  ✅ (boards + profile; daily-placement card = tail)
 
 **Goal:** rebuild to 3 boards × Global/Group; move personal stats to a Profile page.
 **Depends on:** P4 (Climb board), P6 (Group scope).
