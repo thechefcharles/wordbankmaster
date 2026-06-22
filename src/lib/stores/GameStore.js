@@ -49,7 +49,7 @@ import { track } from '$lib/analytics.js';
  *   climbInfo?: any,
  *   matchInfo?: any,
  *   cashToast?: { amount:number, label:string } | null,
- *   dailyLive?: { spent:number, clean:boolean, no_vowels:boolean, first_try:boolean, reward:number, net:number } | null
+ *   dailyLive?: { spent:number, reward:number, net:number } | null
  * }} GameState
  */
 
