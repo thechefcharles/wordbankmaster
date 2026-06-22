@@ -1,0 +1,21 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Power-ups Slice 4: Group chat                                              ║
+-- ║  (migration: v3_slice4_group_chat)                                          ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- group_messages table (id, group_id FK groups CASCADE, user_id, body, created_at)
+-- + idx (group_id, created_at DESC). RLS enabled with NO direct policies — all
+-- access via SECURITY DEFINER RPCs keyed on auth.uid() (the app's pattern).
+--
+-- send_group_message(group_id, body): member-only; trims + caps body at 500; insert.
+-- get_group_messages(group_id, limit=60): member-only; returns the most recent N
+--   (capped 100) oldest-first as {id, name, is_me, body, at}.
+--
+-- Verified (rolled-back sim): member send ok, 2 msgs returned trimmed + ordered with
+--   is_me correct; a NON-member's send rejected ('not_member'). ✓
+--
+-- Client (/groups detail): a 💬 Chat panel — message bubbles (mine right/green,
+--   others left with name), input + Send, auto-scroll to latest. Polls every 6s
+--   while a group is open ($effect lifecycle). (Realtime is a future upgrade.)
+--
+-- THIS COMPLETES the power-up/social vision: Store inventory → use → "Sam used X"
+-- → sabotage → group chat.

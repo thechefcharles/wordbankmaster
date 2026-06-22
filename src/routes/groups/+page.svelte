@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { getMyGroups, getGroup, createGroup, joinGroup, leaveGroup } from '$lib/stores/statsStore.js';
+  import { getMyGroups, getGroup, createGroup, joinGroup, leaveGroup, getGroupMessages, sendGroupMessage } from '$lib/stores/statsStore.js';
   import { track } from '$lib/analytics.js';
 
   /** @type {any[]} */
@@ -14,6 +14,39 @@
   let joinCode = $state('');
   let msg = $state('');
   let codeCopied = $state(false);
+
+  // --- group chat ---
+  /** @type {any[]} */
+  let messages = $state([]);
+  let chatInput = $state('');
+  let chatBusy = $state(false);
+  /** @type {HTMLElement|undefined} */
+  let chatScroll = $state();
+
+  // Poll messages while a group is open.
+  $effect(() => {
+    const g = open;
+    if (!g?.id) { messages = []; return; }
+    let alive = true;
+    const tick = async () => {
+      const m = await getGroupMessages(g.id);
+      if (alive && open?.id === g.id) messages = m;
+    };
+    tick();
+    const iv = setInterval(tick, 6000);
+    return () => { alive = false; clearInterval(iv); };
+  });
+  // Keep the chat scrolled to the latest message.
+  $effect(() => { messages; if (chatScroll) chatScroll.scrollTop = chatScroll.scrollHeight; });
+
+  async function sendMessage() {
+    const body = chatInput.trim();
+    if (!body || chatBusy || !open) return;
+    chatBusy = true;
+    const res = await sendGroupMessage(open.id, body);
+    chatBusy = false;
+    if (res.ok) { chatInput = ''; messages = await getGroupMessages(open.id); }
+  }
 
   async function refresh() { groups = await getMyGroups(); }
   onMount(async () => { track('groups_view'); try { await refresh(); } finally { loading = false; } });
@@ -82,6 +115,28 @@
         </tbody>
       </table>
     </div>
+    <!-- 💬 Group chat -->
+    <div class="chat">
+      <h2 class="chat-title">💬 Chat</h2>
+      <div class="chat-msgs" bind:this={chatScroll}>
+        {#if messages.length}
+          {#each messages as m}
+            <div class="cmsg" class:mine={m.is_me}>
+              {#if !m.is_me}<span class="cm-name">{m.name}</span>{/if}
+              <span class="cm-body">{m.body}</span>
+            </div>
+          {/each}
+        {:else}
+          <p class="chat-empty">No messages yet — say hi 👋</p>
+        {/if}
+      </div>
+      <div class="g-row chat-input-row">
+        <input class="g-input" placeholder="Message…" bind:value={chatInput} maxlength="500"
+          onkeydown={(e) => { if (e.key === 'Enter') sendMessage(); }} />
+        <button class="g-btn" onclick={sendMessage} disabled={chatBusy || !chatInput.trim()}>Send</button>
+      </div>
+    </div>
+
     <button class="leave-btn" onclick={leave} disabled={busy}>Leave group</button>
   {:else}
     <button class="back-btn" onclick={() => goto('/')}>← Menu</button>
@@ -156,4 +211,20 @@
   .nw-title { font-size: 0.7rem; color: var(--text-faint); margin-left: 0.4rem; white-space: nowrap; }
   .leave-btn { margin-top: 1.2rem; padding: 0.6rem 1.2rem; border: 1px solid rgba(251,113,133,0.4); border-radius: 12px; background: transparent; color: #fb7185; cursor: pointer; font-weight: 600; font-size: 0.85rem; }
   .leave-btn:disabled { opacity: 0.5; }
+  /* group chat */
+  .chat { margin-top: 1.6rem; }
+  .chat-title { font-family: var(--font-display); font-size: 1.05rem; margin: 0 0 0.6rem; }
+  .chat-msgs {
+    display: flex; flex-direction: column; gap: 6px; height: 260px; overflow-y: auto;
+    padding: 0.8rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface);
+  }
+  .chat-empty { color: var(--text-faint); font-size: 0.85rem; text-align: center; margin: auto; }
+  .cmsg {
+    max-width: 80%; align-self: flex-start; display: flex; flex-direction: column; gap: 1px;
+    padding: 0.45rem 0.7rem; border-radius: 12px; background: var(--surface-2, rgba(255,255,255,0.05)); border: 1px solid var(--border);
+  }
+  .cmsg.mine { align-self: flex-end; background: rgba(163,230,53,0.12); border-color: rgba(163,230,53,0.3); }
+  .cm-name { font-size: 0.66rem; font-weight: 700; color: var(--brand-2); }
+  .cm-body { font-size: 0.88rem; color: var(--text); word-break: break-word; }
+  .chat-input-row { margin-top: 0.6rem; }
 </style>
