@@ -1,0 +1,13 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Arcade per-run seed (migration: arcade_per_run_seed)                       ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Bug: every arcade run/restart began on the SAME puzzle all day. The ladder was
+-- ordered by md5(CURRENT_DATE || id), which is constant within a day, so
+-- _arcade_puzzle_at(0) always returned the same first puzzle.
+--
+-- Fix: arcade_runs gains a per-run `seed` (gen_random_uuid()), set fresh on each
+-- start AND restart. _arcade_puzzle_at(position, seed) now orders by
+-- md5(seed || id) — stable within a run, different across runs. arcade_next passes
+-- r.seed so the in-run sequence stays consistent.
+--
+-- (Legacy Arcade; folds into the Cash Game puzzle selection in ECONOMY_V2 Phase 4.)

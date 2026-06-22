@@ -264,14 +264,40 @@ per-day prize soft cap and/or steepen difficulty scaling.
 
 ---
 
-## 10. Leaderboards
+## 10. Leaderboards (radically simplified)
 
-- **Weekly Net-Worth Gained** — *headline*, resets weekly (newcomers compete).
-- **All-time Net Worth** — hall of fame.
-- **Daily Score** — today's shared puzzle (fair skill comparison + sharing).
-- **Blitz speed board** — most solved / best combo run (Free Blitz, no Cash).
-- **Group results cards** — per group game.
-- All rows show **Cash-on-hand + Net Worth** (+ "In the Red" flag), title/color flair.
+**Problem today:** the board conflates *rankings* with *personal stats*, then
+multiplies them — Daily alone has 4 periods × 6 sorts = 24 views, plus a separate
+Arcade board, plus Friends, plus Net Worth. No single "the number."
+
+**Principle:** one headline metric (Net Worth), **rankings only** (personal stats move
+to your profile), **Friends is a toggle not a tab**, minimal time scopes, **no sort menu**.
+
+**Structure — one screen, 3 boards, 2 toggles:**
+- Board selector (each a *single* metric, no sort options):
+  1. **💰 Wealth** *(default)* — Net Worth ranking. Sub-toggle **This Week** (net-worth
+     *gained*, default — fair to newcomers) / **All-Time** (hall of fame).
+  2. **📅 Daily** — today's shared-puzzle score, ranked. Resets daily ("beat my daily").
+  3. **⚡ Blitz** — best speed run (ships with Blitz; Free Blitz, no Cash).
+- **Friends / Global** toggle applies to all (default **Friends**).
+- **Default landing:** Wealth · This Week · Friends.
+- Every row: rank · name + title/color flair · the board's metric · subtle
+  **Cash-on-hand + 🔴 "In the Red"** marker (so leverage is visible).
+
+**Moved OFF the board → Profile/Stats page:** current streak, longest streak, win %,
+puzzles solved, games played. These are *personal achievements, not rankings* — they
+belong on your profile and feed badges. Removing them kills ~80% of the clutter.
+
+**Removed entirely:** the separate **Arcade board** (Cash-Game success now shows up as
+Net Worth), the **monthly/yearly** periods, the **6-way sort menu**.
+
+**Contextual daily placement:** right after finishing the daily, show *"You placed #3
+among friends today 🥉"* + a share button — the social payoff at the moment it's earned,
+so most players never need to open the leaderboard. Group-challenge results stay as their
+own shareable cards (not in the main board).
+
+Net: from ~24+ views down to **3 boards × Friends/Global (× Week/All-Time on Wealth)** —
+a handful, each crystal clear.
 
 ---
 
@@ -286,7 +312,9 @@ per-day prize soft cap and/or steepen difficulty scaling.
 - Challenges → **Hustle Your Friends** (+ groups).
 - Power-ups: shift from earned to bought/consumable; gain a **time-tool** category.
 - New **Blitz** timed variant (Free / Cash / PvP) reusing the existing PvP-Pressure timer.
-- Net Worth leaderboard gains a **weekly** sibling and becomes the headline.
+- Net Worth leaderboard gains a **weekly** sibling and becomes the headline; the
+  separate Arcade board is removed and **personal stats move to a Profile page**
+  (the leaderboard becomes rankings-only — see §10).
 
 ---
 
@@ -309,8 +337,10 @@ per-day prize soft cap and/or steepen difficulty scaling.
 - **Phase 6 — Hustle Your Friends.** Rename Challenges; ante caps/tiers; then **Group
   challenges** (async link, friendly + pot, spoiler lock, results card). ☐
 - **Phase 7 — Free Play wall-off.** Fake money, zero economy ties. ☐
-- **Phase 8 — Leaderboards.** Weekly Net-Worth-gained (headline) + all-time + daily
-  score + group cards; Cash/Net-Worth/In-the-Red on every row. ☐
+- **Phase 8 — Leaderboards rebuild.** Gut to 3 boards (Wealth / Daily / Blitz) × a
+  Friends/Global toggle; Wealth defaults to This-Week-gained. Move personal stats to a
+  new **Profile/Stats** page; remove the Arcade board, periods, and sort menu; add
+  contextual daily-placement after the daily. ☐
 - **Phase 9 — Balance & polish.** Bankruptcy option, anti-inflation telemetry + soft
   caps, full tuning pass, legal-copy review. ☐
 
