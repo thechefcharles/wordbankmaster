@@ -1,0 +1,22 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  v3 R7: Cutover — refreshed tutorial + one-time reset to $2,000             ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Seventh slice of WORDBANK_MASTER_V3.md. Makes the rebuilt economy coherent for
+-- players and does the balance reset that was deliberately deferred from R1.
+--
+-- ONE-TIME RESET (run via execute_sql, not a tracked migration — a data op):
+--   UPDATE profiles SET bank = 2000, loan = 0;   -- everyone starts the v3 economy
+--                                                 -- at $2,000 (Net Worth = Cash)
+--   + a delta-0 'v3_reset' bank_ledger marker for users who already had a balance.
+--   Result: 33/33 profiles at exactly $2,000. (loan column is orphaned since R1;
+--   zeroed here for cleanliness.) Light reset — climb position, streaks, badges,
+--   and challenge history are all KEPT.
+--
+-- TUTORIAL (client): fully rewritten for v3 — 6 slides: spend-less/think-more,
+--   buy letters + free unlimited guesses, Cash IS your score (start $2,000, no
+--   loans), Daily paycheck + attendance, Climb & Challenges (wager = budget,
+--   lowest spend wins), Free Play safety net. TUTORIAL_KEY bumped
+--   wb_tutorial_v2 → wb_tutorial_v3 so it re-shows for everyone on next load.
+--
+-- No new functions. Remaining after R7: R8 tuning (playtest data), and the
+-- deferred tails (R6b Free Play earned power-ups, match power-ups, dead-code cleanup).
