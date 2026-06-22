@@ -22,12 +22,16 @@
   function reasonLabel(reason) {
     return ({
       quest_reward: 'Daily quests reward',
-      daily_win: 'Daily win bonus',
+      daily_win: 'Daily reward',
       loan_payment: 'Loan payment',
-      arcade_cashout: 'Arcade cash-out',
+      loan_taken: 'Loan taken',
+      loan_interest: 'Loan interest',
+      arcade_cashout: 'Cash Game cash-out',
+      cosmetic_buy: 'Shop purchase',
       wager_win: 'Won a wager',
       wager_stake: 'Wager staked',
-      interest: 'Bank interest'
+      wager_refund: 'Wager refunded',
+      interest: 'Loan interest'
     })[reason] || reason;
   }
 
@@ -42,7 +46,7 @@
   }
 </script>
 
-<svelte:head><title>WordBank — Your Bank</title></svelte:head>
+<svelte:head><title>WordBank — Cash & Net Worth</title></svelte:head>
 
 <main class="bank-page">
   <button class="back-btn" on:click={() => goto('/')}>← Menu</button>
@@ -52,15 +56,16 @@
   {:else if b}
     <p class="nw-label">Net Worth</p>
     <div class="net-worth" class:neg={b.net_worth < 0}>{fmt(b.net_worth)}</div>
+    <p class="nw-sub">Cash on hand minus what you owe</p>
 
     <div class="stat-row">
-      <div class="stat"><span class="sv">{fmt(b.bank)}</span><span class="sc">Bank</span></div>
+      <div class="stat"><span class="sv">{fmt(b.bank)}</span><span class="sc">Cash on hand</span></div>
       <div class="stat loan"><span class="sv">{fmt(b.loan)}</span><span class="sc">Loan owed</span></div>
     </div>
 
     {#if b.loan > 0}
       <div class="loan-box">
-        <p class="loan-copy">The House fronted you <strong>$5,000</strong> to get started. Pay it back to go debt-free — everything after is pure profit.</p>
+        <p class="loan-copy">You owe the House <strong>{fmt(b.loan)}</strong>. Interest accrues until it's paid — clear it to go debt-free and grow your Net Worth.</p>
         <div class="pay-row">
           <input class="amt" type="number" min="1" placeholder="Amount" bind:value={repayAmt} />
           <button class="pay-btn" disabled={busy} on:click={() => payLoan(Math.floor(Number(repayAmt) || 0))}>Pay</button>
@@ -68,12 +73,12 @@
         </div>
       </div>
     {:else}
-      <div class="debt-free">🎉 Debt-free! Your Bank is all yours.</div>
+      <div class="debt-free">🎉 Debt-free! Your Cash is all yours.</div>
     {/if}
 
     <h2 class="hist-title">Recent activity</h2>
     {#if b.ledger.length === 0}
-      <p class="empty">No transactions yet. Win the Daily, finish quests, or cash out an Arcade run to grow your Bank.</p>
+      <p class="empty">No transactions yet. Win the Daily, finish quests, or cash out a Cash Game run to grow your Cash.</p>
     {:else}
       <div class="ledger">
         {#each b.ledger as e}
@@ -85,7 +90,7 @@
       </div>
     {/if}
 
-    <p class="hint">Your Bank is in-game money — earn it by playing, spend it on wagers and (soon) power-ups &amp; cosmetics. It can't be bought or cashed out.</p>
+    <p class="hint">Cash is in-game money — earn it by playing, risk it in the Cash Game, wager friends, and spend it on power-ups &amp; cosmetics. It can't be bought with real money or cashed out.</p>
   {/if}
 </main>
 
@@ -99,7 +104,8 @@
   .loading { color: var(--text-muted); padding: 2rem; }
   .nw-label { color: var(--text-faint); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 0.5rem 0 0; }
   .net-worth { font-family: var(--font-display); font-weight: 800; font-size: 3rem; line-height: 1.1; color: var(--brand-2); }
-  .net-worth.neg { color: var(--text-muted); }
+  .net-worth.neg { color: #fb7185; }
+  .nw-sub { color: var(--text-faint); font-size: 0.78rem; margin: 0.2rem 0 0; }
 
   .stat-row { display: flex; justify-content: center; gap: 0.6rem; margin: 1.2rem 0 0; }
   .stat { flex: 1; max-width: 160px; display: flex; flex-direction: column; gap: 3px; padding: 0.8rem 0.5rem;
