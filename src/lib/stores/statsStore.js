@@ -362,6 +362,50 @@ export async function makeupBuyLetter(date, letter) {
   if (error) { console.error('❌ makeup_buy_letter error:', error); return null; }
   return data;
 }
+
+/* ===== Cash Game / the Climb (real-Cash forward-only climb) ===== */
+/** @returns {Promise<any>} */
+export async function climbStart() {
+  const { data, error } = await supabase.rpc('climb_start');
+  if (error) { console.error('❌ climb_start:', error); return null; }
+  return data;
+}
+/** @param {string} letter @returns {Promise<any>} */
+export async function climbBuyLetter(letter) {
+  const { data, error } = await supabase.rpc('climb_buy_letter', { p_letter: letter });
+  if (error) { console.error('❌ climb_buy_letter:', error); return null; }
+  return data;
+}
+/** @returns {Promise<any>} */
+export async function climbReveal() {
+  const { data, error } = await supabase.rpc('climb_reveal');
+  if (error) { console.error('❌ climb_reveal:', error); return null; }
+  return data;
+}
+/** @param {Record<string,string>} guess @returns {Promise<any>} */
+export async function climbSubmitGuess(guess) {
+  const { data, error } = await supabase.rpc('climb_submit_guess', { p_guess: guess });
+  if (error) { console.error('❌ climb_submit_guess:', error); return null; }
+  return data;
+}
+/** @returns {Promise<any>} */
+export async function climbNext() {
+  const { data, error } = await supabase.rpc('climb_next');
+  if (error) { console.error('❌ climb_next:', error); return null; }
+  return data;
+}
+/** @returns {Promise<any>} */
+export async function climbLeave() {
+  const { data, error } = await supabase.rpc('climb_leave');
+  if (error) { console.error('❌ climb_leave:', error); return null; }
+  return data;
+}
+/** @param {'friends'|'global'} scope @returns {Promise<any[]>} */
+export async function getClimbLeaderboard(scope = 'friends') {
+  const { data, error } = await supabase.rpc('get_climb_leaderboard', { p_scope: scope });
+  if (error) { console.error('❌ get_climb_leaderboard:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
 /** @param {string} date @returns {Promise<any>} */
 export async function makeupReveal(date) {
   const { data, error } = await supabase.rpc('makeup_reveal', { p_date: date });

@@ -8,6 +8,7 @@ import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNe
 import { freeplayStart, freeplayNext, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
 import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
 import { makeupStart, makeupBuyLetter, makeupReveal, makeupSubmitGuess } from '$lib/stores/statsStore.js';
+import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, takeLoan } from '$lib/stores/statsStore.js';
 import { track } from '$lib/analytics.js';
 
 /* ================================
@@ -43,7 +44,8 @@ import { track } from '$lib/analytics.js';
  *   clue?: string | null,
  *   challengeInfo?: any,
  *   makeupDate?: string | null,
- *   dailyResult?: any
+ *   dailyResult?: any,
+ *   climbInfo?: any
  * }} GameState
  */
 
@@ -82,7 +84,8 @@ export const gameStore = writable(/** @type {GameState} */ ({
   modifier: null, // today's shared Daily Modifier id (daily only)
   clue: null, // witty one-line hint for the current puzzle
   challengeInfo: null, // { mode, started_at, limit_seconds, play_state, score } for the active challenge
-  makeupDate: null // YYYY-MM-DD of the make-up day being played (makeup mode only)
+  makeupDate: null, // YYYY-MM-DD of the make-up day being played (makeup mode only)
+  climbInfo: null // { bounty, heat, attempts, spent, position, stuck, last_gain, state } (climb mode)
 }));
 
 /* ================================
@@ -564,6 +567,103 @@ async function submitGuessMakeup(state) {
   }
 }
 
+/* ===== Cash Game / the Climb (real-Cash, fluid, par/bounty + heat) ===== */
+/** @param {any} board */
+function reconcileClimbBoard(board) {
+  if (!board) return;
+  const prev = get(gameStore);
+  const climb = board.climb || {};
+  // 'solved' shows a win beat (then climbAdvance); 'complete' = reached the top.
+  const solved = climb.state === 'solved';
+  gameStore.set(/** @type {GameState} */ ({
+    ...prev, ...boardToState(board, prev),
+    gameMode: 'climb',
+    gameState: solved ? 'won' : 'default',
+    modifier: null, arcadeRun: null,
+    climbInfo: climb
+  }));
+  if (solved) { setTimeout(() => launchConfetti(), 250); fx('win'); }
+  else playMoveCue(prev, board);
+}
+
+/** Start or resume the Climb. @returns {Promise<boolean>} */
+export async function fetchClimbGame() {
+  try {
+    track('climb_start');
+    const board = await climbStart();
+    if (!board) return false;
+    reconcileClimbBoard(board);
+    return true;
+  } catch (err) {
+    console.error('❌ Error starting climb:', err instanceof Error ? err.message : String(err));
+    return false;
+  }
+}
+
+/** @param {GameState} state */
+async function confirmPurchaseClimb(state) {
+  const purchase = state.selectedPurchase;
+  if (!purchase || dailyInFlight) return;
+  dailyInFlight = true;
+  try {
+    let board = null;
+    if (purchase.type === 'letter') board = await climbBuyLetter(purchase.value ?? '');
+    else if (purchase.type === 'hint') board = await climbReveal();
+    if (board) reconcileClimbBoard(board);
+    else gameStore.update(s => ({ ...s, selectedPurchase: null, gameState: 'default' }));
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
+/** @param {GameState} state */
+async function submitGuessClimb(state) {
+  if (state.gameState !== 'guess_mode' || dailyInFlight) return;
+  /** @type {Record<string, string>} */
+  const guess = {};
+  for (const [k, v] of Object.entries(state.guessedLetters || {})) guess[k] = /** @type {string} */ (v);
+  if (Object.keys(guess).length === 0) return;
+  dailyInFlight = true;
+  try {
+    const board = await climbSubmitGuess(guess);
+    if (board) reconcileClimbBoard(board);
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
+/** Advance to the next climb puzzle after a solve. */
+export async function climbAdvance() {
+  if (dailyInFlight) return;
+  dailyInFlight = true;
+  try {
+    const board = await climbNext();
+    if (board) reconcileClimbBoard(board);
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
+/** Leave the Cash Game (clears heat; position + Cash persist). */
+export async function climbLeaveGame() {
+  try { await climbLeave(); } catch { /* non-fatal */ }
+}
+
+/** Borrow mid-climb, then refresh the board with the new Cash. @param {number} amount */
+export async function climbBorrow(amount) {
+  if (dailyInFlight) return;
+  dailyInFlight = true;
+  try {
+    const res = await takeLoan(Math.floor(amount || 0));
+    if (res && res.ok !== false) {
+      const board = await climbStart(); // returns the board with updated Cash
+      if (board) reconcileClimbBoard(board);
+    }
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
 /** Spend an earned power-up during the current arcade run. @param {string} powerup */
 export async function useArcadePowerup(powerup) {
   if (dailyInFlight) return;
@@ -722,6 +822,7 @@ export function confirmPurchase() {
   else if (current.gameMode === 'freeplay') confirmPurchaseFreeplay(current);
   else if (current.gameMode === 'challenge') confirmPurchaseChallenge(current);
   else if (current.gameMode === 'makeup') confirmPurchaseMakeup(current);
+  else if (current.gameMode === 'climb') confirmPurchaseClimb(current);
 }
 /* ================================
    Guess Mode Functions
@@ -824,6 +925,7 @@ export function submitGuess() {
   else if (current.gameMode === 'freeplay') submitGuessFreeplay(current);
   else if (current.gameMode === 'challenge') submitGuessChallenge(current);
   else if (current.gameMode === 'makeup') submitGuessMakeup(current);
+  else if (current.gameMode === 'climb') submitGuessClimb(current);
 }
 /* ================================
    Puzzle Fetch Functions

@@ -4,7 +4,7 @@
   import { supabase } from '$lib/supabaseClient';
   import { get } from 'svelte/store';
 
-  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbBorrow } from '$lib/stores/GameStore.js';
   import { getMyChallenges } from '$lib/stores/statsStore.js';
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
@@ -174,6 +174,8 @@
       showMainMenu = true;
     } else if (gameMode === 'makeup') {
       fetchMakeupGame().then((ok) => { if (!ok) showMainMenu = true; });
+    } else if (gameMode === 'climb') {
+      fetchClimbGame().then((ok) => { if (!ok) showMainMenu = true; });
     } else {
       fetchDailyGame().then((ok) => {
         if (!ok) initError = "Daily puzzle failed to load.";
@@ -238,7 +240,17 @@
   $: isFreeplay = $gameStore.gameMode === 'freeplay';
   $: isChallenge = $gameStore.gameMode === 'challenge';
   $: isMakeup = $gameStore.gameMode === 'makeup';
+  $: isClimb = $gameStore.gameMode === 'climb';
+  $: climb = $gameStore.climbInfo; // { bounty, heat, attempts, spent, position, stuck, last_gain, state }
+  $: climbHeat = ((climb?.heat ?? 100) / 100).toFixed(1);
   $: dr = $gameStore.dailyResult; // { score, clean, no_vowels, first_try, no_reveals }
+  let climbBorrowing = false;
+  async function handleClimbBorrow() {
+    if (climbBorrowing) return;
+    climbBorrowing = true;
+    // Borrow roughly enough to afford a couple of letters / get unstuck.
+    try { await climbBorrow(500); } finally { climbBorrowing = false; }
+  }
   $: makeupLabel = (() => {
     const d = $gameStore.makeupDate;
     if (!d) return '';
@@ -381,18 +393,17 @@
   // Today's shared Daily Modifier banner (id lives in the game store, set by fetchDailyGame).
   $: dailyMod = ($gameStore.gameMode === 'daily' && $gameStore.modifier) ? modifierInfo($gameStore.modifier) : null;
 
-  /** Start or resume today's server-authoritative arcade gauntlet run. */
-  async function handleMenuArcade() {
+  /** Start or resume the Cash Game (the persistent real-Cash Climb). */
+  async function handleMenuClimb() {
     const currentUser = get(user);
     if (!currentUser?.id) return;
-    // Arcade is now the server-authoritative Press-Your-Luck gauntlet (start/resume today's run).
-    localStorage.setItem('gameMode', 'arcade');
-    const ok = await fetchArcadeGame();
+    localStorage.setItem('gameMode', 'climb');
+    const ok = await fetchClimbGame();
     if (ok) {
       hasInitialized = true;
       showMainMenu = false;
     } else {
-      initError = 'Arcade failed to load.';
+      initError = 'Cash Game failed to load.';
     }
   }
 
@@ -530,6 +541,11 @@
     if ($gameStore.gameMode === 'makeup') {
       localStorage.setItem('gameMode', 'daily');
       localStorage.removeItem('makeupDate');
+    }
+    // Leaving the Cash Game clears heat (position + Cash persist server-side).
+    if ($gameStore.gameMode === 'climb') {
+      climbLeaveGame();
+      localStorage.setItem('gameMode', 'daily');
     }
     saveGameToLocalStorage();
     savedGameInfo = getSavedGameInfo(currentUser.id);
@@ -716,11 +732,11 @@
           </span>
           <span class="mc-arrow">{#if questProgress.all_done && !questProgress.reward_claimed}🎁{:else}→{/if}</span>
         </button>
-        <button class="menu-card" style="--i: 2" on:click={handleMenuArcade}>
-          <span class="mc-icon">🕹️</span>
+        <button class="menu-card" style="--i: 2" on:click={handleMenuClimb}>
+          <span class="mc-icon">🎰</span>
           <span class="mc-body">
-            <span class="mc-title">{#if savedGameInfo?.gameMode === 'arcade' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost'}Resume Arcade{:else}Arcade Mode{/if}</span>
-            <span class="mc-sub">Unlimited · build your bankroll</span>
+            <span class="mc-title">Cash Game</span>
+            <span class="mc-sub">Climb the ladder · risk real Cash</span>
           </span>
           <span class="mc-arrow">→</span>
         </button>
@@ -1002,6 +1018,24 @@
       </div>
     {/if}
 
+    <!-- 🎰 Cash Game (Climb) HUD -->
+    {#if isClimb && climb}
+      <div class="climb-hud">
+        <div class="ch-cell"><span class="ch-val">#{climb.position}</span><span class="ch-label">Climb</span></div>
+        <div class="ch-cell"><span class="ch-val ch-gold">${(climb.bounty ?? 0).toLocaleString()}</span><span class="ch-label">Bounty</span></div>
+        <div class="ch-cell" class:hot={(climb.heat ?? 100) > 100}><span class="ch-val">×{climbHeat}</span><span class="ch-label">Heat</span></div>
+      </div>
+      {#if climb.stuck && $gameStore.gameState !== 'won'}
+        <div class="climb-stuck">
+          <span class="cs-text">Out of guesses &amp; Cash — borrow to finish, or leave.</span>
+          <div class="cs-actions">
+            <button class="cs-borrow" on:click={handleClimbBorrow} disabled={climbBorrowing}>💵 Borrow $500</button>
+            <button class="cs-leave" on:click={goToMainMenu}>Leave</button>
+          </div>
+        </div>
+      {/if}
+    {/if}
+
     <!-- 🌍 Category + witty clue -->
     <div class="puzzle-meta">
       {#if $gameStore.category}<span class="category-chip">{$gameStore.category}</span>{/if}
@@ -1113,6 +1147,16 @@
             <div class="result-actions">
               <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
               <button class="next-puzzle-button" on:click={goToDailyLeaderboard}>Leaderboard</button>
+            </div>
+          {:else if isClimb}
+            <!-- Cash Game solve → advance up the Climb -->
+            <div class="result-medal">🎰</div>
+            <h2>Solved! +${(climb?.last_gain ?? 0).toLocaleString()}</h2>
+            <p class="result-sub">{$gameStore.currentPhrase}</p>
+            <p class="arcade-gain">Climb #{climb?.position} · Heat ×{climbHeat}{#if (climb?.heat ?? 100) >= 200} 🔥 maxed{/if}</p>
+            <div class="result-actions">
+              <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Leave</button>
+              <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; climbAdvance(); }}>Next →</button>
             </div>
           {:else if isFreeplay}
             <!-- Free Play transition (unranked) -->
@@ -1285,6 +1329,26 @@
   .ah-mult .ah-val { color: var(--brand-2); }
   .ah-gold { color: #fcd34d; }
   .ah-label { font-size: 0.55rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
+  /* Cash Game (Climb) HUD */
+  .climb-hud { display: flex; gap: 8px; width: 100%; max-width: 360px; margin: 0 auto 12px; }
+  .ch-cell {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md, 12px);
+  }
+  .ch-cell.hot { border-color: rgba(251,191,36,0.5); background: linear-gradient(135deg, rgba(251,191,36,0.14), rgba(251,191,36,0.04)); }
+  .ch-val { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; color: var(--text); font-variant-numeric: tabular-nums; }
+  .ch-cell.hot .ch-val { color: #fbbf24; }
+  .ch-gold { color: #fcd34d; }
+  .ch-label { font-size: 0.55rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
+  .climb-stuck {
+    display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 360px; margin: 0 auto 12px; padding: 0.8rem;
+    border: 1px solid rgba(248,113,113,0.45); border-radius: 14px; background: rgba(248,113,113,0.08); text-align: center;
+  }
+  .cs-text { font-size: 0.82rem; color: #fca5a5; }
+  .cs-actions { display: flex; gap: 8px; justify-content: center; }
+  .cs-borrow { padding: 0.5rem 1rem; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; color: #06210f; background: linear-gradient(135deg,#fbbf24,#f59e0b); }
+  .cs-borrow:disabled { opacity: 0.5; }
+  .cs-leave { padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-weight: 700; color: var(--text-muted); background: transparent; }
   .arcade-gain { font-family: var(--font-display); font-weight: 700; color: var(--brand-2); margin: -8px 0 14px; font-size: 1rem; }
   .arcade-earn {
     font-family: var(--font-display); font-weight: 700; font-size: 0.95rem;
