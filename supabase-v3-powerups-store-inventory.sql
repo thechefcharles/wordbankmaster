@@ -1,0 +1,28 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Power-ups v2: store-bought inventory, used free on puzzles                 ║
+-- ║  (migration: v3_powerups_store_inventory — applied via MCP)                 ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- New model (supersedes R5's buy-and-equip-on-puzzle): power-ups live in the STORE.
+-- You buy them ahead with Cash into an inventory (one of each), carry them, and use
+-- them from the inventory on a puzzle FOR FREE (the store price is the cost). The
+-- economics are identical to R5's "counts as spend" — the cost just moves to the
+-- store. Decisions: Daily stays power-up-free; Challenges get a host toggle (future
+-- slice); used-in-group notifies the group (future slice); sabotage + chat (future).
+--
+-- buy_powerup: one-of-each cap (reject 'owned' if you already hold 1); deduct Cash;
+--   grant to user_powerups_v2 'cash' pool. (price from active powerups only.)
+-- get_powerups: returns each active item + how many you OWN (cash pool).
+-- climb_use_powerup: CONSUME one from inventory (qty−1) and apply the effect — FREE
+--   (no Cash charge), NOT counted as spend, NO pre-commit lock (use anytime). Still
+--   one-of-each effect per puzzle (active_powerups). climb_state.pups_locked is now
+--   unused (left in place, harmless).
+--
+-- Verified (rolled-back sim, Chef): buy −$80 / owned 1; 2nd buy → reason 'owned';
+--   use → free (bank unchanged), owned 0, spent 0 (not counted), letter revealed.
+--
+-- Client: Shop (/shop) has a "⚡ Power-ups" section (buy, one-of-each, "in your bag").
+--   Climb tray now shows OWNED items (×N), tap to use; unowned dimmed; used = ✓; no
+--   buying on the puzzle screen. (Removed the old pre-commit/cost-as-spend tray.)
+--
+-- NEXT SLICES: challenge host toggle + match_use_powerup + group "Sam used X" notify;
+--   sabotage power-ups; group chat.

@@ -1,21 +1,41 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { getShop, buyCosmetic, equipCosmetic, unequipCosmetic } from '$lib/stores/statsStore.js';
+  import { getShop, buyCosmetic, equipCosmetic, unequipCosmetic, getPowerups, buyPowerup } from '$lib/stores/statsStore.js';
   import { track } from '$lib/analytics.js';
   import { fx } from '$lib/sound.js';
 
   let bank = $state(0);
   /** @type {any[]} */
   let items = $state([]);
+  /** @type {any[]} */
+  let pups = $state([]);
   let loading = $state(true);
   let busy = $state('');
   let msg = $state('');
 
+  const PUP_META = /** @type {Record<string,{icon:string,desc:string}>} */ ({
+    free_reveal:  { icon: '🔍', desc: 'Reveal the most useful letter' },
+    half_off:     { icon: '🏷️', desc: 'Letters cost 50% less this puzzle' },
+    vowel_vision: { icon: '👁️', desc: 'Reveal every vowel' },
+    extra_hint:   { icon: '💡', desc: 'Reveal the first letter of each word' }
+  });
+
   async function load() {
-    const shop = await getShop();
+    const [shop, pu] = await Promise.all([getShop(), getPowerups()]);
     bank = shop.bank;
     items = shop.items;
+    pups = (pu.items || []).filter((/** @type {any} */ i) => i.kind === 'climb');
+  }
+
+  /** @param {any} item */
+  async function buyPup(item) {
+    if (busy) return;
+    busy = item.id; msg = '';
+    const res = await buyPowerup(item.id);
+    busy = '';
+    if (res?.ok) { fx('win'); track('powerup_buy', { id: item.id }); await load(); }
+    else { msg = res?.reason === 'insufficient' ? 'Not enough Cash.' : res?.reason === 'owned' ? 'You already own one — use it first.' : 'Could not buy that.'; }
   }
   onMount(async () => {
     track('shop_view');
@@ -53,12 +73,31 @@
     <h1>🛍️ Shop</h1>
     <span class="bank-chip">💰 ${bank.toLocaleString()}</span>
   </div>
-  <p class="sub">Spend your Cash on titles &amp; name colors — pure flair, shows on the leaderboards. No pay-to-win.</p>
+  <p class="sub">Stock up on power-ups to bring into the Cash Game &amp; challenges, and spend on flair. Cosmetics are pure show — no pay-to-win.</p>
 
   {#if loading}
     <p class="loading">Loading…</p>
   {:else}
     {#if msg}<p class="msg">{msg}</p>{/if}
+
+    <h2 class="section">⚡ Power-ups</h2>
+    <p class="section-note">Carry one of each. Bring them to the Cash Game or a challenge and use them whenever you like — the Daily stays power-up-free.</p>
+    <div class="grid">
+      {#each pups as item}
+        <div class="card pup" class:owned={item.owned > 0}>
+          <span class="pup-ic">{PUP_META[item.id]?.icon ?? '✨'}</span>
+          <span class="c-label">{item.name}</span>
+          <span class="pup-desc">{PUP_META[item.id]?.desc ?? ''}</span>
+          {#if item.owned > 0}
+            <button class="c-btn equip on" disabled>✓ In your bag</button>
+          {:else}
+            <button class="c-btn buy" disabled={busy === item.id || bank < item.price} onclick={() => buyPup(item)}>
+              💰 ${item.price.toLocaleString()}
+            </button>
+          {/if}
+        </div>
+      {/each}
+    </div>
 
     <h2 class="section">Titles</h2>
     <div class="grid">
@@ -111,7 +150,12 @@
   .sub { color: var(--text-muted); font-size: 0.9rem; margin: 0.2rem 0 1.4rem; }
   .loading { color: var(--text-muted); padding: 2rem; text-align: center; }
   .msg { text-align: center; color: #f87171; font-size: 0.88rem; margin: 0 0 1rem; }
-  .section { font-family: var(--font-display); font-size: 1.05rem; margin: 1.4rem 0 0.7rem; }
+  .section { font-family: var(--font-display); font-size: 1.05rem; margin: 1.4rem 0 0.4rem; }
+  .section-note { font-size: 0.76rem; color: var(--text-faint); margin: 0 0 0.8rem; }
+  .card.pup { align-items: center; text-align: center; gap: 0.3rem; }
+  .pup-ic { font-size: 1.7rem; line-height: 1; }
+  .pup-desc { font-size: 0.72rem; color: var(--text-muted); line-height: 1.3; min-height: 2.1em; }
+  .card.pup .c-btn { margin-top: 0.3rem; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
   .card {
     display: flex; flex-direction: column; gap: 0.6rem; align-items: flex-start;

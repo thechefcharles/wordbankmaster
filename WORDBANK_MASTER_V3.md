@@ -173,15 +173,19 @@ spend stays the real skill**, while you're never locked out by a guess cap.
 
 ## 6. Power-ups
 
-**Universal rules (v3):**
-- **One of each, max.** A loadout, not a stockpile.
-- **Pre-committed before the puzzle is revealed** — applied to the *next* puzzle. No
-  reactive panic-buying / mid-puzzle escape hatches. A power-up is a *strategic pre-bet.*
-- **Cost counts toward your spend.** A power-up only helps if it saves you *more than it
-  costs* — so buying them is itself a skill bet, and a rich player who buys them all just
-  spends more and **loses the efficiency race.** This is the anti-pay-to-win lock.
-- Every power-up must **reduce your spend** or **give free info** (i.e., serve the
-  efficiency objective). Nothing else.
+**Universal rules (v3 — STORE-INVENTORY model, supersedes the earlier pre-commit model):**
+- **Bought in the STORE only** (never on the puzzle screen). Buy ahead with Cash, carry an
+  inventory, bring them to games. The **store price IS the cost** — using one is free
+  (economically identical to the old "counts as spend", just paid up front).
+- **One of each, max.** Hold ≤1 of each; after you use one, re-buy it. Consumed on use.
+- **Used on the puzzle from your inventory** — a small "your items" tray, *use anytime*
+  (no pre-commit lock; you already paid in the store). One of each *effect* per puzzle.
+- Every power-up either **reduces your spend** or **gives free info.**
+- **Where they're allowed:** ✅ Cash Game (Climb), ✅ Challenges *if the host toggles items
+  on*. ❌ **Daily stays power-up-free** (the one shared, identical fair-fight; only the
+  shared daily Modifier applies). This keeps the per-puzzle leaderboards honest.
+- **Social layer (group games):** using a power-up notifies the group ("Sam used X").
+  Future: **sabotage** power-ups (target an opponent) and **group chat.**
 
 ### Cash catalog (bought with Cash; in Cash Game / Challenges)
 | Power-up | Effect | Serves objective by |

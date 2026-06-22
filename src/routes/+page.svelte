@@ -307,9 +307,8 @@
   }
   /** @param {any} item */
   async function handleClimbPup(item) {
-    const cash = $gameStore.bankroll ?? 0;
-    const equipped = (climb?.equipped ?? []).includes(item.id);
-    if (climb?.pups_locked || equipped || cash < item.price) return;
+    const usedThisPuzzle = (climb?.equipped ?? []).includes(item.id);
+    if ((item.owned ?? 0) <= 0 || usedThisPuzzle) return;  // must own one, can't reuse this puzzle
     await climbPowerup(item.id);
     await refreshClimbPups();
   }
@@ -1101,14 +1100,16 @@
         <div class="ch-cell" class:hot={(climb.heat ?? 100) > 100}><span class="ch-val">×{climbHeat}</span><span class="ch-label">Heat</span></div>
       </div>
       {#if climb.state === 'active' && climbPups.length}
-        <p class="cp-hint">{climb.pups_locked ? 'Loadout locked — equip before your first letter' : 'Equip before you start · cost counts as spend'}</p>
+        <p class="cp-hint">Your power-ups · tap to use · stock up in the Shop</p>
         <div class="climb-pups">
           {#each climbPups as item}
-            {@const equipped = (climb.equipped ?? []).includes(item.id)}
-            <button class="cp" class:equipped disabled={climb.pups_locked || equipped || ($gameStore.bankroll ?? 0) < item.price}
+            {@const used = (climb.equipped ?? []).includes(item.id)}
+            {@const owned = item.owned ?? 0}
+            <button class="cp" class:equipped={used} class:empty={owned <= 0 && !used}
+              disabled={owned <= 0 || used}
               on:click={() => handleClimbPup(item)} title={item.name}>
               <span class="cp-ic">{PUP_ICON[item.id] ?? '✨'}</span>
-              <span class="cp-tag">{equipped ? '✓' : '$' + item.price}</span>
+              <span class="cp-tag">{used ? '✓' : owned > 0 ? '×' + owned : '—'}</span>
             </button>
           {/each}
         </div>
@@ -1474,6 +1475,7 @@
   .cp:disabled { opacity: 0.4; cursor: default; }
   .cp.equipped { border-color: var(--brand-2); background: rgba(163,230,53,0.12); opacity: 1; }
   .cp.equipped .cp-tag { color: var(--brand-2); }
+  .cp.empty { opacity: 0.35; }
   .cp-ic { font-size: 1.1rem; line-height: 1; }
   .cp-tag { font-size: 0.6rem; font-weight: 700; color: var(--text-faint); }
   .climb-stuck {
