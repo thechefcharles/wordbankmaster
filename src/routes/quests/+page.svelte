@@ -36,7 +36,7 @@
     if (res?.ok) {
       track('quest_reward_claimed');
       fx('win');
-      claimedMsg = `💰 +$${(res.amount ?? 1000).toLocaleString()} to your Bank!`;
+      claimedMsg = `💰 +$${(res.amount ?? 1000).toLocaleString()} to your Cash!`;
       q = { ...q, reward_claimed: true };
     } else if (res?.reason === 'claimed') {
       q = { ...q, reward_claimed: true };
@@ -84,7 +84,7 @@
         </button>
       {:else}
         <span class="r-title">Finish all 3 to earn 💰 $1,000</span>
-        <span class="r-sub">Straight into your Bank.</span>
+        <span class="r-sub">Straight into your Cash.</span>
       {/if}
     </div>
   {/if}

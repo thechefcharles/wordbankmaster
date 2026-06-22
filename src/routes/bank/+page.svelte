@@ -1,15 +1,17 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { getBank, repayLoan } from '$lib/stores/statsStore.js';
+  import { getBank, repayLoan, takeLoan, setAutoRepay } from '$lib/stores/statsStore.js';
   import { track } from '$lib/analytics.js';
   import { fx } from '$lib/sound.js';
 
-  /** @type {{ bank:number, loan:number, net_worth:number, ledger:any[] }|null} */
+  /** @type {{ bank:number, loan:number, net_worth:number, auto_repay:boolean, in_the_red:boolean, loan_cap:number, ledger:any[] }|null} */
   let b = null;
   let loading = true;
   let repayAmt = '';
+  let borrowAmt = '';
   let busy = false;
+  $: loanRoom = b ? Math.max(0, (b.loan_cap ?? 10000) - b.loan) : 0;
 
   onMount(async () => {
     track('bank_view');
@@ -44,6 +46,24 @@
     busy = false;
     if (res) { b = res; repayAmt = ''; fx('tap'); track('loan_repay', { amount: pay }); }
   }
+
+  async function borrow(/** @type {number} */ amt) {
+    if (busy || !b) return;
+    const take = Math.min(amt, loanRoom);
+    if (take <= 0) return;
+    busy = true;
+    const res = await takeLoan(take);
+    busy = false;
+    if (res && res.ok !== false) { b = res; borrowAmt = ''; fx('select'); track('loan_taken', { amount: take }); }
+  }
+
+  async function toggleAutoRepay() {
+    if (busy || !b) return;
+    busy = true;
+    const res = await setAutoRepay(!b.auto_repay);
+    busy = false;
+    if (res) b = res;
+  }
 </script>
 
 <svelte:head><title>WordBank — Cash & Net Worth</title></svelte:head>
@@ -57,20 +77,37 @@
     <p class="nw-label">Net Worth</p>
     <div class="net-worth" class:neg={b.net_worth < 0}>{fmt(b.net_worth)}</div>
     <p class="nw-sub">Cash on hand minus what you owe</p>
+    {#if b.in_the_red}<div class="red-badge">🔴 In the Red — you owe more than you hold</div>{/if}
 
     <div class="stat-row">
       <div class="stat"><span class="sv">{fmt(b.bank)}</span><span class="sc">Cash on hand</span></div>
       <div class="stat loan"><span class="sv">{fmt(b.loan)}</span><span class="sc">Loan owed</span></div>
     </div>
 
+    <!-- Borrow -->
+    <div class="loan-box">
+      <p class="loan-copy">
+        <strong>The House</strong> will front you Cash anytime — <strong>5%/day interest</strong>, up to {fmt(b.loan_cap)} total debt.
+        {#if loanRoom > 0}You can borrow up to <strong>{fmt(loanRoom)}</strong> more.{:else}You're at the borrowing cap.{/if}
+      </p>
+      <div class="pay-row">
+        <input class="amt" type="number" min="1" max={loanRoom} placeholder="Amount" bind:value={borrowAmt} disabled={loanRoom <= 0} />
+        <button class="pay-btn borrow" disabled={busy || loanRoom <= 0} on:click={() => borrow(Math.floor(Number(borrowAmt) || 0))}>Borrow</button>
+      </div>
+    </div>
+
     {#if b.loan > 0}
       <div class="loan-box">
-        <p class="loan-copy">You owe the House <strong>{fmt(b.loan)}</strong>. Interest accrues until it's paid — clear it to go debt-free and grow your Net Worth.</p>
+        <p class="loan-copy">You owe <strong>{fmt(b.loan)}</strong>. Interest accrues daily until it's paid — clear it to go debt-free and grow your Net Worth.</p>
         <div class="pay-row">
           <input class="amt" type="number" min="1" placeholder="Amount" bind:value={repayAmt} />
           <button class="pay-btn" disabled={busy} on:click={() => payLoan(Math.floor(Number(repayAmt) || 0))}>Pay</button>
           <button class="pay-btn ghost" disabled={busy} on:click={() => payLoan(b?.loan ?? 0)}>Pay all</button>
         </div>
+        <button class="auto-row" disabled={busy} on:click={toggleAutoRepay}>
+          <span class="auto-box" class:on={b.auto_repay}>{b.auto_repay ? '✓' : ''}</span>
+          Auto-repay — skim 10% of winnings toward this loan
+        </button>
       </div>
     {:else}
       <div class="debt-free">🎉 Debt-free! Your Cash is all yours.</div>
@@ -121,7 +158,22 @@
   .amt { flex: 1; min-width: 0; padding: 0.6rem 0.8rem; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2, rgba(255,255,255,0.04)); color: var(--text); }
   .pay-btn { padding: 0.6rem 1rem; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; color: #06210f; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); }
   .pay-btn.ghost { background: transparent; color: var(--brand-2); border: 1px solid rgba(163,230,53,0.4); }
+  .pay-btn.borrow { color: #06210f; background: linear-gradient(135deg,#fbbf24,#f59e0b); }
   .pay-btn:disabled { opacity: 0.5; }
+  .red-badge {
+    display: inline-block; margin: 0.6rem auto 0; padding: 0.4rem 0.9rem; border-radius: 999px;
+    font-size: 0.8rem; font-weight: 700; color: #fb7185;
+    background: rgba(251,113,133,0.12); border: 1px solid rgba(251,113,133,0.35);
+  }
+  .auto-row {
+    display: flex; align-items: center; gap: 0.5rem; width: 100%; margin-top: 0.7rem; padding: 0;
+    background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 0.82rem; text-align: left;
+  }
+  .auto-box {
+    width: 18px; height: 18px; flex-shrink: 0; border-radius: 5px; display: grid; place-items: center;
+    border: 1px solid var(--border); background: var(--surface-2, rgba(255,255,255,0.04)); color: #06210f; font-size: 0.7rem; font-weight: 800;
+  }
+  .auto-box.on { background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); border-color: transparent; }
   .debt-free { margin-top: 1.4rem; padding: 0.9rem; border-radius: 14px; background: linear-gradient(135deg, rgba(52,211,153,0.12), rgba(163,230,53,0.05)); border: 1px solid rgba(163,230,53,0.4); font-weight: 700; }
 
   .hist-title { font-family: var(--font-display); font-size: 1rem; margin: 1.8rem 0 0.6rem; text-align: left; }

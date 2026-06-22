@@ -32,7 +32,7 @@
     const res = await buyCosmetic(item.id);
     busy = '';
     if (res.ok) { fx('win'); track('cosmetic_buy', { id: item.id }); await load(); }
-    else { msg = res.reason === 'insufficient' ? "Not enough in your Bank." : 'Could not buy that.'; }
+    else { msg = res.reason === 'insufficient' ? "Not enough Cash." : 'Could not buy that.'; }
   }
   /** @param {any} item */
   async function equip(item) {
@@ -53,7 +53,7 @@
     <h1>🛍️ Shop</h1>
     <span class="bank-chip">💰 ${bank.toLocaleString()}</span>
   </div>
-  <p class="sub">Spend your Bank on titles &amp; name colors — pure flair, shows on the leaderboards. No pay-to-win.</p>
+  <p class="sub">Spend your Cash on titles &amp; name colors — pure flair, shows on the leaderboards. No pay-to-win.</p>
 
   {#if loading}
     <p class="loading">Loading…</p>

@@ -19,7 +19,7 @@ P2, P3, P6, P9 can run in parallel after P1. P4 is the critical path.
 
 ---
 
-## Phase 1 — Cash identity & baseline  ◑ (mostly done)
+## Phase 1 — Cash identity & baseline  ✅ (PR #136 + copy sweep)
 
 **Goal:** every surface speaks "Cash / Net Worth"; new + existing users on $1,000 / $0.
 **Done:** `_ensure_bank` → $1,000/$0; migrated all users; Bank screen + home chip relabeled;
@@ -33,7 +33,7 @@ negative Net Worth red. (PR #136)
 
 ---
 
-## Phase 2 — Loans v2
+## Phase 2 — Loans v2  ✅
 
 **Goal:** borrow anytime, interest accrues, repay/auto-repay, $10k cap, "In the Red."
 **Depends on:** P1.
