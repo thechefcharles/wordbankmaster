@@ -7,46 +7,37 @@
   const steps = [
     {
       icon: '💰',
-      title: 'Guess the phrase',
-      body: 'Guess the phrase by spending as little as possible. Whatever’s left of your $1,000 is your score.'
+      title: 'Spend less, think more',
+      body: 'Figure out the hidden phrase by buying as few letters as you can. The less you spend to solve it, the better.'
     },
     {
       icon: '🔤',
       title: 'Buy letters',
-      body: 'Buy a letter by tapping it. If it’s in the phrase, every copy appears. If it’s not, you lose what you paid.'
+      body: 'Tap a letter to buy it — every copy appears. A letter that isn’t in the phrase still costs you. Guessing the whole phrase is free, and you get unlimited tries.'
     },
     {
-      icon: '🔍',
-      title: 'Reveal',
-      body: 'Buy a clue with Reveal. It fills in the most useful letter for you, but it costs money, so save it for when you’re stuck.'
-    },
-    {
-      icon: '🎯',
-      title: 'Solve',
-      body: 'Solve the phrase by tapping Solve, typing it in, and submitting. You get three tries, and a wrong guess only costs a try, not money.'
-    },
-    {
-      icon: '🏆',
-      title: 'Daily & Arcade',
-      body: 'Play Daily for one ranked puzzle everyone shares. Play Arcade to keep solving, banking each win and building your multiplier until you bust.'
-    },
-    {
-      icon: '🏦',
-      title: 'Your Cash',
+      icon: '💵',
+      title: 'Cash is your score',
       isNew: true,
-      body: 'You start with $2,000 Cash. Buy as few letters as you can to solve — spend less, keep more. Your Cash balance is your Net Worth: the score you brag about.'
+      body: 'You start with $2,000. It’s your one balance and your Net Worth — the number you climb the leaderboard with. No loans: just spend smart.'
     },
     {
-      icon: '⚔️',
-      title: 'Challenge friends',
+      icon: '📅',
+      title: 'Daily paycheck',
       isNew: true,
-      body: 'Wager your Bank head-to-head on the same puzzle. Score mode: most bankroll left wins. Pressure mode: a 60-second clock, so speed counts. Winner takes the pot.'
+      body: 'One shared puzzle a day. Just showing up pays an attendance reward that grows with your streak — your steady income.'
     },
     {
-      icon: '🛍️',
-      title: 'Shop & friends',
+      icon: '🧗',
+      title: 'Climb & Challenges',
       isNew: true,
-      body: 'Add friends by @username, then race them on the Net Worth board. Spend your Bank in the Shop on titles and name colors that show off your rank.'
+      body: 'Climb an endless ladder of puzzles for Cash bounties, or wager friends: your wager is your budget, and whoever solves spending the least takes the pot.'
+    },
+    {
+      icon: '🎲',
+      title: 'Broke? Free Play',
+      isNew: true,
+      body: 'Free Play never costs Cash and pays a little for every solve. Grind back anytime, then get back in the game.'
     }
   ];
 
