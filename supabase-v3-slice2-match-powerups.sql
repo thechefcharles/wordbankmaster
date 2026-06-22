@@ -1,0 +1,25 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Power-ups Slice 2: challenges (host toggle) + "Sam used X" social notify   ║
+-- ║  (migrations: v3_slice2_match_powerups, v3_slice2_match_board_expose)        ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- challenge_matches += items_allowed BOOLEAN (host toggle, default off).
+-- challenge_participants += active_powerups text[] (effects used this puzzle).
+--
+-- create_match: +p_items_allowed (9th param, defaulted for back-compat) → sets the flag.
+-- match_buy_letter: applies Half Off if active.
+-- match_use_powerup(match_id, powerup): only if items_allowed; consumes one from the
+--   'cash' inventory (FREE, like climb), applies the effect to your match puzzle, and
+--   NOTIFIES every other participant ("<name> used <Power-up>", type 'powerup_used').
+--   One-of-each effect per puzzle; active_powerups reset on advancing to the next.
+-- _match_board / get_match: expose items_allowed + used_powerups for the tray.
+--
+-- Verified (rolled-back sim): friendly match items_allowed=true; Chef buys Free Reveal,
+--   uses it → revealed 2, owned→0; Warpocket received notification "Chefcharles used
+--   Free Reveal". The social moment fires. ✓
+--
+-- Client: Challenge Builder has an "⚡ Allow power-ups" toggle (host). The match game
+--   screen shows the owned-items tray when items_allowed (tap to use). createMatch
+--   passes items_allowed; GameStore.matchPowerup → match_use_powerup. The "Sam used X"
+--   notification surfaces via the existing notification poller + Toaster on any screen.
+--
+-- NEXT: sabotage power-ups (target an opponent); group chat.
