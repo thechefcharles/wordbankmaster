@@ -1,0 +1,38 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  v3 R2: unlimited guesses · all-or-nothing (no positional feedback)         ║
+-- ║  (migration: v3_r2_free_guesses_no_partial_reveal — applied via MCP)        ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Second slice of the WORDBANK_MASTER_V3.md teardown.
+--
+-- Rewrote every active submit_guess (daily / makeup / freeplay / match / climb):
+--   • Dropped the guess-cap guard (`guesses_remaining <= 0`, climb
+--     `attempts_remaining <= 0`) and stopped decrementing it → UNLIMITED guesses.
+--   • Reveal letters ONLY when the WHOLE guess is correct. A wrong guess now
+--     reveals nothing (was: it locked in the correct letters = a free positional-
+--     feedback leak that breaks the spend-the-least economy). Integrity rule #2.
+--   • Win is still detected by all-positions-revealed; a full-correct guess
+--     reveals everything → win. Loss is still budget-based (bankroll < 30) for
+--     daily/makeup/freeplay/match, and cash-based for the climb — UNCHANGED.
+--
+-- CLIMB specifics:
+--   • Wrong guess no longer burns an attempt or resets heat (guesses are free now,
+--     so nuking heat on every miss made no sense). Heat resets only on stuck/leave.
+--   • _climb_resolve "stuck" is now PURELY cash-based: you're stuck when you can't
+--     afford the cheapest remaining letter (the attempts gate is gone). You can
+--     still free-guess from the stuck state; "Leave & earn" is the escape.
+--
+-- Verified (Free Play SQL sim): wrong guess → 0 revealed, state stays active;
+--   2nd wrong guess → still active (unlimited); correct guess → won, all revealed.
+--
+-- THE BASE REVEAL ACTION IS REMOVED CLIENT-SIDE (it becomes the Free Reveal
+--   power-up in R5). The server reveal RPCs (daily_reveal, climb_reveal, …) and
+--   the GameStore 'hint' branches / statsStore reveal wrappers are left ORPHANED
+--   (dead, never called) for now — dropped in a later cleanup, like the loan cols.
+--
+-- Client changes:
+--   GameButtons.svelte → removed the Reveal button + the "Tries" guess counter;
+--                        unlimited-guess flow (no noGuessesLeft gate).
+--
+-- KNOWN interim cosmetic: the Daily/Match efficiency formula's "no-reveals"
+--   multiplier (+.15 / +.15) now always applies (reveals are gone) → slight score
+--   inflation until the R3/R4 scoring rework. Not a blocker.
