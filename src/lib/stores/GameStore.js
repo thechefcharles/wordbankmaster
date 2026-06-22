@@ -204,12 +204,14 @@ function reconcileDailyBoard(board) {
     dailyResult: board.daily_result ?? prev.dailyResult ?? null,
     dailyLive: board.live ?? prev.dailyLive ?? null
   }));
-  if (board.state === 'won') { setTimeout(() => launchConfetti(), 300); fx('win'); }
+  // Only celebrate a FRESH solve: a board carrying daily_result (set by the solve),
+  // not when re-opening an already-completed daily (which comes back 'won' with no result).
+  if (board.state === 'won') { if (board.daily_result) { setTimeout(() => launchConfetti(), 300); fx('win'); } }
   else if (finished) fx('bust');
   else playMoveCue(prev, board);
-  // analytics: fire once, on the transition into a finished daily
-  if (finished && prev.gameState !== 'won' && prev.gameState !== 'lost') {
-    track('daily_result', { won: board.state === 'won', bankroll: board.bankroll ?? 0 });
+  // analytics: fire once, only on the actual solve transition
+  if (board.daily_result && prev.gameState !== 'won' && prev.gameState !== 'lost') {
+    track('daily_result', { won: true, bankroll: board.bankroll ?? 0 });
   }
 }
 
