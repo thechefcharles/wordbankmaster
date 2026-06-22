@@ -1,0 +1,14 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Phase 10: Declare Bankruptcy (migration: bankruptcy)                        ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- The escape hatch when you're underwater. profiles += last_bankruptcy_at.
+-- declare_bankruptcy(): only when Net Worth < 0 (in the red); 30-day cooldown.
+--   Wipes the loan, resets Cash to the $1,000 sign-up baseline, stamps the
+--   cooldown, writes a 'bankruptcy' ledger entry. Reasons: solvent | cooldown | auth.
+--
+-- Verified (SQL sim): solvent → blocked; in-the-red (bank 100/loan 5000) → reset
+-- to cash 1000/loan 0/NW 1000; immediate retry → cooldown. Test user restored.
+--
+-- Client: Bank/Cash screen shows a "Declare Bankruptcy" box only when In the Red,
+-- with a confirm. (Contextual daily-placement card also shipped this slice — pure
+-- client, via get_daily_board('friends').)
