@@ -9,7 +9,7 @@ import { freeplayStart, freeplayNext, freeplayBuyLetter, freeplayReveal, freepla
 import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
 import { makeupStart, makeupBuyLetter, makeupReveal, makeupSubmitGuess } from '$lib/stores/statsStore.js';
 import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, getPowerups, buyPowerup, climbUsePowerup } from '$lib/stores/statsStore.js';
-import { createMatch, acceptMatch, matchStart, matchBuyLetter, matchReveal, matchSubmitGuess, matchCheck, matchUsePowerup } from '$lib/stores/statsStore.js';
+import { createMatch, acceptMatch, matchStart, matchBuyLetter, matchReveal, matchSubmitGuess, matchCheck, matchUsePowerup, matchSabotage } from '$lib/stores/statsStore.js';
 import { track } from '$lib/analytics.js';
 
 /* ================================
@@ -715,6 +715,18 @@ export async function matchPowerup(powerupId) {
   dailyInFlight = true;
   try {
     const board = await matchUsePowerup(activeMatchId, powerupId);
+    if (board) reconcileMatchBoard(board);
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
+/** Sabotage an opponent in the active match. @param {string} targetId @param {string} powerupId */
+export async function matchSabotageOpponent(targetId, powerupId) {
+  if (dailyInFlight || !activeMatchId) return;
+  dailyInFlight = true;
+  try {
+    const board = await matchSabotage(activeMatchId, targetId, powerupId);
     if (board) reconcileMatchBoard(board);
   } finally {
     dailyInFlight = false;

@@ -1,0 +1,27 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Power-ups Slice 3: Sabotage (target an opponent in a challenge)            ║
+-- ║  (migration: v3_slice3_sabotage)                                            ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Challenges are ASYNC, so sabotage = persistent DEBUFFS on the target that bite
+-- when they play (not real-time effects). challenge_participants += debuffs text[].
+--
+-- Catalog (kind='sabotage'): 💸 Tax $100 (target's letters cost +50%), 🌫️ Fog $80
+--   (target's clue hidden). Bought in the Store like any power-up.
+--
+-- match_sabotage(match_id, target, powerup): items_allowed only; you must be active,
+--   target must be an active/invited OTHER participant; consume the sabotage item from
+--   inventory; add the debuff to the target; NOTIFY the target ("<name> hit you with
+--   <X> — your letters cost +50%", type 'sabotaged'). Debuffs clear when the target
+--   advances to the next puzzle.
+-- match_buy_letter: 'tax' debuff → letter cost ×1.5 (stacks after Half Off).
+-- _match_board: hides the clue when 'fog' is active; exposes my_debuffs + the
+--   opponents list [{id,name}] for targeting.
+--
+-- Verified (rolled-back sim): Chef buys + uses Tax on Warpocket → Warpocket.debuffs
+--   = {tax}, Warpocket notified, Chef's item consumed, and Warpocket's $70 letter
+--   then cost $105 (ceil 1.5×). ✓
+--
+-- Client: Shop "😈 Sabotage" section; match screen shows a sabotage row (tap → pick
+--   target; auto-targets in 1v1) + a "you're hit" debuff banner; matchSabotageOpponent.
+--
+-- NEXT (last power-up slice): group chat.

@@ -574,6 +574,12 @@ export async function matchUsePowerup(id, powerup) {
   if (error) { console.error('❌ match_use_powerup:', error); return null; }
   return data;
 }
+/** Sabotage an opponent in a match. @param {string} id @param {string} target @param {string} powerup @returns {Promise<any|null>} */
+export async function matchSabotage(id, target, powerup) {
+  const { data, error } = await supabase.rpc('match_sabotage', { p_id: id, p_target: target, p_powerup: powerup });
+  if (error) { console.error('❌ match_sabotage:', error); return null; }
+  return data;
+}
 /** @param {string} id @param {Record<string,string>} guess @returns {Promise<any|null>} */
 export async function matchSubmitGuess(id, guess) {
   const { data, error } = await supabase.rpc('match_submit_guess', { p_id: id, p_guess: guess });
