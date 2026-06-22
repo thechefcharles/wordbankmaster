@@ -1,0 +1,24 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Daily reward = a fixed "puzzle worth" (par), not efficiency multipliers    ║
+-- ║  (migration: v3_daily_fixed_reward — applied via MCP)                       ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Per design feedback: clearer model. The puzzle is WORTH a fixed reward based on
+-- its length/difficulty; the player just spends as little as possible. Net profit =
+-- reward − spent. Drops the clean/no-vowel/first-try multipliers (which were mostly
+-- redundant with spend anyway). Same shape as the Climb bounty → Daily & Climb now
+-- consistent ("a puzzle is worth a % of its full-reveal cost").
+--
+-- _daily_reward(pid) = GREATEST(100, $10-rounded 0.70 × Σ distinct letter_cost).
+--   0.70 (vs the Climb's 0.65) since the Daily has no heat multiplier. KNOB.
+-- _daily_live(spent, reward) → { spent, reward, net=reward−spent }.
+-- daily_start / _daily_resolve_and_return feed the fixed reward into live.
+-- _finalize_daily: credits the gross reward; game_results.score = NET PROFIT
+--   (reward − spent) so the Daily leaderboard ranks by efficiency (not everyone tied).
+-- daily_result payload → { reward, spent, net }.
+--
+-- Verified (rolled-back sim, Chef): reward $500 (length-based), spent $143,
+--   net $357; full day cash flow = attendance 150 + reward 500 − spent 143 = +507.
+--
+-- Client: live line shows "Worth $X · spent $Y · profit +$Z" (red if negative) for
+--   Daily + Climb; result modal shows Profit + worth/spent (dropped the eff chips);
+--   come-back modal + share text say "Profit"; no more reward-flash (reward is fixed).

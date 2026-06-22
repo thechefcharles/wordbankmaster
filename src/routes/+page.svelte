@@ -247,21 +247,6 @@
   // Live Daily HUD metrics (only while actively playing the daily).
   $: dLive = ($gameStore.gameMode === 'daily' && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost')
     ? $gameStore.dailyLive : null;
-  // Flash the Reward red when it drops (a bonus just broke).
-  let rewardFlash = false;
-  let prevReward = /** @type {number|null} */ (null);
-  /** @type {ReturnType<typeof setTimeout>|undefined} */
-  let rewardFlashTimer;
-  /** @param {number|null} r */
-  function onRewardChange(r) {
-    if (r != null && prevReward != null && r < prevReward) {
-      rewardFlash = true;
-      clearTimeout(rewardFlashTimer);
-      rewardFlashTimer = setTimeout(() => { rewardFlash = false; }, 700);
-    }
-    prevReward = r;
-  }
-  $: onRewardChange(dLive ? dLive.reward : null);
   $: isFreeplay = $gameStore.gameMode === 'freeplay';
   $: isChallenge = $gameStore.gameMode === 'challenge';
   $: isMakeup = $gameStore.gameMode === 'makeup';
@@ -381,7 +366,7 @@
     const link = typeof window !== 'undefined' ? window.location.origin : '';
     if (isDailyResult) {
       if (resultWon && dr) {
-        return `🧠 WordBank Daily #${puzzleNumber}\nScore ${(dr.score ?? 0).toLocaleString()} — beat that 👀\n${link}`;
+        return `🧠 WordBank Daily #${puzzleNumber}\nProfit ${(dr.net ?? 0) >= 0 ? '+' : '−'}$${Math.abs(dr.net ?? 0).toLocaleString()} — beat that 👀\n${link}`;
       }
       return `🧠 WordBank Daily #${puzzleNumber}\nDidn't crack it today 😬\n${link}`;
     }
@@ -1005,7 +990,7 @@
             {dailyStatus?.last_daily_won ? "Nice work — you've finished today's puzzle." : "You've already played today's puzzle."}
           </p>
           <div class="cbt-stats">
-            <div class="cbt-stat"><span class="cbt-val">+${dailyStatus?.today_score?.toLocaleString() ?? 0}</span><span class="cbt-cap">Reward</span></div>
+            <div class="cbt-stat"><span class="cbt-val">+${dailyStatus?.today_score?.toLocaleString() ?? 0}</span><span class="cbt-cap">Profit</span></div>
             {#if (dailyStatus?.current_streak ?? 0) > 0}
               <div class="cbt-stat"><span class="cbt-val">🔥 {dailyStatus?.current_streak}</span><span class="cbt-cap">Day streak</span></div>
             {/if}
@@ -1189,9 +1174,9 @@
         </div>
       </div>
       {#if dLive}
-        <p class="live-line" class:flash={rewardFlash}>Solve now to win <b>+${dLive.reward.toLocaleString()}</b></p>
+        <p class="live-line">Worth ${dLive.reward.toLocaleString()} · spent ${dLive.spent.toLocaleString()} · profit <b class:lose={dLive.net < 0}>{dLive.net >= 0 ? '+' : '−'}${Math.abs(dLive.net).toLocaleString()}</b></p>
       {:else if climbLive}
-        <p class="live-line">Solve now to win <b>+${climbLive.payout.toLocaleString()}</b></p>
+        <p class="live-line">Worth ${climbLive.payout.toLocaleString()} · spent ${climbLive.spent.toLocaleString()} · profit <b class:lose={climbLive.net < 0}>{climbLive.net >= 0 ? '+' : '−'}${Math.abs(climbLive.net).toLocaleString()}</b></p>
       {:else if matchLive}
         <p class="live-line">Spent <b>${matchLive.spent.toLocaleString()}</b> of ${matchLive.budget.toLocaleString()} · 🏆 spend the least to win</p>
       {:else if freeLive}
@@ -1230,14 +1215,9 @@
             <p class="result-sub">Daily #{puzzleNumber}{#if resultWon} · {resultMedal.name}{/if}</p>
             {#if resultWon && dr}
               <div class="daily-score">
-                <span class="ds-label">Daily Reward</span>
-                <span class="ds-amount">{(dr.score ?? 0).toLocaleString()}</span>
-                <span class="ds-cash">+${(dr.score ?? 0).toLocaleString()}{#if dr.spent} · −${dr.spent.toLocaleString()} spent · net {(dr.score ?? 0) - dr.spent >= 0 ? '+' : '−'}${Math.abs((dr.score ?? 0) - dr.spent).toLocaleString()}{/if}</span>
-              </div>
-              <div class="eff-chips">
-                <span class="eff" class:on={dr.clean}>{dr.clean ? '✓' : '✗'} Clean</span>
-                <span class="eff" class:on={dr.no_vowels}>{dr.no_vowels ? '✓' : '✗'} No vowels</span>
-                <span class="eff" class:on={dr.first_try}>{dr.first_try ? '✓' : '✗'} First try</span>
+                <span class="ds-label">Profit</span>
+                <span class="ds-amount" class:lose={(dr.net ?? 0) < 0}>{(dr.net ?? 0) >= 0 ? '+' : '−'}${Math.abs(dr.net ?? 0).toLocaleString()}</span>
+                <span class="ds-cash">Puzzle worth ${(dr.reward ?? 0).toLocaleString()} · you spent ${(dr.spent ?? 0).toLocaleString()}</span>
               </div>
               {#if dailyPlacement && dailyPlacement.rank > 0 && dailyPlacement.total > 1}
                 <p class="daily-placement">{dailyPlacement.rank === 1 ? '🥇' : dailyPlacement.rank === 2 ? '🥈' : dailyPlacement.rank === 3 ? '🥉' : '🏅'} #{dailyPlacement.rank} of {dailyPlacement.total} among friends today</p>
@@ -2112,15 +2092,10 @@
     color: var(--text-faint);
   }
 
-  /* Live "solve now to win" line (all modes) */
+  /* Live "spent · profit" line (all modes) */
   .live-line { margin: 9px auto 0; text-align: center; font-size: 0.82rem; color: var(--text-muted); }
   .live-line b { display: inline-block; font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; color: var(--brand-2); }
-  .live-line.flash b { animation: rewardDrop 0.7s var(--ease-out, ease); }
-  @keyframes rewardDrop {
-    0%   { color: #fb7185; transform: scale(1.35); text-shadow: 0 0 14px rgba(251,113,133,0.85); }
-    55%  { color: #fb7185; }
-    100% { color: var(--brand-2); transform: scale(1); text-shadow: none; }
-  }
+  .live-line b.lose { color: #fb7185; }
 
   .bankroll-amount {
     display: inline-flex;
@@ -2375,14 +2350,9 @@
     border: 1px solid rgba(163,230,53,0.4);
   }
   .ds-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
-  .ds-amount { font-family: var(--font-display); font-weight: 800; font-size: 2.4rem; color: var(--brand-2); line-height: 1; text-shadow: 0 0 18px rgba(163,230,53,0.35); }
+  .ds-amount { font-family: var(--font-display); font-weight: 800; font-size: 2.4rem; color: var(--brand-2); line-height: 1; text-shadow: 0 0 18px rgba(163,230,53,0.35); margin: 0 0 8px; }
+  .ds-amount.lose { color: #fb7185; text-shadow: 0 0 18px rgba(251,113,133,0.35); }
   .ds-cash { font-size: 0.8rem; color: var(--text-muted); }
-  .eff-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0 0 16px; }
-  .eff {
-    font-size: 0.72rem; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 999px;
-    color: var(--text-faint); background: var(--surface); border: 1px solid var(--border);
-  }
-  .eff.on { color: var(--brand-2); border-color: rgba(163,230,53,0.45); background: rgba(163,230,53,0.08); }
   .daily-placement { font-family: var(--font-display); font-weight: 700; font-size: 0.9rem; color: #fcd34d; margin: 0 0 14px; }
   .ghost-compare {
     margin: 2px auto 16px;
