@@ -48,7 +48,8 @@ import { track } from '$lib/analytics.js';
  *   dailyResult?: any,
  *   climbInfo?: any,
  *   matchInfo?: any,
- *   cashToast?: { amount:number, label:string } | null
+ *   cashToast?: { amount:number, label:string } | null,
+ *   dailyLive?: { spent:number, clean:boolean, no_vowels:boolean, first_try:boolean, reward:number, net:number } | null
  * }} GameState
  */
 
@@ -90,7 +91,8 @@ export const gameStore = writable(/** @type {GameState} */ ({
   makeupDate: null, // YYYY-MM-DD of the make-up day being played (makeup mode only)
   climbInfo: null, // { bounty, heat, attempts, spent, position, stuck, last_gain, state } (climb mode)
   matchInfo: null, // { position, pack_size, total_score, last_score, done, status } (challenge match)
-  cashToast: null // { amount, label } — transient Cash-earned toast (attendance / free-play reward)
+  cashToast: null, // { amount, label } — transient Cash-earned toast (attendance / free-play reward)
+  dailyLive: null // { spent, clean, no_vowels, first_try, reward, net } — live Daily HUD metrics
 }));
 
 /* ================================
@@ -199,7 +201,8 @@ function reconcileDailyBoard(board) {
     ...prev, ...boardToState(board, prev),
     gameMode: 'daily',
     gameState: finished ? board.state : 'default',
-    dailyResult: board.daily_result ?? prev.dailyResult ?? null
+    dailyResult: board.daily_result ?? prev.dailyResult ?? null,
+    dailyLive: board.live ?? prev.dailyLive ?? null
   }));
   if (board.state === 'won') { setTimeout(() => launchConfetti(), 300); fx('win'); }
   else if (finished) fx('bust');

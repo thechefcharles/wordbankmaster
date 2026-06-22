@@ -1,0 +1,25 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Live Daily HUD metrics (Strategic display)                                 ║
+-- ║  (migration: v3_daily_live_metrics — applied via MCP)                       ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Surfaces the Daily scoring live so the player can make informed buy-vs-guess
+-- calls while playing.
+--
+-- _daily_live(spent, incorrect[], vowels, wrong) → jsonb:
+--   { spent, clean, no_vowels, first_try, reward, net }
+--   reward = 150 + round(650 × efficiency)  (efficiency = .25 clean + .25 no-vowel
+--   + .25 first-try) — the SAME formula as _finalize_daily, so the live number is
+--   exactly the payout. net = reward − spent.
+--
+-- Wired into daily_start and _daily_resolve_and_return: every Daily board now
+-- carries a 'live' object. (Daily-only — climb/match/freeplay share _daily_board
+-- but don't get 'live'.) Early no-op returns omit it; the client preserves the
+-- previous 'live' when absent.
+--
+-- Verified: _daily_live(0,{},0,0)=reward 638/net 638; (240,{},0,0)=net 398;
+--   (240,{},1,0)=reward 475 (vowel bought); (600,{X},2,2)=reward 150/net −450.
+--
+-- Client (+page.svelte): a "daily-live" strip under the Balance box shows
+--   Spent · Reward · Net (green/red) + three efficiency pips (Clean / No Vowels /
+--   First Try) that light when intact and dim when broken. Shown only while
+--   actively playing the Daily. GameStore: dailyLive state from board.live.

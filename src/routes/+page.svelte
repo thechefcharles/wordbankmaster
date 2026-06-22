@@ -243,6 +243,9 @@
   }
   $: resultWon = $gameStore.gameState === 'won';
   $: isDailyResult = $gameStore.gameMode === 'daily';
+  // Live Daily HUD metrics (only while actively playing the daily).
+  $: dLive = ($gameStore.gameMode === 'daily' && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost')
+    ? $gameStore.dailyLive : null;
   $: isFreeplay = $gameStore.gameMode === 'freeplay';
   $: isChallenge = $gameStore.gameMode === 'challenge';
   $: isMakeup = $gameStore.gameMode === 'makeup';
@@ -1161,6 +1164,20 @@
           </span>
         </div>
       </div>
+      {#if dLive}
+        <div class="daily-live">
+          <div class="dl-row">
+            <span class="dl-stat">Spent <b>${dLive.spent.toLocaleString()}</b></span>
+            <span class="dl-stat">Reward <b>${dLive.reward.toLocaleString()}</b></span>
+            <span class="dl-net" class:pos={dLive.net >= 0} class:neg={dLive.net < 0}>Net {dLive.net >= 0 ? '+' : '−'}${Math.abs(dLive.net).toLocaleString()}</span>
+          </div>
+          <div class="dl-pips">
+            <span class="dl-pip" class:on={dLive.clean}>✦ Clean</span>
+            <span class="dl-pip" class:on={dLive.no_vowels}>✦ No Vowels</span>
+            <span class="dl-pip" class:on={dLive.first_try}>✦ First Try</span>
+          </div>
+        </div>
+      {/if}
     </section>
 
     <!-- 💎 Arcade power-up tray (earned this run) -->
@@ -2076,6 +2093,25 @@
     text-transform: uppercase;
     color: var(--text-faint);
   }
+
+  /* Live Daily efficiency HUD */
+  .daily-live {
+    margin: 10px auto 0; max-width: 340px; display: flex; flex-direction: column; gap: 6px;
+    padding: 8px 12px; border-radius: 14px;
+    background: var(--surface, rgba(255,255,255,0.04)); border: 1px solid var(--border);
+  }
+  .dl-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--text-muted); }
+  .dl-stat b { font-family: var(--font-display); color: var(--text); font-weight: 700; }
+  .dl-net { font-family: var(--font-display); font-weight: 800; font-size: 0.9rem; }
+  .dl-net.pos { color: var(--brand-2); }
+  .dl-net.neg { color: #fb7185; }
+  .dl-pips { display: flex; justify-content: space-between; gap: 6px; }
+  .dl-pip {
+    flex: 1; text-align: center; font-size: 0.66rem; font-weight: 700; padding: 3px 4px; border-radius: 999px;
+    color: var(--text-faint); background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+  }
+  .dl-pip.on { color: var(--brand-2); border-color: rgba(163,230,53,0.45); background: rgba(163,230,53,0.08); }
 
   .bankroll-amount {
     display: inline-flex;
