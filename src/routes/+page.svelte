@@ -4,7 +4,7 @@
   import { supabase } from '$lib/supabaseClient';
   import { get } from 'svelte/store';
 
-  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent } from '$lib/stores/GameStore.js';
   import { getMyChallenges, getPowerups, getMyMatches, getMyGroups, getMatch } from '$lib/stores/statsStore.js';
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
@@ -301,9 +301,26 @@
   }
   /** @type {any[]} */
   let climbPups = [];
-  const PUP_ICON = /** @type {Record<string,string>} */ ({ free_reveal: '🔍', half_off: '🏷️', vowel_vision: '👁️', extra_hint: '💡' });
+  const PUP_ICON = /** @type {Record<string,string>} */ ({ free_reveal: '🔍', half_off: '🏷️', vowel_vision: '👁️', extra_hint: '💡', sabotage_tax: '💸', sabotage_fog: '🌫️' });
+  const DEBUFF_LABEL = /** @type {Record<string,string>} */ ({ tax: '💸 Taxed (letters +50%)', fog: '🌫️ Fogged (clue hidden)' });
+  let pendingSabotage = /** @type {string|null} */ (null); // sabotage powerup id awaiting a target
   async function refreshClimbPups() {
-    try { const r = await getPowerups(); climbPups = r.items.filter((/** @type {any} */ i) => i.kind === 'climb'); } catch { /* non-fatal */ }
+    try { const r = await getPowerups(); climbPups = r.items ?? []; } catch { /* non-fatal */ }
+  }
+  $: selfPups = climbPups.filter((/** @type {any} */ i) => i.kind === 'climb');   // buffs (use on yourself)
+  $: sabPups = climbPups.filter((/** @type {any} */ i) => i.kind === 'sabotage'); // sabotage (target an opponent)
+  /** @param {any} item */
+  async function tapSabotage(item) {
+    const opps = matchInfo?.opponents ?? [];
+    if ((item.owned ?? 0) <= 0 || opps.length === 0) return;
+    if (opps.length === 1) { await matchSabotageOpponent(opps[0].id, item.id); await refreshClimbPups(); }
+    else { pendingSabotage = pendingSabotage === item.id ? null : item.id; }
+  }
+  /** @param {string} oppId */
+  async function pickSabTarget(oppId) {
+    if (!pendingSabotage) return;
+    const pid = pendingSabotage; pendingSabotage = null;
+    await matchSabotageOpponent(oppId, pid); await refreshClimbPups();
   }
   /** @param {any} item */
   async function handleClimbPup(item) {
@@ -1113,10 +1130,10 @@
         <div class="ch-cell"><span class="ch-val ch-gold">${(climb.bounty ?? 0).toLocaleString()}</span><span class="ch-label">Bounty</span></div>
         <div class="ch-cell" class:hot={(climb.heat ?? 100) > 100}><span class="ch-val">×{climbHeat}</span><span class="ch-label">Heat</span></div>
       </div>
-      {#if climb.state === 'active' && climbPups.length}
+      {#if climb.state === 'active' && selfPups.length}
         <p class="cp-hint">Your power-ups · tap to use · stock up in the Shop</p>
         <div class="climb-pups">
-          {#each climbPups as item}
+          {#each selfPups as item}
             {@const used = (climb.equipped ?? []).includes(item.id)}
             {@const owned = item.owned ?? 0}
             <button class="cp" class:equipped={used} class:empty={owned <= 0 && !used}
@@ -1152,10 +1169,13 @@
           <div class="ch-cell" class:hot={matchRemaining <= 10}><span class="ch-val">⏱️{matchRemaining}</span><span class="ch-label">Time</span></div>
         {/if}
       </div>
-      {#if matchInfo.items_allowed && climbPups.length}
+      {#if (matchInfo.my_debuffs ?? []).length}
+        <p class="debuff-banner">{(matchInfo.my_debuffs ?? []).map((/** @type {string} */ d) => DEBUFF_LABEL[d] ?? d).join(' · ')}</p>
+      {/if}
+      {#if matchInfo.items_allowed && selfPups.length}
         <p class="cp-hint">Your power-ups · tap to use — the group is notified</p>
         <div class="climb-pups">
-          {#each climbPups as item}
+          {#each selfPups as item}
             {@const used = (matchInfo.used_powerups ?? []).includes(item.id)}
             {@const owned = item.owned ?? 0}
             <button class="cp" class:equipped={used} class:empty={owned <= 0 && !used}
@@ -1165,6 +1185,27 @@
             </button>
           {/each}
         </div>
+      {/if}
+      {#if matchInfo.items_allowed && sabPups.some((/** @type {any} */ i) => (i.owned ?? 0) > 0) && (matchInfo.opponents ?? []).length}
+        <p class="cp-hint sab">😈 Sabotage · hit an opponent</p>
+        <div class="climb-pups">
+          {#each sabPups as item}
+            {@const owned = item.owned ?? 0}
+            <button class="cp sab" class:empty={owned <= 0} class:arming={pendingSabotage === item.id}
+              disabled={owned <= 0} on:click={() => tapSabotage(item)} title={item.name}>
+              <span class="cp-ic">{PUP_ICON[item.id] ?? '✨'}</span>
+              <span class="cp-tag">{owned > 0 ? '×' + owned : '—'}</span>
+            </button>
+          {/each}
+        </div>
+        {#if pendingSabotage}
+          <div class="sab-targets">
+            <span class="sab-pick">Hit who?</span>
+            {#each matchInfo.opponents ?? [] as opp}
+              <button class="sab-target" on:click={() => pickSabTarget(opp.id)}>{opp.name}</button>
+            {/each}
+          </div>
+        {/if}
       {/if}
     {/if}
 
@@ -1504,6 +1545,21 @@
   .cp.equipped { border-color: var(--brand-2); background: rgba(163,230,53,0.12); opacity: 1; }
   .cp.equipped .cp-tag { color: var(--brand-2); }
   .cp.empty { opacity: 0.35; }
+  .cp.sab { border-color: rgba(244,114,182,0.3); }
+  .cp.sab:hover:not(:disabled) { border-color: rgba(244,114,182,0.6); }
+  .cp.sab.arming { border-color: #f472b6; box-shadow: 0 0 12px rgba(244,114,182,0.4); }
+  .cp-hint.sab { color: #f472b6; }
+  .debuff-banner {
+    text-align: center; font-size: 0.76rem; font-weight: 700; color: #fb7185; margin: 0 auto 8px;
+    max-width: 340px; padding: 5px 10px; border-radius: 999px;
+    background: rgba(251,113,133,0.1); border: 1px solid rgba(251,113,133,0.3);
+  }
+  .sab-targets { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; margin: 2px auto 10px; max-width: 340px; }
+  .sab-pick { font-size: 0.74rem; color: #f472b6; font-weight: 700; }
+  .sab-target {
+    padding: 4px 11px; border-radius: 999px; cursor: pointer; font-weight: 700; font-size: 0.8rem;
+    color: #fff; border: none; background: linear-gradient(135deg, #f472b6, #db2777);
+  }
   .cp-ic { font-size: 1.1rem; line-height: 1; }
   .cp-tag { font-size: 0.6rem; font-weight: 700; color: var(--text-faint); }
   .climb-stuck {

@@ -18,14 +18,20 @@
     free_reveal:  { icon: '🔍', desc: 'Reveal the most useful letter' },
     half_off:     { icon: '🏷️', desc: 'Letters cost 50% less this puzzle' },
     vowel_vision: { icon: '👁️', desc: 'Reveal every vowel' },
-    extra_hint:   { icon: '💡', desc: 'Reveal the first letter of each word' }
+    extra_hint:   { icon: '💡', desc: 'Reveal the first letter of each word' },
+    sabotage_tax: { icon: '💸', desc: "An opponent's letters cost +50%" },
+    sabotage_fog: { icon: '🌫️', desc: "Hide an opponent's clue" }
   });
+
+  /** @type {any[]} */
+  let sabs = $state([]);
 
   async function load() {
     const [shop, pu] = await Promise.all([getShop(), getPowerups()]);
     bank = shop.bank;
     items = shop.items;
     pups = (pu.items || []).filter((/** @type {any} */ i) => i.kind === 'climb');
+    sabs = (pu.items || []).filter((/** @type {any} */ i) => i.kind === 'sabotage');
   }
 
   /** @param {any} item */
@@ -98,6 +104,27 @@
         </div>
       {/each}
     </div>
+
+    {#if sabs.length}
+      <h2 class="section">😈 Sabotage</h2>
+      <p class="section-note">Bring these to a challenge with power-ups on, then hit an opponent — they get notified.</p>
+      <div class="grid">
+        {#each sabs as item}
+          <div class="card pup" class:owned={item.owned > 0}>
+            <span class="pup-ic">{PUP_META[item.id]?.icon ?? '😈'}</span>
+            <span class="c-label">{item.name}</span>
+            <span class="pup-desc">{PUP_META[item.id]?.desc ?? ''}</span>
+            {#if item.owned > 0}
+              <button class="c-btn equip on" disabled>✓ In your bag</button>
+            {:else}
+              <button class="c-btn buy" disabled={busy === item.id || bank < item.price} onclick={() => buyPup(item)}>
+                💰 ${item.price.toLocaleString()}
+              </button>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    {/if}
 
     <h2 class="section">Titles</h2>
     <div class="grid">
