@@ -34,8 +34,7 @@
 
   // UI state
   let showTutorial = false;
-  let playOpen = false;
-  let progressOpen = false;
+  let menuView = 'home'; // 'home' | 'play' | 'challenge' | 'progress'
   let blitzSoon = false;
   let showResultModal = false;
   let hasTriggeredModal = false;
@@ -897,70 +896,100 @@
         <img class="menu-mark float" src="/logo-coin.png" alt="" width="84" height="84" />
         <img class="menu-wordmark" src="/wordmark-slogan.png" alt="WordBank — Spend Less. Think More." />
       </div>
-      <div class="main-menu-buttons stagger">
-        <!-- ▶ PLAY NOW — game modes in one expandable card -->
-        <button class="menu-card primary sheen" class:open={playOpen} style="--i: 0" on:click={() => { playOpen = !playOpen; fx('tap'); }}>
-          <span class="mc-icon">🎮</span>
-          <span class="mc-title">Play Now</span>
-          <span class="mc-arrow">{playOpen ? '▾' : '▸'}</span>
-        </button>
-        {#if playOpen}
-          <div class="play-modes">
-            <button class="play-mode daily" class:done={dailyDone} on:click={handleMenuDaily}>
-              <span class="pm-ic">🎯</span>
-              <span class="pm-t">{dailyInProgress ? 'Resume Daily' : 'Daily'}</span>
-              {#if dailyDone}
-                <span class="daily-chip {dailyStatus?.last_daily_won ? 'won' : 'lost'}">{dailyStatus?.last_daily_won ? `✅ Solved${dailyStatus?.today_score ? ' · +' + dailyStatus.today_score.toLocaleString() : ''}` : '❌ Missed'}</span>
-              {:else if dailyInProgress}
-                <span class="daily-chip prog">⏳ Resume</span>
-              {/if}
-            </button>
-            <button class="play-mode cash" on:click={handleMenuClimb}>
-              <span class="pm-ic">🎰</span><span class="pm-t">Cash Game</span>
-            </button>
-            <button class="play-mode free" on:click={handleMenuFreeplay}>
-              <span class="pm-ic">🎲</span><span class="pm-t">Free Play</span>
-            </button>
-            <button class="play-mode blitz" on:click={() => { blitzSoon = true; fx('tap'); setTimeout(() => blitzSoon = false, 2500); }}>
-              <span class="pm-ic">⚡</span><span class="pm-t">Blitz</span><span class="pm-tag">Soon</span>
-            </button>
-            {#if blitzSoon}<p class="pm-soon-note">⚡ Solo Blitz is coming soon!</p>{/if}
-          </div>
-        {/if}
-        <button class="menu-card" style="--i: 1" on:click={openChallenges}>
-          <span class="mc-icon">⚔️</span>
-          <span class="mc-title">Challenge Friends</span>
-          {#if challengeCount > 0}<span class="mc-stat" title="{challengeCount} waiting">{challengeCount}</span>{/if}
-          <span class="mc-arrow">→</span>
-        </button>
-        <!-- 📈 PROGRESS — quests, leaderboard, achievements in one expandable card -->
-        <button class="menu-card sheen" class:open={progressOpen} style="--i: 2" on:click={() => { progressOpen = !progressOpen; fx('tap'); }}>
-          <span class="mc-icon">📈</span>
-          <span class="mc-title">Progress</span>
-          {#if questProgress.all_done && !questProgress.reward_claimed}<span class="mc-stat" title="Quest reward ready">🎁</span>{/if}
-          <span class="mc-arrow">{progressOpen ? '▾' : '▸'}</span>
-        </button>
-        {#if progressOpen}
-          <div class="play-modes progress-modes">
-            <button class="play-mode" on:click={() => goto('/quests')}>
-              <span class="pm-ic">📋</span><span class="pm-t">Daily Quests</span>
-              {#if questProgress.all_done && !questProgress.reward_claimed}<span class="pm-tag">🎁 Claim</span>{:else}<span class="pm-tag">{questProgress.done}/{questProgress.total}</span>{/if}
-            </button>
-            <button class="play-mode" on:click={handleMenuLeaderboard}>
-              <span class="pm-ic">📊</span><span class="pm-t">Leaderboard</span>
-            </button>
-            <button class="play-mode" on:click={() => goto('/badges')}>
-              <span class="pm-ic">🏅</span><span class="pm-t">Achievements</span>
-            </button>
-          </div>
-        {/if}
-        <button class="menu-card" style="--i: 3" on:click={() => goto('/shop')}>
-          <span class="mc-icon">🛍️</span><span class="mc-title">Shop</span><span class="mc-arrow">→</span>
-        </button>
-        <button class="menu-card" style="--i: 4" on:click={handleMenuMyAccount}>
-          <span class="mc-icon">👤</span><span class="mc-title">My Account</span><span class="mc-arrow">→</span>
-        </button>
-      </div>
+      {#if menuView === 'home'}
+        <div class="main-menu-buttons stagger">
+          <button class="menu-card primary sheen" style="--i: 0" on:click={() => { menuView = 'play'; fx('tap'); }}>
+            <span class="mc-icon">🎮</span><span class="mc-title">Play Now</span><span class="mc-arrow">→</span>
+          </button>
+          <button class="menu-card" style="--i: 1" on:click={() => { menuView = 'challenge'; fx('tap'); }}>
+            <span class="mc-icon">⚔️</span>
+            <span class="mc-title">Challenge Friends</span>
+            {#if challengeCount > 0}<span class="mc-stat" title="{challengeCount} waiting">{challengeCount}</span>{/if}
+            <span class="mc-arrow">→</span>
+          </button>
+          <button class="menu-card" style="--i: 2" on:click={() => { menuView = 'progress'; fx('tap'); }}>
+            <span class="mc-icon">📈</span>
+            <span class="mc-title">Progress</span>
+            {#if questProgress.all_done && !questProgress.reward_claimed}<span class="mc-stat" title="Quest reward ready">🎁</span>{/if}
+            <span class="mc-arrow">→</span>
+          </button>
+          <button class="menu-card" style="--i: 3" on:click={() => goto('/shop')}>
+            <span class="mc-icon">🛍️</span><span class="mc-title">Shop</span><span class="mc-arrow">→</span>
+          </button>
+          <button class="menu-card" style="--i: 4" on:click={handleMenuMyAccount}>
+            <span class="mc-icon">👤</span><span class="mc-title">My Account</span><span class="mc-arrow">→</span>
+          </button>
+        </div>
+
+      {:else if menuView === 'play'}
+        <div class="sub-head">
+          <button class="sub-back" on:click={() => { menuView = 'home'; fx('tap'); }}>← Back</button>
+          <h2 class="sub-title">🎮 Play</h2>
+        </div>
+        <div class="main-menu-buttons stagger">
+          <button class="menu-card" class:done={dailyDone} style="--i: 0" on:click={handleMenuDaily}>
+            <span class="mc-icon">🎯</span>
+            <span class="mc-title">{dailyInProgress ? 'Resume Daily' : 'Daily'}</span>
+            {#if dailyDone}
+              <span class="daily-chip {dailyStatus?.last_daily_won ? 'won' : 'lost'}">{dailyStatus?.last_daily_won ? `✅ Solved${dailyStatus?.today_score ? ' · +' + dailyStatus.today_score.toLocaleString() : ''}` : '❌ Missed'}</span>
+            {:else if dailyInProgress}
+              <span class="daily-chip prog">⏳ Resume</span>
+            {/if}
+          </button>
+          <button class="menu-card" style="--i: 1" on:click={handleMenuClimb}>
+            <span class="mc-icon">🎰</span><span class="mc-title">Cash Game</span><span class="mc-arrow">→</span>
+          </button>
+          <button class="menu-card" style="--i: 2" on:click={handleMenuFreeplay}>
+            <span class="mc-icon">🎲</span><span class="mc-title">Free Play</span><span class="mc-arrow">→</span>
+          </button>
+          <button class="menu-card" style="--i: 3" on:click={() => { blitzSoon = true; fx('tap'); setTimeout(() => blitzSoon = false, 2500); }}>
+            <span class="mc-icon">⚡</span><span class="mc-title">Blitz</span><span class="mc-stat">Soon</span>
+          </button>
+          {#if blitzSoon}<p class="pm-soon-note">⚡ Solo Blitz is coming soon!</p>{/if}
+        </div>
+
+      {:else if menuView === 'challenge'}
+        <div class="sub-head">
+          <button class="sub-back" on:click={() => { menuView = 'home'; fx('tap'); }}>← Back</button>
+          <h2 class="sub-title">⚔️ Challenge Friends</h2>
+        </div>
+        <div class="main-menu-buttons stagger">
+          <button class="menu-card" style="--i: 0" on:click={() => goto('/friends')}>
+            <span class="mc-icon">👥</span><span class="mc-title">Friends</span><span class="mc-arrow">→</span>
+          </button>
+          <button class="menu-card" style="--i: 1" on:click={() => goto('/groups')}>
+            <span class="mc-icon">👨‍👩‍👧‍👦</span><span class="mc-title">Groups</span><span class="mc-arrow">→</span>
+          </button>
+          <button class="menu-card primary" style="--i: 2" on:click={openChallenges}>
+            <span class="mc-icon">⚔️</span>
+            <span class="mc-title">Start Challenge</span>
+            {#if challengeCount > 0}<span class="mc-stat" title="{challengeCount} waiting">{challengeCount}</span>{/if}
+            <span class="mc-arrow">→</span>
+          </button>
+        </div>
+
+      {:else if menuView === 'progress'}
+        <div class="sub-head">
+          <button class="sub-back" on:click={() => { menuView = 'home'; fx('tap'); }}>← Back</button>
+          <h2 class="sub-title">📈 Progress</h2>
+        </div>
+        <div class="main-menu-buttons stagger">
+          <button class="menu-card" style="--i: 0" on:click={() => goto('/profile')}>
+            <span class="mc-icon">📊</span><span class="mc-title">Stats</span><span class="mc-arrow">→</span>
+          </button>
+          <button class="menu-card" style="--i: 1" on:click={() => goto('/quests')}>
+            <span class="mc-icon">📋</span><span class="mc-title">Daily Quests</span>
+            {#if questProgress.all_done && !questProgress.reward_claimed}<span class="mc-stat">🎁</span>{:else}<span class="mc-stat">{questProgress.done}/{questProgress.total}</span>{/if}
+            <span class="mc-arrow">→</span>
+          </button>
+          <button class="menu-card" style="--i: 2" on:click={handleMenuLeaderboard}>
+            <span class="mc-icon">📊</span><span class="mc-title">Leaderboard</span><span class="mc-arrow">→</span>
+          </button>
+          <button class="menu-card" style="--i: 3" on:click={() => goto('/badges')}>
+            <span class="mc-icon">🏅</span><span class="mc-title">Achievements</span><span class="mc-arrow">→</span>
+          </button>
+        </div>
+      {/if}
     </div>
 
     <!-- Free Play: category picker -->
@@ -1822,6 +1851,17 @@
     padding: 2rem 1.1rem 1.2rem;
     gap: 1.2rem;
   }
+  .sub-head {
+    width: 100%; display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.2rem;
+  }
+  .sub-back {
+    display: inline-flex; align-items: center; gap: 4px; padding: 0.5rem 0.9rem;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    color: var(--text); font-weight: 700; font-size: 0.9rem; cursor: pointer;
+    transition: transform 0.15s, border-color 0.2s, background 0.2s;
+  }
+  .sub-back:hover { transform: translateX(-2px); border-color: var(--border-strong); background: var(--surface-2); }
+  .sub-title { font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; }
   .menu-hero {
     display: flex;
     flex-direction: column;
