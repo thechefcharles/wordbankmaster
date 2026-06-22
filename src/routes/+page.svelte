@@ -2008,9 +2008,9 @@
       0 0 150px rgba(251, 191, 36, 0.3);
   }
   .menu-card.primary {
-    border-color: rgba(163, 230, 53, 0.4);
-    background: linear-gradient(135deg, rgba(52, 211, 153, 0.16), rgba(163, 230, 53, 0.06));
-    box-shadow: var(--glow-brand);
+    border-color: rgba(251, 191, 36, 0.45);
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.16), rgba(245, 158, 11, 0.05));
+    box-shadow: 0 0 24px rgba(251, 191, 36, 0.22);
   }
   .menu-card.disabled { opacity: 0.45; cursor: not-allowed; }
   /* Completed daily: not faded like a dead disabled card — clearly "done", still
@@ -2027,7 +2027,7 @@
     border-radius: 13px;
   }
   .menu-card.primary .mc-icon {
-    background: var(--brand-grad);
+    background: linear-gradient(135deg, #fde047, #f59e0b);
     border: none;
   }
   .mc-title { flex: 1; font-family: var(--font-display); font-weight: 600; font-size: 1.06rem; }
