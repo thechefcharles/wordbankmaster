@@ -34,6 +34,7 @@
 
   // UI state
   let showTutorial = false;
+  let playOpen = false;
   let showResultModal = false;
   let hasTriggeredModal = false;
   let hasInitialized = false;
@@ -699,50 +700,10 @@
   };
 </script>
 <svelte:window on:keydown={handleEscape} />
-<!-- 🔹 Top Control Buttons -->
-<div class="top-buttons">
-  <!-- ❓ How to Play (replays the guided tutorial) -->
-  <button class="icon-button subtle-button" title="How to play" on:click={() => showTutorial = true}>
-    ❓
-  </button>
-
-  <!-- ☰ Main menu (only when in a puzzle) -->
-  {#if loggedIn && !showMainMenu}
-    <button class="icon-button subtle-button" title="Main menu" on:click={goToMainMenu}>
-      ☰
-    </button>
-  {/if}
-
-  <!-- 🔔 Notifications -->
-  {#if loggedIn}
-    <button class="icon-button subtle-button bell-button" title="Notifications" on:click={openNotifications}>
-      🔔
-      {#if $unreadCount > 0}<span class="bell-badge">{$unreadCount > 9 ? '9+' : $unreadCount}</span>{/if}
-    </button>
-  {/if}
-
-  <!-- 🏆 Leaderboard -->
-  {#if loggedIn}
-    <a href="/leaderboard" class="icon-button subtle-button" title="Weekly Leaderboard">🏆</a>
-  {/if}
-
-  <!-- 🔊 Sound + Haptics Toggle -->
-  <button
-    class="icon-button subtle-button"
-    on:click={() => { toggleSound(); if ($soundEnabled) fx('select'); }}
-    title={$soundEnabled ? 'Sound & haptics on' : 'Sound & haptics off'}
-    aria-label="Toggle sound and haptics"
-  >
-    {$soundEnabled ? '🔊' : '🔇'}
-  </button>
-
-  <!-- 🚪 Logout -->
-  {#if loggedIn}
-    <button class="icon-button subtle-button" on:click={handleLogout}>
-      🚪
-    </button>
-  {/if}
-</div>
+<!-- ← Back to main menu (every non-menu screen) -->
+{#if loggedIn && hasInitialized && !showMainMenu}
+  <button class="menu-back-btn" title="Main menu" on:click={goToMainMenu}>← Menu</button>
+{/if}
 
 <!-- 📜 Guided tutorial (first run + replayable from ❓) -->
 {#if showTutorial}
@@ -768,106 +729,90 @@
     <!-- 🏠 Main Menu (after sign-in) -->
     <div class="main-menu fade-up">
       <div class="menu-hero">
-        <button class="bank-chip" on:click={() => goto('/bank')} title="Cash & Net Worth">
-          <span class="bc-coin">💰</span>{netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}
-          <span class="bc-tag">net worth</span>
-        </button>
-        <button class="streak-chip" class:lit={(dailyStatus?.current_streak ?? 0) > 0} on:click={() => goto('/streak')} title="Your streak">
-          <span class="sc-flame">🔥</span>{dailyStatus?.current_streak ?? 0}
-        </button>
+        <div class="hero-top">
+          <button class="bank-chip" on:click={() => goto('/bank')} title="Your Cash">
+            <span class="bc-coin">💰</span>{netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}
+          </button>
+          <div class="hero-utils">
+            <button class="streak-chip" class:lit={(dailyStatus?.current_streak ?? 0) > 0} on:click={() => goto('/streak')} title="Your streak">
+              <span class="sc-flame">🔥</span>{dailyStatus?.current_streak ?? 0}
+            </button>
+            <button class="hero-ic bell-button" title="Notifications" on:click={openNotifications}>
+              🔔{#if $unreadCount > 0}<span class="bell-badge">{$unreadCount > 9 ? '9+' : $unreadCount}</span>{/if}
+            </button>
+          </div>
+        </div>
         <img class="menu-mark float" src="/logo-mark.png" alt="" width="84" height="84" />
         <img class="menu-wordmark" src="/wordmark-slogan.png" alt="WordBank — Spend Less. Think More." />
       </div>
       <div class="main-menu-buttons stagger">
-        <button
-          class="menu-card primary sheen"
-          class:done={dailyDone}
-          style="--i: 0"
-          class:disabled={dailyDone}
-          on:click={handleMenuDaily}
-        >
-          <span class="mc-icon">{#if dailyDone}{dailyStatus?.last_daily_won ? '✅' : '❌'}{:else}🎯{/if}</span>
+        <!-- ▶ PLAY — all game modes in one expandable card -->
+        <button class="menu-card primary sheen" class:open={playOpen} style="--i: 0" on:click={() => { playOpen = !playOpen; fx('tap'); }}>
+          <span class="mc-icon">🎮</span>
           <span class="mc-body">
-            <span class="mc-title">{#if savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost'}Resume Daily{:else if dailyDone}Daily Complete{:else}Daily Puzzle{/if}</span>
-            <span class="mc-sub">
-              {#if dailyDone}
-                {dailyStatus?.last_daily_won ? 'Solved' : 'Missed'} · Score {dailyStatus?.today_score?.toLocaleString() ?? 0} · back tomorrow
-              {:else}
-                One puzzle a day · ranked
-              {/if}
-            </span>
+            <span class="mc-title">Play</span>
+            <span class="mc-sub">{dailyDone ? 'Cash Game · Free Play · Challenges' : 'Daily ready · Cash Game · Challenges'}</span>
           </span>
-          <span class="mc-arrow">{dailyDone ? '🔒' : '→'}</span>
+          {#if challengeCount > 0 && !playOpen}<span class="mc-count" title="{challengeCount} challenge{challengeCount === 1 ? '' : 's'} waiting">{challengeCount}</span>{/if}
+          <span class="mc-arrow">{playOpen ? '▾' : '▸'}</span>
         </button>
+        {#if playOpen}
+          <div class="play-modes">
+            <button class="play-mode" class:done={dailyDone} disabled={dailyDone} on:click={handleMenuDaily}>
+              <span class="pm-ic">{#if dailyDone}{dailyStatus?.last_daily_won ? '✅' : '❌'}{:else}🎯{/if}</span>
+              <span class="pm-body">
+                <span class="pm-t">{#if savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost'}Resume Daily{:else if dailyDone}Daily Complete{:else}Daily Puzzle{/if}</span>
+                <span class="pm-s">{#if dailyDone}{dailyStatus?.last_daily_won ? 'Solved' : 'Missed'} · +{dailyStatus?.today_score?.toLocaleString() ?? 0} · back tomorrow{:else}One a day · attendance reward{/if}</span>
+              </span>
+            </button>
+            <button class="play-mode" on:click={handleMenuClimb}>
+              <span class="pm-ic">🎰</span>
+              <span class="pm-body"><span class="pm-t">Cash Game</span><span class="pm-s">Climb the ladder · risk real Cash</span></span>
+            </button>
+            <button class="play-mode" on:click={handleMenuFreeplay}>
+              <span class="pm-ic">🎲</span>
+              <span class="pm-body"><span class="pm-t">Free Play</span><span class="pm-s">Free to play · earn a little Cash</span></span>
+            </button>
+            <button class="play-mode" on:click={openChallenges}>
+              <span class="pm-ic">⚔️</span>
+              <span class="pm-body"><span class="pm-t">Challenges</span><span class="pm-s">Wager friends · lowest spend wins</span></span>
+              {#if challengeCount > 0}<span class="mc-count">{challengeCount}</span>{/if}
+            </button>
+          </div>
+        {/if}
         <button class="menu-card" class:done={questProgress.all_done} style="--i: 1" on:click={() => goto('/quests')}>
           <span class="mc-icon">{questProgress.all_done ? '🏆' : '📋'}</span>
           <span class="mc-body">
             <span class="mc-title">Daily Quests</span>
-            <span class="mc-sub">
-              {#if questProgress.all_done && !questProgress.reward_claimed}All done — claim your reward!{:else}{questProgress.done}/{questProgress.total} complete today{/if}
-            </span>
+            <span class="mc-sub">{#if questProgress.all_done && !questProgress.reward_claimed}All done — claim your reward!{:else}{questProgress.done}/{questProgress.total} complete today{/if}</span>
           </span>
           <span class="mc-arrow">{#if questProgress.all_done && !questProgress.reward_claimed}🎁{:else}→{/if}</span>
         </button>
-        <button class="menu-card" style="--i: 2" on:click={handleMenuClimb}>
-          <span class="mc-icon">🎰</span>
-          <span class="mc-body">
-            <span class="mc-title">Cash Game</span>
-            <span class="mc-sub">Climb the ladder · risk real Cash</span>
-          </span>
-          <span class="mc-arrow">→</span>
-        </button>
-        <button class="menu-card" style="--i: 3" on:click={handleMenuFreeplay}>
-          <span class="mc-icon">🎲</span>
-          <span class="mc-body">
-            <span class="mc-title">Free Play</span>
-            <span class="mc-sub">Free to play · earn a little Cash</span>
-          </span>
-          <span class="mc-arrow">→</span>
-        </button>
-        <button class="menu-card" style="--i: 4" on:click={openChallenges}>
-          <span class="mc-icon">⚔️</span>
-          <span class="mc-body">
-            <span class="mc-title">Challenges</span>
-            <span class="mc-sub">Wager your Cash vs friends</span>
-          </span>
-          {#if challengeCount > 0}
-            <span class="mc-count" title="{challengeCount} waiting for you">{challengeCount}</span>
-          {/if}
-          <span class="mc-arrow">→</span>
-        </button>
-        <button class="menu-card" style="--i: 5" on:click={() => goto('/badges')}>
-          <span class="mc-icon">🏅</span>
-          <span class="mc-body">
-            <span class="mc-title">Badges</span>
-            <span class="mc-sub">Level up every category</span>
-          </span>
-          <span class="mc-arrow">→</span>
-        </button>
-        <button class="menu-card" style="--i: 6" on:click={() => goto('/shop')}>
-          <span class="mc-icon">🛍️</span>
-          <span class="mc-body">
-            <span class="mc-title">Shop</span>
-            <span class="mc-sub">Spend your Cash on flair</span>
-          </span>
-          <span class="mc-arrow">→</span>
-        </button>
-        <button class="menu-card" style="--i: 7" on:click={handleMenuLeaderboard}>
+        <button class="menu-card" style="--i: 2" on:click={handleMenuLeaderboard}>
           <span class="mc-icon">🏆</span>
-          <span class="mc-body">
-            <span class="mc-title">Leaderboard</span>
-            <span class="mc-sub">See who's on top</span>
-          </span>
+          <span class="mc-body"><span class="mc-title">Leaderboard</span><span class="mc-sub">See who's on top</span></span>
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 8" on:click={handleMenuMyAccount}>
+        <button class="menu-card" style="--i: 3" on:click={() => goto('/shop')}>
+          <span class="mc-icon">🛍️</span>
+          <span class="mc-body"><span class="mc-title">Shop</span><span class="mc-sub">Spend your Cash on flair</span></span>
+          <span class="mc-arrow">→</span>
+        </button>
+        <button class="menu-card" style="--i: 4" on:click={() => goto('/badges')}>
+          <span class="mc-icon">🏅</span>
+          <span class="mc-body"><span class="mc-title">Badges</span><span class="mc-sub">Level up every category</span></span>
+          <span class="mc-arrow">→</span>
+        </button>
+        <button class="menu-card" style="--i: 5" on:click={handleMenuMyAccount}>
           <span class="mc-icon">👤</span>
-          <span class="mc-body">
-            <span class="mc-title">My Account</span>
-            <span class="mc-sub">Profile &amp; sign out</span>
-          </span>
+          <span class="mc-body"><span class="mc-title">My Account</span><span class="mc-sub">Profile &amp; sign out</span></span>
           <span class="mc-arrow">→</span>
         </button>
+        <!-- subtle utility footer (was the floating icon cluster) -->
+        <div class="menu-footer">
+          <button on:click={() => { toggleSound(); if ($soundEnabled) fx('select'); }} title="Sound &amp; haptics">{$soundEnabled ? '🔊' : '🔇'} Sound</button>
+          <button on:click={() => showTutorial = true} title="How to play">❓ How to play</button>
+        </div>
       </div>
     </div>
 
@@ -1677,16 +1622,30 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
-    position: relative;
+    width: 100%;
   }
+  .hero-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 360px;
+    margin-bottom: 1.4rem;
+  }
+  .hero-utils { display: flex; align-items: center; gap: 8px; }
+  .hero-ic {
+    position: relative;
+    display: inline-grid; place-items: center;
+    width: 38px; height: 34px; border-radius: 999px;
+    background: var(--surface, rgba(255,255,255,0.05)); border: 1px solid var(--border);
+    cursor: pointer; font-size: 1rem; transition: transform 0.15s, border-color 0.2s;
+  }
+  .hero-ic:hover { transform: translateY(-1px); border-color: var(--border-strong); }
   .bank-chip {
-    position: absolute;
-    top: 0;
-    left: 0;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 6px 12px;
+    gap: 5px;
+    padding: 6px 14px;
     border-radius: 999px;
     background: var(--surface, rgba(255,255,255,0.05));
     border: 1px solid rgba(163, 230, 53, 0.35);
@@ -1700,11 +1659,7 @@
   .bank-chip:hover { transform: translateY(-1px); }
   .bank-chip:active { transform: scale(0.96); }
   .bank-chip .bc-coin { font-size: 1rem; }
-  .bank-chip .bc-tag { font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); }
   .streak-chip {
-    position: absolute;
-    top: 0;
-    right: 0;
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -1785,7 +1740,6 @@
     background: rgba(255, 255, 255, 0.03);
     box-shadow: none;
   }
-  .menu-card.done.primary .mc-icon { background: rgba(255, 255, 255, 0.06); border: 1px solid var(--border); }
   .menu-card.done .mc-sub { color: var(--brand-2); font-weight: 600; }
   .mc-icon {
     width: 46px;
@@ -1813,6 +1767,37 @@
     background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635));
     box-shadow: 0 0 12px rgba(52,211,153,0.4);
   }
+  /* Play accordion */
+  .menu-card.open .mc-arrow { color: var(--brand-2); }
+  .play-modes { display: flex; flex-direction: column; gap: 0.5rem; margin: -0.35rem 0 0.3rem; padding-left: 0.5rem; border-left: 2px solid rgba(163,230,53,0.25); }
+  .play-mode {
+    display: flex; align-items: center; gap: 0.8rem; width: 100%; padding: 0.7rem 0.9rem;
+    border-radius: 12px; cursor: pointer; text-align: left;
+    background: var(--surface, rgba(255,255,255,0.04)); border: 1px solid var(--border);
+    transition: transform 0.12s, border-color 0.15s, background 0.15s;
+  }
+  .play-mode:hover:not(:disabled) { transform: translateX(2px); border-color: rgba(163,230,53,0.5); }
+  .play-mode:disabled { opacity: 0.5; cursor: not-allowed; }
+  .play-mode.done { opacity: 0.7; }
+  .pm-ic { font-size: 1.3rem; width: 1.6rem; text-align: center; }
+  .pm-body { display: flex; flex-direction: column; gap: 1px; flex: 1; }
+  .pm-t { font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; }
+  .pm-s { font-size: 0.72rem; color: var(--text-muted); }
+  /* utility footer (replaces the old floating icon cluster) */
+  .menu-footer { display: flex; justify-content: center; gap: 1.2rem; margin-top: 0.4rem; }
+  .menu-footer button {
+    background: none; border: none; cursor: pointer; color: var(--text-faint);
+    font-size: 0.78rem; font-weight: 600; padding: 4px;
+  }
+  .menu-footer button:hover { color: var(--text-muted); }
+  /* back-to-menu button on game/sub screens */
+  .menu-back-btn {
+    position: fixed; top: 14px; left: 14px; z-index: 1000;
+    padding: 0.5rem 0.95rem; border-radius: 999px; cursor: pointer; font-weight: 700; font-size: 0.85rem;
+    background: var(--surface-strong, rgba(20,28,40,0.85)); color: var(--text);
+    border: 1px solid var(--border-strong, var(--border)); backdrop-filter: blur(10px);
+  }
+  .menu-back-btn:hover { border-color: var(--brand-2); }
   /* notification bell */
   .bell-button { position: relative; }
   .bell-badge {
@@ -2224,44 +2209,6 @@
   button:focus-visible {
     outline: none !important;
   }
-
-  .top-buttons {
-    position: fixed;
-    top: 12px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: calc(100% - 24px);
-    max-width: 600px;
-    display: flex;
-    justify-content: space-between;
-    z-index: 1000;
-  }
-
-  .icon-button, a.icon-button {
-    width: 40px;
-    height: 40px;
-    display: grid;
-    place-items: center;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--r-pill);
-    text-decoration: none;
-    font-size: 18px;
-    line-height: 1;
-    cursor: pointer;
-    color: var(--text);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    transition: transform 0.18s var(--ease-spring), background 0.2s, border-color 0.2s;
-  }
-
-  .icon-button:hover, a.icon-button:hover {
-    background: var(--surface-2);
-    border-color: var(--border-strong);
-    transform: translateY(-1px) scale(1.05);
-  }
-
-  .subtle-button { opacity: 0.95; }
 
   .modal-overlay {
     position: fixed;
