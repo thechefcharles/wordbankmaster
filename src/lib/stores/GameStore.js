@@ -654,15 +654,11 @@ export async function climbLeaveGame() {
   try { await climbLeave(); } catch { /* non-fatal */ }
 }
 
-/** Use a power-up in the Climb — buys it first if you don't own one. @param {string} id @param {boolean} owned */
-export async function climbPowerup(id, owned) {
+/** Equip a power-up in the Climb (v3: charges Cash on use, counts as spend). @param {string} id */
+export async function climbPowerup(id) {
   if (dailyInFlight) return;
   dailyInFlight = true;
   try {
-    if (!owned) {
-      const res = await buyPowerup(id);
-      if (!res || res.ok === false) return;
-    }
     const board = await climbUsePowerup(id);
     if (board) reconcileClimbBoard(board);
   } finally {

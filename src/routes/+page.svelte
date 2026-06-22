@@ -252,7 +252,7 @@
     _attTimer = setTimeout(() => gameStore.update(s => ({ ...s, dailyAttendance: null })), 4500);
   }
   $: isClimb = $gameStore.gameMode === 'climb';
-  $: climb = $gameStore.climbInfo; // { bounty, heat, attempts, spent, position, stuck, last_gain, state }
+  $: climb = $gameStore.climbInfo; // { bounty, heat, spent, position, stuck, last_gain, state, pups_locked, equipped }
   $: isMatch = $gameStore.gameMode === 'match';
   $: matchInfo = $gameStore.matchInfo; // { position, pack_size, total_score, last_score, done, mode, solved, spent, budget, wager, started_at, clock_seconds, combo }
   $: matchBlitz = isMatch && matchInfo?.mode === 'blitz' && !matchInfo?.done;
@@ -285,15 +285,16 @@
   }
   /** @type {any[]} */
   let climbPups = [];
-  const PUP_ICON = /** @type {Record<string,string>} */ ({ free_reveal: '🔍', half_off: '🏷️', extra_attempt: '➕', insurance: '🛟', heat_shield: '🛡️', double_down: '⚡' });
+  const PUP_ICON = /** @type {Record<string,string>} */ ({ free_reveal: '🔍', half_off: '🏷️', vowel_vision: '👁️', extra_hint: '💡' });
   async function refreshClimbPups() {
     try { const r = await getPowerups(); climbPups = r.items.filter((/** @type {any} */ i) => i.kind === 'climb'); } catch { /* non-fatal */ }
   }
   /** @param {any} item */
   async function handleClimbPup(item) {
     const cash = $gameStore.bankroll ?? 0;
-    if (item.owned <= 0 && cash < item.price) return; // can't afford to buy
-    await climbPowerup(item.id, item.owned > 0);
+    const equipped = (climb?.equipped ?? []).includes(item.id);
+    if (climb?.pups_locked || equipped || cash < item.price) return;
+    await climbPowerup(item.id);
     await refreshClimbPups();
   }
   $: makeupLabel = (() => {
@@ -1149,12 +1150,14 @@
         <div class="ch-cell" class:hot={(climb.heat ?? 100) > 100}><span class="ch-val">×{climbHeat}</span><span class="ch-label">Heat</span></div>
       </div>
       {#if climb.state === 'active' && climbPups.length}
+        <p class="cp-hint">{climb.pups_locked ? 'Loadout locked — equip before your first letter' : 'Equip before you start · cost counts as spend'}</p>
         <div class="climb-pups">
           {#each climbPups as item}
-            <button class="cp" disabled={item.owned <= 0 && ($gameStore.bankroll ?? 0) < item.price}
+            {@const equipped = (climb.equipped ?? []).includes(item.id)}
+            <button class="cp" class:equipped disabled={climb.pups_locked || equipped || ($gameStore.bankroll ?? 0) < item.price}
               on:click={() => handleClimbPup(item)} title={item.name}>
               <span class="cp-ic">{PUP_ICON[item.id] ?? '✨'}</span>
-              <span class="cp-tag">{item.owned > 0 ? '×' + item.owned : '$' + item.price}</span>
+              <span class="cp-tag">{equipped ? '✓' : '$' + item.price}</span>
             </button>
           {/each}
         </div>
@@ -1512,6 +1515,7 @@
   .ch-cell.hot .ch-val { color: #fbbf24; }
   .ch-gold { color: #fcd34d; }
   .ch-label { font-size: 0.55rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
+  .cp-hint { font-size: 0.66rem; color: var(--text-faint); text-align: center; margin: 0 0 5px; }
   .climb-pups { display: flex; gap: 6px; width: 100%; max-width: 360px; margin: 0 auto 12px; justify-content: space-between; }
   .cp {
     flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 7px 2px;
@@ -1520,6 +1524,8 @@
   }
   .cp:hover:not(:disabled) { transform: translateY(-1px); border-color: rgba(251,191,36,0.5); }
   .cp:disabled { opacity: 0.4; cursor: default; }
+  .cp.equipped { border-color: var(--brand-2); background: rgba(163,230,53,0.12); opacity: 1; }
+  .cp.equipped .cp-tag { color: var(--brand-2); }
   .cp-ic { font-size: 1.1rem; line-height: 1; }
   .cp-tag { font-size: 0.6rem; font-weight: 700; color: var(--text-faint); }
   .climb-stuck {

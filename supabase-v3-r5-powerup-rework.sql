@@ -1,0 +1,39 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  v3 R5: Power-up rework (Climb) — one-of-each · pre-commit · cost = spend   ║
+-- ║  (migration: v3_r5_powerup_rework — applied via MCP)                        ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Fifth slice of WORDBANK_MASTER_V3.md. Climb power-ups now serve the efficiency
+-- objective and can't be used as pay-to-win or a reactive escape hatch.
+--
+-- powerups += active BOOLEAN. climb_state += pups_locked BOOLEAN.
+--
+-- CATALOG (climb): trimmed to the efficiency four —
+--   Free Reveal $80 (reveal the most-common letter), Half Off $120 (letters −50%),
+--   Vowel Vision $150 (reveal all vowels), Extra Hint $70 (first letter of each word).
+--   Deactivated (active=false, not deleted): Extra Attempt (unlimited guesses now),
+--   Insurance (no bust), Heat Shield, Double Down (don't fit efficiency). Blitz tools
+--   untouched. (Climb heat is KEPT; Heat Shield is gone, so heat just resets on stuck.)
+--
+-- RULES (climb_use_powerup is now equip-and-charge in one step):
+--   • PRE-COMMIT: only before you engage the puzzle (pups_locked = false). Buying a
+--     letter sets pups_locked = true → no reactive escape-hatching. climb_next resets it.
+--   • ONE OF EACH: can't equip an effect already in active_powerups.
+--   • COST COUNTS AS SPEND: the price is deducted from Cash AND added to climb spent,
+--     so a power-up only helps if it saves more than it costs (anti-pay-to-win).
+--   No more buy-into-inventory then use — you equip and pay at once (cash pool of
+--   user_powerups_v2 is now unused for climb; kept for Free Play / R6).
+--
+-- _climb_board exposes climb.pups_locked + climb.equipped for the loadout UI.
+-- get_powerups filters to active items only.
+--
+-- Verified (rolled-back SQL sim, Chef untouched): equip Free Reveal → −$80 Cash,
+--   spent +$80, a letter revealed; 2nd Free Reveal blocked (one-of-each); buying a
+--   letter locks the loadout; equipping Vowel Vision after engaging blocked.
+--
+-- Client: climb tray shows the 4 power-ups with prices, "✓" when equipped, disabled
+--   when locked / unaffordable / already equipped; a hint explains equip-before-you-
+--   start + cost-counts-as-spend. GameStore.climbPowerup just calls climb_use_powerup.
+--
+-- DEFERRED: power-ups in Challenges/matches (no match_use_powerup yet); Free Play
+--   earned power-ups (R6); a stricter "commit blind before the next puzzle is shown"
+--   screen (current rule = equip before your first letter on the current puzzle).
