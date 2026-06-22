@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { getStreakOverview } from '$lib/stores/statsStore.js';
+  import { enterMakeup } from '$lib/stores/GameStore.js';
   import { track } from '$lib/analytics.js';
 
   /** @type {{ current_streak:number, highest_streak:number, freezes:number, days:{d:string,won:boolean}[] }|null} */
@@ -42,7 +43,7 @@
   $: cells = (() => {
     const firstWeekday = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    /** @type {{blank?:boolean, day?:number, status?:string, isToday?:boolean}[]} */
+    /** @type {{blank?:boolean, day?:number, key?:string, status?:string, isToday?:boolean, playable?:boolean}[]} */
     const out = [];
     for (let i = 0; i < firstWeekday; i++) out.push({ blank: true });
     for (let d = 1; d <= daysInMonth; d++) {
@@ -50,10 +51,27 @@
       let status = 'none';
       if (d > todayDate) status = 'future';
       else if (dayMap.has(key)) status = dayMap.get(key) ? 'won' : 'lost';
-      out.push({ day: d, status, isToday: d === todayDate });
+      // A past day this month that was never played → make it up.
+      const playable = status === 'none' && d < todayDate;
+      out.push({ day: d, key, status, isToday: d === todayDate, playable });
     }
     return out;
   })();
+
+  let starting = false;
+  /** @param {any} c */
+  async function onCellClick(c) {
+    if (starting) return;
+    if (c.playable && c.key) {
+      starting = true;
+      track('makeup_calendar_click', { date: c.key });
+      const ok = await enterMakeup(c.key);
+      starting = false;
+      if (ok) goto('/');
+    } else if (c.isToday && c.status === 'none') {
+      goto('/'); // today's daily is played from the menu
+    }
+  }
 </script>
 
 <svelte:head><title>WordBank — Streak</title></svelte:head>
@@ -85,6 +103,11 @@
         {#each cells as c}
           {#if c.blank}
             <div class="cell blank"></div>
+          {:else if c.playable}
+            <button class="cell none playable" class:today={c.isToday} disabled={starting}
+              title={`Play ${MONTHS[month]} ${c.day}`} on:click={() => onCellClick(c)}>
+              <span class="cell-day">{c.day}</span><span class="cell-play">▶</span>
+            </button>
           {:else}
             <div class="cell {c.status}" class:today={c.isToday} title={`${MONTHS[month]} ${c.day}`}>
               {#if c.status === 'won'}🔥{:else}{c.day}{/if}
@@ -92,10 +115,11 @@
           {/if}
         {/each}
       </div>
+      <p class="makeup-hint">Tap a ▶ day to play that puzzle and fill your calendar — earns 🗓️ Perfect Week / 📅 Perfect Month badges. (Doesn’t change your streak.)</p>
       <div class="legend">
         <span><i class="dot won"></i> Won</span>
         <span><i class="dot lost"></i> Missed</span>
-        <span><i class="dot none"></i> No play</span>
+        <span><i class="dot play"></i> Make up</span>
       </div>
     </div>
   {/if}
@@ -146,11 +170,22 @@
   .cell.none { color: var(--text-faint); }
   .cell.future { opacity: 0.3; }
   .cell.today { box-shadow: 0 0 0 2px var(--brand-2); }
+  /* make-up (playable) cells */
+  .cell.playable {
+    position: relative; cursor: pointer; color: var(--text);
+    border-color: rgba(56,189,248,0.45); background: rgba(56,189,248,0.08);
+    transition: transform 0.12s, background 0.15s;
+  }
+  .cell.playable:hover { background: rgba(56,189,248,0.16); transform: translateY(-1px); }
+  .cell.playable:disabled { opacity: 0.5; cursor: default; }
+  .cell.playable .cell-day { font-size: 0.8rem; }
+  .cell.playable .cell-play { position: absolute; bottom: 2px; right: 4px; font-size: 0.5rem; color: #38bdf8; }
 
+  .makeup-hint { font-size: 0.74rem; color: var(--text-muted); margin: 0.9rem 0 0; line-height: 1.4; }
   .legend { display: flex; justify-content: center; gap: 1rem; margin-top: 1rem; font-size: 0.75rem; color: var(--text-faint); }
   .legend span { display: inline-flex; align-items: center; gap: 5px; }
   .dot { width: 11px; height: 11px; border-radius: 4px; display: inline-block; }
   .dot.won { background: linear-gradient(135deg,#34d399,#a3e635); }
   .dot.lost { background: rgba(251,113,133,0.4); }
-  .dot.none { background: rgba(255,255,255,0.08); border: 1px solid var(--border); }
+  .dot.play { background: rgba(56,189,248,0.3); border: 1px solid rgba(56,189,248,0.5); }
 </style>

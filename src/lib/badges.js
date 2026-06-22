@@ -5,6 +5,8 @@ export const BADGES = {
   gold_bank: { emoji: '💎', name: 'Gold Bank',    desc: 'Finished a daily with $700+' },
   streak_7:  { emoji: '🔥', name: 'Week Warrior',  desc: '7-day daily streak' },
   streak_30: { emoji: '👑', name: 'Iron Will',     desc: '30-day daily streak' },
+  week_complete:  { emoji: '🗓️', name: 'Perfect Week',  desc: 'Played every day of a calendar week' },
+  month_complete: { emoji: '📅', name: 'Perfect Month', desc: 'Played every day of a calendar month' },
 };
 
 /** @param {string} id */
