@@ -302,7 +302,9 @@
   });
   onDestroy(() => clearInterval(pressureTimer));
 
-  const TUTORIAL_KEY = 'wb_tutorial_seen';
+  // Bump this key whenever the tutorial gains new content — it re-shows for
+  // everyone on next login (v2 = Bank economy: loan/net worth, Challenges, Shop).
+  const TUTORIAL_KEY = 'wb_tutorial_v2';
   // First-run guided tutorial: show once a signed-in user reaches the menu.
   $: if (browser && loggedIn && hasInitialized && localStorage.getItem(TUTORIAL_KEY) !== 'true') {
     showTutorial = true;

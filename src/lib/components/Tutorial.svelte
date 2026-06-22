@@ -29,6 +29,24 @@
       icon: '🏆',
       title: 'Daily & Arcade',
       body: 'Play Daily for one ranked puzzle everyone shares. Play Arcade to keep solving, banking each win and building your multiplier until you bust.'
+    },
+    {
+      icon: '🏦',
+      title: 'Your Bank',
+      isNew: true,
+      body: 'New: everyone starts with a $5,000 loan from the house. Win games to grow your Bank — your Net Worth is your Bank minus what you still owe. Pay the house back to climb.'
+    },
+    {
+      icon: '⚔️',
+      title: 'Challenge friends',
+      isNew: true,
+      body: 'Wager your Bank head-to-head on the same puzzle. Score mode: most bankroll left wins. Pressure mode: a 60-second clock, so speed counts. Winner takes the pot.'
+    },
+    {
+      icon: '🛍️',
+      title: 'Shop & friends',
+      isNew: true,
+      body: 'Add friends by @username, then race them on the Net Worth board. Spend your Bank in the Shop on titles and name colors that show off your rank.'
     }
   ];
 
@@ -55,6 +73,7 @@
     <button class="tut-skip" on:click={skip}>Skip</button>
 
     {#key i}
+      {#if step.isNew}<span class="tut-new">NEW</span>{/if}
       <div class="tut-icon">{step.icon}</div>
       <h2 class="tut-title">{step.title}</h2>
       <p class="tut-body">{step.body}</p>
@@ -124,6 +143,18 @@
   }
   .tut-skip:hover { color: var(--text, #fff); }
 
+  .tut-new {
+    display: inline-block;
+    margin-bottom: 8px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-family: var(--font-display, sans-serif);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #06210f;
+    background: var(--brand-grad, linear-gradient(135deg, #34d399, #a3e635));
+  }
   .tut-icon {
     font-size: 3rem;
     line-height: 1;
