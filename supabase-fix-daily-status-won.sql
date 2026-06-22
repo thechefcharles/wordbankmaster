@@ -1,0 +1,14 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Fix: Daily menu showed "Missed" after a win                                ║
+-- ║  (migration: v3_fix_daily_status_won — applied via MCP)                     ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Regression from R3: moving the streak update into daily_start meant nothing set
+-- profiles.last_daily_won anymore, so get_daily_status returned a stale false and
+-- the main-menu Daily chip showed "❌ Missed" even after solving.
+--
+-- Fix: get_daily_status now derives last_daily_won from whether a Daily game_result
+-- exists for today. v3 only writes a daily game_result on a WIN (in _finalize_daily),
+-- so its existence == solved-today. Robust, no profile flag to maintain.
+--
+-- Verified (test1): won_today=true, today_score=313, session=won → chip now reads
+-- "✅ Solved · +313". Pure server fix; no client change.
