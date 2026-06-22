@@ -1,0 +1,23 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Expanded power-up catalog (more self-buffs + sabotage)                     ║
+-- ║  (migrations: v3_powerups_expanded_catalog, _expanded_sabotage)             ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- _powerup_reveal(phrase, effect, revealed[]) — shared reveal helper for all
+-- reveal-type self-buffs, used by climb_use_powerup AND match_use_powerup (one
+-- place to define reveals). Verified: reveal_word→full first word, last_letters→
+-- last of each word, free_vowel→most-common vowel, extra_hint→first of each word.
+--
+-- NEW self-buffs (kind='climb'): 📖 Reveal Word $200 (a whole word), 🅰️ Free Vowel
+--   $50 (one vowel), 🔚 Last Letters $70 (last of each word).
+-- NEW sabotage (kind='sabotage'): 🚧 Toll $90 (target's NEXT letter ×3, one-shot —
+--   consumed in match_buy_letter), 🚫 Vowel Block $110 (target's vowels ×3 this
+--   puzzle), 🔒 Lock $130 (immediately WIPES a random letter the target revealed).
+--
+-- match_buy_letter cost stack: Half Off → Tax(+50%) → Vowel Block(×3 on vowels) →
+--   Toll(×3, then removed). match_sabotage: Lock acts immediately (un-reveals all
+--   positions of one random revealed letter); the rest are persistent debuffs that
+--   clear on the target's next puzzle. All notify the target.
+--
+-- Full catalog now: self-buffs = Free Reveal/Free Vowel/Half Off/Vowel Vision/Reveal
+--   Word/Extra Hint/Last Letters; sabotage = Tax/Fog/Toll/Vowel Block/Lock.
+-- Client: icons + shop descriptions + debuff labels added; trays render dynamically.

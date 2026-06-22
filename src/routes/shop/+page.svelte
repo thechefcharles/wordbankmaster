@@ -16,11 +16,17 @@
 
   const PUP_META = /** @type {Record<string,{icon:string,desc:string}>} */ ({
     free_reveal:  { icon: '🔍', desc: 'Reveal the most useful letter' },
+    free_vowel:   { icon: '🅰️', desc: 'Reveal one vowel free' },
     half_off:     { icon: '🏷️', desc: 'Letters cost 50% less this puzzle' },
     vowel_vision: { icon: '👁️', desc: 'Reveal every vowel' },
+    reveal_word:  { icon: '📖', desc: 'Reveal a whole word' },
     extra_hint:   { icon: '💡', desc: 'Reveal the first letter of each word' },
+    last_letters: { icon: '🔚', desc: 'Reveal the last letter of each word' },
     sabotage_tax: { icon: '💸', desc: "An opponent's letters cost +50%" },
-    sabotage_fog: { icon: '🌫️', desc: "Hide an opponent's clue" }
+    sabotage_fog: { icon: '🌫️', desc: "Hide an opponent's clue" },
+    sabotage_toll:        { icon: '🚧', desc: "An opponent's next letter costs 3×" },
+    sabotage_vowel_block: { icon: '🚫', desc: "An opponent's vowels cost 3×" },
+    sabotage_lock:        { icon: '🔒', desc: 'Wipe a letter an opponent revealed' }
   });
 
   /** @type {any[]} */

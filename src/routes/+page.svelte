@@ -301,8 +301,14 @@
   }
   /** @type {any[]} */
   let climbPups = [];
-  const PUP_ICON = /** @type {Record<string,string>} */ ({ free_reveal: '🔍', half_off: '🏷️', vowel_vision: '👁️', extra_hint: '💡', sabotage_tax: '💸', sabotage_fog: '🌫️' });
-  const DEBUFF_LABEL = /** @type {Record<string,string>} */ ({ tax: '💸 Taxed (letters +50%)', fog: '🌫️ Fogged (clue hidden)' });
+  const PUP_ICON = /** @type {Record<string,string>} */ ({
+    free_reveal: '🔍', half_off: '🏷️', vowel_vision: '👁️', extra_hint: '💡', reveal_word: '📖', free_vowel: '🅰️', last_letters: '🔚',
+    sabotage_tax: '💸', sabotage_fog: '🌫️', sabotage_toll: '🚧', sabotage_vowel_block: '🚫', sabotage_lock: '🔒'
+  });
+  const DEBUFF_LABEL = /** @type {Record<string,string>} */ ({
+    tax: '💸 Taxed (letters +50%)', fog: '🌫️ Fogged (clue hidden)',
+    toll: '🚧 Tolled (next letter 3×)', vowel_block: '🚫 Vowel-blocked (vowels 3×)'
+  });
   let pendingSabotage = /** @type {string|null} */ (null); // sabotage powerup id awaiting a target
   async function refreshClimbPups() {
     try { const r = await getPowerups(); climbPups = r.items ?? []; } catch { /* non-fatal */ }
