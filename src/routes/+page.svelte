@@ -4,8 +4,8 @@
   import { supabase } from '$lib/supabaseClient';
   import { get } from 'svelte/store';
 
-  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbBorrow, climbPowerup } from '$lib/stores/GameStore.js';
-  import { getMyChallenges, getPowerups } from '$lib/stores/statsStore.js';
+  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbBorrow, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch } from '$lib/stores/GameStore.js';
+  import { getMyChallenges, getPowerups, getMyMatches, getMyGroups, getMatch } from '$lib/stores/statsStore.js';
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
@@ -176,6 +176,10 @@
       fetchMakeupGame().then((ok) => { if (!ok) showMainMenu = true; });
     } else if (gameMode === 'climb') {
       fetchClimbGame().then((ok) => { if (!ok) showMainMenu = true; });
+    } else if (gameMode === 'match') {
+      // Matches aren't deep-link restorable (need the active id) — return to the menu.
+      localStorage.setItem('gameMode', 'daily');
+      showMainMenu = true;
     } else {
       fetchDailyGame().then((ok) => {
         if (!ok) initError = "Daily puzzle failed to load.";
@@ -242,6 +246,8 @@
   $: isMakeup = $gameStore.gameMode === 'makeup';
   $: isClimb = $gameStore.gameMode === 'climb';
   $: climb = $gameStore.climbInfo; // { bounty, heat, attempts, spent, position, stuck, last_gain, state }
+  $: isMatch = $gameStore.gameMode === 'match';
+  $: matchInfo = $gameStore.matchInfo; // { position, pack_size, total_score, last_score, done }
   $: climbHeat = ((climb?.heat ?? 100) / 100).toFixed(1);
   $: dr = $gameStore.dailyResult; // { score, clean, no_vowels, first_try, no_reveals }
   let climbBorrowing = false;
@@ -453,36 +459,47 @@
       initError = 'Free Play failed to load.';
     }
   }
-  // ===== Challenges (friend wagers) =====
+  // ===== Challenge Builder (configurable packs vs friends/groups) =====
   let showChallenges = false;
   /** @type {any[]} */
-  let myChallenges = [];
-  let challengeCount = 0; // challenges awaiting my play (badge on the Challenges card)
-  let chOpp = '';
-  let chCategory = '';
-  let chWager = 500;
-  let chMode = 'score'; // 'score' (untimed) | 'pressure' (60s clock)
-  let chMsg = '';
-  let chBusy = false;
+  let myMatches = [];
+  /** @type {any[]} */
+  let myGroups = [];
+  let challengeCount = 0; // matches awaiting my play (badge on the Challenges card)
+  /** @type {any|null} */
+  let matchResults = null; // a settled match's results being viewed
+  // Builder form
+  let mbTarget = 'friend'; // 'friend' | 'group'
+  let mbOpponent = '';
+  let mbGroupId = '';
+  /** @type {string[]} */
+  let mbCategories = [];
+  let mbPackSize = 3;
+  let mbWager = 0;
+  let mbPayout = 'winner'; // 'winner' | 'top3' | 'even'
+  let mbWindow = 172800; // seconds
+  let mbMsg = '';
+  let mbBusy = false;
   /** @type {{username:string,is_friend:boolean}[]} */
-  let chResults = [];
+  let mbResults = [];
   /** @type {ReturnType<typeof setTimeout>|undefined} */
-  let chSearchTimer;
-  /** Count of challenges that need my action, for the menu badge. */
+  let mbSearchTimer;
+  const WINDOWS = [{ s: 3600, l: '1 hour' }, { s: 21600, l: '6 hours' }, { s: 86400, l: '24 hours' }, { s: 172800, l: '48 hours' }, { s: 604800, l: '1 week' }];
+
+  /** Count of matches that still need my action, for the menu badge. */
   async function refreshChallengeCount() {
     if (!get(user)?.id) return;
     try {
-      const list = await getMyChallenges();
-      myChallenges = list;
-      challengeCount = list.filter((c) => c.needs_my_play).length;
+      myMatches = await getMyMatches();
+      challengeCount = myMatches.filter((m) => m.status === 'open' && m.my_state !== 'done').length;
     } catch { /* non-fatal */ }
   }
   async function openChallenges() {
     if (!get(user)?.id) return;
-    chMsg = '';
+    mbMsg = ''; matchResults = null;
     showChallenges = true;
-    myChallenges = await getMyChallenges();
-    challengeCount = myChallenges.filter((c) => c.needs_my_play).length;
+    [myMatches, myGroups] = await Promise.all([getMyMatches(), getMyGroups()]);
+    challengeCount = myMatches.filter((m) => m.status === 'open' && m.my_state !== 'done').length;
   }
 
   // ===== Notifications panel (bell) =====
@@ -491,47 +508,53 @@
     showNotifications = true;
     await markAllNotificationsRead();
   }
-  function onChOppInput() {
-    clearTimeout(chSearchTimer);
-    const q = chOpp.trim();
-    if (q.length < 2) { chResults = []; return; }
-    chSearchTimer = setTimeout(async () => { chResults = await searchUsers(q); }, 220);
+  function onMbOppInput() {
+    clearTimeout(mbSearchTimer);
+    const q = mbOpponent.trim();
+    if (q.length < 2) { mbResults = []; return; }
+    mbSearchTimer = setTimeout(async () => { mbResults = await searchUsers(q); }, 220);
   }
   /** @param {string} username */
-  function pickChOpp(username) { chOpp = username; chResults = []; }
-  async function submitNewChallenge() {
-    if (chBusy) return;
-    if (!chOpp.trim() || !chCategory) { chMsg = 'Pick an opponent and a category.'; return; }
-    chBusy = true; chMsg = 'Creating…';
-    const res = await startChallenge(chOpp.trim(), chCategory, Math.floor(Number(chWager) || 0), chMode);
-    chBusy = false;
-    if (res?.ok) { launchChallengePlay(); }
+  function pickMbOpp(username) { mbOpponent = username; mbResults = []; }
+  /** @param {string} c */
+  function toggleCategory(c) { mbCategories = mbCategories.includes(c) ? mbCategories.filter((x) => x !== c) : [...mbCategories, c]; }
+
+  async function submitNewMatch() {
+    if (mbBusy) return;
+    if (mbTarget === 'friend' && !mbOpponent.trim()) { mbMsg = 'Pick an opponent.'; return; }
+    if (mbTarget === 'group' && !mbGroupId) { mbMsg = 'Pick a group.'; return; }
+    mbBusy = true; mbMsg = 'Creating…';
+    const res = await startMatch({
+      opponent: mbTarget === 'friend' ? mbOpponent.trim() : null,
+      group_id: mbTarget === 'group' ? mbGroupId : null,
+      categories: mbCategories, pack_size: mbPackSize,
+      wager: Math.floor(Number(mbWager) || 0), payout: mbPayout, window_seconds: mbWindow
+    });
+    mbBusy = false;
+    if (res?.ok) { launchMatchPlay(); }
     else {
-      chMsg = res?.reason === 'no_friend' ? 'No player with that username.'
-        : res?.reason === 'insufficient' ? "Not enough Cash for that wager."
+      mbMsg = res?.reason === 'no_opponent' ? 'No player with that username.'
+        : res?.reason === 'insufficient' ? 'Not enough Cash for that wager.'
         : res?.reason === 'min_wager' ? 'Minimum wager is $100.'
         : res?.reason === 'self' ? "You can't challenge yourself."
-        : res?.reason === 'no_puzzle' ? 'No puzzles in that category.'
+        : res?.reason === 'not_member' ? "You're not in that group."
+        : res?.reason === 'no_puzzles' ? 'No puzzles in those categories.'
         : 'Could not create the challenge.';
     }
   }
-  async function respondToChallenge(/** @type {any} */ ch) {
-    if (chBusy) return;
-    chBusy = true;
-    let ok = false;
-    if (ch.is_creator) {
-      ok = await resumeChallenge(ch.id); // creators resume their own (can't "accept")
-    } else {
-      const res = await acceptAndPlayChallenge(ch.id);
-      ok = !!res?.ok;
-      if (!ok) chMsg = res?.reason === 'insufficient' ? 'Not enough Cash.' : 'Could not open that challenge.';
-    }
-    chBusy = false;
-    if (ok) launchChallengePlay();
+  /** @param {any} m */
+  async function respondToMatch(m) {
+    if (mbBusy) return;
+    if (m.status === 'settled') { matchResults = await getMatch(m.id); return; }
+    mbBusy = true;
+    const ok = m.my_state === 'invited' ? await acceptAndPlayMatch(m.id) : await resumeMatch(m.id);
+    mbBusy = false;
+    if (ok) launchMatchPlay();
+    else mbMsg = 'Could not open that challenge.';
   }
-  function launchChallengePlay() {
+  function launchMatchPlay() {
     showChallenges = false;
-    localStorage.setItem('gameMode', 'challenge');
+    localStorage.setItem('gameMode', 'match');
     hasInitialized = true;
     showMainMenu = false;
   }
@@ -560,6 +583,11 @@
     if ($gameStore.gameMode === 'climb') {
       climbLeaveGame();
       localStorage.setItem('gameMode', 'daily');
+    }
+    // Leaving a challenge match — progress persists server-side; refresh the inbox count.
+    if ($gameStore.gameMode === 'match') {
+      localStorage.setItem('gameMode', 'daily');
+      refreshChallengeCount();
     }
     saveGameToLocalStorage();
     savedGameInfo = getSavedGameInfo(currentUser.id);
@@ -833,62 +861,100 @@
       <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Challenges">
         <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showChallenges = false}></button>
         <div class="modal-content main-menu-modal ch-modal">
-          <button class="close-btn" on:click={() => showChallenges = false}>❌</button>
-          <h2>⚔️ Challenges</h2>
-          <p class="cat-sub">Wager your Cash head-to-head — same puzzle, best score wins the pot.</p>
+          <button class="close-btn" on:click={() => { if (matchResults) matchResults = null; else showChallenges = false; }}>❌</button>
 
-          <div class="ch-new">
-            <div class="ch-modes">
-              <button type="button" class="ch-mode" class:active={chMode === 'score'} on:click={() => chMode = 'score'}>
-                🧠 Score<small>Untimed · most bankroll left wins</small>
-              </button>
-              <button type="button" class="ch-mode" class:active={chMode === 'pressure'} on:click={() => chMode = 'pressure'}>
-                ⏱️ Pressure<small>60s clock · speed + bankroll</small>
-              </button>
-            </div>
-            <div class="ch-search-wrap">
-              <input class="ch-input" placeholder="Opponent username" bind:value={chOpp} on:input={onChOppInput} autocomplete="off" />
-              {#if chResults.length}
-                <div class="ch-results">
-                  {#each chResults as r}
-                    <button type="button" class="ch-result-item" on:click={() => pickChOpp(r.username)}>
-                      @{r.username}{#if r.is_friend} <span class="ch-friend-tag">friend</span>{/if}
-                    </button>
-                  {/each}
-                </div>
-              {/if}
-            </div>
-            <div class="ch-row">
-              <select class="ch-input" bind:value={chCategory}>
-                <option value="" disabled selected>Category</option>
-                {#each CATEGORIES as c}<option value={c.value}>{c.emoji} {c.label}</option>{/each}
-              </select>
-            </div>
-            <div class="ch-row">
-              <input class="ch-input" type="number" min="100" step="100" placeholder="Wager $" bind:value={chWager} />
-              <button class="ch-create" disabled={chBusy} on:click={submitNewChallenge}>Send ⚔️</button>
-            </div>
-            {#if chMsg}<p class="add-msg">{chMsg}</p>{/if}
-          </div>
-
-          {#if myChallenges.length}
+          {#if matchResults}
+            <!-- Results card -->
+            <h2>🏆 Results</h2>
+            <p class="cat-sub">{matchResults.pack_size} puzzle{matchResults.pack_size === 1 ? '' : 's'}{#if matchResults.wager > 0} · ${matchResults.wager?.toLocaleString()} {matchResults.payout}{/if}</p>
             <div class="ch-list">
-              {#each myChallenges as ch}
+              {#each matchResults.participants as p, i}
                 <div class="ch-item">
                   <div class="ch-info">
-                    <span class="ch-vs">{ch.is_creator ? 'You vs' : 'From'} {ch.opponent_name}</span>
-                    <span class="ch-meta">${ch.wager?.toLocaleString()} · {ch.category} · {ch.mode === 'pressure' ? '⏱️ Pressure' : '🧠 Score'}</span>
+                    <span class="ch-vs">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + (i + 1)} {p.is_me ? 'You' : p.name}</span>
+                    <span class="ch-meta">{p.state === 'done' ? 'finished' : p.state}</span>
                   </div>
-                  {#if ch.status === 'settled'}
-                    <span class="ch-result {ch.result}">{ch.result === 'win' ? 'Won 🏆' : ch.result === 'loss' ? 'Lost' : 'Tie'}{#if ch.my_score != null} · ${ch.my_score} vs ${ch.their_score}{/if}</span>
-                  {:else if ch.needs_my_play}
-                    <button class="ch-play" disabled={chBusy} on:click={() => respondToChallenge(ch)}>{ch.is_creator ? 'Resume' : 'Play'}</button>
-                  {:else}
-                    <span class="ch-waiting">Waiting…</span>
-                  {/if}
+                  <span class="ch-result">{p.score != null ? p.score.toLocaleString() : '—'}</span>
                 </div>
               {/each}
             </div>
+            <button class="ch-create" on:click={() => matchResults = null} style="width:100%;margin-top:0.8rem;">Back</button>
+          {:else}
+            <h2>⚔️ Challenges</h2>
+            <p class="cat-sub">Build a match — a pack of puzzles vs a friend or a group. Same puzzles for everyone.</p>
+
+            <div class="ch-new">
+              <!-- Opponent: friend or group -->
+              <div class="ch-modes">
+                <button type="button" class="ch-mode" class:active={mbTarget === 'friend'} on:click={() => mbTarget = 'friend'}>👤 A friend<small>by username</small></button>
+                <button type="button" class="ch-mode" class:active={mbTarget === 'group'} on:click={() => mbTarget = 'group'}>👥 A group<small>everyone in it</small></button>
+              </div>
+              {#if mbTarget === 'friend'}
+                <div class="ch-search-wrap">
+                  <input class="ch-input" placeholder="Opponent username" bind:value={mbOpponent} on:input={onMbOppInput} autocomplete="off" />
+                  {#if mbResults.length}
+                    <div class="ch-results">
+                      {#each mbResults as r}
+                        <button type="button" class="ch-result-item" on:click={() => pickMbOpp(r.username)}>@{r.username}{#if r.is_friend} <span class="ch-friend-tag">friend</span>{/if}</button>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+              {:else}
+                <select class="ch-input" bind:value={mbGroupId}>
+                  <option value="" disabled selected>Pick a group</option>
+                  {#each myGroups as g}<option value={g.id}>{g.name} ({g.members})</option>{/each}
+                </select>
+              {/if}
+
+              <!-- Categories (optional) -->
+              <div class="ch-cats">
+                {#each CATEGORIES as c}
+                  <button type="button" class="ch-cat" class:on={mbCategories.includes(c.value)} on:click={() => toggleCategory(c.value)}>{c.emoji}</button>
+                {/each}
+              </div>
+              <p class="ch-hint">{mbCategories.length ? mbCategories.length + ' categories' : 'Any category'}</p>
+
+              <!-- Pack size + payout + window -->
+              <div class="ch-row">
+                <label class="ch-field"><span>Puzzles</span>
+                  <select class="ch-input" bind:value={mbPackSize}>{#each [1, 3, 5, 10] as n}<option value={n}>{n}</option>{/each}</select>
+                </label>
+                <label class="ch-field"><span>Payout</span>
+                  <select class="ch-input" bind:value={mbPayout}><option value="winner">Winner takes all</option><option value="top3">Top 3 split</option><option value="even">Even split</option></select>
+                </label>
+              </div>
+              <div class="ch-row">
+                <label class="ch-field"><span>Wager ($0 = friendly)</span>
+                  <input class="ch-input" type="number" min="0" step="100" bind:value={mbWager} />
+                </label>
+                <label class="ch-field"><span>Respond within</span>
+                  <select class="ch-input" bind:value={mbWindow}>{#each WINDOWS as w}<option value={w.s}>{w.l}</option>{/each}</select>
+                </label>
+              </div>
+              <button class="ch-create" disabled={mbBusy} on:click={submitNewMatch} style="width:100%;">Send challenge ⚔️</button>
+              {#if mbMsg}<p class="add-msg">{mbMsg}</p>{/if}
+            </div>
+
+            {#if myMatches.length}
+              <div class="ch-list">
+                {#each myMatches as m}
+                  <div class="ch-item">
+                    <div class="ch-info">
+                      <span class="ch-vs">{m.is_host ? 'You hosted' : m.host + ' invited you'}</span>
+                      <span class="ch-meta">{m.pack_size} puzzle{m.pack_size === 1 ? '' : 's'} · {m.players} players{#if m.wager > 0} · ${m.wager?.toLocaleString()}{/if}</span>
+                    </div>
+                    {#if m.status === 'settled'}
+                      <button class="ch-play ghost" disabled={mbBusy} on:click={() => respondToMatch(m)}>Results</button>
+                    {:else if m.my_state !== 'done'}
+                      <button class="ch-play" disabled={mbBusy} on:click={() => respondToMatch(m)}>{m.my_state === 'invited' ? 'Play' : 'Resume'}</button>
+                    {:else}
+                      <span class="ch-waiting">Waiting…</span>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            {/if}
           {/if}
         </div>
       </div>
@@ -1062,6 +1128,14 @@
       {/if}
     {/if}
 
+    <!-- ⚔️ Challenge match HUD -->
+    {#if isMatch && matchInfo && !matchInfo.done}
+      <div class="climb-hud">
+        <div class="ch-cell"><span class="ch-val">{matchInfo.position}/{matchInfo.pack_size}</span><span class="ch-label">Puzzle</span></div>
+        <div class="ch-cell"><span class="ch-val ch-gold">{(matchInfo.total_score ?? 0).toLocaleString()}</span><span class="ch-label">Score</span></div>
+      </div>
+    {/if}
+
     <!-- 🌍 Category + witty clue -->
     <div class="puzzle-meta">
       {#if $gameStore.category}<span class="category-chip">{$gameStore.category}</span>{/if}
@@ -1183,6 +1257,16 @@
             <div class="result-actions">
               <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Leave</button>
               <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; climbAdvance(); }}>Next →</button>
+            </div>
+          {:else if isMatch}
+            <!-- Challenge match: finished the whole pack -->
+            <div class="result-medal">⚔️</div>
+            <h2>Challenge complete!</h2>
+            <p class="result-sub">You scored {(matchInfo?.total_score ?? 0).toLocaleString()} across {matchInfo?.pack_size} puzzle{matchInfo?.pack_size === 1 ? '' : 's'}</p>
+            <p class="arcade-gain">{matchInfo?.status === 'settled' ? 'Settled — check the results.' : "We'll settle once everyone plays."}</p>
+            <div class="result-actions">
+              <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); openChallenges(); }}>Challenges</button>
+              <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Menu</button>
             </div>
           {:else if isFreeplay}
             <!-- Free Play transition (unranked) -->
@@ -1742,6 +1826,13 @@
   }
   .ch-create { padding: 0.6rem 1rem; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; color: #06210f; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); }
   .ch-create:disabled { opacity: 0.6; }
+  .ch-cats { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+  .ch-cat { width: 34px; height: 34px; border-radius: 9px; cursor: pointer; font-size: 1rem; border: 1px solid var(--border); background: var(--surface); opacity: 0.5; transition: opacity 0.15s, border-color 0.15s; }
+  .ch-cat.on { opacity: 1; border-color: rgba(163,230,53,0.55); background: rgba(163,230,53,0.08); }
+  .ch-hint { font-size: 0.72rem; color: var(--text-faint); text-align: center; margin: 0; }
+  .ch-field { flex: 1; display: flex; flex-direction: column; gap: 3px; text-align: left; min-width: 0; }
+  .ch-field > span { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); font-weight: 600; }
+  .ch-play.ghost { color: var(--brand-2); background: transparent; border: 1px solid rgba(163,230,53,0.4); }
   .ch-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 280px; overflow-y: auto; }
   .ch-item { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.7rem 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
   .ch-info { display: flex; flex-direction: column; gap: 2px; text-align: left; min-width: 0; }
