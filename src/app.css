@@ -61,29 +61,27 @@ html, body {
 body {
   font-family: var(--font-ui);
   color: var(--text);
-  background-color: var(--bg-0);
+  background-color: #070707;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Animated aurora glow layer (drifts slowly behind everything) */
+/* Gold spotlight glow (warm light pooling from the top, behind the hero) */
 body::before {
   content: '';
   position: fixed;
-  inset: -25%;
+  inset: 0;
   z-index: -2;
   pointer-events: none;
   background:
-    radial-gradient(38% 46% at 16% 10%, rgba(52, 211, 153, 0.16), transparent 60%),
-    radial-gradient(36% 44% at 86% 16%, rgba(56, 189, 248, 0.13), transparent 60%),
-    radial-gradient(52% 56% at 50% 112%, rgba(163, 230, 53, 0.13), transparent 60%);
-  filter: blur(24px);
-  animation: auroraDrift 26s ease-in-out infinite alternate;
+    radial-gradient(62% 40% at 50% 26%, rgba(251, 191, 36, 0.20), rgba(0, 0, 0, 0) 60%),
+    radial-gradient(40% 26% at 50% 22%, rgba(255, 220, 140, 0.10), rgba(0, 0, 0, 0) 55%),
+    radial-gradient(80% 60% at 50% 120%, rgba(180, 140, 60, 0.07), rgba(0, 0, 0, 0) 60%);
+  animation: spotlightBreathe 12s ease-in-out infinite alternate;
 }
-@keyframes auroraDrift {
-  0%   { transform: translate3d(0, 0, 0) scale(1); }
-  50%  { transform: translate3d(2.5%, -2%, 0) scale(1.1); }
-  100% { transform: translate3d(-2%, 1.5%, 0) scale(1.05); }
+@keyframes spotlightBreathe {
+  0%   { opacity: 0.85; }
+  100% { opacity: 1; }
 }
 
 /* Fine film grain for a premium, less-flat surface */
