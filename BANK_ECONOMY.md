@@ -1,3 +1,5 @@
+> **SUPERSEDED by `WORDBANK_MASTER_V2.md`** — kept for history only.
+
 # WordBank — Bank Economy & Challenges
 
 **Status:** 🟢 New core direction. **Supersedes the sweepstakes idea (dropped).**
