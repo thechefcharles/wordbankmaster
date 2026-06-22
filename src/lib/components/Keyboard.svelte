@@ -285,7 +285,16 @@
     border-color: var(--border-strong);
     transform: translateY(-1px);
   }
-  .key:active { transform: scale(0.94); }
+  .key:active,
+  .key:focus-visible {
+    transform: scale(0.94);
+    border-color: #fbbf24 !important;
+    outline: none;
+    box-shadow:
+      0 0 0 2px rgba(251, 191, 36, 0.95),
+      0 0 14px rgba(251, 191, 36, 0.9),
+      0 0 30px rgba(251, 191, 36, 0.6) !important;
+  }
 
   .key.delete {
     background: rgba(251, 90, 90, 0.15);
