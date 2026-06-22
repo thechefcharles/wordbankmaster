@@ -1915,21 +1915,25 @@
   .bank-chip {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    padding: 6px 14px;
-    border-radius: 999px;
-    background: var(--surface, rgba(255,255,255,0.05));
-    border: 1px solid rgba(163, 230, 53, 0.35);
-    color: var(--brand-2);
-    font-family: var(--font-display);
+    gap: 7px;
+    padding: 8px 16px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.38);
+    border: 1px solid rgba(251, 191, 36, 0.5);
+    color: #fde047;
+    font-family: 'Orbitron', var(--font-display);
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: 1.25rem;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 10px rgba(251, 191, 36, 0.65), 0 0 22px rgba(251, 191, 36, 0.35);
+    box-shadow: inset 0 0 14px rgba(251, 191, 36, 0.1);
     cursor: pointer;
     transition: transform 0.15s, box-shadow 0.2s;
   }
   .bank-chip:hover { transform: translateY(-1px); }
   .bank-chip:active { transform: scale(0.96); }
-  .bank-chip .bc-coin { font-size: 1rem; }
+  .bank-chip .bc-coin { font-size: 1.1rem; text-shadow: none; }
   .streak-chip {
     display: inline-flex;
     align-items: center;
