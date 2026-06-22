@@ -1882,7 +1882,7 @@
     height: auto;
     object-fit: contain;
     margin-bottom: 4px;
-    filter: drop-shadow(0 10px 38px rgba(251, 191, 36, 0.45));
+    filter: drop-shadow(0 0 26px rgba(251, 191, 36, 0.55)) drop-shadow(0 10px 40px rgba(251, 191, 36, 0.4));
   }
   .menu-wordmark {
     width: min(80vw, 300px);
