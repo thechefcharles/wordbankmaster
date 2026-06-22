@@ -104,6 +104,11 @@
   onMount(async () => {
     initError = null;
     track('app_open');
+    // Safety net: never strand a logged-in user on the loading screen if a slow or
+    // failed secondary call blocks init.
+    const initFallback = setTimeout(() => {
+      if (!hasInitialized) { showMainMenu = true; hasInitialized = true; }
+    }, 6000);
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
       if (!session || error) {
@@ -117,6 +122,7 @@
       if (!profile) {
         initError = "Profile failed to load or create. Check Supabase profiles table and RLS policies.";
         console.warn("⛔", initError);
+        showMainMenu = true; hasInitialized = true;  // surface the menu instead of hanging
         return;
       }
 
@@ -128,12 +134,15 @@
         return;
       }
 
-      // Daily and arcade are both server-authoritative now — start from the menu.
+      // Into the menu immediately — the loading screen only gates on auth + profile.
       showMainMenu = true;
       savedGameInfo = null;
-      const ds = await getDailyStatus(session.user.id);
-      dailyStatus = ds;
-      menuDailyPlayed = ds.has_played_today;
+      hasInitialized = true;
+
+      // Secondary menu data: must NOT block the loading screen or each other.
+      getDailyStatus(session.user.id)
+        .then((ds) => { dailyStatus = ds; menuDailyPlayed = ds.has_played_today; })
+        .catch((e) => console.error('daily status:', e));
       refreshQuests();
       refreshBank();
       refreshChallengeCount();
@@ -144,18 +153,18 @@
         const addName = params.get('add');
         if (addName) {
           const res = await addFriend(addName);
-          if (res?.ok) { track('friend_add', { via: 'link' }); goto('/leaderboard?mode=friends'); return; }
+          if (res?.ok) { track('friend_add', { via: 'link' }); goto('/leaderboard?mode=friends'); }
+        } else if (params.get('challenges')) {
+          openChallenges();
         }
-        // Deep link from a notification toast → open the Challenges inbox.
-        if (params.get('challenges')) openChallenges();
       } catch { /* non-fatal */ }
-
-      await tick();
-      hasInitialized = true;
 
     } catch (err) {
       initError = "Init error: " + (err instanceof Error ? err.message : String(err));
       console.error("❌", initError);
+      showMainMenu = true; hasInitialized = true;  // don't hang on a transient error
+    } finally {
+      clearTimeout(initFallback);
     }
   });
 
