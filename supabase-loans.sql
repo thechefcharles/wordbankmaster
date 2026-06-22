@@ -1,0 +1,27 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Phase 2: Loans v2 (migration: loans_v2)                                    ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Borrow Cash anytime; 5%/day simple interest (lazy); $10k debt cap; repay +
+-- auto-repay; "In the Red" status. (DB column stays `bank`; UI says "Cash".)
+--
+-- profiles += loan_accrued_at timestamptz, auto_repay boolean.
+--
+-- _accrue_interest(uid)  -- lazy: loan += round(loan × 0.05 × whole_days_elapsed),
+--                           capped at $10,000; advances loan_accrued_at. Called by
+--                           get_bank / take_loan / repay_loan.
+-- take_loan(amount)      -- clamps to the $10k room; _bank_credit(+amount,'loan_taken').
+--                           Returns get_bank(). reason 'at_cap' when maxed.
+-- repay_loan(amount)     -- accrues first, then pays min(amount, loan, cash).
+-- set_auto_repay(on)     -- toggle.
+-- _bank_credit           -- now skims 10% of *winning* credits toward an outstanding
+--                           loan when auto_repay is on (reason 'auto_repay').
+-- get_bank               -- accrues, returns { bank, loan, net_worth, auto_repay,
+--                           in_the_red, loan_cap, ledger }.
+--
+-- Verified (SQL sim): borrow 2k → cash 3k/loan 2k; +7 days → loan 2,700; 1k win +
+-- auto-repay → loan 2,600/cash 3,900; repay all → 0; borrow 20k capped at 10k;
+-- further borrow → at_cap.
+--
+-- Client: src/routes/bank — Borrow section, auto-repay toggle, 🔴 In-the-Red badge;
+-- statsStore takeLoan/setAutoRepay. Mid-puzzle borrowing hook lands with the Cash
+-- Game (Phase 4).

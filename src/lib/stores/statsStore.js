@@ -76,18 +76,34 @@ export async function getDailyQuests() {
   };
 }
 
-/** My Bank: balance, outstanding loan, net worth, recent ledger.
- * @returns {Promise<{ bank:number, loan:number, net_worth:number, ledger:any[] }>} */
+/** My Cash: balance, outstanding loan, net worth, auto-repay, in-the-red, recent ledger.
+ * @returns {Promise<{ bank:number, loan:number, net_worth:number, auto_repay:boolean, in_the_red:boolean, loan_cap:number, ledger:any[] }>} */
 export async function getBank() {
   const { data, error } = await supabase.rpc('get_bank');
-  if (error || !data) { if (error) console.error('❌ get_bank:', error); return { bank: 0, loan: 0, net_worth: 0, ledger: [] }; }
-  return { bank: data.bank ?? 0, loan: data.loan ?? 0, net_worth: data.net_worth ?? 0, ledger: Array.isArray(data.ledger) ? data.ledger : [] };
+  if (error || !data) { if (error) console.error('❌ get_bank:', error); return { bank: 0, loan: 0, net_worth: 0, auto_repay: false, in_the_red: false, loan_cap: 10000, ledger: [] }; }
+  return { bank: data.bank ?? 0, loan: data.loan ?? 0, net_worth: data.net_worth ?? 0,
+    auto_repay: !!data.auto_repay, in_the_red: !!data.in_the_red, loan_cap: data.loan_cap ?? 10000,
+    ledger: Array.isArray(data.ledger) ? data.ledger : [] };
 }
 
-/** Pay down the starting loan from your Bank. @param {number} amount @returns {Promise<any>} */
+/** Pay down your loan from your Cash. @param {number} amount @returns {Promise<any>} */
 export async function repayLoan(amount) {
   const { data, error } = await supabase.rpc('repay_loan', { p_amount: amount });
   if (error) { console.error('❌ repay_loan:', error); return null; }
+  return data;
+}
+
+/** Borrow Cash (5%/day interest, $10k debt cap). @param {number} amount @returns {Promise<any>} */
+export async function takeLoan(amount) {
+  const { data, error } = await supabase.rpc('take_loan', { p_amount: amount });
+  if (error || !data) { if (error) console.error('❌ take_loan:', error); return { ok: false }; }
+  return data;
+}
+
+/** Toggle auto-repay (skims 10% of winnings toward your loan). @param {boolean} on @returns {Promise<any>} */
+export async function setAutoRepay(on) {
+  const { data, error } = await supabase.rpc('set_auto_repay', { p_on: on });
+  if (error) { console.error('❌ set_auto_repay:', error); return null; }
   return data;
 }
 

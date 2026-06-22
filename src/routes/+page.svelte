@@ -479,7 +479,7 @@
     if (res?.ok) { launchChallengePlay(); }
     else {
       chMsg = res?.reason === 'no_friend' ? 'No player with that username.'
-        : res?.reason === 'insufficient' ? "Not enough in your Bank for that wager."
+        : res?.reason === 'insufficient' ? "Not enough Cash for that wager."
         : res?.reason === 'min_wager' ? 'Minimum wager is $100.'
         : res?.reason === 'self' ? "You can't challenge yourself."
         : res?.reason === 'no_puzzle' ? 'No puzzles in that category.'
@@ -495,7 +495,7 @@
     } else {
       const res = await acceptAndPlayChallenge(ch.id);
       ok = !!res?.ok;
-      if (!ok) chMsg = res?.reason === 'insufficient' ? 'Not enough in your Bank.' : 'Could not open that challenge.';
+      if (!ok) chMsg = res?.reason === 'insufficient' ? 'Not enough Cash.' : 'Could not open that challenge.';
     }
     chBusy = false;
     if (ok) launchChallengePlay();
@@ -732,7 +732,7 @@
           <span class="mc-icon">⚔️</span>
           <span class="mc-body">
             <span class="mc-title">Challenges</span>
-            <span class="mc-sub">Wager your Bank vs friends</span>
+            <span class="mc-sub">Wager your Cash vs friends</span>
           </span>
           {#if challengeCount > 0}
             <span class="mc-count" title="{challengeCount} waiting for you">{challengeCount}</span>
@@ -751,7 +751,7 @@
           <span class="mc-icon">🛍️</span>
           <span class="mc-body">
             <span class="mc-title">Shop</span>
-            <span class="mc-sub">Spend your Bank on flair</span>
+            <span class="mc-sub">Spend your Cash on flair</span>
           </span>
           <span class="mc-arrow">→</span>
         </button>
@@ -801,7 +801,7 @@
         <div class="modal-content main-menu-modal ch-modal">
           <button class="close-btn" on:click={() => showChallenges = false}>❌</button>
           <h2>⚔️ Challenges</h2>
-          <p class="cat-sub">Wager your Bank head-to-head — same puzzle, best score wins the pot.</p>
+          <p class="cat-sub">Wager your Cash head-to-head — same puzzle, best score wins the pot.</p>
 
           <div class="ch-new">
             <div class="ch-modes">
