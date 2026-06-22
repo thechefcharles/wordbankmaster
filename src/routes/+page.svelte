@@ -246,6 +246,21 @@
   // Live Daily HUD metrics (only while actively playing the daily).
   $: dLive = ($gameStore.gameMode === 'daily' && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost')
     ? $gameStore.dailyLive : null;
+  // Flash the Reward red when it drops (a bonus just broke).
+  let rewardFlash = false;
+  let prevReward = /** @type {number|null} */ (null);
+  /** @type {ReturnType<typeof setTimeout>|undefined} */
+  let rewardFlashTimer;
+  /** @param {number|null} r */
+  function onRewardChange(r) {
+    if (r != null && prevReward != null && r < prevReward) {
+      rewardFlash = true;
+      clearTimeout(rewardFlashTimer);
+      rewardFlashTimer = setTimeout(() => { rewardFlash = false; }, 700);
+    }
+    prevReward = r;
+  }
+  $: onRewardChange(dLive ? dLive.reward : null);
   $: isFreeplay = $gameStore.gameMode === 'freeplay';
   $: isChallenge = $gameStore.gameMode === 'challenge';
   $: isMakeup = $gameStore.gameMode === 'makeup';
@@ -1178,7 +1193,7 @@
         <div class="daily-live">
           <div class="dl-row">
             <span class="dl-stat">Spent <b>${dLive.spent.toLocaleString()}</b></span>
-            <span class="dl-stat">Reward <b>${dLive.reward.toLocaleString()}</b></span>
+            <span class="dl-stat" class:flash={rewardFlash}>Reward <b>${dLive.reward.toLocaleString()}</b></span>
             <span class="dl-net" class:pos={dLive.net >= 0} class:neg={dLive.net < 0}>Net {dLive.net >= 0 ? '+' : '−'}${Math.abs(dLive.net).toLocaleString()}</span>
           </div>
           <div class="dl-pips">
@@ -2136,7 +2151,13 @@
     background: var(--surface, rgba(255,255,255,0.04)); border: 1px solid var(--border);
   }
   .dl-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--text-muted); }
-  .dl-stat b { font-family: var(--font-display); color: var(--text); font-weight: 700; }
+  .dl-stat b { display: inline-block; font-family: var(--font-display); color: var(--text); font-weight: 700; }
+  .dl-stat.flash b { animation: rewardDrop 0.7s var(--ease-out, ease); }
+  @keyframes rewardDrop {
+    0%   { color: #fb7185; transform: scale(1.35); text-shadow: 0 0 14px rgba(251,113,133,0.85); }
+    55%  { color: #fb7185; }
+    100% { color: var(--text); transform: scale(1); text-shadow: none; }
+  }
   .dl-net { font-family: var(--font-display); font-weight: 800; font-size: 0.9rem; }
   .dl-net.pos { color: var(--brand-2); }
   .dl-net.neg { color: #fb7185; }
