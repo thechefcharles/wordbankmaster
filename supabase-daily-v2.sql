@@ -1,0 +1,27 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Phase 3: Daily efficiency scoring (migration: daily_v2_scoring)            ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- The Daily now pays a skill-based **Daily Score** = your Cash paycheck AND your
+-- shareable number — replacing the flat 500×streak bonus. Plays on a fake $1,000
+-- play-budget (no real-Cash downside).
+--
+-- daily_sessions += p_vowels, p_reveals, p_wrong_guesses (tracked in
+--   daily_buy_letter / daily_reveal / daily_submit_guess). daily_start now grants
+--   3 guesses (matches the "three tries" tutorial; efficiency rewards not using them).
+--
+-- _finalize_daily (win path):
+--   eff   = 1.00 + 0.25·(no wrong letters) + 0.25·(no vowels)
+--                + 0.25·(solved first attempt) + 0.15·(no reveals)        (→ ~1.90)
+--   strk  = 1 + min(streak−1,10)×0.05                                      (→ 1.50)
+--   DailyScore = max(100, round(leftover_budget × eff × strk))            (fail → 0)
+--   _bank_credit(uid, DailyScore, 'daily_reward')   -- was 'daily_win' 500×streak
+--   game_results.score = DailyScore  (drives the Daily leaderboard + today_score)
+--
+-- _daily_resolve_and_return merges {daily_result:{score,clean,no_vowels,first_try,
+--   no_reveals}} into the finished board → the client shows the score + the
+--   efficiency breakdown chips + the share text ("Score N — beat that").
+--
+-- Verified (SQL sim): clean solve, $700 left, streak→1 → eff 1.90 → **$1,330**
+-- credited; breakdown all ✓; test user restored.
+--
+-- (Streak-break rule — break only on a missed day, not a played loss — is Phase 9.)

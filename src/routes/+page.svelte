@@ -238,6 +238,7 @@
   $: isFreeplay = $gameStore.gameMode === 'freeplay';
   $: isChallenge = $gameStore.gameMode === 'challenge';
   $: isMakeup = $gameStore.gameMode === 'makeup';
+  $: dr = $gameStore.dailyResult; // { score, clean, no_vowels, first_try, no_reveals }
   $: makeupLabel = (() => {
     const d = $gameStore.makeupDate;
     if (!d) return '';
@@ -290,7 +291,10 @@
     // Link to the live origin (never a hardcoded/deleted project URL).
     const link = typeof window !== 'undefined' ? window.location.origin : '';
     if (isDailyResult) {
-      return `🏦 WordBank Daily #${puzzleNumber}\n${resultMedal.emoji} ${resultWon ? resultMedal.name + ' — ' : ''}${br} banked\n${link}`;
+      if (resultWon && dr) {
+        return `🧠 WordBank Daily #${puzzleNumber}\nScore ${(dr.score ?? 0).toLocaleString()} — beat that 👀\n${link}`;
+      }
+      return `🧠 WordBank Daily #${puzzleNumber}\nDidn't crack it today 😬\n${link}`;
     }
     return `🏦 WordBank Arcade\n${resultMedal.emoji} ${br} banked\n${link}`;
   }
@@ -1070,10 +1074,24 @@
             <div class="result-medal {resultMedal.tier}">{resultMedal.emoji}</div>
             <h2>{resultWon ? 'Solved!' : 'Busted'}</h2>
             <p class="result-sub">Daily #{puzzleNumber}{#if resultWon} · {resultMedal.name}{/if}</p>
-            <div class="result-bankroll">
-              <span class="rb-label">Banked</span>
-              <span class="rb-amount">${resultBankroll.toLocaleString()}</span>
-            </div>
+            {#if resultWon && dr}
+              <div class="daily-score">
+                <span class="ds-label">Daily Score</span>
+                <span class="ds-amount">{(dr.score ?? 0).toLocaleString()}</span>
+                <span class="ds-cash">+${(dr.score ?? 0).toLocaleString()} to your Cash</span>
+              </div>
+              <div class="eff-chips">
+                <span class="eff" class:on={dr.clean}>{dr.clean ? '✓' : '✗'} Clean</span>
+                <span class="eff" class:on={dr.no_vowels}>{dr.no_vowels ? '✓' : '✗'} No vowels</span>
+                <span class="eff" class:on={dr.first_try}>{dr.first_try ? '✓' : '✗'} First try</span>
+                <span class="eff" class:on={dr.no_reveals}>{dr.no_reveals ? '✓' : '✗'} No reveals</span>
+              </div>
+            {:else}
+              <div class="result-bankroll">
+                <span class="rb-label">Banked</span>
+                <span class="rb-amount">${resultBankroll.toLocaleString()}</span>
+              </div>
+            {/if}
             {#if ghost}
               <div class="ghost-compare">
                 {#if ghost.yesterday_played}
@@ -2112,6 +2130,21 @@
     color: #fcd34d;
     text-shadow: 0 0 18px rgba(251, 191, 36, 0.4);
   }
+  .daily-score {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 14px; margin: 0 0 10px; border-radius: var(--r-lg);
+    background: linear-gradient(135deg, rgba(52,211,153,0.12), rgba(163,230,53,0.05));
+    border: 1px solid rgba(163,230,53,0.4);
+  }
+  .ds-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
+  .ds-amount { font-family: var(--font-display); font-weight: 800; font-size: 2.4rem; color: var(--brand-2); line-height: 1; text-shadow: 0 0 18px rgba(163,230,53,0.35); }
+  .ds-cash { font-size: 0.8rem; color: var(--text-muted); }
+  .eff-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0 0 16px; }
+  .eff {
+    font-size: 0.72rem; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 999px;
+    color: var(--text-faint); background: var(--surface); border: 1px solid var(--border);
+  }
+  .eff.on { color: var(--brand-2); border-color: rgba(163,230,53,0.45); background: rgba(163,230,53,0.08); }
   .ghost-compare {
     margin: 2px auto 16px;
     padding: 10px 14px;

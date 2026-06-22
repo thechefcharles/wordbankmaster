@@ -59,7 +59,7 @@ auto-repay skims a win. Playwright: loan UI + In-the-Red badge render.
 
 ---
 
-## Phase 3 — Daily revamp (efficiency paycheck)
+## Phase 3 — Daily revamp (efficiency paycheck)  ✅
 
 **Goal:** Daily pays the efficiency **Daily Score** (= shareable score), retire `500×streak`.
 **Depends on:** P1.

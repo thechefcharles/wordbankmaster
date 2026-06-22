@@ -42,7 +42,8 @@ import { track } from '$lib/analytics.js';
  *   modifier?: string | null,
  *   clue?: string | null,
  *   challengeInfo?: any,
- *   makeupDate?: string | null
+ *   makeupDate?: string | null,
+ *   dailyResult?: any
  * }} GameState
  */
 
@@ -189,7 +190,8 @@ function reconcileDailyBoard(board) {
   gameStore.set(/** @type {GameState} */ ({
     ...prev, ...boardToState(board, prev),
     gameMode: 'daily',
-    gameState: finished ? board.state : 'default'
+    gameState: finished ? board.state : 'default',
+    dailyResult: board.daily_result ?? prev.dailyResult ?? null
   }));
   if (board.state === 'won') { setTimeout(() => launchConfetti(), 300); fx('win'); }
   else if (finished) fx('bust');
