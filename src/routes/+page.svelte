@@ -20,6 +20,7 @@
   } from '$lib/stores/localGameUtils.js';
   import { gameWasRestored } from '$lib/stores/GameStateFlags.js';
   import { soundEnabled, toggleSound, fx } from '$lib/sound.js';
+  import { startMusic, stopMusic, musicEnabled, musicVolume, setMusicVolume, toggleMusic, TRACKS, currentTrackId, selectTrack } from '$lib/music.js';
   import { goto } from '$app/navigation';
 
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
@@ -206,6 +207,8 @@
 
   // Reactive state values
   $: loggedIn = !!$user?.id;
+  // Lobby music: play while the menu is showing, pause during gameplay / logged out.
+  $: if (browser) { (loggedIn && hasInitialized && showMainMenu) ? startMusic() : stopMusic(); }
   $: bankroll = $gameStore.bankroll || 0;
   $: digits = String(bankroll).split('');
 
@@ -1218,6 +1221,25 @@
             <span>{$soundEnabled ? '🔊' : '🔇'} Sound &amp; Haptics</span>
             <span class="ma-toggle-state">{$soundEnabled ? 'On' : 'Off'}</span>
           </button>
+
+          <button class="main-menu-btn ghost-btn ma-toggle" on:click={toggleMusic}>
+            <span>{$musicEnabled ? '🎵' : '🔕'} Lobby Music</span>
+            <span class="ma-toggle-state">{$musicEnabled ? 'On' : 'Off'}</span>
+          </button>
+          {#if $musicEnabled}
+            <div class="ma-music-ctl">
+              <span class="mmc-ic">🔈</span>
+              <input class="mmc-slider" type="range" min="0" max="100" step="1"
+                value={Math.round($musicVolume * 100)}
+                on:input={(e) => setMusicVolume(Number(e.currentTarget.value) / 100)} />
+              <span class="mmc-pct">{Math.round($musicVolume * 100)}%</span>
+            </div>
+            {#if TRACKS.length > 1}
+              <select class="ma-track-select" value={$currentTrackId} on:change={(e) => selectTrack(e.currentTarget.value)}>
+                {#each TRACKS as t}<option value={t.id}>{t.title}</option>{/each}
+              </select>
+            {/if}
+          {/if}
           <button class="main-menu-btn ghost-btn" on:click={() => { showMyAccount = false; showTutorial = true; }}>❓ How to Play</button>
 
           <button class="main-menu-btn" on:click={() => { showMyAccount = false; handleLogout(); }}>Log Out</button>
@@ -2291,6 +2313,17 @@
     margin-left: auto; font-size: 0.72rem; font-weight: 800; color: var(--brand-2);
     background: rgba(163,230,53,0.12); border: 1px solid rgba(163,230,53,0.35);
     padding: 2px 8px; border-radius: 999px;
+  }
+  .ma-music-ctl {
+    display: flex; align-items: center; gap: 0.6rem; margin: 0.4rem 0.2rem 0;
+    padding: 0.3rem 0.2rem;
+  }
+  .mmc-ic { font-size: 0.95rem; }
+  .mmc-slider { flex: 1; accent-color: #fbbf24; height: 4px; cursor: pointer; }
+  .mmc-pct { font-size: 0.72rem; font-weight: 800; color: var(--text-muted); min-width: 34px; text-align: right; }
+  .ma-track-select {
+    width: 100%; margin-top: 0.5rem; padding: 0.6rem 0.8rem; border-radius: 12px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text); font-weight: 600;
   }
   .ma-username { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin: 0.7rem 0 0.2rem; }
   .ma-uname { font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; color: var(--brand-2); }
