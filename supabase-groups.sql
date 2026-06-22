@@ -1,0 +1,21 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Phase 6a: Groups (migration: groups)                                       ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Persistent crews with a shared join code + a group Net-Worth board. The
+-- foundation the Challenge Builder fires packs at (Phase 6b-d).
+--
+-- groups(id, name, owner_id, join_code UNIQUE).
+-- group_members(group_id, user_id)  PK(group_id,user_id).  Self-read RLS.
+--
+-- create_group(name)    -- 2–24 chars; mints a unique 6-char join code; owner joins.
+-- join_group(code)      -- add caller by code.
+-- leave_group(id)       -- remove caller; auto-deletes the group when it empties.
+-- get_my_groups()       -- my groups + member counts.
+-- get_group(id)         -- members ranked by Net Worth (Cash − Loan) with title/color
+--                          flair (caller must be a member).
+--
+-- Verified (SQL sim): create → join (2 members, ranked) → my_groups → leave →
+-- empty group auto-deleted; no residue.
+--
+-- Client: /groups (list / create / join-by-code / view a group's Net-Worth board +
+-- share code), linked from My Account. Full 3-board group scoping = Phase 8.
