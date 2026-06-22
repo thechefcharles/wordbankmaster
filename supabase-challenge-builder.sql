@@ -1,0 +1,25 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Phase 6b: Challenge Builder — lobby (migration: challenge_builder_6b)      ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Configurable N-player matches over a shared puzzle PACK. Replaces the 1v1
+-- challenge system (kept live until the 6d cutover). Play engine + settle = 6c.
+--
+-- challenge_matches(id, host_id, group_id, mode 'standard'|'blitz', categories[],
+--   pack_size, wager (0=friendly), payout 'winner'|'top3'|'even', status, settles_at).
+-- challenge_pack(match_id, position, puzzle_id)            -- the shared seeded pack.
+-- challenge_participants(match_id, user_id, paid, position, bankroll, guesses,
+--   revealed/incorrect, p_vowels/p_reveals/p_wrong_guesses, total_score,
+--   state invited|active|done).  Self-read RLS.
+--
+-- create_match(opponent|group_id, categories[], pack_size, mode, wager, payout,
+--   window_seconds)  -- escrows the host; builds the pack from the categories;
+--   invites the opponent OR every group member (notified). 1–10 puzzles, min wager
+--   $100, window 1h–1week.
+-- accept_match(id)   -- escrow my wager, go active.
+-- get_match(id)      -- lobby/results, SPOILER-LOCKED: others' scores hidden until
+--   I'm 'done' or the match is 'settled'.
+-- get_my_matches()   -- inbox.
+--
+-- Verified (SQL sim): Chef creates a 2-puzzle $200 winner match vs Warpocket →
+-- escrow $1000→$800, pack=2, 2 players; War sees the invite, accepts (escrow
+-- $800), spoiler-lock hides Chef's score (null) while War is mid-match. Cleaned up.
