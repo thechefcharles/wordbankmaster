@@ -35,6 +35,7 @@
   // UI state
   let showTutorial = false;
   let playOpen = false;
+  let blitzSoon = false;
   let showResultModal = false;
   let hasTriggeredModal = false;
   let hasInitialized = false;
@@ -746,67 +747,53 @@
         <img class="menu-wordmark" src="/wordmark-slogan.png" alt="WordBank — Spend Less. Think More." />
       </div>
       <div class="main-menu-buttons stagger">
-        <!-- ▶ PLAY — all game modes in one expandable card -->
+        <!-- ▶ PLAY NOW — game modes in one expandable card -->
         <button class="menu-card primary sheen" class:open={playOpen} style="--i: 0" on:click={() => { playOpen = !playOpen; fx('tap'); }}>
           <span class="mc-icon">🎮</span>
-          <span class="mc-body">
-            <span class="mc-title">Play</span>
-            <span class="mc-sub">{dailyDone ? 'Cash Game · Free Play · Challenges' : 'Daily ready · Cash Game · Challenges'}</span>
-          </span>
-          {#if challengeCount > 0 && !playOpen}<span class="mc-count" title="{challengeCount} challenge{challengeCount === 1 ? '' : 's'} waiting">{challengeCount}</span>{/if}
+          <span class="mc-title">Play Now</span>
           <span class="mc-arrow">{playOpen ? '▾' : '▸'}</span>
         </button>
         {#if playOpen}
           <div class="play-modes">
-            <button class="play-mode" class:done={dailyDone} disabled={dailyDone} on:click={handleMenuDaily}>
+            <button class="play-mode daily" class:done={dailyDone} disabled={dailyDone} on:click={handleMenuDaily}>
               <span class="pm-ic">{#if dailyDone}{dailyStatus?.last_daily_won ? '✅' : '❌'}{:else}🎯{/if}</span>
-              <span class="pm-body">
-                <span class="pm-t">{#if savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost'}Resume Daily{:else if dailyDone}Daily Complete{:else}Daily Puzzle{/if}</span>
-                <span class="pm-s">{#if dailyDone}{dailyStatus?.last_daily_won ? 'Solved' : 'Missed'} · +{dailyStatus?.today_score?.toLocaleString() ?? 0} · back tomorrow{:else}One a day · attendance reward{/if}</span>
-              </span>
+              <span class="pm-t">{#if savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost'}Resume Daily{:else if dailyDone}Daily Complete{:else}Daily{/if}</span>
             </button>
-            <button class="play-mode" on:click={handleMenuClimb}>
-              <span class="pm-ic">🎰</span>
-              <span class="pm-body"><span class="pm-t">Cash Game</span><span class="pm-s">Climb the ladder · risk real Cash</span></span>
+            <button class="play-mode cash" on:click={handleMenuClimb}>
+              <span class="pm-ic">🎰</span><span class="pm-t">Cash Game</span>
             </button>
-            <button class="play-mode" on:click={handleMenuFreeplay}>
-              <span class="pm-ic">🎲</span>
-              <span class="pm-body"><span class="pm-t">Free Play</span><span class="pm-s">Free to play · earn a little Cash</span></span>
+            <button class="play-mode free" on:click={handleMenuFreeplay}>
+              <span class="pm-ic">🎲</span><span class="pm-t">Free Play</span>
             </button>
-            <button class="play-mode" on:click={openChallenges}>
-              <span class="pm-ic">⚔️</span>
-              <span class="pm-body"><span class="pm-t">Challenges</span><span class="pm-s">Wager friends · lowest spend wins</span></span>
-              {#if challengeCount > 0}<span class="mc-count">{challengeCount}</span>{/if}
+            <button class="play-mode blitz" on:click={() => { blitzSoon = true; fx('tap'); setTimeout(() => blitzSoon = false, 2500); }}>
+              <span class="pm-ic">⚡</span><span class="pm-t">Blitz</span><span class="pm-tag">Soon</span>
             </button>
+            {#if blitzSoon}<p class="pm-soon-note">⚡ Solo Blitz is coming soon!</p>{/if}
           </div>
         {/if}
-        <button class="menu-card" class:done={questProgress.all_done} style="--i: 1" on:click={() => goto('/quests')}>
+        <button class="menu-card" style="--i: 1" on:click={openChallenges}>
+          <span class="mc-icon">⚔️</span>
+          <span class="mc-title">Challenges</span>
+          {#if challengeCount > 0}<span class="mc-stat" title="{challengeCount} waiting">{challengeCount}</span>{/if}
+          <span class="mc-arrow">→</span>
+        </button>
+        <button class="menu-card" style="--i: 2" on:click={() => goto('/quests')}>
           <span class="mc-icon">{questProgress.all_done ? '🏆' : '📋'}</span>
-          <span class="mc-body">
-            <span class="mc-title">Daily Quests</span>
-            <span class="mc-sub">{#if questProgress.all_done && !questProgress.reward_claimed}All done — claim your reward!{:else}{questProgress.done}/{questProgress.total} complete today{/if}</span>
-          </span>
-          <span class="mc-arrow">{#if questProgress.all_done && !questProgress.reward_claimed}🎁{:else}→{/if}</span>
-        </button>
-        <button class="menu-card" style="--i: 2" on:click={handleMenuLeaderboard}>
-          <span class="mc-icon">🏆</span>
-          <span class="mc-body"><span class="mc-title">Leaderboard</span><span class="mc-sub">See who's on top</span></span>
+          <span class="mc-title">Daily Quests</span>
+          {#if questProgress.all_done && !questProgress.reward_claimed}<span class="mc-stat">🎁</span>{:else}<span class="mc-stat">{questProgress.done}/{questProgress.total}</span>{/if}
           <span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 3" on:click={() => goto('/shop')}>
-          <span class="mc-icon">🛍️</span>
-          <span class="mc-body"><span class="mc-title">Shop</span><span class="mc-sub">Spend your Cash on flair</span></span>
-          <span class="mc-arrow">→</span>
+        <button class="menu-card" style="--i: 3" on:click={handleMenuLeaderboard}>
+          <span class="mc-icon">🏆</span><span class="mc-title">Leaderboard</span><span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 4" on:click={() => goto('/badges')}>
-          <span class="mc-icon">🏅</span>
-          <span class="mc-body"><span class="mc-title">Badges</span><span class="mc-sub">Level up every category</span></span>
-          <span class="mc-arrow">→</span>
+        <button class="menu-card" style="--i: 4" on:click={() => goto('/shop')}>
+          <span class="mc-icon">🛍️</span><span class="mc-title">Shop</span><span class="mc-arrow">→</span>
         </button>
-        <button class="menu-card" style="--i: 5" on:click={handleMenuMyAccount}>
-          <span class="mc-icon">👤</span>
-          <span class="mc-body"><span class="mc-title">My Account</span><span class="mc-sub">Profile &amp; sign out</span></span>
-          <span class="mc-arrow">→</span>
+        <button class="menu-card" style="--i: 5" on:click={() => goto('/badges')}>
+          <span class="mc-icon">🏅</span><span class="mc-title">Achievements</span><span class="mc-arrow">→</span>
+        </button>
+        <button class="menu-card" style="--i: 6" on:click={handleMenuMyAccount}>
+          <span class="mc-icon">👤</span><span class="mc-title">My Account</span><span class="mc-arrow">→</span>
         </button>
         <!-- subtle utility footer (was the floating icon cluster) -->
         <div class="menu-footer">
@@ -1733,14 +1720,6 @@
   .menu-card.disabled { opacity: 0.45; cursor: not-allowed; }
   /* Completed daily: not faded like a dead disabled card — clearly "done", still
      tappable to see the result. Overrides .disabled (declared after it). */
-  .menu-card.done {
-    opacity: 1;
-    cursor: pointer;
-    border-color: rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.03);
-    box-shadow: none;
-  }
-  .menu-card.done .mc-sub { color: var(--brand-2); font-weight: 600; }
   .mc-icon {
     width: 46px;
     height: 46px;
@@ -1756,9 +1735,8 @@
     background: var(--brand-grad);
     border: none;
   }
-  .mc-body { display: flex; flex-direction: column; gap: 2px; flex: 1; }
-  .mc-title { font-family: var(--font-display); font-weight: 600; font-size: 1.06rem; }
-  .mc-sub { font-size: 0.8rem; color: var(--text-muted); }
+  .mc-title { flex: 1; font-family: var(--font-display); font-weight: 600; font-size: 1.06rem; }
+  .mc-stat { font-family: var(--font-display); font-weight: 800; font-size: 0.95rem; color: var(--brand-2); margin-right: 2px; }
   .mc-arrow { color: var(--text-faint); font-size: 1.1rem; transition: transform 0.2s, color 0.2s; }
   .mc-count {
     min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px;
@@ -1771,18 +1749,27 @@
   .menu-card.open .mc-arrow { color: var(--brand-2); }
   .play-modes { display: flex; flex-direction: column; gap: 0.5rem; margin: -0.35rem 0 0.3rem; padding-left: 0.5rem; border-left: 2px solid rgba(163,230,53,0.25); }
   .play-mode {
-    display: flex; align-items: center; gap: 0.8rem; width: 100%; padding: 0.7rem 0.9rem;
+    display: flex; align-items: center; gap: 0.8rem; width: 100%; padding: 0.75rem 0.95rem;
     border-radius: 12px; cursor: pointer; text-align: left;
-    background: var(--surface, rgba(255,255,255,0.04)); border: 1px solid var(--border);
+    background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14);
     transition: transform 0.12s, border-color 0.15s, background 0.15s;
   }
-  .play-mode:hover:not(:disabled) { transform: translateX(2px); border-color: rgba(163,230,53,0.5); }
-  .play-mode:disabled { opacity: 0.5; cursor: not-allowed; }
+  .play-mode:hover:not(:disabled) { transform: translateX(2px); background: rgba(255,255,255,0.11); }
+  .play-mode:disabled { cursor: not-allowed; }
   .play-mode.done { opacity: 0.7; }
+  /* per-mode accent so they pop on the dark background */
+  .play-mode.daily { border-left: 3px solid #34d399; }
+  .play-mode.cash  { border-left: 3px solid #fbbf24; }
+  .play-mode.free  { border-left: 3px solid #60a5fa; }
+  .play-mode.blitz { border-left: 3px solid #f472b6; }
+  .play-mode:hover.daily { border-color: #34d399; }
+  .play-mode:hover.cash  { border-color: #fbbf24; }
+  .play-mode:hover.free  { border-color: #60a5fa; }
+  .play-mode:hover.blitz { border-color: #f472b6; }
   .pm-ic { font-size: 1.3rem; width: 1.6rem; text-align: center; }
-  .pm-body { display: flex; flex-direction: column; gap: 1px; flex: 1; }
-  .pm-t { font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; }
-  .pm-s { font-size: 0.72rem; color: var(--text-muted); }
+  .pm-t { flex: 1; font-family: var(--font-display); font-weight: 600; font-size: 0.98rem; color: #fff; }
+  .pm-tag { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #f472b6; border: 1px solid rgba(244,114,182,0.4); border-radius: 999px; padding: 2px 7px; }
+  .pm-soon-note { text-align: center; font-size: 0.78rem; color: #f472b6; margin: 2px 0 0; }
   /* utility footer (replaces the old floating icon cluster) */
   .menu-footer { display: flex; justify-content: center; gap: 1.2rem; margin-top: 0.4rem; }
   .menu-footer button {
