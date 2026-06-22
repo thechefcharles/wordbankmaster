@@ -406,6 +406,26 @@ export async function getClimbLeaderboard(scope = 'friends') {
   if (error) { console.error('❌ get_climb_leaderboard:', error); return []; }
   return Array.isArray(data) ? data : [];
 }
+
+/* ===== Power-ups (catalog + buy + use-in-Climb) ===== */
+/** @returns {Promise<{cash:number, items:any[]}>} */
+export async function getPowerups() {
+  const { data, error } = await supabase.rpc('get_powerups');
+  if (error || !data) { if (error) console.error('❌ get_powerups:', error); return { cash: 0, items: [] }; }
+  return { cash: data.cash ?? 0, items: Array.isArray(data.items) ? data.items : [] };
+}
+/** @param {string} id @returns {Promise<{ok:boolean, reason?:string}>} */
+export async function buyPowerup(id) {
+  const { data, error } = await supabase.rpc('buy_powerup', { p_id: id });
+  if (error || !data) { if (error) console.error('❌ buy_powerup:', error); return { ok: false }; }
+  return data;
+}
+/** Use a power-up in the Climb. @param {string} id @returns {Promise<any>} */
+export async function climbUsePowerup(id) {
+  const { data, error } = await supabase.rpc('climb_use_powerup', { p_id: id });
+  if (error) { console.error('❌ climb_use_powerup:', error); return null; }
+  return data;
+}
 /** @param {string} date @returns {Promise<any>} */
 export async function makeupReveal(date) {
   const { data, error } = await supabase.rpc('makeup_reveal', { p_date: date });
