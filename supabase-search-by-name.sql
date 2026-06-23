@@ -1,0 +1,6 @@
+-- search_users by name  (migration: search_users_by_name)
+-- Was username-PREFIX only, so searching a person's real name (e.g. "sam" when
+-- the username is "sbrand21") found nothing. Now matches username (anywhere),
+-- the auth full_name/name, or email prefix, and also returns the person's
+-- display name so results read as "Sam Brandstrader · @sbrand21".
+-- Frontend: friends search rows show name over @handle. Full body in migration.
