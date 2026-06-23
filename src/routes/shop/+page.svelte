@@ -197,14 +197,14 @@
     display: flex; flex-direction: column; gap: 0.6rem; align-items: flex-start;
     padding: 0.9rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface);
   }
-  .card.owned { border-color: rgba(163,230,53,0.35); }
+  .card.owned { border-color: rgba(253, 224, 71,0.35); }
   .c-label { font-family: var(--font-display); font-weight: 700; font-size: 1rem; }
   .c-btn {
     width: 100%; padding: 0.5rem 0.7rem; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 0.85rem;
     border: 1px solid var(--border); background: var(--surface-2, rgba(255,255,255,0.04)); color: var(--text);
   }
-  .c-btn.buy { color: #06210f; border: none; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); }
+  .c-btn.buy { color: #3a2a00; border: none; background: var(--brand-grad, linear-gradient(135deg,#fbbf24,#fde047)); }
   .c-btn.buy:disabled { opacity: 0.45; cursor: default; }
-  .c-btn.equip.on { color: var(--brand-2); border-color: rgba(163,230,53,0.5); background: rgba(163,230,53,0.1); }
+  .c-btn.equip.on { color: var(--brand-2); border-color: rgba(253, 224, 71,0.5); background: rgba(253, 224, 71,0.1); }
   .c-btn:disabled { opacity: 0.6; }
 </style>

@@ -104,7 +104,7 @@ export const gameStore = writable(/** @type {GameState} */ ({
  * Triggers a celebratory confetti animation.
  */
 function launchConfetti() {
-  const colors = ['#34d399', '#a3e635', '#fcd34d', '#ffffff'];
+  const colors = ['#fbbf24', '#fde047', '#fcd34d', '#ffffff'];
   /** @param {number} particleCount @param {object} opts */
   const fire = (particleCount, opts) => confetti({ particleCount, colors, disableForReducedMotion: true, ...opts });
   fire(90, { spread: 75, startVelocity: 55, origin: { y: 0.62 } });

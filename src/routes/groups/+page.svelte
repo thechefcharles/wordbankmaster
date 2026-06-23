@@ -249,7 +249,7 @@
   .rename-input { flex: 1; min-width: 0; padding: 0.5rem 0.8rem; border-radius: 12px; border: 1px solid rgba(251,191,36,0.5); background: var(--surface); color: var(--text); font-size: 1.1rem; font-family: var(--font-display); font-weight: 700; }
   .g-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.2rem; }
   .g-card { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.9rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; cursor: pointer; text-align: left; }
-  .g-card:hover { border-color: rgba(163,230,53,0.4); }
+  .g-card:hover { border-color: rgba(253, 224, 71,0.4); }
   .gc-body { display: flex; flex-direction: column; gap: 2px; }
   .gc-name { font-family: var(--font-display); font-weight: 700; font-size: 1rem; color: var(--text); }
   .gc-meta { font-size: 0.78rem; color: var(--text-faint); }
@@ -257,7 +257,7 @@
   .g-forms { display: flex; flex-direction: column; gap: 0.5rem; }
   .g-row { display: flex; gap: 0.5rem; }
   .g-input { flex: 1; min-width: 0; padding: 0.6rem 0.9rem; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 0.95rem; }
-  .g-btn { padding: 0.6rem 1.2rem; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; color: #06210f; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); }
+  .g-btn { padding: 0.6rem 1.2rem; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; color: #3a2a00; background: var(--brand-grad, linear-gradient(135deg,#fbbf24,#fde047)); }
   .g-btn.sm { padding: 0.45rem 0.9rem; font-size: 0.85rem; }
   .g-btn:disabled { opacity: 0.5; }
   .msg { text-align: center; color: #f87171; font-size: 0.85rem; margin: 0.3rem 0 0; }
@@ -298,7 +298,7 @@
     max-width: 80%; align-self: flex-start; display: flex; flex-direction: column; gap: 1px;
     padding: 0.45rem 0.7rem; border-radius: 12px; background: var(--surface-2, rgba(255,255,255,0.05)); border: 1px solid var(--border);
   }
-  .cmsg.mine { align-self: flex-end; background: rgba(163,230,53,0.12); border-color: rgba(163,230,53,0.3); }
+  .cmsg.mine { align-self: flex-end; background: rgba(253, 224, 71,0.12); border-color: rgba(253, 224, 71,0.3); }
   .cm-name { font-size: 0.66rem; font-weight: 700; color: var(--brand-2); }
   .cm-body { font-size: 0.88rem; color: var(--text); word-break: break-word; }
   .chat-input-row { margin-top: 0.6rem; }

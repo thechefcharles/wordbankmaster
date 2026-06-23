@@ -360,16 +360,16 @@
      Key State Styles
   --------------------------- */
   .purchased {
-    background: linear-gradient(135deg, rgba(52, 211, 153, 0.30), rgba(163, 230, 53, 0.18)) !important;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.30), rgba(253, 224, 71, 0.18)) !important;
     color: var(--brand-2) !important;
-    border-color: rgba(163, 230, 53, 0.4) !important;
+    border-color: rgba(253, 224, 71, 0.4) !important;
     cursor: default;
     pointer-events: none;
   }
-  .purchased .price { color: rgba(163, 230, 53, 0.65); }
+  .purchased .price { color: rgba(253, 224, 71, 0.65); }
   .pending {
     background: var(--brand-grad) !important;
-    color: #06210f !important;
+    color: #3a2a00 !important;
     border-color: transparent !important;
     box-shadow: var(--glow-brand);
     animation: keyPulse 1s infinite;

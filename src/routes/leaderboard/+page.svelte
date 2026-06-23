@@ -139,12 +139,12 @@
   h1 { font-family: var(--font-display); font-size: 1.9rem; margin: 0 0 1rem; }
   .tabs { display: flex; gap: 0.4rem; justify-content: center; margin-bottom: 0.8rem; }
   .tab { flex: 1; max-width: 150px; padding: 0.55rem 0.5rem; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 0.9rem; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); }
-  .tab.active { color: #06210f; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); border-color: transparent; }
+  .tab.active { color: #3a2a00; background: var(--brand-grad, linear-gradient(135deg,#fbbf24,#fde047)); border-color: transparent; }
   .filters { display: flex; gap: 0.5rem; justify-content: center; align-items: center; flex-wrap: wrap; margin-bottom: 0.5rem; }
   .filter-select { padding: 0.5rem 0.8rem; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 0.9rem; }
   .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
   .seg-btn { padding: 0.45rem 0.9rem; cursor: pointer; font-size: 0.82rem; font-weight: 600; background: transparent; color: var(--text-muted); border: none; }
-  .seg-btn.on { background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); color: #06210f; }
+  .seg-btn.on { background: var(--brand-grad, linear-gradient(135deg,#fbbf24,#fde047)); color: #3a2a00; }
   .caption { color: var(--text-faint); font-size: 0.8rem; margin: 0.2rem 0 1rem; }
   .muted { color: var(--text-muted); padding: 2rem 0; }
   .error { color: #fb7185; }
