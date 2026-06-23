@@ -33,6 +33,7 @@
   import Auth from '$lib/components/Auth.svelte';
   import Tutorial from '$lib/components/Tutorial.svelte';
   import ObjectiveCard from '$lib/components/ObjectiveCard.svelte';
+  import StandingStrip from '$lib/components/StandingStrip.svelte';
   import PowerupTray from '$lib/components/PowerupTray.svelte';
   import MatchDetailModal from '$lib/components/MatchDetailModal.svelte';
 
@@ -1542,6 +1543,9 @@
           <div class="ch-cell" class:hot={matchRemaining <= 10}><span class="ch-val">⏱️{matchRemaining}</span><span class="ch-label">Time</span></div>
         {/if}
       </div>
+      {#if matchInfo.standing}
+        <StandingStrip standing={matchInfo.standing} spent={matchInfo.spent ?? 0} />
+      {/if}
       {#if (matchInfo.my_debuffs ?? []).length}
         <p class="debuff-banner">{(matchInfo.my_debuffs ?? []).map((/** @type {string} */ d) => DEBUFF_LABEL[d] ?? d).join(' · ')}</p>
       {/if}

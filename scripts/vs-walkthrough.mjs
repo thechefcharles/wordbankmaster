@@ -42,6 +42,9 @@ async function login(p, acc) {
 }
 // buy `wrong` letters (not in the answer → pure spend, keeps all tiles editable), then solve.
 async function playSolve(p, answer, wrong) {
+  // Dismiss the pre-game "How to win" objective card (shown on every match entry).
+  const objGo = p.getByRole('button', { name: /let’s go|let's go/i });
+  if (await objGo.count()) { await objGo.first().click().catch(() => {}); await wait(p, 500); }
   for (const L of wrong) { await p.keyboard.press(L); await wait(p, 250); await p.keyboard.press('Enter'); await wait(p, 900); }
   // enter guess mode
   await p.getByRole('button', { name: /^solve$/i }).first().click().catch(async () => { await p.keyboard.press(' '); });

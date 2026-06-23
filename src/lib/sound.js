@@ -92,6 +92,11 @@ const SOUNDS = {
     tone(880, 0.09, 'sine', 0.13);
     tone(1320, 0.13, 'sine', 0.12, 0.08);
   },
+  // Bright rising blip — you just took the lead in a challenge.
+  lead: () => {
+    tone(784, 0.08, 'sine', 0.12);
+    tone(1175, 0.12, 'sine', 0.11, 0.07);
+  },
   // Heavy metallic vault CLUNK: mechanism click → deep thunk → metal overtone.
   vault: () => {
     tone(140, 0.05, 'square', 0.16);            // latch click
@@ -112,6 +117,7 @@ const HAPTICS = {
   win: [18, 40, 18, 40, 36],
   bust: [60, 30, 60],
   multiplier: [10, 24, 10],
+  lead: [12, 20, 16],
   vault: [50, 30, 90]
 };
 
