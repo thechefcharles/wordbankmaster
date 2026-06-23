@@ -1035,54 +1035,42 @@
     <div class="main-menu fade-up">
       <div class="menu-hero">
         <div class="hero-top">
+          <button class="streak-chip" class:lit={(dailyStatus?.current_streak ?? 0) > 0} on:click={() => goto('/streak')} title="Your streak">
+            <span class="sc-flame">🔥</span>{dailyStatus?.current_streak ?? 0}
+          </button>
           <button class="bank-chip" on:click={() => goto('/bank')} title="Your Cash">
             <span class="bc-coin">💰</span>{netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}
           </button>
-          <div class="hero-utils">
-            <button class="streak-chip" class:lit={(dailyStatus?.current_streak ?? 0) > 0} on:click={() => goto('/streak')} title="Your streak">
-              <span class="sc-flame">🔥</span>{dailyStatus?.current_streak ?? 0}
-            </button>
-            <button class="hero-ic bell-button" title="Notifications" on:click={openNotifications}>
-              🔔{#if $unreadCount > 0}<span class="bell-badge">{$unreadCount > 9 ? '9+' : $unreadCount}</span>{/if}
-            </button>
-          </div>
+          <button class="account-ic" on:click={handleMenuMyAccount} title="My Account">👤</button>
         </div>
         <img class="menu-mark spin" src="/logo-coin.png" alt="" width="84" height="84" />
         <img class="menu-wordmark" src="/wordmark-slogan.png" alt="WordBank — Spend Less. Think More." />
       </div>
       {#if menuView === 'home'}
         <div class="main-menu-buttons stagger">
-          <button class="menu-card primary sheen" style="--i: 0" on:click={() => { menuView = 'play'; fx('tap'); }}>
-            <span class="mc-icon">🎮</span><span class="mc-title">Play Now</span><span class="mc-arrow">→</span>
+          <button class="menu-card primary" style="--i: 0" on:click={() => { menuView = 'play'; fx('tap'); }}>
+            <span class="mc-title">Play Now</span>
           </button>
           <button class="menu-card" style="--i: 1" on:click={() => { menuView = 'challenge'; fx('tap'); }}>
-            <span class="mc-icon">⚔️</span>
             <span class="mc-title">Challenge Friends</span>
-            {#if challengeCount + friendReqCount > 0}<span class="mc-stat" title="{challengeCount} match{challengeCount === 1 ? '' : 'es'}, {friendReqCount} friend request{friendReqCount === 1 ? '' : 's'}">{challengeCount + friendReqCount}</span>{/if}
-            <span class="mc-arrow">→</span>
+            {#if challengeCount + friendReqCount > 0}<span class="mc-badge" title="{challengeCount} match{challengeCount === 1 ? '' : 'es'}, {friendReqCount} friend request{friendReqCount === 1 ? '' : 's'}">{challengeCount + friendReqCount}</span>{/if}
           </button>
           <button class="menu-card" style="--i: 2" on:click={() => { menuView = 'progress'; fx('tap'); }}>
-            <span class="mc-icon">📈</span>
             <span class="mc-title">Progress</span>
-            {#if questProgress.all_done && !questProgress.reward_claimed}<span class="mc-stat" title="Quest reward ready">🎁</span>{/if}
-            <span class="mc-arrow">→</span>
+            {#if questProgress.all_done && !questProgress.reward_claimed}<span class="mc-badge gift" title="Quest reward ready">🎁</span>{/if}
           </button>
           <button class="menu-card" style="--i: 3" on:click={() => goto('/shop')}>
-            <span class="mc-icon">🛍️</span><span class="mc-title">Shop</span><span class="mc-arrow">→</span>
-          </button>
-          <button class="menu-card" style="--i: 4" on:click={handleMenuMyAccount}>
-            <span class="mc-icon">👤</span><span class="mc-title">My Account</span><span class="mc-arrow">→</span>
+            <span class="mc-title">Shop</span>
           </button>
         </div>
 
       {:else if menuView === 'play'}
         <div class="sub-head">
           <button class="sub-back" on:click={() => { menuView = 'home'; fx('tap'); }}>← Back</button>
-          <h2 class="sub-title">🎮 Play</h2>
+          <h2 class="sub-title">Play</h2>
         </div>
         <div class="main-menu-buttons stagger">
           <button class="menu-card" class:done={dailyDone} style="--i: 0" on:click={handleMenuDaily}>
-            <span class="mc-icon">🎯</span>
             <span class="mc-title">{dailyInProgress ? 'Resume Daily' : 'Daily'}</span>
             {#if dailyDone}
               <span class="daily-chip {dailyStatus?.last_daily_won ? 'won' : 'lost'}">{dailyStatus?.last_daily_won ? `✅ Solved${dailyStatus?.today_score ? ' · +' + dailyStatus.today_score.toLocaleString() : ''}` : '❌ Missed'}</span>
@@ -1091,13 +1079,13 @@
             {/if}
           </button>
           <button class="menu-card" style="--i: 1" on:click={handleMenuClimb}>
-            <span class="mc-icon">🎰</span><span class="mc-title">Cash Game</span><span class="mc-arrow">→</span>
+            <span class="mc-title">Cash Game</span>
           </button>
           <button class="menu-card" style="--i: 2" on:click={handleMenuFreeplay}>
-            <span class="mc-icon">🎲</span><span class="mc-title">Free Play</span><span class="mc-arrow">→</span>
+            <span class="mc-title">Free Play</span>
           </button>
           <button class="menu-card" style="--i: 3" on:click={() => { blitzSoon = true; fx('tap'); setTimeout(() => blitzSoon = false, 2500); }}>
-            <span class="mc-icon">⚡</span><span class="mc-title">Blitz</span><span class="mc-stat">Soon</span>
+            <span class="mc-title">Blitz</span><span class="mc-stat">Soon</span>
           </button>
           {#if blitzSoon}<p class="pm-soon-note">⚡ Solo Blitz is coming soon!</p>{/if}
         </div>
@@ -1105,44 +1093,40 @@
       {:else if menuView === 'challenge'}
         <div class="sub-head">
           <button class="sub-back" on:click={() => { menuView = 'home'; fx('tap'); }}>← Back</button>
-          <h2 class="sub-title">⚔️ Challenge Friends</h2>
+          <h2 class="sub-title">Challenge Friends</h2>
         </div>
         <div class="main-menu-buttons stagger">
           <button class="menu-card primary" style="--i: 0" on:click={openChallenges}>
-            <span class="mc-icon">⚔️</span>
             <span class="mc-title">Start Challenge</span>
-            {#if challengeCount > 0}<span class="mc-stat" title="{challengeCount} waiting">{challengeCount}</span>{/if}
-            <span class="mc-arrow">→</span>
+            {#if challengeCount > 0}<span class="mc-badge" title="{challengeCount} waiting">{challengeCount}</span>{/if}
           </button>
           <button class="menu-card" style="--i: 1" on:click={() => goto('/friends')}>
-            <span class="mc-icon">👥</span><span class="mc-title">Friends</span>
-            {#if friendReqCount > 0}<span class="mc-stat" title="{friendReqCount} friend request{friendReqCount === 1 ? '' : 's'}">{friendReqCount}</span>{/if}
-            <span class="mc-arrow">→</span>
+            <span class="mc-title">Friends</span>
+            {#if friendReqCount > 0}<span class="mc-badge" title="{friendReqCount} friend request{friendReqCount === 1 ? '' : 's'}">{friendReqCount}</span>{/if}
           </button>
           <button class="menu-card" style="--i: 2" on:click={() => goto('/groups')}>
-            <span class="mc-icon">👨‍👩‍👧‍👦</span><span class="mc-title">Groups</span><span class="mc-arrow">→</span>
+            <span class="mc-title">Groups</span>
           </button>
         </div>
 
       {:else if menuView === 'progress'}
         <div class="sub-head">
           <button class="sub-back" on:click={() => { menuView = 'home'; fx('tap'); }}>← Back</button>
-          <h2 class="sub-title">📈 Progress</h2>
+          <h2 class="sub-title">Progress</h2>
         </div>
         <div class="main-menu-buttons stagger">
           <button class="menu-card" style="--i: 0" on:click={handleMenuLeaderboard}>
-            <span class="mc-icon">🏆</span><span class="mc-title">Leaderboard</span><span class="mc-arrow">→</span>
+            <span class="mc-title">Leaderboard</span>
           </button>
           <button class="menu-card" style="--i: 1" on:click={() => goto('/badges')}>
-            <span class="mc-icon">🏅</span><span class="mc-title">Achievements</span><span class="mc-arrow">→</span>
+            <span class="mc-title">Achievements</span>
           </button>
           <button class="menu-card" style="--i: 2" on:click={() => goto('/quests')}>
-            <span class="mc-icon">📋</span><span class="mc-title">Daily Quests</span>
-            {#if questProgress.all_done && !questProgress.reward_claimed}<span class="mc-stat">🎁</span>{:else}<span class="mc-stat">{questProgress.done}/{questProgress.total}</span>{/if}
-            <span class="mc-arrow">→</span>
+            <span class="mc-title">Daily Quests</span>
+            {#if questProgress.all_done && !questProgress.reward_claimed}<span class="mc-badge gift">🎁</span>{:else}<span class="mc-stat">{questProgress.done}/{questProgress.total}</span>{/if}
           </button>
           <button class="menu-card" style="--i: 3" on:click={() => goto('/profile')}>
-            <span class="mc-icon">📊</span><span class="mc-title">Stats</span><span class="mc-arrow">→</span>
+            <span class="mc-title">Stats</span>
           </button>
         </div>
       {/if}
@@ -2082,22 +2066,24 @@
     width: 100%;
   }
   .hero-top {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    justify-content: space-between;
     width: 100%;
     max-width: 360px;
     margin-bottom: 1.4rem;
   }
-  .hero-utils { display: flex; align-items: center; gap: 8px; }
-  .hero-ic {
-    position: relative;
+  .hero-top .streak-chip { justify-self: start; }
+  .hero-top .bank-chip { justify-self: center; }
+  .account-ic {
+    justify-self: end;
     display: inline-grid; place-items: center;
-    width: 38px; height: 34px; border-radius: 999px;
+    width: 42px; height: 42px; border-radius: 50%;
     background: var(--surface, rgba(255,255,255,0.05)); border: 1px solid var(--border);
-    cursor: pointer; font-size: 1rem; transition: transform 0.15s, border-color 0.2s;
+    cursor: pointer; font-size: 1.25rem; transition: transform 0.15s, border-color 0.2s;
   }
-  .hero-ic:hover { transform: translateY(-1px); border-color: var(--border-strong); }
+  .account-ic:hover { transform: translateY(-1px); border-color: rgba(251,191,36,0.5); }
+  .account-ic:active { transform: scale(0.94); }
   .bank-chip {
     display: inline-flex;
     align-items: center;
@@ -2176,64 +2162,74 @@
     width: 100%;
     max-width: 360px;
   }
+  /* ── Gold bullion bars ─────────────────────────────────────────────── */
   .menu-card {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 14px;
-    text-align: left;
-    padding: 16px 18px;
-    border-radius: var(--r-lg);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text);
+    justify-content: center;
+    gap: 10px;
+    text-align: center;
+    padding: 18px 20px;
+    border-radius: 10px;
+    background: linear-gradient(177deg, #fff6cf 0%, #ffe071 14%, #f4bd35 52%, #d99a1a 82%, #b87d10 100%);
+    border: 1px solid #b07c0d;
+    color: #4a3105;
     cursor: pointer;
-    backdrop-filter: blur(14px) saturate(140%);
-    -webkit-backdrop-filter: blur(14px) saturate(140%);
-    transition: transform 0.16s var(--ease-spring), background 0.2s, border-color 0.2s, box-shadow 0.2s;
+    overflow: hidden;
+    box-shadow:
+      inset 0 2px 1px rgba(255, 255, 255, 0.75),
+      inset 0 -3px 5px rgba(120, 80, 0, 0.45),
+      0 5px 10px rgba(0, 0, 0, 0.5);
+    transition: transform 0.16s var(--ease-spring), box-shadow 0.2s, filter 0.2s;
   }
-  .menu-card:hover:not(.disabled) {
-    transform: translateY(-2px);
-    background: var(--surface-2);
-    border-color: var(--border-strong);
-    box-shadow: var(--shadow-md);
+  /* moving shine streak — staggered per bar via --i */
+  .menu-card::after {
+    content: '';
+    position: absolute; top: 0; bottom: 0; left: 0; width: 55%;
+    background: linear-gradient(105deg, transparent 25%, rgba(255,255,255,0.2) 42%, rgba(255,255,255,0.9) 50%, rgba(255,255,255,0.2) 58%, transparent 75%);
+    transform: translateX(-180%) skewX(-12deg);
+    animation: barShine 5s ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * 0.45s);
+    pointer-events: none;
   }
+  @keyframes barShine {
+    0%, 58% { transform: translateX(-180%) skewX(-12deg); }
+    78%, 100% { transform: translateX(330%) skewX(-12deg); }
+  }
+  .menu-card:hover:not(.disabled) { transform: translateY(-2px); filter: brightness(1.05); }
   .menu-card:active:not(.disabled),
   .menu-card:focus-visible:not(.disabled) {
-    transform: scale(0.985);
-    border-color: #fde047;
+    transform: translateY(1px) scale(0.99);
     outline: none;
     box-shadow:
-      0 0 0 2.5px rgba(253, 224, 71, 1),
-      0 0 24px rgba(251, 191, 36, 1),
-      0 0 52px rgba(251, 191, 36, 0.85),
-      0 0 96px rgba(251, 191, 36, 0.55),
-      0 0 150px rgba(251, 191, 36, 0.3);
+      inset 0 2px 1px rgba(255, 255, 255, 0.6),
+      0 0 0 2px #fff3c4, 0 0 22px rgba(255, 220, 90, 0.95), 0 0 50px rgba(251, 191, 36, 0.6);
   }
   .menu-card.primary {
-    border-color: rgba(251, 191, 36, 0.45);
-    background: linear-gradient(135deg, rgba(251, 191, 36, 0.16), rgba(245, 158, 11, 0.05));
-    box-shadow: 0 0 24px rgba(251, 191, 36, 0.22);
+    background: linear-gradient(177deg, #fffbe0 0%, #ffe98a 14%, #fbc945 52%, #e2a31f 82%, #c2870f 100%);
+    box-shadow:
+      inset 0 2px 1px rgba(255, 255, 255, 0.85),
+      inset 0 -3px 5px rgba(120, 80, 0, 0.4),
+      0 6px 14px rgba(0, 0, 0, 0.5), 0 0 26px rgba(251, 191, 36, 0.3);
   }
-  .menu-card.disabled { opacity: 0.45; cursor: not-allowed; }
-  /* Completed daily: not faded like a dead disabled card — clearly "done", still
-     tappable to see the result. Overrides .disabled (declared after it). */
-  .mc-icon {
-    width: 46px;
-    height: 46px;
-    flex-shrink: 0;
-    display: grid;
-    place-items: center;
-    font-size: 1.4rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border);
-    border-radius: 13px;
+  .menu-card.disabled { opacity: 0.5; cursor: not-allowed; }
+  .mc-title {
+    position: relative; z-index: 1;
+    font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; letter-spacing: 0.01em;
+    color: #4a3105; text-shadow: 0 1px 0 rgba(255, 248, 200, 0.5);
   }
-  .menu-card.primary .mc-icon {
-    background: linear-gradient(135deg, #fde047, #f59e0b);
-    border: none;
+  .mc-stat { position: relative; z-index: 1; font-family: var(--font-display); font-weight: 800; font-size: 0.9rem; color: #6b4a08; }
+  /* notification badge — top-right corner of the bar */
+  .mc-badge {
+    position: absolute; top: -7px; right: -6px; z-index: 3;
+    min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px;
+    display: inline-grid; place-items: center;
+    font-family: var(--font-display); font-weight: 800; font-size: 0.76rem; line-height: 1;
+    color: #fff; background: #ef4444; border: 2px solid #1a1407;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
   }
-  .mc-title { flex: 1; font-family: var(--font-display); font-weight: 600; font-size: 1.06rem; }
-  .mc-stat { font-family: var(--font-display); font-weight: 800; font-size: 0.95rem; color: var(--brand-2); margin-right: 2px; }
+  .mc-badge.gift { background: transparent; border: none; box-shadow: none; font-size: 1.1rem; top: -10px; right: -8px; }
   /* Daily status chip on the Play Now card */
   .daily-chip {
     font-size: 0.68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap;
