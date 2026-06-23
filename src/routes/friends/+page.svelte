@@ -97,7 +97,10 @@
         {:else}
           {#each results as u}
             <div class="row">
-              <span class="uname">@{u.username}</span>
+              <span class="who">
+                {#if u.name && u.name !== u.username}<span class="rname">{u.name}</span>{/if}
+                <span class="uname">@{u.username}</span>
+              </span>
               {#if u.status === 'friends'}
                 <span class="tag friend">✓ Friend</span>
               {:else if u.status === 'pending_out'}
@@ -186,6 +189,9 @@
   .card { padding: 0.8rem 0.9rem; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
   .card.dim { opacity: 0.7; }
   .list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .who { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .rname { font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; line-height: 1.1; }
+  .who .uname { font-weight: 600; font-size: 0.78rem; color: var(--text-muted); }
   .uname { font-family: var(--font-display); font-weight: 700; font-size: 1rem; }
   .row-acts { display: flex; gap: 0.4rem; }
   .act {
