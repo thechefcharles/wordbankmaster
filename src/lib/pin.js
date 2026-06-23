@@ -67,6 +67,15 @@ export function sessionIsUnlocked() { return !!(browser && sessionStorage.getIte
 /** Force a re-lock this session (e.g. before a purchase). */
 export function relock() { if (browser) sessionStorage.removeItem(UNLOCKED_KEY); pinLocked.set(true); }
 
+// "Skip for now" choice — persisted per device+user so the set-PIN screen doesn't
+// nag on every cold open. Cleared when a PIN is actually set or on logout.
+const SKIP_KEY = 'wb_pin_skipped';
+/** @param {string} uid */
+export function markPinSkipped(uid) { if (browser) localStorage.setItem(SKIP_KEY, uid); }
+/** @param {string} uid */
+export function pinSkipped(uid) { return !!(browser && localStorage.getItem(SKIP_KEY) === uid); }
+export function clearPinSkipped() { if (browser) localStorage.removeItem(SKIP_KEY); }
+
 /** Forget the PIN (forgot-PIN / logout). Keeps the remembered name unless full=true. */
 export function clearPin(full = false) {
   if (!browser) return;

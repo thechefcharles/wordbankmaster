@@ -22,7 +22,7 @@
   import { soundEnabled, toggleSound, fx } from '$lib/sound.js';
   import { startMusic, stopMusic, musicEnabled, musicVolume, setMusicVolume, toggleMusic, TRACKS, currentTrackId, selectTrack } from '$lib/music.js';
   import PinGate from '$lib/components/PinGate.svelte';
-  import { pinLocked, hasPinFor, clearPin, markUnlocked, sessionIsUnlocked } from '$lib/pin.js';
+  import { pinLocked, hasPinFor, clearPin, markUnlocked, sessionIsUnlocked, markPinSkipped, pinSkipped, clearPinSkipped } from '$lib/pin.js';
   import { requirePin } from '$lib/pinConfirm.js';
   import { goto } from '$app/navigation';
 
@@ -139,7 +139,7 @@
       // Lock only on a cold open (close → reopen), not on in-app navigation back
       // to the menu — sessionIsUnlocked() persists the unlock for this app session.
       if (hasPinFor(sessionUid)) { if (!sessionIsUnlocked()) pinLocked.set(true); }
-      else pinNotSet = true;
+      else pinNotSet = !pinSkipped(sessionUid); // don't re-nag if they chose "Skip for now"
 
       // Make-up daily launched from the streak calendar → drop straight into the board.
       if (localStorage.getItem('gameMode') === 'makeup' && localStorage.getItem('makeupDate')) {
@@ -229,9 +229,9 @@
   // A pending challenge invite to surface prominently on the home menu.
   $: pendingInvite = (myMatches ?? []).find((m) => m.my_state === 'invited' && m.status === 'open');
   function onPinUnlocked() { markUnlocked(); pinLocked.set(false); }
-  function onPinSet() { markUnlocked(); pinNotSet = false; }
-  function onPinSkip() { markUnlocked(); pinNotSet = false; } // no device PIN; can set later in My Account
-  function onPinLogout() { clearPin(); pinLocked.set(false); pinNotSet = false; handleLogout(); }
+  function onPinSet() { markUnlocked(); clearPinSkipped(); pinNotSet = false; }
+  function onPinSkip() { markUnlocked(); markPinSkipped(sessionUid); pinNotSet = false; } // remember the skip so it doesn't nag every open
+  function onPinLogout() { clearPin(); clearPinSkipped(); pinLocked.set(false); pinNotSet = false; handleLogout(); }
   // Lobby music: play in the menu only — not while locked, setting a PIN, or in-game.
   $: if (browser) { (loggedIn && hasInitialized && showMainMenu && !showPinUnlock && !showPinSetup) ? startMusic() : stopMusic(); }
   $: bankroll = $gameStore.bankroll || 0;
