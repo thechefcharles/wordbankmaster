@@ -1162,6 +1162,9 @@
           <button class="menu-card" style="--i: 4" on:click={() => goto('/history')}>
             <span class="mc-title">History</span>
           </button>
+          <button class="menu-card" style="--i: 5" on:click={() => goto('/activity')}>
+            <span class="mc-title">Activity</span>
+          </button>
         </div>
       {/if}
     </div>

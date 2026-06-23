@@ -43,5 +43,11 @@
 --   settled group challenge_matches (topscore>0). (migration get_group_standings.)
 --   Client: getGroupStandings(groupId) → /groups "Compete" tab.
 --
--- NEXT (STATS_AND_HISTORY_DESIGN.md §8): activity feed (last). Competitive spent/earned
---   still deferred (matches rank by total_score, not the v3.1 pot-of-spend model).
+-- get_activity_feed(p_limit, p_offset) → TABLE(ts, type, actor_id, actor_name, group_id,
+--   group_name, meta jsonb). Read-only UNION over game_results (daily wins, challenge WINS
+--   [winner-centric → 1 row/match], climb solves ≥4×), user_badges(earned_at), and
+--   group_members(joined_at), scoped to viewer + friends + their groups. No events table,
+--   no write hooks. (migration get_activity_feed.) Client: getActivityFeed → /activity page.
+--
+-- STATS/HISTORY SYSTEM COMPLETE (design §8 steps 1–6). Remaining/deferred: competitive
+--   spent/earned/net (matches rank by total_score, not the v3.1 pot-of-spend model).
