@@ -147,6 +147,8 @@
       refreshQuests();
       refreshBank();
       refreshChallengeCount();
+      // First-run username gate: prompt if this account hasn't claimed one yet.
+      getMyUsername().then((u) => { needsUsername = !u; }).catch(() => {});
 
       // Friend invite link: ?add=USERNAME → add them, then open the Friends board.
       try {
@@ -775,6 +777,30 @@
   let maInput = '';
   let maEditing = false;
   let maMsg = '';
+
+  // First-run "pick your username" gate (new accounts that have no username yet).
+  let needsUsername = false;
+  let claimInput = '';
+  let claimMsg = '';
+  let claimBusy = false;
+  async function claimUsername() {
+    const name = claimInput.trim();
+    if (!name || claimBusy) return;
+    claimBusy = true; claimMsg = '';
+    const res = await setUsername(name);
+    claimBusy = false;
+    if (res.ok) {
+      maUsername = res.username ?? name;
+      needsUsername = false;
+      track('username_set', { at: 'signup' });
+      fx('win');
+    } else {
+      claimMsg = res.reason === 'taken' ? 'That username is taken — try another.'
+        : res.reason === 'reserved' ? 'That one’s reserved — try another.'
+        : res.reason === 'invalid' ? '3–15 characters: letters, numbers, or _.'
+        : 'Could not set that username.';
+    }
+  }
   async function handleMenuMyAccount() {
     showMyAccount = true;
     maMsg = '';
@@ -887,6 +913,27 @@
 {/if}
 
 <main>
+  <!-- 👤 First-run: pick a username (required to play socially) -->
+  {#if loggedIn && hasInitialized && needsUsername}
+    <div class="modal-overlay username-gate" role="dialog" aria-modal="true" aria-label="Pick your username">
+      <div class="modal-content main-menu-modal claim-card">
+        <img class="claim-coin" src="/logo-coin.png" alt="" width="84" height="84" />
+        <h2>Pick your username</h2>
+        <p class="claim-sub">This is your @handle — how friends find you and challenge you. You can change it later in My Account.</p>
+        <div class="claim-row">
+          <span class="claim-at">@</span>
+          <input class="claim-input" placeholder="username" bind:value={claimInput} maxlength="15" autocomplete="off"
+            on:keydown={(e) => { if (e.key === 'Enter') claimUsername(); }} />
+        </div>
+        {#if claimMsg}<p class="claim-msg">{claimMsg}</p>{/if}
+        <button class="claim-btn" disabled={claimBusy || !claimInput.trim()} on:click={claimUsername}>
+          {claimBusy ? 'Claiming…' : 'Claim username'}
+        </button>
+        <p class="claim-hint">3–15 characters · letters, numbers, or _</p>
+      </div>
+    </div>
+  {/if}
+
   {#if !loggedIn}
     <!-- 🔐 Login Screen -->
     <div class="auth-screen">
@@ -2382,6 +2429,31 @@
   }
   .ma-save { padding: 0.5rem 1rem; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; color: #06210f; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); }
   .ma-msg { text-align: center; font-size: 0.82rem; color: #f87171; margin: 0.2rem 0 0; }
+
+  /* First-run username gate */
+  .username-gate { z-index: 3000; }
+  .claim-card { text-align: center; max-width: 360px; }
+  .claim-coin { display: block; margin: 0 auto 0.4rem; filter: drop-shadow(0 6px 20px rgba(251,191,36,0.4)); }
+  .claim-sub { color: var(--text-muted); font-size: 0.88rem; line-height: 1.45; margin: 0.4rem 0 1.1rem; }
+  .claim-row {
+    display: flex; align-items: center; gap: 4px; padding: 0 0.9rem;
+    background: var(--surface); border: 1px solid rgba(251,191,36,0.4); border-radius: 12px;
+  }
+  .claim-row:focus-within { border-color: #fde047; }
+  .claim-at { font-family: var(--font-display); font-weight: 800; color: #fbbf24; font-size: 1.15rem; }
+  .claim-input {
+    flex: 1; min-width: 0; padding: 0.8rem 0.2rem; border: none; background: transparent;
+    color: var(--text); font-size: 1.1rem; font-family: var(--font-display); font-weight: 700;
+  }
+  .claim-input:focus { outline: none; }
+  .claim-msg { color: #f87171; font-size: 0.82rem; margin: 0.6rem 0 0; }
+  .claim-btn {
+    width: 100%; margin-top: 1rem; padding: 0.85rem; border: none; border-radius: 12px; cursor: pointer;
+    font-weight: 800; font-size: 1rem; color: #06210f;
+    background: linear-gradient(135deg, #fde047, #f59e0b);
+  }
+  .claim-btn:disabled { opacity: 0.5; cursor: default; }
+  .claim-hint { color: var(--text-faint); font-size: 0.74rem; margin: 0.7rem 0 0; }
 
   .bankroll-container {
     display: flex;
