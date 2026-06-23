@@ -496,6 +496,12 @@ export async function getProfileStats() {
   if (error) { console.error('❌ get_profile_stats:', error); return null; }
   return data;
 }
+/** Stat-heavy profile: per-mode sections + records. @returns {Promise<any|null>} */
+export async function getProfileDetail() {
+  const { data, error } = await supabase.rpc('get_profile_detail');
+  if (error) { console.error('❌ get_profile_detail:', error); return null; }
+  return data;
+}
 
 /* ===== Play Log: history, head-to-head, challenge detail ===== */
 /**
