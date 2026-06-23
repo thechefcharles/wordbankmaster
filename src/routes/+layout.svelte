@@ -9,18 +9,20 @@
 
   let { children } = $props();
 
-  // Every button beeps on press, app-wide. touchstart no-op also enables :active on iOS.
+  // Every button beeps + flashes gold on a REAL click/tap. Using 'click' (not
+  // pointerdown/:active) means scrolling or brushing a button on a phone never
+  // triggers it — click only fires on a genuine activation.
   /** @param {Event} e */
-  function buttonBeep(e) {
+  function buttonPress(e) {
     const el = /** @type {HTMLElement} */ (e.target)?.closest?.('button, [role="button"]');
-    // .key = keyboard letters (their own 'select' cue); skip so they don't double-beep.
-    if (el && !(/** @type {HTMLButtonElement} */ (el).disabled) && !el.classList.contains('key')) fx('tap');
+    if (!el || /** @type {HTMLButtonElement} */ (el).disabled) return;
+    if (!el.classList.contains('key')) fx('tap'); // .key has its own 'select' cue
+    el.classList.add('gold-flash');
+    setTimeout(() => el.classList.remove('gold-flash'), 200);
   }
   onMount(() => {
-    document.addEventListener('pointerdown', buttonBeep, true);
-    const noop = () => {};
-    document.addEventListener('touchstart', noop, { passive: true });
-    return () => { document.removeEventListener('pointerdown', buttonBeep, true); document.removeEventListener('touchstart', noop); };
+    document.addEventListener('click', buttonPress, true);
+    return () => document.removeEventListener('click', buttonPress, true);
   });
 
   onMount(() => {
