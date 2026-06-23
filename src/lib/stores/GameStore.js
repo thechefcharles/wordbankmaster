@@ -702,7 +702,7 @@ function reconcileMatchBoard(board) {
     gameState: done ? 'won' : 'default',
     modifier: null, arcadeRun: null,
     clue: done ? prev.clue : (board.clue ?? null),
-    matchInfo: { ...match, id: activeMatchId }
+    matchInfo: { ...match, id: activeMatchId, standing: board.standing ?? null }
   }));
   if (done) { setTimeout(() => launchConfetti(), 250); fx('win'); }
   // Celebrate EACH solved puzzle in the pack (not just finishing the whole pack).
