@@ -553,6 +553,13 @@ export async function getGroupStandings(groupId) {
   if (error) { console.error('❌ get_group_standings:', error); return null; }
   return data;
 }
+/** Activity feed — you + friends + your groups (games, badges, joins).
+ * @param {number} [limit] @param {number} [offset] @returns {Promise<any[]>} */
+export async function getActivityFeed(limit = 30, offset = 0) {
+  const { data, error } = await supabase.rpc('get_activity_feed', { p_limit: limit, p_offset: offset });
+  if (error) { console.error('❌ get_activity_feed:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
 
 /* ===== Power-ups (catalog + buy + use-in-Climb) ===== */
 /** @returns {Promise<{cash:number, items:any[]}>} */
