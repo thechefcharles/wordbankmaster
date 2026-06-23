@@ -37,5 +37,11 @@
 --   (migration get_public_profile.) Client: getPublicProfile(username) → /u/[username] page.
 --   Friendships live in friendships(user_id, friend_id); pending in friend_requests(requester, addressee).
 --
--- NEXT (STATS_AND_HISTORY_DESIGN.md §8): group Compete tab (get_group_standings),
---   then activity feed. Competitive spent/earned still deferred (matches rank by score).
+-- get_group_standings(p_group_id) → jsonb { total_matches, members[{user_id,name,is_me,
+--   played,wins,win_pct} ordered by wins desc], recent[{match_id,pack_size,wager,players,
+--   winner} last 8 settled] }. Members-only (NULL otherwise). "win" = top total_score in a
+--   settled group challenge_matches (topscore>0). (migration get_group_standings.)
+--   Client: getGroupStandings(groupId) → /groups "Compete" tab.
+--
+-- NEXT (STATS_AND_HISTORY_DESIGN.md §8): activity feed (last). Competitive spent/earned
+--   still deferred (matches rank by total_score, not the v3.1 pot-of-spend model).

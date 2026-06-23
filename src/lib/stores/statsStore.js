@@ -546,6 +546,13 @@ export async function getPublicProfile(username) {
   if (error) { console.error('❌ get_public_profile:', error); return null; }
   return data;
 }
+/** In-group challenge standings (W/played per member) + recent matches.
+ * @param {string} groupId @returns {Promise<any|null>} */
+export async function getGroupStandings(groupId) {
+  const { data, error } = await supabase.rpc('get_group_standings', { p_group_id: groupId });
+  if (error) { console.error('❌ get_group_standings:', error); return null; }
+  return data;
+}
 
 /* ===== Power-ups (catalog + buy + use-in-Climb) ===== */
 /** @returns {Promise<{cash:number, items:any[]}>} */
