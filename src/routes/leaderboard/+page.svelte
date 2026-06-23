@@ -90,7 +90,7 @@
   </div>
 
   <p class="caption">
-    {#if board === 'wealth'}{period === 'week' ? 'Net Worth gained this week' : 'Net Worth — Cash minus Loans'}
+    {#if board === 'wealth'}{period === 'week' ? 'Cash gained this week' : 'Total Cash'}
     {:else if board === 'daily'}Today's Daily Score
     {:else if board === 'efficiency'}Best return multiple {period === 'week' ? 'this week' : 'all-time'} — spend the least
     {:else if board === 'challenges'}Challenge wins {period === 'week' ? 'this week' : 'all-time'}
@@ -109,7 +109,7 @@
         <thead>
           <tr>
             <th>#</th><th>Player</th>
-            {#if board === 'wealth'}<th>{period === 'week' ? 'Gained' : 'Net Worth'}</th><th>Cash</th>
+            {#if board === 'wealth'}<th>{period === 'week' ? 'Gained' : 'Cash'}</th>
             {:else if board === 'daily'}<th>Score</th>
             {:else if board === 'efficiency'}<th>Best ×</th><th>Category</th>
             {:else if board === 'challenges'}<th>Wins</th><th>Pot won</th>
@@ -127,13 +127,11 @@
                   <button class="name-link" onclick={() => goto('/u/' + encodeURIComponent(r.name || ''))} style={r.color ? `color:${r.color}` : ''}>{r.name || 'Player'}</button>
                 {/if}
                 {#if r.title}<span class="title">{r.title}</span>{/if}
-                {#if board === 'wealth' && (r.net_worth ?? 0) < 0}<span class="red-flag">🔴</span>{/if}
               </td>
               {#if board === 'wealth'}
-                <td class="metric" class:neg={(period === 'week' ? r.metric : r.net_worth) < 0}>
+                <td class="metric" class:neg={period === 'week' && Number(r.metric) < 0}>
                   {period === 'week' ? (r.metric >= 0 ? '+' : '') + fmt(r.metric) : fmt(r.net_worth)}
                 </td>
-                <td class="dim">{fmt(r.cash)}</td>
               {:else if board === 'daily'}
                 <td class="metric">{r.played ? Number(r.score).toLocaleString() : '—'}</td>
               {:else if board === 'efficiency'}
@@ -153,7 +151,7 @@
   {/if}
 
   <p class="hint">
-    {#if board === 'wealth'}Net Worth = Cash − Loans. 🔴 = in the red. Weekly resets Monday — fair for newcomers.
+    {#if board === 'wealth'}Your Cash balance — earn it across every mode. Weekly resets Monday, so newcomers can climb.
     {:else if board === 'daily'}Same puzzle for everyone today. Spend less, score more.
     {:else if board === 'efficiency'}Your best return multiple (bounty ÷ spend). The core flex — crack a puzzle spending next to nothing.
     {:else if board === 'challenges'}Head-to-head wins. Win challenges by solving on the least spend and taking the pot.
