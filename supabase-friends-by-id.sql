@@ -1,0 +1,14 @@
+-- Friends keyed by user ID  (migrations: friends_by_id, search_users_include_id)
+-- Accounts can exist without a username (new Google/Apple/email users before they
+-- claim one). The friend system keyed everything on username, so a usernameless
+-- requester rendered blank and Accept/Decline couldn't resolve them.
+--
+-- - list_friends / list_friend_requests / search_users now return `id` + a
+--   display `name` (via _display_name fallback: username → full_name → email
+--   prefix → 'Player').
+-- - respond_friend_request(p_requester uuid, accept) and remove_friend(p_other
+--   uuid) now act by ID (the old text/username overloads are dropped).
+-- - add_friend requires the SENDER to have a username (reason 'need_username')
+--   so the graph has handles going forward, and the friend_request notification
+--   carries data.from_id for the bell-panel inline Accept.
+-- Frontend (friends page + bell) acts by id, displays @username or name.

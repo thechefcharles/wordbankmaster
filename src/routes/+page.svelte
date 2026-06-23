@@ -610,9 +610,9 @@
   let notifResponded = {};
   /** Accept/decline a friend request straight from the bell panel. @param {any} n @param {boolean} accept */
   async function respondNotif(n, accept) {
-    const uname = n?.data?.from_username;
-    if (!uname || notifResponded[n.id]) return;
-    const res = await respondFriendRequest(uname, accept);
+    const fromId = n?.data?.from_id;
+    if (!fromId || notifResponded[n.id]) return;
+    const res = await respondFriendRequest(fromId, accept);
     if (res?.ok) {
       notifResponded = { ...notifResponded, [n.id]: accept ? 'accepted' : 'declined' };
       fx(accept ? 'win' : 'tap');
@@ -1166,7 +1166,7 @@
                     <span class="ni-title">{n.title}</span>
                     <span class="ni-body">{n.body}</span>
                   </button>
-                  {#if n.type === 'friend_request' && n.data?.from_username}
+                  {#if n.type === 'friend_request' && n.data?.from_id}
                     {#if notifResponded[n.id]}
                       <span class="ni-done {notifResponded[n.id]}">{notifResponded[n.id] === 'accepted' ? '✓ Friends' : 'Declined'}</span>
                     {:else}

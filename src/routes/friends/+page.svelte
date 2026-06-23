@@ -61,23 +61,26 @@
     }
   }
 
-  /** @param {string} username @param {boolean} accept */
-  async function respond(username, accept) {
+  /** @param {any} u @param {boolean} accept */
+  async function respond(u, accept) {
     if (busy) return;
-    busy = username;
-    const res = await respondFriendRequest(username, accept);
+    busy = u.id;
+    const res = await respondFriendRequest(u.id, accept);
     busy = '';
-    if (res?.ok) { fx(accept ? 'win' : 'tap'); track('friend_respond', { from: username, accept }); await load(); }
+    if (res?.ok) { fx(accept ? 'win' : 'tap'); track('friend_respond', { accept }); await load(); }
   }
 
-  /** @param {string} username */
-  async function unfriend(username) {
+  /** @param {any} u */
+  async function unfriend(u) {
     if (busy) return;
-    busy = username;
-    await removeFriend(username);
+    busy = u.id;
+    await removeFriend(u.id);
     busy = '';
     fx('tap'); await load();
   }
+
+  /** Display label: @username if they have one, else their name. @param {any} u */
+  const label = (u) => (u.username ? '@' + u.username : (u.name || 'Player'));
 </script>
 
 <svelte:head><title>WordBank — Friends</title></svelte:head>
@@ -106,7 +109,7 @@
               {:else if u.status === 'pending_out'}
                 <span class="tag pending">Requested</span>
               {:else if u.status === 'pending_in'}
-                <button class="act accept" disabled={busy === u.username} onclick={() => respond(u.username, true)}>Accept</button>
+                <button class="act accept" disabled={busy === u.id} onclick={() => respond(u, true)}>Accept</button>
               {:else}
                 <button class="act add" disabled={busy === u.username} onclick={() => add(u.username)}>+ Add</button>
               {/if}
@@ -127,10 +130,10 @@
       <div class="list">
         {#each incoming as u}
           <div class="row card">
-            <span class="uname">@{u.username}</span>
+            <span class="uname">{label(u)}</span>
             <div class="row-acts">
-              <button class="act accept" disabled={busy === u.username} onclick={() => respond(u.username, true)}>Accept</button>
-              <button class="act decline" disabled={busy === u.username} onclick={() => respond(u.username, false)}>Decline</button>
+              <button class="act accept" disabled={busy === u.id} onclick={() => respond(u, true)}>Accept</button>
+              <button class="act decline" disabled={busy === u.id} onclick={() => respond(u, false)}>Decline</button>
             </div>
           </div>
         {/each}
@@ -144,8 +147,8 @@
       <div class="list">
         {#each friends as u}
           <div class="row card">
-            <span class="uname">@{u.username}</span>
-            <button class="act remove" disabled={busy === u.username} onclick={() => unfriend(u.username)} title="Remove friend">✕</button>
+            <span class="uname">{label(u)}</span>
+            <button class="act remove" disabled={busy === u.id} onclick={() => unfriend(u)} title="Remove friend">✕</button>
           </div>
         {/each}
       </div>
@@ -156,7 +159,7 @@
       <div class="list">
         {#each outgoing as u}
           <div class="row card dim">
-            <span class="uname">@{u.username}</span>
+            <span class="uname">{label(u)}</span>
             <span class="tag pending">Pending</span>
           </div>
         {/each}
