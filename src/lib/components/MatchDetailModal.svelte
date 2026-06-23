@@ -17,6 +17,27 @@
   const rankIcon = (/** @type {number} */ r) => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : '#' + r;
   const money = (/** @type {any} */ n) => (Number(n) < 0 ? '−$' : '+$') + Math.abs(Math.round(Number(n ?? 0))).toLocaleString();
   const mult = (/** @type {any} */ x) => x ? (Number(x) / 100).toFixed(1) + '×' : '';
+  const ordinal = (/** @type {number} */ n) => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
+  const dollars = (/** @type {any} */ n) => '$' + Number(n ?? 0).toLocaleString();
+
+  // The spend "tie-back": frame the outcome in the universal metric — who solved
+  // for the least. Works for 1v1 and groups, wagered or friendly.
+  $: field = parts.length;
+  $: winner = parts.find((/** @type {any} */ p) => Number(p.rank) === 1);
+  $: iWon = me && Number(me.rank) === 1;
+  $: tieback = (() => {
+    if (!me || noSolve || m?.status !== 'settled') return '';
+    const myS = dollars(me.spent);
+    if (field === 2 && opp) {
+      const oS = dollars(opp.spent), on = '@' + (opp.name || 'opponent');
+      if (iWon) return me.solved ? `You solved for ${myS} — beat ${on}'s ${oS}.` : `You took it — ${on} didn't solve.`;
+      if (Number(opp.rank) === 1) return opp.solved ? `${on} solved for ${oS} — you spent ${myS}.` : `You spent ${myS}.`;
+      return `You spent ${myS}.`;
+    }
+    if (iWon) return `You solved for ${myS} — cheapest of ${field}.`;
+    if (winner) return `Winner @${winner.name || 'player'} solved for ${dollars(winner.spent)} — you placed ${ordinal(Number(me.rank))} (${myS}).`;
+    return `You placed ${ordinal(Number(me.rank))} — you spent ${myS}.`;
+  })();
 </script>
 
 {#if detail}
@@ -43,6 +64,10 @@
               {#if Number(me.net) >= 0}you took the pot{#if mult(me.multiple_x100)} · {mult(me.multiple_x100)}{/if}{:else}you spent ${me.spent}{/if}
             </span>
           </div>
+        {/if}
+
+        {#if tieback}
+          <p class="md-tieback">🎯 {tieback}</p>
         {/if}
 
         <div class="md-standings">
@@ -92,6 +117,8 @@
   .md-out-net { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.6rem; }
   .md-outcome.win .md-out-net { color: #7ee0a8; } .md-outcome.loss .md-out-net { color: #fb7185; }
   .md-out-lbl { color: var(--text-muted); font-size: 0.82rem; }
+  .md-tieback { text-align: center; font-size: 0.9rem; font-weight: 600; color: var(--text); margin: 0 0 16px;
+    padding: 10px 12px; border-radius: var(--r-md); background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.25); }
   .md-meta .pos { color: #7ee0a8; } .md-meta .neg { color: #fb7185; }
 
   .md-standings { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
