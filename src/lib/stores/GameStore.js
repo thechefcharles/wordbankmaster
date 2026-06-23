@@ -704,7 +704,8 @@ function reconcileMatchBoard(board) {
     matchInfo: { ...match, id: activeMatchId }
   }));
   if (done) { setTimeout(() => launchConfetti(), 250); fx('win'); }
-  else if ((match.last_score ?? 0) > 0 && (match.position ?? 1) > (prev.matchInfo?.position ?? 0)) { fx('win'); }
+  // Celebrate EACH solved puzzle in the pack (not just finishing the whole pack).
+  else if ((match.last_score ?? 0) > 0 && (match.position ?? 1) > (prev.matchInfo?.position ?? 0)) { setTimeout(() => launchConfetti(), 250); fx('win'); }
   else playMoveCue(prev, board);
 }
 
