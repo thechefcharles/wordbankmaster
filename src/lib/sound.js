@@ -91,6 +91,14 @@ const SOUNDS = {
   multiplier: () => {
     tone(880, 0.09, 'sine', 0.13);
     tone(1320, 0.13, 'sine', 0.12, 0.08);
+  },
+  // Heavy metallic vault CLUNK: mechanism click → deep thunk → metal overtone.
+  vault: () => {
+    tone(140, 0.05, 'square', 0.16);            // latch click
+    tone(82, 0.34, 'sine', 0.34, 0.03);         // heavy thunk
+    tone(58, 0.42, 'triangle', 0.24, 0.05);     // low body
+    tone(360, 0.2, 'triangle', 0.07, 0.04);     // metallic ring
+    sweep(520, 180, 0.3, 'sawtooth', 0.06, 0.05); // dampened resonance
   }
 };
 
@@ -103,7 +111,8 @@ const HAPTICS = {
   reveal: [12],
   win: [18, 40, 18, 40, 36],
   bust: [60, 30, 60],
-  multiplier: [10, 24, 10]
+  multiplier: [10, 24, 10],
+  vault: [50, 30, 90]
 };
 
 /** Play an audio cue by name (no-op when disabled). @param {string} name */

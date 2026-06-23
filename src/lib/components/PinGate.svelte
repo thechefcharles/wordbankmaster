@@ -72,13 +72,12 @@
 
   async function openVault() {
     revealing = true;
-    fx('win');
     // fetch a fresh balance for the reveal if we weren't handed one
     let bal = balance;
     if (bal == null) { try { const b = await getBank(); bal = b?.bank ?? b?.cash ?? 0; } catch { bal = 0; } }
-    // door swings, then number spins up
-    setTimeout(() => { doorOpen = true; }, 250);
-    setTimeout(() => { shownBalance.set(bal ?? 0); }, 900);
+    // brief pause on the closed door, then CLUNK + light burst + swing open
+    setTimeout(() => { doorOpen = true; fx('vault'); }, 650);
+    setTimeout(() => { shownBalance.set(bal ?? 0); }, 1150);
   }
 
   function enter() { dispatch('unlocked'); }
@@ -97,6 +96,7 @@
   <div class="vault" class:open={doorOpen} on:click={enter} role="button" tabindex="0"
        on:keydown={(e) => { if (e.key === 'Enter') enter(); }}>
     <div class="vault-stage">
+      <div class="burst"></div>
       <div class="reveal">
         <span class="reveal-label">Your balance</span>
         <span class="reveal-amount">${Math.round($shownBalance).toLocaleString()}</span>
@@ -143,6 +143,18 @@
     overflow: hidden;
   }
   .vault-stage { position: relative; width: 300px; height: 300px; display: grid; place-items: center; }
+  /* gold light burst at the moment the door opens */
+  .burst {
+    position: absolute; top: 50%; left: 50%; width: 60px; height: 60px; margin: -30px 0 0 -30px;
+    border-radius: 50%; pointer-events: none; opacity: 0; transform: scale(0);
+    background: radial-gradient(circle, rgba(255,255,255,0.95), rgba(253,224,71,0.85) 28%, rgba(251,191,36,0.45) 50%, rgba(251,191,36,0) 72%);
+  }
+  .vault.open .burst { animation: burst 1s ease-out; }
+  @keyframes burst {
+    0% { opacity: 0; transform: scale(0); }
+    12% { opacity: 1; }
+    100% { opacity: 0; transform: scale(16); }
+  }
   .reveal {
     position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 6px; opacity: 0; transform: scale(0.9); transition: opacity 0.6s 0.4s, transform 0.6s 0.4s;
