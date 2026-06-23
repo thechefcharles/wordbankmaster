@@ -6,7 +6,7 @@
 <svelte:head><title>WordBank — History</title></svelte:head>
 
 <main class="h-page">
-  <button class="back-btn" onclick={() => goto('/profile')}>← You</button>
+  <button class="back-btn" onclick={() => goto('/profile')}>← Profile</button>
   <h1>📜 History</h1>
   <HistoryList />
 </main>

@@ -6,7 +6,7 @@
 <svelte:head><title>WordBank — Badges</title></svelte:head>
 
 <main class="badges-page">
-  <button class="back-btn" onclick={() => goto('/profile')}>← You</button>
+  <button class="back-btn" onclick={() => goto('/profile')}>← Profile</button>
   <h1>🏅 Badges</h1>
   <BadgesPanel />
 </main>

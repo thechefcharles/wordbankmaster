@@ -10,9 +10,13 @@
   $: parts = detail?.participants ?? [];
   $: m = detail?.match;
   $: opp = parts.find((/** @type {any} */ p) => !p.is_me);
+  $: me = parts.find((/** @type {any} */ p) => p.is_me);
   $: noSolve = parts.length > 0 && parts.every((/** @type {any} */ p) => (p.solved ?? 0) === 0);
   $: title = detail?.group_name || (opp ? '@' + (opp.name || 'player') : 'Challenge');
+  $: wagered = Number(m?.wager) > 0;
   const rankIcon = (/** @type {number} */ r) => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : '#' + r;
+  const money = (/** @type {any} */ n) => (Number(n) < 0 ? '−$' : '+$') + Math.abs(Math.round(Number(n ?? 0))).toLocaleString();
+  const mult = (/** @type {any} */ x) => x ? (Number(x) / 100).toFixed(1) + '×' : '';
 </script>
 
 {#if detail}
@@ -27,10 +31,19 @@
         <p class="md-sub">
           {m?.pack_size} puzzle{m?.pack_size === 1 ? '' : 's'}
           · {m?.payout === 'podium' ? 'podium 3·2·1' : 'winner-take-all'}
-          {#if Number(m?.wager) > 0}· ${Number(m.wager).toLocaleString()} buy-in{:else}· friendly{/if}
+          {#if wagered}· ${Number(m.wager).toLocaleString()} buy-in{:else}· friendly{/if}
           {#if m?.status !== 'settled'}· <em>in progress</em>{/if}
-          {#if noSolve && Number(m?.wager) > 0}· wager refunded{/if}
+          {#if noSolve && wagered}· buy-in refunded{/if}
         </p>
+
+        {#if wagered && m?.status === 'settled' && me && me.net != null && !noSolve}
+          <div class="md-outcome {Number(me.net) >= 0 ? 'win' : 'loss'}">
+            <span class="md-out-net">{money(me.net)}</span>
+            <span class="md-out-lbl">
+              {#if Number(me.net) >= 0}you took the pot{#if mult(me.multiple_x100)} · {mult(me.multiple_x100)}{/if}{:else}you spent ${me.spent}{/if}
+            </span>
+          </div>
+        {/if}
 
         <div class="md-standings">
           {#each parts as p}
@@ -38,7 +51,7 @@
               <span class="md-rank">{noSolve ? '🤝' : rankIcon(p.rank)}</span>
               <span class="md-name">{p.is_me ? 'You' : '@' + (p.name || 'player')}</span>
               <span class="md-meta">
-                {#if p.state === 'done'}solved {p.solved ?? 0}/{m?.pack_size}{#if p.spent != null} · ${Number(p.spent).toLocaleString()} spent{/if}
+                {#if p.state === 'done'}solved {p.solved ?? 0}/{m?.pack_size}{#if p.spent != null} · ${Number(p.spent).toLocaleString()} spent{/if}{#if wagered && p.net != null} · <span class:pos={Number(p.net) >= 0} class:neg={Number(p.net) < 0}>{money(p.net)}</span>{/if}
                 {:else}{p.state}{/if}
               </span>
             </div>
@@ -50,7 +63,7 @@
             <div class="md-pack-h">Puzzles</div>
             {#each detail.pack as pk}
               <div class="md-pk">
-                <span class="md-pos">{pk.position + 1}</span>
+                <span class="md-pos">{pk.position}</span>
                 <span class="md-cat">{pk.category}</span>
                 <span class="md-ans">{pk.phrase ? '“' + pk.phrase + '”' : '🔒 hidden until settled'}</span>
               </div>
@@ -71,6 +84,15 @@
   .md-title { font-family: var(--font-display); font-size: 1.25rem; margin: 0 0 4px; }
   .md-sub { color: var(--text-faint); font-size: 0.8rem; margin: 0 0 16px; }
   .md-msg { color: var(--text-muted); text-align: center; padding: 24px 0; }
+
+  .md-outcome { display: flex; align-items: baseline; gap: 10px; justify-content: center; padding: 12px; margin: 0 0 16px;
+    border-radius: var(--r-md); border: 1px solid var(--border); }
+  .md-outcome.win { background: rgba(126,224,168,0.1); border-color: rgba(126,224,168,0.3); }
+  .md-outcome.loss { background: rgba(251,113,133,0.08); border-color: rgba(251,113,133,0.25); }
+  .md-out-net { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.6rem; }
+  .md-outcome.win .md-out-net { color: #7ee0a8; } .md-outcome.loss .md-out-net { color: #fb7185; }
+  .md-out-lbl { color: var(--text-muted); font-size: 0.82rem; }
+  .md-meta .pos { color: #7ee0a8; } .md-meta .neg { color: #fb7185; }
 
   .md-standings { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
   .md-row { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: var(--r-sm); background: var(--surface); }
