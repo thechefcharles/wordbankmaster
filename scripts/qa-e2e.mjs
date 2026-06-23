@@ -97,7 +97,11 @@ try {
   await page.getByRole('button', { name: /play now/i }).first().click().catch(() => {});
   await wait(700);
   await page.getByRole('button', { name: /daily/i }).first().click().catch(() => {});
-  await wait(2800); await shot('02-daily-board');
+  await wait(2800);
+  // Pre-game "How to win" objective card (first entry per mode) — dismiss to reach the board.
+  const objGo = page.getByRole('button', { name: /let’s go|let's go/i });
+  if (await objGo.count()) { await objGo.first().click().catch(() => {}); await wait(600); ok('objective-card', 'shown + dismissed'); }
+  await shot('02-daily-board');
   if (!(await page.getByRole('button', { name: /^solve$/i }).count())) { bad('daily-open', 'no Solve button — board did not load'); }
   else {
     ok('daily-open');

@@ -32,6 +32,7 @@
   import FlipDigit from '$lib/components/FlipDigit.svelte';
   import Auth from '$lib/components/Auth.svelte';
   import Tutorial from '$lib/components/Tutorial.svelte';
+  import ObjectiveCard from '$lib/components/ObjectiveCard.svelte';
   import PowerupTray from '$lib/components/PowerupTray.svelte';
   import MatchDetailModal from '$lib/components/MatchDetailModal.svelte';
 
@@ -600,6 +601,42 @@
     if (browser) localStorage.setItem(TUTORIAL_KEY, 'true');
   }
 
+  // ===== Pre-game "How to win" objective card =====
+  // Shows the objective the moment a mode starts. Solo modes show once (per mode,
+  // localStorage); challenges show every entry. One reactive latch detects the
+  // menu→game transition so we don't have to wire every scattered start site.
+  /** @type {{ mode: string, ctx: any } | null} */
+  let objective = null;
+  let _wasMenu = true;
+  const SOLO_MODES = ['daily', 'climb', 'arcade', 'freeplay', 'makeup'];
+
+  function buildObjectiveCtx(/** @type {string} */ mode) {
+    if (mode !== 'match') return {};
+    const mi = get(gameStore).matchInfo || {};
+    const opps = mi.opponents ?? [];
+    return { opponent: opps.length === 1 ? opps[0]?.name : undefined,
+      wager: mi.wager, packSize: mi.pack_size, fieldSize: opps.length + 1 };
+  }
+  /** @param {boolean} [forced] re-opened via the board ⓘ button — bypass the once-seen gate */
+  function showObjectiveFor(/** @type {string} */ mode, forced = false) {
+    if (!mode || showTutorial) return;
+    if (!forced && SOLO_MODES.includes(mode) && browser && localStorage.getItem('wb_obj_' + mode) === '1') return;
+    objective = { mode, ctx: buildObjectiveCtx(mode) };
+  }
+  function dismissObjective() {
+    if (objective && browser && SOLO_MODES.includes(objective.mode)) localStorage.setItem('wb_obj_' + objective.mode, '1');
+    objective = null;
+  }
+
+  // Detect entering a game from the menu (latch flips once per entry).
+  $: if (browser && loggedIn && hasInitialized && !needsUsername && !showPinUnlock && !showPinSetup) {
+    if (showMainMenu) { _wasMenu = true; }
+    else if (_wasMenu && $gameStore.gameMode && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost') {
+      _wasMenu = false;
+      showObjectiveFor($gameStore.gameMode);
+    }
+  }
+
   /** @param {Event} e */
   const removeButtonFocus = (e) => {
     if (e.target && /** @type {HTMLElement} */ (e.target).tagName === 'BUTTON') /** @type {HTMLButtonElement} */ (e.target).blur();
@@ -1005,6 +1042,10 @@
 <!-- 📜 Guided tutorial (first run + replayable from ❓) -->
 {#if showTutorial}
   <Tutorial on:close={dismissTutorial} />
+{/if}
+
+{#if objective && !showTutorial}
+  <ObjectiveCard mode={objective.mode} ctx={objective.ctx} on:close={dismissObjective} />
 {/if}
 
 {#if $gameStore.cashToast}
@@ -1545,6 +1586,7 @@
     <div class="puzzle-meta">
       {#if $gameStore.category}<span class="category-chip">{$gameStore.category}</span>{/if}
       {#if dailyMod}<span class="mod-chip" title={dailyMod.name + ' — ' + dailyMod.blurb}>{dailyMod.emoji} {dailyMod.name}</span>{/if}
+      <button class="obj-chip" title="How to win" aria-label="How to win" on:click={() => showObjectiveFor($gameStore.gameMode, true)}>🎯</button>
     </div>
     {#if $gameStore.clue}
       <p class="puzzle-clue">{$gameStore.clue}</p>
@@ -1944,6 +1986,17 @@
     border: 1px solid rgba(253, 224, 71, 0.28);
     padding: 6px 13px;
     border-radius: var(--r-pill);
+  }
+  /* ⓘ re-open the "How to win" card */
+  .obj-chip {
+    font-size: 0.82rem;
+    line-height: 1;
+    color: var(--brand-2);
+    background: rgba(253, 224, 71, 0.10);
+    border: 1px solid rgba(253, 224, 71, 0.28);
+    padding: 6px 10px;
+    border-radius: var(--r-pill);
+    cursor: pointer;
   }
   .fold-bar { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 6px auto 2px; }
   .fold-bar.broke {
