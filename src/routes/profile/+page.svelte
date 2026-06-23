@@ -86,12 +86,34 @@
         {@render chip(time(d.cash_game.fastest_ms), 'Fastest')}
       </div>
 
-      <div class="sec-title">⚔️ Challenges</div>
+      <div class="sec-title">⚔️ 1-on-1</div>
       <div class="grid">
-        {@render chip(`${d.challenges.wins ?? 0}-${d.challenges.losses ?? 0}-${d.challenges.ties ?? 0}`, 'W-L-T')}
-        {@render chip(pct(d.challenges.wins ?? 0, d.challenges.played ?? 0), 'Win rate')}
-        {@render chip(fmt(d.challenges.biggest_pot), 'Biggest pot')}
+        {@render chip(`${d.challenges_1v1.wins ?? 0}-${d.challenges_1v1.losses ?? 0}-${d.challenges_1v1.ties ?? 0}`, 'W-L-T')}
+        {@render chip(pct(d.challenges_1v1.wins ?? 0, d.challenges_1v1.played ?? 0), 'Win rate')}
+        {@render chip(fmt(d.challenges_1v1.biggest_pot), 'Biggest pot')}
       </div>
+
+      <div class="sec-title">👥 Group challenges</div>
+      <div class="grid">
+        {@render chip(d.challenges_group.played ?? 0, 'Played')}
+        {@render chip(d.challenges_group.wins ?? 0, 'Wins (1st)')}
+        {@render chip(d.challenges_group.podiums ?? 0, 'Podiums')}
+      </div>
+
+      {#if (d.rivals ?? []).length}
+        <div class="sec-title">🤺 Rivals <span class="sec-hint">(tap for the full head-to-head)</span></div>
+        <div class="cats">
+          {#each d.rivals as r}
+            <button class="cat-row rival" onclick={() => goto('/u/' + encodeURIComponent(r.name || ''))}>
+              <span class="cat-name">@{r.name}</span>
+              <span class="rival-rec">
+                <b class="w">{r.wins}W</b> <b class="l">{r.losses}L</b>{#if r.ties}<b class="t">{r.ties}T</b>{/if}
+                <span class="arrow">›</span>
+              </span>
+            </button>
+          {/each}
+        </div>
+      {/if}
 
       <div class="sec-title">🎲 Arcade</div>
       <div class="grid">
@@ -155,4 +177,9 @@
     background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
   .cat-name { font-weight: 600; color: var(--text); font-size: 0.86rem; }
   .cat-meta { color: var(--text-faint); font-size: 0.74rem; }
+  .sec-hint { font-family: var(--font-ui); font-weight: 500; font-size: 0.62rem; color: var(--text-faint); text-transform: none; letter-spacing: 0; }
+  .rival { width: 100%; cursor: pointer; }
+  .rival-rec { display: flex; align-items: center; gap: 7px; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+  .rival-rec .w { color: #7ee0a8; } .rival-rec .l { color: #fb7185; } .rival-rec .t { color: var(--text-muted); }
+  .rival-rec .arrow { color: var(--text-faint); font-size: 1rem; margin-left: 2px; }
 </style>
