@@ -509,6 +509,37 @@ export async function getProfileStats() {
   return data;
 }
 
+/* ===== Play Log: history, head-to-head, challenge detail ===== */
+/**
+ * Unified game history (the Play Log) with stackable filters.
+ * @param {{ mode?:string|null, result?:string|null, category?:string|null,
+ *   opponent?:string|null, group?:string|null, since?:string|null, until?:string|null,
+ *   sort?:'recent'|'net'|'multiple'|'fastest', limit?:number, offset?:number }} [f]
+ * @returns {Promise<any[]>}
+ */
+export async function getHistory(f = {}) {
+  const { data, error } = await supabase.rpc('get_history', {
+    p_mode: f.mode ?? null, p_result: f.result ?? null, p_category: f.category ?? null,
+    p_opponent: f.opponent ?? null, p_group: f.group ?? null,
+    p_since: f.since ?? null, p_until: f.until ?? null,
+    p_sort: f.sort ?? 'recent', p_limit: f.limit ?? 30, p_offset: f.offset ?? 0
+  });
+  if (error) { console.error('❌ get_history:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
+/** @param {string} opponentId @returns {Promise<any|null>} */
+export async function getHeadToHead(opponentId) {
+  const { data, error } = await supabase.rpc('get_head_to_head', { p_opponent: opponentId });
+  if (error) { console.error('❌ get_head_to_head:', error); return null; }
+  return data;
+}
+/** @param {string} matchId @returns {Promise<any|null>} */
+export async function getMatchDetail(matchId) {
+  const { data, error } = await supabase.rpc('get_match_detail', { p_match_id: matchId });
+  if (error) { console.error('❌ get_match_detail:', error); return null; }
+  return data;
+}
+
 /* ===== Power-ups (catalog + buy + use-in-Climb) ===== */
 /** @returns {Promise<{cash:number, items:any[]}>} */
 export async function getPowerups() {
