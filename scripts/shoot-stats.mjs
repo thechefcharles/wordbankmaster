@@ -19,7 +19,7 @@ await wait(1200);
 
 // login
 if (await page.locator('input[type=password]').count()) {
-  await page.fill('input[type=email]', EMAIL).catch(() => {});
+  await page.locator('input').first().fill(EMAIL).catch(() => {});
   await page.fill('input[type=password]', PASS).catch(() => {});
   await page.getByRole('button', { name: /log in/i }).first().click().catch(() => {});
   await wait(3000);

@@ -19,7 +19,7 @@ await page.goto(BASE, { waitUntil: 'networkidle' });
 await wait(1000);
 if (await page.locator('input[type=password]').count()) {
   await shot('01-login');
-  await page.fill('input[type=email]', EMAIL).catch(() => {});
+  await page.locator('input').first().fill(EMAIL).catch(() => {});
   await page.fill('input[type=password]', PASS).catch(() => {});
   await page.getByRole('button', { name: /log in/i }).first().click().catch(() => {});
   await wait(2800);
@@ -27,7 +27,7 @@ if (await page.locator('input[type=password]').count()) {
   if (await page.locator('input[type=password]').count()) {
     await page.getByRole('button', { name: /^sign up$/i }).first().click().catch(() => {}); // toggle link
     await wait(300);
-    await page.fill('input[type=email]', EMAIL).catch(() => {});
+    await page.locator('input').first().fill(EMAIL).catch(() => {});
     await page.fill('input[type=password]', PASS).catch(() => {});
     await page.getByRole('button', { name: /^sign up$/i }).first().click().catch(() => {}); // submit
     await wait(2800);

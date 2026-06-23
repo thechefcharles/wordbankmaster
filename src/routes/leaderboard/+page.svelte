@@ -2,11 +2,21 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { getWealthLeaderboard, getDailyBoard, getClimbLeaderboard, getMyGroups } from '$lib/stores/statsStore.js';
+  import { getWealthLeaderboard, getDailyBoard, getClimbLeaderboard, getEfficiencyLeaderboard, getChallengeLeaderboard, getMyGroups } from '$lib/stores/statsStore.js';
   import { track } from '$lib/analytics.js';
 
-  /** @type {'wealth'|'daily'|'climb'} */
-  let board = $state('wealth');
+  /** @type {'daily'|'efficiency'|'climb'|'challenges'|'wealth'} */
+  let board = $state('daily');
+  const TABS = [
+    { k: 'daily', label: '📅 Daily' },
+    { k: 'efficiency', label: '⚡ Efficiency' },
+    { k: 'climb', label: '🎰 Climb' },
+    { k: 'challenges', label: '⚔️ Challenges' },
+    { k: 'wealth', label: '💰 Wealth' }
+  ];
+  // boards that support a week/all period toggle
+  const PERIOD_BOARDS = ['efficiency', 'challenges', 'wealth'];
+  const mult = (/** @type {any} */ x) => x ? (Number(x) / 100).toFixed(1) + '×' : '—';
   /** scope: 'global' | 'friends' | a group id */
   let scope = $state('friends');
   /** @type {'week'|'all'} */
@@ -28,6 +38,8 @@
       const grp = isGroup ? scope : null;
       if (board === 'wealth') rows = await getWealthLeaderboard(sc, period, grp);
       else if (board === 'daily') rows = await getDailyBoard(sc, grp);
+      else if (board === 'efficiency') rows = await getEfficiencyLeaderboard(sc, grp, period);
+      else if (board === 'challenges') rows = await getChallengeLeaderboard(sc, grp, period);
       else rows = await getClimbLeaderboard(sc, grp);
     } catch (e) {
       error = (e instanceof Error ? e.message : String(e)) || 'Failed to load';
@@ -38,7 +50,7 @@
     track('leaderboard_view');
     groups = await getMyGroups();
     const b = $page.url.searchParams.get('board');
-    if (b === 'daily' || b === 'climb' || b === 'wealth') board = b;
+    if (b && TABS.some((t) => t.k === b)) board = /** @type {any} */ (b);
     await load();
   });
 
@@ -57,19 +69,19 @@
 
   <!-- Board selector -->
   <div class="tabs">
-    <button class="tab" class:active={board === 'wealth'} onclick={() => board = 'wealth'}>💰 Wealth</button>
-    <button class="tab" class:active={board === 'daily'} onclick={() => board = 'daily'}>📅 Daily</button>
-    <button class="tab" class:active={board === 'climb'} onclick={() => board = 'climb'}>⚡ Climb</button>
+    {#each TABS as t}
+      <button class="tab" class:active={board === t.k} onclick={() => board = /** @type {any} */ (t.k)}>{t.label}</button>
+    {/each}
   </div>
 
-  <!-- Scope + (wealth) period -->
+  <!-- Scope + period -->
   <div class="filters">
     <select class="filter-select" bind:value={scope}>
       <option value="friends">Friends</option>
       <option value="global">Global</option>
       {#each groups as g}<option value={g.id}>👥 {g.name}</option>{/each}
     </select>
-    {#if board === 'wealth'}
+    {#if PERIOD_BOARDS.includes(board)}
       <div class="seg">
         <button class="seg-btn" class:on={period === 'week'} onclick={() => period = 'week'}>This Week</button>
         <button class="seg-btn" class:on={period === 'all'} onclick={() => period = 'all'}>All-Time</button>
@@ -80,6 +92,8 @@
   <p class="caption">
     {#if board === 'wealth'}{period === 'week' ? 'Net Worth gained this week' : 'Net Worth — Cash minus Loans'}
     {:else if board === 'daily'}Today's Daily Score
+    {:else if board === 'efficiency'}Best return multiple {period === 'week' ? 'this week' : 'all-time'} — spend the least
+    {:else if board === 'challenges'}Challenge wins {period === 'week' ? 'this week' : 'all-time'}
     {:else}Furthest puzzle in the Cash Game{/if}
   </p>
 
@@ -97,6 +111,8 @@
             <th>#</th><th>Player</th>
             {#if board === 'wealth'}<th>{period === 'week' ? 'Gained' : 'Net Worth'}</th><th>Cash</th>
             {:else if board === 'daily'}<th>Score</th>
+            {:else if board === 'efficiency'}<th>Best ×</th><th>Category</th>
+            {:else if board === 'challenges'}<th>Wins</th><th>Pot won</th>
             {:else}<th>Climb</th>{/if}
           </tr>
         </thead>
@@ -120,6 +136,12 @@
                 <td class="dim">{fmt(r.cash)}</td>
               {:else if board === 'daily'}
                 <td class="metric">{r.played ? Number(r.score).toLocaleString() : '—'}</td>
+              {:else if board === 'efficiency'}
+                <td class="metric">{mult(r.metric)}</td>
+                <td class="dim">{r.category || '—'}</td>
+              {:else if board === 'challenges'}
+                <td class="metric">{r.metric}W</td>
+                <td class="dim" class:neg={(r.pot_won ?? 0) < 0}>{(r.pot_won >= 0 ? '+' : '') + fmt(r.pot_won)}</td>
               {:else}
                 <td class="metric">#{r.position}</td>
               {/if}
@@ -133,6 +155,8 @@
   <p class="hint">
     {#if board === 'wealth'}Net Worth = Cash − Loans. 🔴 = in the red. Weekly resets Monday — fair for newcomers.
     {:else if board === 'daily'}Same puzzle for everyone today. Spend less, score more.
+    {:else if board === 'efficiency'}Your best return multiple (bounty ÷ spend). The core flex — crack a puzzle spending next to nothing.
+    {:else if board === 'challenges'}Head-to-head wins. Win challenges by solving on the least spend and taking the pot.
     {:else}How far you've climbed the Cash Game ladder. Everyone faces the same puzzles, in order.{/if}
   </p>
 </main>
@@ -141,8 +165,9 @@
   .lb-page { max-width: 640px; margin: 0 auto; padding: 2rem 1rem 3rem; text-align: center; }
   .back-btn { display: inline-block; margin-bottom: 1rem; padding: 0.55rem 1.1rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 0.9rem; }
   h1 { font-family: var(--font-display); font-size: 1.9rem; margin: 0 0 1rem; }
-  .tabs { display: flex; gap: 0.4rem; justify-content: center; margin-bottom: 0.8rem; }
-  .tab { flex: 1; max-width: 150px; padding: 0.55rem 0.5rem; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 0.9rem; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); }
+  .tabs { display: flex; gap: 0.4rem; margin-bottom: 0.8rem; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: 0 0 auto; padding: 0.5rem 0.8rem; border-radius: 999px; cursor: pointer; font-weight: 700; font-size: 0.82rem; white-space: nowrap; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); }
   .tab.active { color: #3a2a00; background: var(--brand-grad, linear-gradient(135deg,#fbbf24,#fde047)); border-color: transparent; }
   .filters { display: flex; gap: 0.5rem; justify-content: center; align-items: center; flex-wrap: wrap; margin-bottom: 0.5rem; }
   .filter-select { padding: 0.5rem 0.8rem; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 0.9rem; }
