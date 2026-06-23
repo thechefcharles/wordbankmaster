@@ -188,16 +188,16 @@ export async function addFriend(username) {
   return data;
 }
 
-/** Accept or decline an incoming request. @param {string} username @param {boolean} accept @returns {Promise<{ok:boolean, reason?:string, status?:string}>} */
-export async function respondFriendRequest(username, accept) {
-  const { data, error } = await supabase.rpc('respond_friend_request', { p_username: username, p_accept: accept });
+/** Accept or decline an incoming request, by requester id. @param {string} requesterId @param {boolean} accept @returns {Promise<{ok:boolean, reason?:string, status?:string}>} */
+export async function respondFriendRequest(requesterId, accept) {
+  const { data, error } = await supabase.rpc('respond_friend_request', { p_requester: requesterId, p_accept: accept });
   if (error || !data) { if (error) console.error('❌ respond_friend_request:', error); return { ok: false }; }
   return data;
 }
 
-/** Unfriend by username. @param {string} username @returns {Promise<{ok:boolean}>} */
-export async function removeFriend(username) {
-  const { data, error } = await supabase.rpc('remove_friend', { p_username: username });
+/** Unfriend by user id. @param {string} otherId @returns {Promise<{ok:boolean}>} */
+export async function removeFriend(otherId) {
+  const { data, error } = await supabase.rpc('remove_friend', { p_other: otherId });
   if (error || !data) { if (error) console.error('❌ remove_friend:', error); return { ok: false }; }
   return data;
 }
