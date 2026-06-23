@@ -14,6 +14,7 @@
   const ICON = {
     daily_win: '📅', challenge: '⚔️', big_solve: '🎰', badge: '🏅', group_join: '👥'
   };
+  const pretty = (/** @type {string} */ s) => (s || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   const mult = (/** @type {any} */ x) => x ? (Number(x) / 100).toFixed(1) + '×' : '';
   const money = (/** @type {any} */ n) => (Number(n) < 0 ? '−$' : '+$') + Math.abs(Math.round(Number(n ?? 0))).toLocaleString();
 
@@ -42,7 +43,7 @@
       case 'big_solve':
         return { verb: `pulled a ${mult(m.multiple_x100)} solve in the Cash Game`, tag: m.net != null ? money(m.net) : '' };
       case 'badge':
-        return { verb: `earned the “${m.badge}” badge`, tag: '' };
+        return { verb: `earned the “${pretty(m.badge)}” badge`, tag: '' };
       case 'group_join':
         return { verb: `joined ${r.group_name || 'a group'}`, tag: '' };
       default:
