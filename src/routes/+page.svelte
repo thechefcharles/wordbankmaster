@@ -10,7 +10,7 @@
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
   import { getDailyStatus, getDailyGhost, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest } from '$lib/stores/statsStore.js';
-  import { unreadCount, notifications, markAllNotificationsRead, refreshNotifications } from '$lib/stores/notificationStore.js';
+  import { unreadCount, notifications, markAllNotificationsRead, refreshNotifications, inboxRequest } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
   import {
@@ -589,6 +589,12 @@
       window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
     } catch { /* non-fatal */ }
   }
+  // A tapped challenge toast (incoming / result / sabotage / chat) opens the inbox.
+  let _inboxSeen = 0;
+  $: if (browser && $inboxRequest > _inboxSeen && loggedIn && hasInitialized && !needsUsername && !showPinUnlock && !showPinSetup) {
+    _inboxSeen = $inboxRequest;
+    openChallenges();
+  }
   function dismissTutorial() {
     showTutorial = false;
     if (browser) localStorage.setItem(TUTORIAL_KEY, 'true');
@@ -965,8 +971,8 @@
 
 <!-- 💬 Match chat (1v1 + group challenges) -->
 {#if isMatch && matchInfo}
-  <button class="match-chat-btn" title="Match chat" on:click={openMatchChat}>
-    💬{#if matchChatUnread}<span class="mc-dot"></span>{/if}
+  <button class="match-chat-btn" class:unread={matchChatUnread} title="Trash talk" on:click={openMatchChat}>
+    💬 <span class="mcb-label">Chat</span>{#if matchChatUnread}<span class="mc-dot"></span>{/if}
   </button>
 {/if}
 {#if matchChatOpen}
@@ -1286,7 +1292,7 @@
               {#each $notifications as n (n.id)}
                 <div class="notif-item" class:fresh={!n.read}>
                   <button class="ni-main"
-                    on:click={() => { showNotifications = false; if (n.data?.challenge_id) openChallenges(); else if (n.data?.route === 'friends') goto('/friends'); }}>
+                    on:click={() => { showNotifications = false; if (n.data?.route === 'friends') goto('/friends'); else if (n.data?.challenge_id || n.data?.match_id || n.data?.route === 'challenge') openChallenges(); }}>
                     <span class="ni-title">{n.title}</span>
                     <span class="ni-body">{n.body}</span>
                   </button>
@@ -2327,11 +2333,16 @@
   /* match chat */
   .match-chat-btn {
     position: fixed; top: 12px; right: 14px; z-index: 1000;
-    width: 42px; height: 42px; border-radius: 999px; cursor: pointer; font-size: 1.1rem;
-    background: var(--surface-strong, rgba(20,28,40,0.85)); border: 1px solid var(--border-strong, var(--border)); backdrop-filter: blur(10px);
+    display: flex; align-items: center; gap: 5px; padding: 9px 14px; border-radius: 999px; cursor: pointer;
+    font-size: 1.02rem; font-weight: 700; color: var(--text);
+    background: var(--surface-strong, rgba(20,28,40,0.9)); border: 1px solid rgba(251,191,36,0.5); backdrop-filter: blur(10px);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 12px rgba(251,191,36,0.15);
   }
   .match-chat-btn:hover { border-color: var(--brand-2); }
-  .mc-dot { position: absolute; top: 6px; right: 6px; width: 10px; height: 10px; border-radius: 999px; background: #f43f5e; box-shadow: 0 0 0 2px var(--bg, #0a0e14); }
+  .match-chat-btn.unread { border-color: #f43f5e; animation: chatPulse 1.6s ease-in-out infinite; }
+  @keyframes chatPulse { 0%,100% { box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 0 0 rgba(244,63,94,0.5); } 50% { box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 0 6px rgba(244,63,94,0); } }
+  .mcb-label { font-family: var(--font-display); font-size: 0.84rem; }
+  .mc-dot { position: absolute; top: 3px; right: 3px; width: 10px; height: 10px; border-radius: 999px; background: #f43f5e; box-shadow: 0 0 0 2px var(--bg, #0a0e14); }
   .chat-modal { max-width: 440px; }
   .chat-h { font-family: var(--font-display); font-size: 1.15rem; margin: 0 0 0.8rem; }
   .chat-msgs {

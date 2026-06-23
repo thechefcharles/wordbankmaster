@@ -9,6 +9,10 @@ export const unreadCount = writable(0);
 /** @type {import('svelte/store').Writable<{id:string,title:string,body:string,data:any}[]>} */
 export const toasts = writable([]);
 
+/** Bumped when something (e.g. a tapped challenge toast) wants the home Challenges inbox opened. */
+export const inboxRequest = writable(0);
+export function requestInbox() { inboxRequest.update((n) => n + 1); }
+
 const POLL_MS = 45000;
 /** @type {ReturnType<typeof setInterval>|undefined} */
 let pollTimer;
