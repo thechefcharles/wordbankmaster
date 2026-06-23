@@ -100,7 +100,7 @@
       <div class="stat"><span class="s-n">{winPct(p)}</span><span class="s-l">Daily win %</span></div>
       <div class="stat"><span class="s-n">{p.puzzles_solved}</span><span class="s-l">Puzzles solved</span></div>
       <div class="stat"><span class="s-n">{p.challenge_wins}</span><span class="s-l">Challenge wins</span></div>
-      <div class="stat"><span class="s-n">#{p.climb_position}</span><span class="s-l">Climb position</span></div>
+      <div class="stat"><span class="s-n">#{p.climb_position}</span><span class="s-l">Furthest</span></div>
       <div class="stat"><span class="s-n">{mult(p.avg_multiple_x100)}</span><span class="s-l">Avg multiple</span></div>
       <div class="stat"><span class="s-n">{mult(p.best_multiple_x100)}</span><span class="s-l">Best multiple</span></div>
     </section>
