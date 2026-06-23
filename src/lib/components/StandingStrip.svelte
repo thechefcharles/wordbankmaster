@@ -4,7 +4,7 @@
   // (the server only sends a direction). The lead-flip is the reward moment.
   import { fx } from '$lib/sound.js';
 
-  /** @type {{ field_size:number, finished:number, rank:number, state:'lead'|'behind'|'tied'|'first_to_play' } | null} */
+  /** @type {{ field_size:number, finished:number, rank:number, state:'lead'|'behind'|'tied'|'first_to_play', provisional?:boolean } | null} */
   export let standing = null;
   /** @type {number} */ export let spent = 0;
 
@@ -33,7 +33,7 @@
         {#if standing.state === 'first_to_play'}
           <span class="rank">🚩 First to play</span>
         {:else}
-          <span class="rank">{medal(standing.rank)} {ord(standing.rank)} of {standing.field_size}</span>
+          <span class="rank">{medal(standing.rank)} {ord(standing.rank)} of {standing.field_size}{#if standing.provisional}<span class="sofar">so far</span>{/if}</span>
         {/if}
         <span class="spent">Spent <b>${spent.toLocaleString()}</b></span>
       </div>
@@ -61,6 +61,8 @@
     font-family: var(--font-display, sans-serif); font-weight: 700; font-size: 0.92rem;
     color: var(--text, #fff);
   }
+  .sofar { margin-left: 6px; font-family: var(--font-ui, sans-serif); font-weight: 600; font-size: 0.62rem;
+    text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint, #8090a0); }
   .spent { font-weight: 600; color: var(--text-muted, #c2cbd8); font-size: 0.84rem; }
   .spent b { color: var(--text, #fff); font-variant-numeric: tabular-nums; }
   .msg {
