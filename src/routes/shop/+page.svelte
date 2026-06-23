@@ -79,13 +79,13 @@
   }
 </script>
 
-<svelte:head><title>WordBank — Shop</title></svelte:head>
+<svelte:head><title>WordBank — Store</title></svelte:head>
 
 <main class="shop-page">
   <button class="back-btn" onclick={() => goto('/')}>← Menu</button>
 
   <div class="head">
-    <h1>🛍️ Shop</h1>
+    <h1>🛍️ Store</h1>
     <span class="bank-chip">💰 ${bank.toLocaleString()}</span>
   </div>
   <p class="sub">Stock up on power-ups to bring into the Cash Game &amp; challenges, and spend on flair. Cosmetics are pure show — no pay-to-win.</p>

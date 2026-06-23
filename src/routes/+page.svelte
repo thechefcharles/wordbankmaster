@@ -579,9 +579,14 @@
       if (ch) {
         openChallenges().then(() => { mbTarget = 'friend'; mbOpponent = ch; });
         params.delete('challenge');
-        const qs = params.toString();
-        window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
       }
+      // Settings/account deep link from the Profile page's ⚙️ gear (/?account=1)
+      if (params.get('account')) {
+        handleMenuMyAccount();
+        params.delete('account');
+      }
+      const qs = params.toString();
+      window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
     } catch { /* non-fatal */ }
   }
   function dismissTutorial() {
@@ -1052,7 +1057,7 @@
           <button class="bank-chip" on:click={() => goto('/bank')} title="Your Cash">
             <span class="bc-coin">💰</span>{netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}
           </button>
-          <button class="account-ic" on:click={handleMenuMyAccount} title="My Account">👤</button>
+          <button class="account-ic" on:click={() => goto('/profile')} title="Profile">👤</button>
         </div>
         <video class="menu-mark" src="/coin.mp4" poster="/coin-poster.jpg" autoplay loop muted playsinline disablepictureinpicture></video>
         <img class="menu-wordmark" src="/wordmark-slogan.png" alt="WordBank — Spend Less. Think More." />
@@ -1076,11 +1081,11 @@
             <span class="mc-title">Challenge Friends</span>
             {#if challengeCount + friendReqCount > 0}<span class="mc-badge" title="{challengeCount} match{challengeCount === 1 ? '' : 'es'}, {friendReqCount} friend request{friendReqCount === 1 ? '' : 's'}">{challengeCount + friendReqCount}</span>{/if}
           </button>
-          <button class="menu-card" style="--i: 2" on:click={() => { menuView = 'progress'; fx('tap'); }}>
-            <span class="mc-title">Progress</span>
+          <button class="menu-card" style="--i: 2" on:click={() => { menuView = 'community'; fx('tap'); }}>
+            <span class="mc-title">Community</span>
           </button>
           <button class="menu-card" style="--i: 3" on:click={() => goto('/shop')}>
-            <span class="mc-title">Shop</span>
+            <span class="mc-title">Store</span>
           </button>
         </div>
 
@@ -1129,20 +1134,17 @@
           </button>
         </div>
 
-      {:else if menuView === 'progress'}
+      {:else if menuView === 'community'}
         <div class="sub-head">
           <button class="sub-back" on:click={() => { menuView = 'home'; fx('tap'); }}>← Back</button>
-          <h2 class="sub-title">Progress</h2>
+          <h2 class="sub-title">Community</h2>
         </div>
         <div class="main-menu-buttons stagger">
-          <button class="menu-card" style="--i: 0" on:click={() => goto('/profile')}>
-            <span class="mc-title">You</span>
+          <button class="menu-card" style="--i: 0" on:click={handleMenuLeaderboard}>
+            <span class="mc-title">Leaderboard</span>
           </button>
-          <button class="menu-card" style="--i: 1" on:click={handleMenuLeaderboard}>
-            <span class="mc-title">Ranks</span>
-          </button>
-          <button class="menu-card" style="--i: 2" on:click={() => goto('/activity')}>
-            <span class="mc-title">Feed</span>
+          <button class="menu-card" style="--i: 1" on:click={() => goto('/activity')}>
+            <span class="mc-title">Activity</span>
           </button>
         </div>
       {/if}
@@ -1361,7 +1363,6 @@
             </div>
           </div>
 
-          <button class="main-menu-btn ghost-btn" on:click={() => goto('/profile')}>📊 Profile &amp; Stats</button>
           <button class="main-menu-btn ghost-btn" on:click={() => goto('/groups')}>👥 Groups</button>
 
           <div class="ma-section-label">Settings</div>
@@ -1456,7 +1457,7 @@
         </div>
       </div>
       {#if climb.state === 'active' && selfPups.length}
-        <p class="cp-hint">Your power-ups · tap to use · stock up in the Shop</p>
+        <p class="cp-hint">Your power-ups · tap to use · stock up in the Store</p>
         <div class="climb-pups">
           {#each selfPups as item}
             {@const used = (climb.equipped ?? []).includes(item.id)}
