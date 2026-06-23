@@ -1047,7 +1047,7 @@
             </button>
           </div>
         </div>
-        <img class="menu-mark float" src="/logo-coin.png" alt="" width="84" height="84" />
+        <img class="menu-mark spin" src="/logo-coin.png" alt="" width="84" height="84" />
         <img class="menu-wordmark" src="/wordmark-slogan.png" alt="WordBank — Spend Less. Think More." />
       </div>
       {#if menuView === 'home'}
@@ -2150,6 +2150,18 @@
     object-fit: contain;
     margin-bottom: 4px;
     filter: drop-shadow(0 0 26px rgba(251, 191, 36, 0.55)) drop-shadow(0 10px 40px rgba(251, 191, 36, 0.4));
+  }
+  /* Mario-style coin spin: flat horizontal flip (edge-on at 90°/270°) + a gentle bob */
+  .menu-mark.spin { animation: coinSpin 2.6s linear infinite; will-change: transform; backface-visibility: visible; }
+  @keyframes coinSpin {
+    0%   { transform: translateY(0)    rotateY(0deg); }
+    25%  { transform: translateY(-5px) rotateY(90deg); }
+    50%  { transform: translateY(-7px) rotateY(180deg); }
+    75%  { transform: translateY(-5px) rotateY(270deg); }
+    100% { transform: translateY(0)    rotateY(360deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .menu-mark.spin { animation: none; }
   }
   .menu-wordmark {
     width: min(80vw, 300px);
