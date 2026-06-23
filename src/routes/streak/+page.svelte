@@ -165,7 +165,7 @@
     background: rgba(255,255,255,0.03); border: 1px solid var(--border);
   }
   .cell.blank { background: none; border: none; }
-  .cell.won { background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); border-color: transparent; color: #06210f; }
+  .cell.won { background: var(--brand-grad, linear-gradient(135deg,#fbbf24,#fde047)); border-color: transparent; color: #3a2a00; }
   .cell.lost { background: rgba(251, 113, 133, 0.12); border-color: rgba(251,113,133,0.3); color: #fb7185; }
   .cell.none { color: var(--text-faint); }
   .cell.future { opacity: 0.3; }
@@ -185,7 +185,7 @@
   .legend { display: flex; justify-content: center; gap: 1rem; margin-top: 1rem; font-size: 0.75rem; color: var(--text-faint); }
   .legend span { display: inline-flex; align-items: center; gap: 5px; }
   .dot { width: 11px; height: 11px; border-radius: 4px; display: inline-block; }
-  .dot.won { background: linear-gradient(135deg,#34d399,#a3e635); }
+  .dot.won { background: linear-gradient(135deg,#fbbf24,#fde047); }
   .dot.lost { background: rgba(251,113,133,0.4); }
   .dot.play { background: rgba(56,189,248,0.3); border: 1px solid rgba(56,189,248,0.5); }
 </style>

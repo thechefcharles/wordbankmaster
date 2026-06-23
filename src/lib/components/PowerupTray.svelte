@@ -78,8 +78,8 @@
     font-family: var(--font-display, sans-serif);
     font-size: 10px;
     font-weight: 700;
-    color: #06210f;
-    background: var(--brand-grad, linear-gradient(135deg, #34d399, #a3e635));
+    color: #3a2a00;
+    background: var(--brand-grad, linear-gradient(135deg, #fbbf24, #fde047));
     border-radius: 999px;
   }
   .pu-chip.armed {

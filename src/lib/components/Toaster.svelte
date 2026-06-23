@@ -45,9 +45,9 @@
     text-align: left;
     padding: 12px 34px 12px 14px;
     border-radius: 14px;
-    border: 1px solid rgba(163, 230, 53, 0.4);
+    border: 1px solid rgba(253, 224, 71, 0.4);
     background: linear-gradient(135deg, rgba(20, 26, 38, 0.96), rgba(16, 22, 32, 0.96));
-    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45), 0 0 18px rgba(52, 211, 153, 0.18);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45), 0 0 18px rgba(251, 191, 36, 0.18);
     color: var(--text, #fff);
     cursor: pointer;
     backdrop-filter: blur(8px);

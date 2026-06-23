@@ -112,5 +112,5 @@
   }
   ul { padding-left: 1.2rem; }
   li { margin: 0.3rem 0; }
-  a { color: var(--brand-2, #a3e635); }
+  a { color: var(--brand-2, #fde047); }
 </style>

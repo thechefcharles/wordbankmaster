@@ -123,7 +123,7 @@
 
 @keyframes solvePulse {
   0%, 100% { box-shadow: var(--glow-brand); }
-  50% { box-shadow: 0 0 0 1px rgba(163, 230, 53, 0.4), 0 8px 36px rgba(52, 211, 153, 0.5); }
+  50% { box-shadow: 0 0 0 1px rgba(253, 224, 71, 0.4), 0 8px 36px rgba(251, 191, 36, 0.5); }
 }
 
 .message-box {
@@ -181,7 +181,7 @@
   letter-spacing: 0.02em;
   text-transform: uppercase;
   background: var(--brand-grad);
-  color: #06210f;
+  color: #3a2a00;
   border-radius: 14px;
   border: none;
   box-shadow: var(--glow-brand);
@@ -233,7 +233,7 @@
 /* Confirm */
 .confirm-button {
   background: var(--brand-grad);
-  color: #06210f;
+  color: #3a2a00;
   border: none;
   box-shadow: var(--glow-brand);
   animation: solvePulse 1.1s infinite;

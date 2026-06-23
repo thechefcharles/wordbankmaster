@@ -105,7 +105,7 @@
     font-size: 0.7rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--brand-2, #a3e635);
+    color: var(--brand-2, #fde047);
     text-align: left;
     margin: 22px 0 10px;
   }
@@ -127,7 +127,7 @@
   .bm-cat-name { font-family: var(--font-display); font-weight: 600; font-size: 0.9rem; }
   .bm-cat-tier { font-family: var(--font-display); font-weight: 700; font-size: 0.78rem; color: #fcd34d; white-space: nowrap; }
   .bm-bar { height: 6px; border-radius: 999px; background: var(--border, rgba(255, 255, 255, 0.12)); margin: 6px 0 4px; overflow: hidden; }
-  .bm-bar-fill { height: 100%; border-radius: 999px; background: var(--brand-grad, linear-gradient(90deg, #34d399, #a3e635)); transition: width 0.4s var(--ease-spring, ease); }
+  .bm-bar-fill { height: 100%; border-radius: 999px; background: var(--brand-grad, linear-gradient(90deg, #fbbf24, #fde047)); transition: width 0.4s var(--ease-spring, ease); }
   .bm-cat-sub { font-family: var(--font-ui); font-size: 0.72rem; color: var(--text-muted); }
 
   .bm-ach-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
@@ -142,7 +142,7 @@
     background: var(--surface, rgba(255, 255, 255, 0.05));
     border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
   }
-  .bm-ach.earned { border-color: rgba(163, 230, 53, 0.45); box-shadow: 0 0 14px rgba(52, 211, 153, 0.14); }
+  .bm-ach.earned { border-color: rgba(253, 224, 71, 0.45); box-shadow: 0 0 14px rgba(251, 191, 36, 0.14); }
   .bm-ach.locked { opacity: 0.45; filter: grayscale(0.7); }
   .bm-ach-emoji { font-size: 1.5rem; line-height: 1; }
   .bm-ach-name { font-family: var(--font-display); font-weight: 700; font-size: 0.78rem; }

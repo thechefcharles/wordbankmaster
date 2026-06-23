@@ -109,14 +109,14 @@
     background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
     transition: border-color 0.2s, background 0.2s;
   }
-  .quest.done { border-color: rgba(163, 230, 53, 0.4); background: linear-gradient(135deg, rgba(52,211,153,0.1), rgba(163,230,53,0.04)); }
+  .quest.done { border-color: rgba(253, 224, 71, 0.4); background: linear-gradient(135deg, rgba(251, 191, 36,0.1), rgba(253, 224, 71,0.04)); }
   .q-emoji { font-size: 1.5rem; width: 40px; height: 40px; display: grid; place-items: center; flex-shrink: 0; }
   .q-body { flex: 1; min-width: 0; }
   .q-top { display: flex; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5rem; }
   .q-label { font-weight: 600; font-size: 0.98rem; }
   .q-count { font-family: var(--font-display); font-weight: 700; font-size: 0.85rem; color: var(--brand-2); white-space: nowrap; }
   .bar { height: 8px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; }
-  .fill { height: 100%; background: var(--brand-grad, linear-gradient(90deg,#34d399,#a3e635)); border-radius: 999px; transition: width 0.4s var(--ease-out, ease); }
+  .fill { height: 100%; background: var(--brand-grad, linear-gradient(90deg,#fbbf24,#fde047)); border-radius: 999px; transition: width 0.4s var(--ease-out, ease); }
 
   .reward {
     margin-top: 1.6rem; padding: 1.1rem; border-radius: 16px; text-align: center;
@@ -124,13 +124,13 @@
     background: var(--surface); border: 1px dashed var(--border);
   }
   .reward.ready { border-style: solid; border-color: rgba(251,191,36,0.5); box-shadow: 0 0 18px rgba(251,191,36,0.2); }
-  .reward.claimed { border-color: rgba(163,230,53,0.4); }
+  .reward.claimed { border-color: rgba(253, 224, 71,0.4); }
   .r-title { font-family: var(--font-display); font-weight: 700; font-size: 1rem; color: var(--text); }
   .r-sub { color: var(--text-muted); font-size: 0.85rem; }
   .claim-btn {
     font-family: var(--font-display); font-weight: 700; font-size: 0.95rem;
     padding: 0.7rem 1.4rem; border: none; border-radius: 999px; cursor: pointer;
-    color: #06210f; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635));
+    color: #3a2a00; background: var(--brand-grad, linear-gradient(135deg,#fbbf24,#fde047));
   }
   .claim-btn:disabled { opacity: 0.6; cursor: default; }
 </style>

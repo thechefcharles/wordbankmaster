@@ -91,5 +91,5 @@
   .key.act { font-size: 18px; }
   .key.cancel { background: linear-gradient(160deg, #f0584a, #b5311f); color: #fff; border-color: #b5311f; }
   .key.clear  { background: linear-gradient(160deg, #f6c945, #c98f12); color: #2a2000; border-color: #c98f12; }
-  .key.enter  { background: linear-gradient(160deg, #46d07e, #1f9b4e); color: #06210f; border-color: #1f9b4e; }
+  .key.enter  { background: linear-gradient(160deg, #46d07e, #1f9b4e); color: #3a2a00; border-color: #1f9b4e; }
 </style>

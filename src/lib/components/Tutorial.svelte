@@ -110,7 +110,7 @@
     border-radius: var(--r-lg, 20px);
     background: var(--surface-strong, rgba(20, 26, 38, 0.9));
     border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16));
-    box-shadow: var(--shadow-lg, 0 24px 60px rgba(0, 0, 0, 0.5)), var(--glow-brand, 0 0 30px rgba(52, 211, 153, 0.25));
+    box-shadow: var(--shadow-lg, 0 24px 60px rgba(0, 0, 0, 0.5)), var(--glow-brand, 0 0 30px rgba(251, 191, 36, 0.25));
     text-align: center;
     animation: tutPop 0.3s var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
   }
@@ -143,8 +143,8 @@
     font-size: 0.68rem;
     font-weight: 800;
     letter-spacing: 0.08em;
-    color: #06210f;
-    background: var(--brand-grad, linear-gradient(135deg, #34d399, #a3e635));
+    color: #3a2a00;
+    background: var(--brand-grad, linear-gradient(135deg, #fbbf24, #fde047));
   }
   .tut-icon {
     font-size: 3rem;
@@ -189,7 +189,7 @@
   }
   .tut-dot.active {
     width: 22px;
-    background: var(--brand-grad, linear-gradient(135deg, #34d399, #a3e635));
+    background: var(--brand-grad, linear-gradient(135deg, #fbbf24, #fde047));
   }
 
   .tut-actions {
@@ -209,10 +209,10 @@
     transition: transform 0.16s var(--ease-spring, ease), filter 0.2s;
   }
   .tut-btn.primary {
-    background: var(--brand-grad, linear-gradient(135deg, #34d399, #a3e635));
-    color: #06210f;
+    background: var(--brand-grad, linear-gradient(135deg, #fbbf24, #fde047));
+    color: #3a2a00;
     border: none;
-    box-shadow: var(--glow-brand, 0 8px 24px rgba(52, 211, 153, 0.35));
+    box-shadow: var(--glow-brand, 0 8px 24px rgba(251, 191, 36, 0.35));
   }
   .tut-btn.primary:hover { transform: translateY(-2px); filter: brightness(1.05); }
   .tut-btn.primary:active { transform: scale(0.97); }

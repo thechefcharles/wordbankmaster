@@ -71,7 +71,7 @@
   .sc { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); }
   .sec { font-family: var(--font-display); font-size: 1.05rem; margin: 1.6rem 0 0.7rem; text-align: left; }
   .badges { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-  .badge { display: flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.8rem; background: var(--surface); border: 1px solid rgba(163,230,53,0.35); border-radius: 999px; }
+  .badge { display: flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.8rem; background: var(--surface); border: 1px solid rgba(253, 224, 71,0.35); border-radius: 999px; }
   .b-emoji { font-size: 1rem; }
   .b-name { font-size: 0.8rem; font-weight: 600; }
   .links { display: flex; gap: 0.5rem; margin-top: 1.6rem; }

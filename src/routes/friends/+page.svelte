@@ -202,11 +202,11 @@
     background: var(--surface-2, rgba(255,255,255,0.06)); color: var(--text);
   }
   .act:disabled { opacity: 0.5; cursor: default; }
-  .act.add, .act.accept { color: #06210f; border: none; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); }
+  .act.add, .act.accept { color: #3a2a00; border: none; background: var(--brand-grad, linear-gradient(135deg,#fbbf24,#fde047)); }
   .act.decline { color: #f87171; border-color: rgba(248,113,113,0.4); }
   .act.remove { color: var(--text-faint); padding: 0.35rem 0.6rem; }
   .tag { font-size: 0.78rem; font-weight: 800; padding: 0.3rem 0.7rem; border-radius: 999px; }
-  .tag.friend { color: var(--brand-2); background: rgba(163,230,53,0.12); border: 1px solid rgba(163,230,53,0.35); }
+  .tag.friend { color: var(--brand-2); background: rgba(253, 224, 71,0.12); border: 1px solid rgba(253, 224, 71,0.35); }
   .tag.pending { color: #fbbf24; background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.3); }
   .sec { font-family: var(--font-display); font-size: 1.05rem; margin: 1.6rem 0 0.6rem; display: flex; align-items: center; gap: 0.5rem; }
   .muted-sec { color: var(--text-muted); font-size: 0.95rem; }
