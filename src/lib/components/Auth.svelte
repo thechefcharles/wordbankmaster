@@ -163,7 +163,7 @@
 <div class="auth-screen">
   <div class="auth-card glass fade-up">
     <div class="brand">
-      <img class="mark" src="/logo-coin.png" alt="" width="140" height="140" />
+      <video class="mark" src="/coin.mp4" poster="/coin-poster.jpg" autoplay loop muted playsinline disablepictureinpicture></video>
       <img class="wordmark" src="/wordmark-slogan.png" alt="WordBank — Spend Less. Think More." />
     </div>
 
@@ -250,11 +250,13 @@
 
   .mark {
     width: min(44vw, 160px);
+    aspect-ratio: 1;
     height: auto;
-    object-fit: contain;
+    object-fit: cover;
+    border-radius: 50%;
     margin: 0 auto 6px;
     display: block;
-    filter: drop-shadow(0 8px 26px rgba(251, 191, 36, 0.4));
+    box-shadow: 0 0 24px rgba(251, 191, 36, 0.5), 0 8px 28px rgba(251, 191, 36, 0.35);
   }
 
   .wordmark {

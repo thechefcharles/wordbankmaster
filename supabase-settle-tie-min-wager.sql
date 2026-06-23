@@ -1,0 +1,8 @@
+-- Challenge settlement + min wager  (migration: settle_tie_refund_and_min_wager)
+-- From the 2-account playtest:
+-- 1) create_match minimum wager raised $100 → $500 (matches the budget floor and
+--    the UI text; $0 still allowed for a friendly). Client error text updated.
+-- 2) _match_settle: a genuine tie (nobody solved any puzzle, or <2 paid, or 0 done)
+--    now REFUNDS all wagers and notifies "🤝 Challenge tied — no winner" instead of
+--    crowning a false winner. Top ties use rank()/count() so a shared top is "Tied
+--    for the win — pot split" (and doesn't count toward the hustler win badge).
