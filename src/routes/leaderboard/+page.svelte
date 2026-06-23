@@ -105,7 +105,11 @@
             <tr class={r.is_me ? 'me' : (r.rank <= 3 ? 'top' : '')}>
               <td class="rank">{medal(r.rank)}</td>
               <td class="name">
-                <span style={r.color ? `color:${r.color}` : ''}>{r.is_me ? 'You' : (r.name || 'Player')}</span>
+                {#if r.is_me}
+                  <button class="name-link" onclick={() => goto('/profile')} style={r.color ? `color:${r.color}` : ''}>You</button>
+                {:else}
+                  <button class="name-link" onclick={() => goto('/u/' + encodeURIComponent(r.name || ''))} style={r.color ? `color:${r.color}` : ''}>{r.name || 'Player'}</button>
+                {/if}
                 {#if r.title}<span class="title">{r.title}</span>{/if}
                 {#if board === 'wealth' && (r.net_worth ?? 0) < 0}<span class="red-flag">🔴</span>{/if}
               </td>
@@ -155,6 +159,8 @@
   tr:last-child td { border-bottom: none; }
   td.rank { width: 34px; }
   td.name { font-weight: 600; }
+  .name-link { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2); text-underline-offset: 2px; }
+  .name-link:hover { text-decoration-color: var(--gold); }
   td.metric { font-family: var(--font-display); font-weight: 700; color: var(--brand-2); text-align: right; }
   td.metric.neg { color: #fb7185; }
   td.dim { color: var(--text-faint); text-align: right; }
