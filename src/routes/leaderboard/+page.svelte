@@ -2,25 +2,21 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { getWealthLeaderboard, getDailyBoard, getClimbLeaderboard, getEfficiencyLeaderboard, getChallengeLeaderboard, getMyGroups } from '$lib/stores/statsStore.js';
+  import { getWealthLeaderboard, getDailyBoard, getMyGroups } from '$lib/stores/statsStore.js';
   import { track } from '$lib/analytics.js';
 
-  /** @type {'daily'|'efficiency'|'climb'|'challenges'|'wealth'} */
-  let board = $state('daily');
+  /** @type {'cash'|'daily'} */
+  let board = $state('cash');
   const TABS = [
-    { k: 'daily', label: '📅 Daily' },
-    { k: 'efficiency', label: '⚡ Efficiency' },
-    { k: 'climb', label: '🎰 Cash Game' },
-    { k: 'challenges', label: '⚔️ Challenges' },
-    { k: 'wealth', label: '💰 Wealth' }
+    { k: 'cash', label: '💰 Cash' },
+    { k: 'daily', label: '📅 Daily' }
   ];
   // boards that support a week/all period toggle
-  const PERIOD_BOARDS = ['efficiency', 'challenges', 'wealth'];
-  const mult = (/** @type {any} */ x) => x ? (Number(x) / 100).toFixed(1) + '×' : '—';
+  const PERIOD_BOARDS = ['cash'];
   /** scope: 'global' | 'friends' | a group id */
   let scope = $state('friends');
   /** @type {'week'|'all'} */
-  let period = $state('week');
+  let period = $state('all');
   /** @type {any[]} */
   let rows = $state([]);
   /** @type {any[]} */
@@ -36,11 +32,8 @@
       const isGroup = scope !== 'global' && scope !== 'friends';
       const sc = isGroup ? 'group' : scope;
       const grp = isGroup ? scope : null;
-      if (board === 'wealth') rows = await getWealthLeaderboard(sc, period, grp);
-      else if (board === 'daily') rows = await getDailyBoard(sc, grp);
-      else if (board === 'efficiency') rows = await getEfficiencyLeaderboard(sc, grp, period);
-      else if (board === 'challenges') rows = await getChallengeLeaderboard(sc, grp, period);
-      else rows = await getClimbLeaderboard(sc, grp);
+      if (board === 'cash') rows = await getWealthLeaderboard(sc, period, grp);
+      else rows = await getDailyBoard(sc, grp);
     } catch (e) {
       error = (e instanceof Error ? e.message : String(e)) || 'Failed to load';
     } finally { loading = false; }
@@ -90,11 +83,8 @@
   </div>
 
   <p class="caption">
-    {#if board === 'wealth'}{period === 'week' ? 'Cash gained this week' : 'Total Cash'}
-    {:else if board === 'daily'}Today's Daily Score
-    {:else if board === 'efficiency'}Best return multiple {period === 'week' ? 'this week' : 'all-time'} — spend the least
-    {:else if board === 'challenges'}Challenge wins {period === 'week' ? 'this week' : 'all-time'}
-    {:else}Furthest puzzle in the Cash Game{/if}
+    {#if board === 'cash'}{period === 'week' ? 'Cash gained this week' : 'Richest players — total Cash'}
+    {:else}Today's Daily score{/if}
   </p>
 
   {#if loading}
@@ -102,18 +92,15 @@
   {:else if error}
     <p class="error">{error}</p>
   {:else if rows.length === 0}
-    <p class="muted">{board === 'climb' ? 'No one’s started the Cash Game here yet.' : 'Nobody here yet — add friends or play!'}</p>
+    <p class="muted">Nobody here yet — add friends or play!</p>
   {:else}
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
             <th>#</th><th>Player</th>
-            {#if board === 'wealth'}<th>{period === 'week' ? 'Gained' : 'Cash'}</th>
-            {:else if board === 'daily'}<th>Score</th>
-            {:else if board === 'efficiency'}<th>Best ×</th><th>Category</th>
-            {:else if board === 'challenges'}<th>Wins</th><th>Pot won</th>
-            {:else}<th>Furthest</th>{/if}
+            {#if board === 'cash'}<th>{period === 'week' ? 'Gained' : 'Cash'}</th>
+            {:else}<th>Score</th>{/if}
           </tr>
         </thead>
         <tbody>
@@ -128,20 +115,12 @@
                 {/if}
                 {#if r.title}<span class="title">{r.title}</span>{/if}
               </td>
-              {#if board === 'wealth'}
+              {#if board === 'cash'}
                 <td class="metric" class:neg={period === 'week' && Number(r.metric) < 0}>
                   {period === 'week' ? (r.metric >= 0 ? '+' : '') + fmt(r.metric) : fmt(r.net_worth)}
                 </td>
-              {:else if board === 'daily'}
-                <td class="metric">{r.played ? Number(r.score).toLocaleString() : '—'}</td>
-              {:else if board === 'efficiency'}
-                <td class="metric">{mult(r.metric)}</td>
-                <td class="dim">{r.category || '—'}</td>
-              {:else if board === 'challenges'}
-                <td class="metric">{r.metric}W</td>
-                <td class="dim" class:neg={(r.pot_won ?? 0) < 0}>{(r.pot_won >= 0 ? '+' : '') + fmt(r.pot_won)}</td>
               {:else}
-                <td class="metric">#{r.position}</td>
+                <td class="metric">{r.played ? Number(r.score).toLocaleString() : '—'}</td>
               {/if}
             </tr>
           {/each}
@@ -151,11 +130,8 @@
   {/if}
 
   <p class="hint">
-    {#if board === 'wealth'}Your Cash balance — earn it across every mode. Weekly resets Monday, so newcomers can climb.
-    {:else if board === 'daily'}Same puzzle for everyone today. Spend less, score more.
-    {:else if board === 'efficiency'}Your best return multiple (bounty ÷ spend). The core flex — crack a puzzle spending next to nothing.
-    {:else if board === 'challenges'}Head-to-head wins. Win challenges by solving on the least spend and taking the pot.
-    {:else}How far you got in the Cash Game. Everyone faces the same puzzles, in order.{/if}
+    {#if board === 'cash'}Your total Cash, earned across every mode. The weekly view resets Monday — fair for newcomers.
+    {:else}Same puzzle for everyone today. Spend less, score more.{/if}
   </p>
 </main>
 
@@ -186,11 +162,9 @@
   .name-link:hover { text-decoration-color: var(--gold); }
   td.metric { font-family: var(--font-display); font-weight: 700; color: var(--brand-2); text-align: right; }
   td.metric.neg { color: #fb7185; }
-  td.dim { color: var(--text-faint); text-align: right; }
   th:last-child { text-align: right; }
   tr.me { background: rgba(56,189,248,0.1); }
   tr.me td.name { color: #7dd3fc; }
   .title { font-size: 0.68rem; color: var(--text-faint); margin-left: 0.35rem; white-space: nowrap; }
-  .red-flag { margin-left: 0.3rem; font-size: 0.7rem; }
   .hint { margin-top: 1.2rem; font-size: 0.76rem; color: var(--text-faint); line-height: 1.5; }
 </style>
