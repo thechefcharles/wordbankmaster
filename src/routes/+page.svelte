@@ -1677,7 +1677,11 @@
             <p class="result-sub">{#if matchInfo?.mode === 'blitz'}You scored {(matchInfo?.total_score ?? 0).toLocaleString()} across {matchInfo?.pack_size} puzzle{matchInfo?.pack_size === 1 ? '' : 's'}{:else}You solved {matchInfo?.solved ?? 0}/{matchInfo?.pack_size} spending ${(matchInfo?.spent ?? 0).toLocaleString()}{/if}</p>
             <p class="arcade-gain">{matchInfo?.status === 'settled' ? 'Settled — check the results.' : "Lowest spend wins — we'll settle once everyone plays."}</p>
             <div class="result-actions">
-              <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); openChallenges(); }}>Challenge Friends</button>
+              {#if matchInfo?.status === 'settled'}
+                <button class="share-btn" on:click={async () => { const id = matchInfo?.id; showResultModal = false; hasTriggeredModal = false; goToMainMenu(); matchResults = { loading: true }; matchResults = await getMatchDetail(id); }}>View Results</button>
+              {:else}
+                <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); openChallenges(); }}>Challenge Friends</button>
+              {/if}
               <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Menu</button>
             </div>
           {:else if isFreeplay}
