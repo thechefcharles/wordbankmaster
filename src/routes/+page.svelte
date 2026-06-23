@@ -21,6 +21,8 @@
   import { gameWasRestored } from '$lib/stores/GameStateFlags.js';
   import { soundEnabled, toggleSound, fx } from '$lib/sound.js';
   import { startMusic, stopMusic, musicEnabled, musicVolume, setMusicVolume, toggleMusic, TRACKS, currentTrackId, selectTrack } from '$lib/music.js';
+  import PinGate from '$lib/components/PinGate.svelte';
+  import { pinLocked, hasPinFor, clearPin } from '$lib/pin.js';
   import { goto } from '$app/navigation';
 
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
@@ -40,6 +42,8 @@
   let showResultModal = false;
   let hasTriggeredModal = false;
   let hasInitialized = false;
+  let sessionUid = '';     // current session user id (for the PIN gate)
+  let pinNotSet = false;   // logged in on this device with no PIN yet → prompt setup
   /** @type {string | null} */
   let initError = null; // 🔍 Diagnostic: what failed during init
   /** Show main menu (Daily / Arcade / Leaderboard / My account) when true; game when false */
@@ -127,6 +131,12 @@
         return;
       }
 
+      // Device PIN gate (approach A): if a PIN is set on this device, lock until it's
+      // entered; otherwise mark that we should prompt to set one (after username).
+      sessionUid = session.user.id;
+      if (hasPinFor(sessionUid)) pinLocked.set(true);
+      else pinNotSet = true;
+
       // Make-up daily launched from the streak calendar → drop straight into the board.
       if (localStorage.getItem('gameMode') === 'makeup' && localStorage.getItem('makeupDate')) {
         showMainMenu = false;
@@ -209,8 +219,14 @@
 
   // Reactive state values
   $: loggedIn = !!$user?.id;
-  // Lobby music: play while the menu is showing, pause during gameplay / logged out.
-  $: if (browser) { (loggedIn && hasInitialized && showMainMenu) ? startMusic() : stopMusic(); }
+  // PIN gate: unlock screen for returning users; set-PIN after username for new ones.
+  $: showPinUnlock = loggedIn && hasInitialized && $pinLocked;
+  $: showPinSetup = loggedIn && hasInitialized && !$pinLocked && pinNotSet && !needsUsername;
+  function onPinUnlocked() { pinLocked.set(false); }
+  function onPinSet() { pinNotSet = false; }
+  function onPinLogout() { clearPin(); pinLocked.set(false); pinNotSet = false; handleLogout(); }
+  // Lobby music: play in the menu only — not while locked, setting a PIN, or in-game.
+  $: if (browser) { (loggedIn && hasInitialized && showMainMenu && !showPinUnlock && !showPinSetup) ? startMusic() : stopMusic(); }
   $: bankroll = $gameStore.bankroll || 0;
   $: digits = String(bankroll).split('');
 
@@ -496,8 +512,9 @@
   // Bump this key whenever the tutorial gains new content — it re-shows for
   // everyone on next login (v3 = persistent Cash, spend-the-least, attendance, no loans).
   const TUTORIAL_KEY = 'wb_tutorial_v3';
-  // First-run guided tutorial: show once a signed-in user reaches the menu.
-  $: if (browser && loggedIn && hasInitialized && localStorage.getItem(TUTORIAL_KEY) !== 'true') {
+  // First-run guided tutorial: show once a signed-in user is past the username/PIN
+  // gates and on the menu (not while those full-screen gates are up).
+  $: if (browser && loggedIn && hasInitialized && !needsUsername && !showPinUnlock && !showPinSetup && localStorage.getItem(TUTORIAL_KEY) !== 'true') {
     showTutorial = true;
   }
   function dismissTutorial() {
@@ -513,6 +530,7 @@
   // ✅ Log out: clear saved game so next login always shows main menu
   const handleLogout = async () => {
     clearSavedGame();
+    clearPin(); // forget this device's PIN so the next person can't unlock the account
     gameWasRestored.set(false);
     await supabase.auth.signOut();
     user.set(null);
@@ -932,6 +950,15 @@
         <p class="claim-hint">3–15 characters · letters, numbers, or _</p>
       </div>
     </div>
+  {/if}
+
+  <!-- 🔐 PIN gate: unlock (returning) or set (new), full-screen over everything -->
+  {#if showPinUnlock}
+    <PinGate mode="unlock" uid={sessionUid} name={maUsername} balance={netWorth}
+      on:unlocked={onPinUnlocked} on:logout={onPinLogout} />
+  {:else if showPinSetup}
+    <PinGate mode="set" uid={sessionUid} name={maUsername}
+      on:pinset={onPinSet} on:logout={onPinLogout} />
   {/if}
 
   {#if !loggedIn}
