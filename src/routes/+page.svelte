@@ -577,6 +577,22 @@
   $: if (browser && loggedIn && hasInitialized && !needsUsername && !showPinUnlock && !showPinSetup && localStorage.getItem(TUTORIAL_KEY) !== 'true') {
     showTutorial = true;
   }
+
+  // Deep link from a public profile's "⚔️ Challenge" button: /?challenge=<username>
+  let challengeDeepLinkDone = false;
+  $: if (browser && loggedIn && hasInitialized && !needsUsername && !showPinUnlock && !showPinSetup && !challengeDeepLinkDone) {
+    challengeDeepLinkDone = true;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const ch = params.get('challenge');
+      if (ch) {
+        openChallenges().then(() => { mbTarget = 'friend'; mbOpponent = ch; });
+        params.delete('challenge');
+        const qs = params.toString();
+        window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
+      }
+    } catch { /* non-fatal */ }
+  }
   function dismissTutorial() {
     showTutorial = false;
     if (browser) localStorage.setItem(TUTORIAL_KEY, 'true');

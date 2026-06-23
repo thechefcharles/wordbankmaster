@@ -29,6 +29,13 @@
 -- All three GRANT EXECUTE TO authenticated. Full bodies applied via MCP; see git
 -- history / live definitions. Verified: get_history returns rows under jwt-impersonation.
 --
--- NEXT (STATS_AND_HISTORY_DESIGN.md §8): public profile /u/[username] + H2H surface,
---   group Compete tab, challenge "Results" inbox button → get_match_detail view,
+-- get_public_profile(p_username) → jsonb — another player's public stats (net_worth,
+--   streaks, games, puzzles_solved, climb_position, challenge_wins, avg/best multiple,
+--   badges, title/color) + the VIEWER's head_to_head vs them + relationship flags
+--   (is_self, is_friend, request_outgoing/incoming). Resolves username case-insensitively;
+--   NULL if not found. Calls get_head_to_head(target) internally (auth.uid() = viewer).
+--   (migration get_public_profile.) Client: getPublicProfile(username) → /u/[username] page.
+--   Friendships live in friendships(user_id, friend_id); pending in friend_requests(requester, addressee).
+--
+-- NEXT (STATS_AND_HISTORY_DESIGN.md §8): group Compete tab (get_group_standings),
 --   then activity feed. Competitive spent/earned still deferred (matches rank by score).

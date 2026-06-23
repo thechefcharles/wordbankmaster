@@ -539,6 +539,13 @@ export async function getMatchDetail(matchId) {
   if (error) { console.error('❌ get_match_detail:', error); return null; }
   return data;
 }
+/** Public profile by username + viewer's head-to-head + relationship flags.
+ * @param {string} username @returns {Promise<any|null>} */
+export async function getPublicProfile(username) {
+  const { data, error } = await supabase.rpc('get_public_profile', { p_username: username });
+  if (error) { console.error('❌ get_public_profile:', error); return null; }
+  return data;
+}
 
 /* ===== Power-ups (catalog + buy + use-in-Climb) ===== */
 /** @returns {Promise<{cash:number, items:any[]}>} */
