@@ -1,0 +1,17 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Cash Game ladder: sequential, looping over ALL puzzles                     ║
+-- ║  (migration: cash_game_sequential_looping_ladder)                           ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Replaces the fixed 720-puzzle `climb_sequence` snapshot. Every puzzle gets a stable
+-- number `daily_puzzles.seq` (1..N); new puzzles auto-get the next number via a sequence
+-- default and extend the ladder. The Cash Game runs through them in seq order and LOOPS
+-- back to #1 at the end — never dead-ends ("complete" branch in climb_next is now unreachable).
+--
+-- _climb_puzzle_at(position) = Nth puzzle by seq, wrapping:
+--   rn = ((position-1) mod count(daily_puzzles)) + 1   (row_number → robust to deleted seqs)
+--
+-- Backfill preserved continuity: seq 1..720 = the old climb_sequence positions, the rest
+-- appended (721+). Verified: pos 1 "Pride and Prejudice", pos 1200 "No Mans Sky",
+-- pos 1201 loops to "Pride and Prejudice", pos 1202 → #2. 1200 puzzles, seq 1..1200 unique.
+--
+-- climb_sequence is now deprecated/unused (kept for backfill provenance; safe to drop later).

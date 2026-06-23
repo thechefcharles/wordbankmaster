@@ -47,8 +47,11 @@ Legacy/unused: `get_daily_leaderboard` (period/order-by) — superseded by `get_
 - **Arcade / Free Play** → arcade has its own board; Free Play = broke-safe trickle (self-contained).
 
 ## Cash Game seeding
-- `climb_sequence(position, puzzle_id)` — a **fixed shuffle of 720 puzzles** (`ORDER BY md5(id)`),
-  **identical for everyone**, forward-only. `_climb_puzzle_at(position)` returns the rung.
-- Everyone starts at **position 1**; each puzzle solved once (income bounded).
-- Pool is now **1,200** puzzles but the ladder snapshot is **720** → ~480 unused; ladder ends at 720.
-  KNOB: re-seed to the full pool / loop for longer runs.
+- Every puzzle has a stable number **`daily_puzzles.seq`** (1..N). New puzzles auto-get the
+  next number (sequence default) and extend the ladder.
+- `_climb_puzzle_at(position)` = the **Nth puzzle by `seq`, wrapping around the whole pool**:
+  `rn = ((position-1) mod count) + 1`. So the Cash Game runs through ALL puzzles in order
+  and **loops back to #1** at the end — never dead-ends. Same order for everyone, forward-only.
+- Everyone starts at position 1; badges at 50 / 100 / 500.
+- (The old fixed-720 `climb_sequence` table is deprecated/unused; seq 1..720 was backfilled
+  from it to preserve continuity for in-progress players.)
