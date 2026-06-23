@@ -2195,16 +2195,17 @@
     text-align: center;
     padding: 18px 20px;
     border-radius: 10px;
-    background: linear-gradient(177deg, #fff6cf 0%, #ffe071 14%, #f4bd35 52%, #d99a1a 82%, #b87d10 100%);
-    border: 1px solid #b07c0d;
-    color: #4a3105;
+    /* silver bullion by default → turns gold on hover */
+    background: linear-gradient(177deg, #ffffff 0%, #eef2f6 14%, #c2cbd5 52%, #94a0ad 82%, #76828f 100%);
+    border: 1px solid #828e9c;
+    color: #2a3138;
     cursor: pointer;
     overflow: hidden;
     box-shadow:
-      inset 0 2px 1px rgba(255, 255, 255, 0.75),
-      inset 0 -3px 5px rgba(120, 80, 0, 0.45),
+      inset 0 2px 1px rgba(255, 255, 255, 0.85),
+      inset 0 -3px 5px rgba(70, 85, 100, 0.4),
       0 5px 10px rgba(0, 0, 0, 0.5);
-    transition: transform 0.16s var(--ease-spring), box-shadow 0.2s, filter 0.2s;
+    transition: transform 0.16s var(--ease-spring), box-shadow 0.2s, filter 0.2s, color 0.2s, border-color 0.2s;
   }
   /* moving shine streak — staggered per bar via --i */
   .menu-card::after {
@@ -2220,7 +2221,16 @@
     0%, 58% { transform: translateX(-180%) skewX(-12deg); }
     78%, 100% { transform: translateX(330%) skewX(-12deg); }
   }
-  .menu-card:hover:not(.disabled) { transform: translateY(-2px); filter: brightness(1.05); }
+  .menu-card:hover:not(.disabled) {
+    transform: translateY(-2px);
+    background: linear-gradient(177deg, #fff6cf 0%, #ffe071 14%, #f4bd35 52%, #d99a1a 82%, #b87d10 100%);
+    border-color: #b07c0d;
+    color: #4a3105;
+    box-shadow:
+      inset 0 2px 1px rgba(255, 255, 255, 0.75),
+      inset 0 -3px 5px rgba(120, 80, 0, 0.45),
+      0 6px 14px rgba(0, 0, 0, 0.5), 0 0 26px rgba(251, 191, 36, 0.55);
+  }
   .menu-card:active:not(.disabled),
   .menu-card:focus-visible:not(.disabled) {
     transform: translateY(1px) scale(0.99);
@@ -2230,11 +2240,14 @@
       0 0 0 2px #fff3c4, 0 0 22px rgba(255, 220, 90, 0.95), 0 0 50px rgba(251, 191, 36, 0.6);
   }
   .menu-card.primary {
-    background: linear-gradient(177deg, #fffbe0 0%, #ffe98a 14%, #fbc945 52%, #e2a31f 82%, #c2870f 100%);
+    background: linear-gradient(177deg, #ffffff 0%, #f6f9fc 14%, #d2dae3 52%, #a4b0bd 82%, #8390a0 100%);
     box-shadow:
-      inset 0 2px 1px rgba(255, 255, 255, 0.85),
-      inset 0 -3px 5px rgba(120, 80, 0, 0.4),
-      0 6px 14px rgba(0, 0, 0, 0.5), 0 0 26px rgba(251, 191, 36, 0.3);
+      inset 0 2px 1px rgba(255, 255, 255, 0.95),
+      inset 0 -3px 5px rgba(70, 85, 100, 0.38),
+      0 6px 14px rgba(0, 0, 0, 0.5), 0 0 22px rgba(200, 215, 230, 0.35);
+  }
+  .menu-card.primary:hover:not(.disabled) {
+    background: linear-gradient(177deg, #fffbe0 0%, #ffe98a 14%, #fbc945 52%, #e2a31f 82%, #c2870f 100%);
   }
   .menu-card.disabled { opacity: 0.5; cursor: not-allowed; }
   .mc-title {
