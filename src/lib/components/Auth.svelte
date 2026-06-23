@@ -27,14 +27,18 @@
     try {
       const params = new URLSearchParams(window.location.search);
       const ae = params.get('auth_error');
+      const detail = params.get('auth_detail');
       if (ae) {
         errorMsg = ae === 'exchange' || ae === 'nocode'
           ? 'Sign-in didn’t complete — please try again, or use email & password.'
           : ae === 'config'
           ? 'Sign-in is temporarily unavailable. Please try again shortly.'
           : `Google sign-in was cancelled or blocked: ${decodeURIComponent(ae)}`;
+        if (detail) errorMsg += ` (${decodeURIComponent(detail)})`;
+        track('oauth_callback_error', { reason: ae, detail: detail ? decodeURIComponent(detail) : '' });
         // strip the param so it doesn't stick around on refresh
         params.delete('auth_error');
+        params.delete('auth_detail');
         const qs = params.toString();
         window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
       }
