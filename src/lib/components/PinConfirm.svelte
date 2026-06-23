@@ -1,0 +1,59 @@
+<script>
+  import { get } from 'svelte/store';
+  import PinPad from '$lib/components/PinPad.svelte';
+  import { pinConfirm } from '$lib/pinConfirm.js';
+  import { verifyPin, tooManyFails } from '$lib/pin.js';
+
+  let error = false;
+  let msg = '';
+  /** @type {any} */
+  let pad;
+
+  /** @param {CustomEvent<string>} e */
+  async function onSubmit(e) {
+    const uid = get(pinConfirm)?.uid;
+    if (!uid) return;
+    const ok = await verifyPin(uid, e.detail);
+    if (ok) {
+      const s = get(pinConfirm);
+      pinConfirm.set(null);
+      msg = '';
+      s?.resolve(true);
+    } else {
+      error = true;
+      msg = tooManyFails() ? 'Too many tries.' : 'Wrong PIN — try again.';
+      setTimeout(() => { error = false; pad?.reset(); }, 480);
+    }
+  }
+  function cancel() {
+    const s = get(pinConfirm);
+    pinConfirm.set(null);
+    msg = '';
+    s?.reject(new Error('cancelled'));
+  }
+</script>
+
+{#if $pinConfirm}
+  <div class="pc-overlay" role="dialog" aria-modal="true" aria-label="Confirm with PIN">
+    <div class="pc-card">
+      <h2 class="pc-title">Enter your PIN</h2>
+      <p class="pc-reason">{$pinConfirm.reason}</p>
+      <PinPad bind:this={pad} {error} on:submit={onSubmit} on:change={() => (msg = '')} />
+      {#if msg}<p class="pc-msg">{msg}</p>{/if}
+      <button class="pc-cancel" on:click={cancel}>Cancel</button>
+    </div>
+  </div>
+{/if}
+
+<style>
+  .pc-overlay {
+    position: fixed; inset: 0; z-index: 4000; display: grid; place-items: center; padding: 1.2rem;
+    background: radial-gradient(70% 50% at 50% 18%, rgba(251,191,36,0.12), rgba(0,0,0,0) 60%), rgba(5,5,5,0.92);
+    backdrop-filter: blur(4px);
+  }
+  .pc-card { width: 100%; max-width: 360px; text-align: center; }
+  .pc-title { font-family: var(--font-display); font-size: 1.35rem; margin: 0 0 0.2rem; }
+  .pc-reason { color: #fbbf24; font-weight: 700; font-size: 0.95rem; margin: 0 0 1.4rem; }
+  .pc-msg { margin-top: 0.9rem; font-size: 0.86rem; color: #f87171; }
+  .pc-cancel { margin-top: 1.4rem; background: none; border: none; color: var(--text-faint); font-size: 0.85rem; text-decoration: underline; cursor: pointer; }
+</style>

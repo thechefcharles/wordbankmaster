@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { getShop, buyCosmetic, equipCosmetic, unequipCosmetic, getPowerups, buyPowerup } from '$lib/stores/statsStore.js';
+  import { requirePin } from '$lib/pinConfirm.js';
   import { track } from '$lib/analytics.js';
   import { fx } from '$lib/sound.js';
 
@@ -43,6 +44,7 @@
   /** @param {any} item */
   async function buyPup(item) {
     if (busy) return;
+    try { await requirePin(`Buy ${item.name} · $${item.price.toLocaleString()}`); } catch { return; }
     busy = item.id; msg = '';
     const res = await buyPowerup(item.id);
     busy = '';
@@ -60,6 +62,7 @@
   /** @param {any} item */
   async function buy(item) {
     if (busy) return;
+    try { await requirePin(`Buy ${item.label} · $${item.price.toLocaleString()}`); } catch { return; }
     busy = item.id; msg = '';
     const res = await buyCosmetic(item.id);
     busy = '';

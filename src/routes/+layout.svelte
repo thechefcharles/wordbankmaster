@@ -4,6 +4,7 @@
   import { supabase } from '$lib/supabaseClient';
   import { startNotifications, stopNotifications } from '$lib/stores/notificationStore.js';
   import Toaster from '$lib/components/Toaster.svelte';
+  import PinConfirm from '$lib/components/PinConfirm.svelte';
 
   let { children } = $props();
 
@@ -23,3 +24,4 @@
 
 {@render children()}
 <Toaster />
+<PinConfirm />
