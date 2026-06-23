@@ -509,6 +509,7 @@ function reconcileMakeupBoard(board) {
     gameMode: 'makeup',
     gameState: finished ? board.state : 'default',
     modifier: null, arcadeRun: null,
+    clue: board.clue ?? prev.clue ?? null,
     makeupDate: board.makeup?.date ?? prev.makeupDate ?? activeMakeupDate
   }));
   if (board.state === 'won') { setTimeout(() => launchConfetti(), 300); fx('win'); }

@@ -273,7 +273,7 @@
   $: resultWon = $gameStore.gameState === 'won';
   $: isDailyResult = $gameStore.gameMode === 'daily';
   // Live Daily HUD metrics (only while actively playing the daily).
-  $: dLive = ($gameStore.gameMode === 'daily' && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost')
+  $: dLive = (($gameStore.gameMode === 'daily' || $gameStore.gameMode === 'makeup') && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost')
     ? $gameStore.dailyLive : null;
   $: isFreeplay = $gameStore.gameMode === 'freeplay';
   $: isChallenge = $gameStore.gameMode === 'challenge';
@@ -1443,7 +1443,7 @@
     {#if isMakeup}
       <div class="makeup-banner">
         <span class="mb-tag">🗓️ Make-up</span>
-        <span class="mb-text">Playing {makeupLabel} · fills your calendar (no streak/Bank)</span>
+        <span class="mb-text">Playing {makeupLabel} · fills your calendar · earns the puzzle's Cash (no streak)</span>
       </div>
     {/if}
 
