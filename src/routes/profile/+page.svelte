@@ -115,12 +115,6 @@
         </div>
       {/if}
 
-      <div class="sec-title">🎲 Arcade</div>
-      <div class="grid">
-        {@render chip(fmt(d.arcade.best_bankroll), 'Best run')}
-        {@render chip(d.arcade.best_streak ?? 0, 'Best streak')}
-      </div>
-
       {#if (d.categories ?? []).length}
         <div class="sec-title">🗂️ Categories</div>
         <div class="cats">
