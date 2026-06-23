@@ -502,6 +502,18 @@ export async function getDailyBoard(scope = 'friends', group = null) {
   if (error) { console.error('❌ get_daily_board:', error); return []; }
   return Array.isArray(data) ? data : [];
 }
+/** Best return-multiple board (the brand metric). @param {string} scope @param {string|null} group @param {'week'|'all'} period */
+export async function getEfficiencyLeaderboard(scope = 'friends', group = null, period = 'week') {
+  const { data, error } = await supabase.rpc('get_efficiency_leaderboard', { p_scope: scope, p_group: group, p_period: period });
+  if (error) { console.error('❌ get_efficiency_leaderboard:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
+/** Challenge wins / pot-won board. @param {string} scope @param {string|null} group @param {'week'|'all'} period */
+export async function getChallengeLeaderboard(scope = 'friends', group = null, period = 'week') {
+  const { data, error } = await supabase.rpc('get_challenge_leaderboard', { p_scope: scope, p_group: group, p_period: period });
+  if (error) { console.error('❌ get_challenge_leaderboard:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
 /** @returns {Promise<any|null>} */
 export async function getProfileStats() {
   const { data, error } = await supabase.rpc('get_profile_stats');
