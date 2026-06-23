@@ -30,14 +30,18 @@
 <svelte:head><title>WordBank — You</title></svelte:head>
 
 <main class="you-page">
-  <button class="back-btn" onclick={() => goto('/')}>← Menu</button>
+  <div class="topbar">
+    <button class="back-btn" onclick={() => goto('/')}>← Menu</button>
+    <h1 class="page-title">Profile</h1>
+    <button class="gear" onclick={() => goto('/?account=1')} title="Settings" aria-label="Settings">⚙️</button>
+  </div>
 
   {#if loading}
     <p class="muted">Loading…</p>
   {:else if s}
     <header class="head">
       <div class="coin" style={s.color ? `--c:${s.color}` : ''}>{(s.username || '?').slice(0, 1).toUpperCase()}</div>
-      <h1>{s.username ? '@' + s.username : 'You'}</h1>
+      <div class="uname">{s.username ? '@' + s.username : 'You'}</div>
       <div class="nw" class:neg={Number(s.net_worth) < 0}>{fmt(s.net_worth)}</div>
       <span class="nw-sub">Net Worth</span>
     </header>
@@ -71,14 +75,18 @@
 
 <style>
   .you-page { max-width: 520px; margin: 0 auto; padding: 16px 14px 60px; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .back-btn { background: none; border: none; color: var(--text-muted); font-size: 0.92rem; cursor: pointer; padding: 6px 0; }
+  .page-title { font-family: var(--font-display); font-size: 1.2rem; margin: 0; }
+  .gear { background: none; border: none; font-size: 1.1rem; cursor: pointer; padding: 6px; opacity: 0.85; }
+  .gear:hover { opacity: 1; }
   .muted { color: var(--text-muted); text-align: center; padding: 2rem 0; }
 
   .head { text-align: center; margin: 8px 0 18px; }
   .coin { width: 64px; height: 64px; margin: 0 auto 8px; border-radius: 50%; display: grid; place-items: center;
     font-family: var(--font-display); font-weight: 800; font-size: 1.6rem; color: #3a2a00;
     background: linear-gradient(135deg, var(--c, #fde047), #f59e0b); box-shadow: 0 0 24px rgba(251,191,36,0.4); }
-  h1 { font-family: var(--font-display); font-size: 1.4rem; margin: 0; }
+  .uname { font-family: var(--font-display); font-weight: 700; font-size: 1.3rem; }
   .nw { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 2.1rem; color: #fde047;
     margin-top: 10px; text-shadow: 0 0 18px rgba(251,191,36,0.5); }
   .nw.neg { color: #fb7185; text-shadow: none; }
