@@ -46,7 +46,7 @@ export const GET = async ({ url, cookies }) => {
       return redirect(303, next);
     }
     console.error('Auth callback exchange error:', error.message);
-    return redirect(303, '/?auth_error=exchange');
+    return redirect(303, '/?auth_error=exchange&auth_detail=' + encodeURIComponent(error.message));
   }
 
   return redirect(303, '/?auth_error=nocode');
