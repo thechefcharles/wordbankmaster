@@ -104,18 +104,28 @@ h1, h2, h3, h4 {
 
 button { font-family: inherit; }
 
-/* Super-dramatic gold glow on any button press / selection (keyboard, menu,
-   chips — everything). Component rules (.menu-card, .key) layer a stronger
-   version on top. */
-button:active,
-button:focus-visible {
+/* Press = the button turns GOLD (fill + glow), app-wide. Works on touch (phones)
+   too — the layout adds a touchstart listener so iOS applies :active.
+   Component rules (.menu-card, .key) layer a stronger version on top. */
+button:active {
   outline: none;
   border-color: #fde047;
+  background: linear-gradient(135deg, #fde047, #f59e0b);
+  color: #3a2a00;
   box-shadow:
     0 0 0 2px rgba(253, 224, 71, 1),
     0 0 16px rgba(251, 191, 36, 0.95),
     0 0 34px rgba(251, 191, 36, 0.7),
     0 0 66px rgba(251, 191, 36, 0.42);
+}
+/* Keyboard focus = the gold glow ring only (don't fill on tab-focus). */
+button:focus-visible {
+  outline: none;
+  border-color: #fde047;
+  box-shadow:
+    0 0 0 2px rgba(253, 224, 71, 0.9),
+    0 0 16px rgba(251, 191, 36, 0.7),
+    0 0 34px rgba(251, 191, 36, 0.45);
 }
 
 /* Numbers that should feel like a readout (money, counters) */

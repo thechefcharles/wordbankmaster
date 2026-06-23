@@ -141,8 +141,16 @@ export function vibrate(name) {
   }
 }
 
+/** @type {Record<string, number>} */
+const _lastFx = {};
 /** Combined sound + haptic feedback for a named event. @param {string} name */
 export function fx(name) {
+  // Collapse rapid duplicate cues (e.g. the global button beep + a handler's own fx('tap')).
+  if (browser) {
+    const now = typeof performance !== 'undefined' ? performance.now() : 0;
+    if (_lastFx[name] && now - _lastFx[name] < 60) return;
+    _lastFx[name] = now;
+  }
   playSound(name);
   vibrate(name);
 }
