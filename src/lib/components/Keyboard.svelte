@@ -23,6 +23,12 @@
   const row2: string[] = ['A','S','D','F','G','H','J','K','L'];
   const row3: string[] = ['Z','X','C','V','B','N','M'];
 
+  // Braille (Unicode patterns) for each letter — the tactile dots on ATM-style keys.
+  const BRAILLE: Record<string, string> = {
+    A:'⠁',B:'⠃',C:'⠉',D:'⠙',E:'⠑',F:'⠋',G:'⠛',H:'⠓',I:'⠊',J:'⠚',K:'⠅',L:'⠇',M:'⠍',
+    N:'⠝',O:'⠕',P:'⠏',Q:'⠟',R:'⠗',S:'⠎',T:'⠞',U:'⠥',V:'⠧',W:'⠺',X:'⠭',Y:'⠽',Z:'⠵'
+  };
+
   // Effective per-letter prices after active discount / vowel_vision (server matches this):
   // daily uses the shared modifier; arcade uses the run's armed power-ups.
   $: effCosts = (() => {
@@ -163,6 +169,7 @@
       {incorrectLetters.includes(letter) ? 'incorrect' : ''}"
         on:click={() => handleLetterClick(letter)}
       >
+        <span class="braille">{BRAILLE[letter]}</span>
         <div class="letter">{letter}</div>
         <div class="price">${effCosts[letter] ?? 0}</div>
       </button>
@@ -187,6 +194,7 @@
                 }"
         on:click={() => handleLetterClick(letter)}
       >
+        <span class="braille">{BRAILLE[letter]}</span>
         <div class="letter">{letter}</div>
         <div class="price">${effCosts[letter] ?? 0}</div>
       </button>
@@ -211,16 +219,17 @@
                 }"
         on:click={() => handleLetterClick(letter)}
       >
+        <span class="braille">{BRAILLE[letter]}</span>
         <div class="letter">{letter}</div>
         <div class="price">${effCosts[letter] ?? 0}</div>
       </button>
     {/each}
 
     {#if $gameStore.gameState === 'guess_mode'}
-      <button 
+      <button
       tabindex="-1"
       class="key delete" on:click={deleteGuessLetter}>
-        <div class="letter">Del</div>
+        <div class="letter">⌫</div>
       </button>
     {/if}
   </div>
@@ -232,42 +241,43 @@
   --------------------------- */
   .keyboard-container {
     position: fixed;
-    bottom: 0;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); /* lifted off the bottom edge */
     left: 50%;
     transform: translateX(-50%);
     width: 100%;
     max-width: 600px;
-    box-shadow: none !important; /* ❌ Removes any shadow */
-    background: transparent !important; /* ❌ Ensures no background issue */
-    padding: 6px;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 6px 8px; /* side padding so edge keys never clip */
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 6px;
     z-index: 1000;
   }
   .keyboard-row {
     display: flex;
     justify-content: center;
-    gap: 2px;
+    gap: 6px;
     flex-wrap: nowrap;
   }
   :global(body) {
-    padding-bottom: 132px; /* Space for keyboard */
+    padding-bottom: 196px; /* Space for the taller, lifted keyboard */
     display: flex;
     flex-direction: column;
     align-items: center;
   }
 
   /* ---------------------------
-     Key Styles
+     Key Styles — silver ATM keys
   --------------------------- */
   .key {
-    width: 56px;
-    height: 46px;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
-    border-radius: 10px;
+    flex: 1 1 0;
+    min-width: 0;
+    height: 54px;
+    border: 1px solid #aeb2bb;
+    background: linear-gradient(#f7f8fa, #c6c9d1);
+    color: #16181c;
+    border-radius: 9px;
     cursor: pointer;
     display: flex;
     flex-direction: column;
@@ -275,32 +285,52 @@
     justify-content: center;
     gap: 1px;
     padding: 2px;
+    position: relative;
     box-sizing: border-box;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    transition: transform 0.12s var(--ease-spring), background 0.15s, border-color 0.15s;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -2px 3px rgba(0, 0, 0, 0.2),
+      0 3px 0 #9498a0,
+      0 5px 8px rgba(0, 0, 0, 0.45);
+    transition: transform 0.1s var(--ease-spring), box-shadow 0.12s, filter 0.12s;
   }
   .key:hover:not(.purchased):not(.incorrect):not(.disabled) {
-    background: var(--surface-2);
-    border-color: var(--border-strong);
+    filter: brightness(1.05);
     transform: translateY(-1px);
   }
   .key:active,
   .key:focus-visible {
-    transform: scale(0.94);
-    border-color: #fbbf24 !important;
+    transform: translateY(2px) scale(0.97);
+    border-color: #fde047 !important;
     outline: none;
     box-shadow:
-      0 0 0 2px rgba(251, 191, 36, 0.95),
-      0 0 14px rgba(251, 191, 36, 0.9),
-      0 0 30px rgba(251, 191, 36, 0.6) !important;
+      0 0 0 2px rgba(253, 224, 71, 1),
+      0 0 16px rgba(251, 191, 36, 0.95),
+      0 0 34px rgba(251, 191, 36, 0.65) !important;
   }
 
-  .key.delete {
-    background: rgba(251, 90, 90, 0.15);
-    color: #ffb4b4 !important;
-    border-color: rgba(251, 90, 90, 0.4) !important;
+  /* braille pips, top-left of each key */
+  .braille {
+    position: absolute;
+    top: 3px;
+    left: 5px;
+    font-size: 9px;
+    line-height: 1;
+    color: rgba(0, 0, 0, 0.42);
   }
+
+  /* Delete: prominent red key (like an ATM CANCEL), wider so it can't be missed */
+  .key.delete {
+    flex: 1.6 1 0;
+    background: linear-gradient(#ff8074, #d8402f) !important;
+    color: #fff !important;
+    border-color: #b5311f !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      0 3px 0 #9e2a1c,
+      0 5px 8px rgba(0, 0, 0, 0.45) !important;
+  }
+  .key.delete .letter { font-size: 22px; color: #fff; }
   @keyframes blink {
   0% { opacity: 1; }
   50% { opacity: 0; }
@@ -313,13 +343,14 @@
   .letter {
     line-height: 1;
     font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 15px;
+    font-weight: 800;
+    font-size: 17px;
+    color: inherit; /* so purchased/incorrect state colors on .key apply */
   }
   .price {
     line-height: 1;
     font-size: 9px;
-    color: var(--text-faint);
+    color: #565a62;
     font-variant-numeric: tabular-nums;
   }
 

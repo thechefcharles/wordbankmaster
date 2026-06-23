@@ -1,0 +1,11 @@
+-- climb_clue()  (migration: climb_clue)
+-- Witty one-line clue for the player's current Cash Game (climb) puzzle, mirroring
+-- arcade_clue / daily_clue. The Cash Game never wired up a clue before, so the hint
+-- line ($gameStore.clue) was always empty in that mode.
+--
+--   SELECT dp.clue FROM climb_state cs
+--   JOIN daily_puzzles dp ON dp.id = cs.puzzle_id
+--   WHERE cs.user_id = auth.uid();
+--
+-- Frontend: getClimbClue() (statsStore) + refreshClimbClue() called after
+-- fetchClimbGame and climbAdvance in GameStore. Full body in the applied migration.

@@ -150,7 +150,7 @@
 --------------------------- */
 .main-button-wrapper {
   position: fixed;
-  bottom: 174px; /* clears the 156px-tall keyboard + gap */
+  bottom: 212px; /* clears the taller silver keyboard (~194px) + gap */
   left: 50%;
   transform: translateX(-50%);
   display: flex;
