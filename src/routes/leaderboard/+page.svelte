@@ -10,7 +10,7 @@
   const TABS = [
     { k: 'daily', label: '📅 Daily' },
     { k: 'efficiency', label: '⚡ Efficiency' },
-    { k: 'climb', label: '🎰 Climb' },
+    { k: 'climb', label: '🎰 Cash Game' },
     { k: 'challenges', label: '⚔️ Challenges' },
     { k: 'wealth', label: '💰 Wealth' }
   ];
@@ -113,7 +113,7 @@
             {:else if board === 'daily'}<th>Score</th>
             {:else if board === 'efficiency'}<th>Best ×</th><th>Category</th>
             {:else if board === 'challenges'}<th>Wins</th><th>Pot won</th>
-            {:else}<th>Climb</th>{/if}
+            {:else}<th>Furthest</th>{/if}
           </tr>
         </thead>
         <tbody>
@@ -157,7 +157,7 @@
     {:else if board === 'daily'}Same puzzle for everyone today. Spend less, score more.
     {:else if board === 'efficiency'}Your best return multiple (bounty ÷ spend). The core flex — crack a puzzle spending next to nothing.
     {:else if board === 'challenges'}Head-to-head wins. Win challenges by solving on the least spend and taking the pot.
-    {:else}How far you've climbed the Cash Game ladder. Everyone faces the same puzzles, in order.{/if}
+    {:else}How far you got in the Cash Game. Everyone faces the same puzzles, in order.{/if}
   </p>
 </main>
 

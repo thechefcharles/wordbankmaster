@@ -25,7 +25,7 @@
 
   const MODES = [
     { k: 'all', label: 'All' }, { k: 'daily', label: '📅 Daily' },
-    { k: 'climb', label: '🎰 Climb' }, { k: 'arcade', label: '🎲 Arcade' },
+    { k: 'climb', label: '🎰 Cash Game' }, { k: 'arcade', label: '🎲 Arcade' },
     { k: 'challenge', label: '⚔️ Versus' }
   ];
   const icon = (/** @type {string} */ m) =>

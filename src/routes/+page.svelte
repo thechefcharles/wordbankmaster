@@ -1450,7 +1450,7 @@
     <!-- 🎰 Cash Game (Climb) HUD -->
     {#if isClimb && climb}
       <div class="climb-top">
-        <span class="climb-level">🧗 Climb&nbsp;#{climb.position}</span>
+        <span class="climb-level">🎰 Cash&nbsp;Game&nbsp;#{climb.position}</span>
         <div class="heat-meter" class:hot={(climb.heat ?? 100) > 100}>
           <span class="heat-fill" style="width:{Math.min(100, Math.max(0, (climb.heat ?? 100) - 100))}%"></span>
           <span class="heat-x">🔥 ×{climbHeat}</span>
@@ -1665,7 +1665,7 @@
             <div class="result-medal">🎰</div>
             <h2>Solved! +${(climb?.last_gain ?? 0).toLocaleString()}</h2>
             <p class="result-sub">{$gameStore.currentPhrase}</p>
-            <p class="arcade-gain">Climb #{climb?.position} · Heat ×{climbHeat}{#if (climb?.heat ?? 100) >= 200} 🔥 maxed{/if}</p>
+            <p class="arcade-gain">Cash Game #{climb?.position} · Heat ×{climbHeat}{#if (climb?.heat ?? 100) >= 200} 🔥 maxed{/if}</p>
             <div class="result-actions">
               <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Leave</button>
               <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; climbAdvance(); }}>Next →</button>

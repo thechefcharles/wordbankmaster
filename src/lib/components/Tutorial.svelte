@@ -29,9 +29,9 @@
     },
     {
       icon: '🧗',
-      title: 'Climb & Challenges',
+      title: 'Cash Game & Challenges',
       isNew: true,
-      body: 'Climb an endless ladder of puzzles for Cash bounties, or wager friends: your wager is your budget, and whoever solves spending the least takes the pot.'
+      body: 'Take on an endless ladder of puzzles for Cash bounties, or wager friends: your wager is your budget, and whoever solves spending the least takes the pot.'
     },
     {
       icon: '🎲',

@@ -58,7 +58,7 @@
         <div class="stat"><span class="sv">{s.longest_streak}</span><span class="sc">Best streak</span></div>
         <div class="stat"><span class="sv">{winPct}%</span><span class="sc">Daily win rate</span></div>
         <div class="stat"><span class="sv">{(s.puzzles_solved ?? 0).toLocaleString()}</span><span class="sc">Puzzles solved</span></div>
-        <div class="stat"><span class="sv">#{s.climb_position}</span><span class="sc">Climb position</span></div>
+        <div class="stat"><span class="sv">#{s.climb_position}</span><span class="sc">Furthest</span></div>
         <div class="stat"><span class="sv">{record}</span><span class="sc">Challenge W-L-T</span></div>
         <div class="stat"><span class="sv">{mult(s.avg_multiple_x100)}</span><span class="sc">Avg multiple</span></div>
         <div class="stat"><span class="sv">{mult(s.best_multiple_x100)}</span><span class="sc">Best multiple</span></div>
