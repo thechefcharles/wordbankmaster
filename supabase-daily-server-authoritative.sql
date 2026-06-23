@@ -40,14 +40,15 @@ REVOKE INSERT, UPDATE, DELETE ON public.daily_sessions FROM anon, authenticated;
 -- ---- Letter costs live on the server (client can't be the pricing source) --
 CREATE OR REPLACE FUNCTION public.letter_cost(p_letter TEXT)
 RETURNS INT LANGUAGE sql IMMUTABLE AS $$
+  -- economy v3.2: −25%, cheapest $20 (see supabase-economy-v3-2-rebalance.sql)
   SELECT CASE upper(p_letter)
-    WHEN 'Q' THEN 30  WHEN 'W' THEN 50  WHEN 'E' THEN 140 WHEN 'R' THEN 120
-    WHEN 'T' THEN 120 WHEN 'Y' THEN 60  WHEN 'U' THEN 80  WHEN 'I' THEN 110
-    WHEN 'O' THEN 90  WHEN 'P' THEN 80  WHEN 'A' THEN 130 WHEN 'S' THEN 120
-    WHEN 'D' THEN 80  WHEN 'F' THEN 60  WHEN 'G' THEN 70  WHEN 'H' THEN 70
-    WHEN 'J' THEN 30  WHEN 'K' THEN 50  WHEN 'L' THEN 80  WHEN 'Z' THEN 40
-    WHEN 'X' THEN 40  WHEN 'C' THEN 80  WHEN 'V' THEN 50  WHEN 'B' THEN 60
-    WHEN 'N' THEN 100 WHEN 'M' THEN 70  ELSE NULL END;
+    WHEN 'Q' THEN 20  WHEN 'W' THEN 40  WHEN 'E' THEN 100 WHEN 'R' THEN 90
+    WHEN 'T' THEN 90  WHEN 'Y' THEN 50  WHEN 'U' THEN 60  WHEN 'I' THEN 80
+    WHEN 'O' THEN 70  WHEN 'P' THEN 60  WHEN 'A' THEN 100 WHEN 'S' THEN 90
+    WHEN 'D' THEN 60  WHEN 'F' THEN 50  WHEN 'G' THEN 50  WHEN 'H' THEN 50
+    WHEN 'J' THEN 20  WHEN 'K' THEN 40  WHEN 'L' THEN 60  WHEN 'Z' THEN 30
+    WHEN 'X' THEN 30  WHEN 'C' THEN 60  WHEN 'V' THEN 40  WHEN 'B' THEN 50
+    WHEN 'N' THEN 80  WHEN 'M' THEN 50  ELSE NULL END;
 $$;
 
 -- ---- Ensure today's puzzle is assigned and return its id ------------------
@@ -224,7 +225,7 @@ BEGIN
     WHERE substr(p_phrase, g.i + 1, 1) <> ' ' AND NOT (g.i = ANY(s.revealed_positions))
   );
   -- Loss = broke, or out of guesses and can't afford another ($150). Mirrors original game.
-  v_lost := (s.bankroll < 30);  -- broke: can't afford the cheapest letter
+  v_lost := (s.bankroll < 20);  -- broke: can't afford the cheapest letter (v3.2: was 30)
 
   IF v_won THEN
     s.state := 'won';
