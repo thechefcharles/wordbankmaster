@@ -26,6 +26,16 @@ modes feed them. (No loans — Net Worth = your Cash balance = `profiles.bank`.)
 | Lifetime earned / spent | `Σ earned` / `Σ spent` | Play Log | all paid |
 | Badges / Category levels | user_badges / category_stats | — | all |
 
+## Stat-heavy Profile (`get_profile_detail`)
+Profile → Stats is organized into per-mode sections (all from the Play Log + profiles):
+**Overall** (solved · games · clean · avg/best × · earned/spent) · **Daily** (streak · best ·
+win% · won · best × · fastest) · **Cash Game** (furthest · solved · earned · best × · fastest) ·
+**Challenges** (W-L-T · win% · biggest pot) · **Arcade** (best run · best streak) · **Categories**
+(solves + best × each). `get_profile_stats` is the lighter version still used for the public profile.
+
+**Solve time** is captured in `game_results.time_ms` (capped 30 min): Daily/Make-up from session
+`created_at`; Cash Game from `climb_state.puzzle_started_at`. Challenge/Arcade not timed (spend is their metric).
+
 ## Leaderboards
 | Board | Ranks by | Source | Scope |
 |---|---|---|---|
