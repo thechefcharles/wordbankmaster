@@ -9,7 +9,7 @@
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getDailyGhost, getDailyQuests, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getDailyGhost, getDailyQuests, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest } from '$lib/stores/statsStore.js';
   import { unreadCount, notifications, markAllNotificationsRead, refreshNotifications } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
@@ -606,6 +606,20 @@
   let myGroups = [];
   let challengeCount = 0; // matches awaiting my play (badge on the Challenges card)
   let friendReqCount = 0; // incoming friend requests (badge on Friends)
+  /** @type {Record<string, 'accepted'|'declined'>} responded friend-request notifications (by id) */
+  let notifResponded = {};
+  /** Accept/decline a friend request straight from the bell panel. @param {any} n @param {boolean} accept */
+  async function respondNotif(n, accept) {
+    const uname = n?.data?.from_username;
+    if (!uname || notifResponded[n.id]) return;
+    const res = await respondFriendRequest(uname, accept);
+    if (res?.ok) {
+      notifResponded = { ...notifResponded, [n.id]: accept ? 'accepted' : 'declined' };
+      fx(accept ? 'win' : 'tap');
+      refreshNotifications();
+      refreshChallengeCount();
+    }
+  }
   /** @type {any|null} */
   let matchResults = null; // a settled match's results being viewed
   // Builder form
@@ -1146,11 +1160,23 @@
           {:else}
             <div class="notif-list">
               {#each $notifications as n (n.id)}
-                <button class="notif-item" class:fresh={!n.read}
-                  on:click={() => { showNotifications = false; if (n.data?.challenge_id) openChallenges(); else if (n.data?.route === 'friends') goto('/friends'); }}>
-                  <span class="ni-title">{n.title}</span>
-                  <span class="ni-body">{n.body}</span>
-                </button>
+                <div class="notif-item" class:fresh={!n.read}>
+                  <button class="ni-main"
+                    on:click={() => { showNotifications = false; if (n.data?.challenge_id) openChallenges(); else if (n.data?.route === 'friends') goto('/friends'); }}>
+                    <span class="ni-title">{n.title}</span>
+                    <span class="ni-body">{n.body}</span>
+                  </button>
+                  {#if n.type === 'friend_request' && n.data?.from_username}
+                    {#if notifResponded[n.id]}
+                      <span class="ni-done {notifResponded[n.id]}">{notifResponded[n.id] === 'accepted' ? '✓ Friends' : 'Declined'}</span>
+                    {:else}
+                      <div class="ni-actions">
+                        <button class="ni-act accept" on:click={() => respondNotif(n, true)}>Accept</button>
+                        <button class="ni-act decline" on:click={() => respondNotif(n, false)}>Decline</button>
+                      </div>
+                    {/if}
+                  {/if}
+                </div>
               {/each}
             </div>
           {/if}
@@ -2130,13 +2156,20 @@
   /* notifications panel */
   .notif-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 60vh; overflow-y: auto; }
   .notif-item {
-    text-align: left; display: flex; flex-direction: column; gap: 2px;
-    padding: 0.7rem 0.85rem; border-radius: 12px; cursor: pointer;
+    padding: 0.7rem 0.85rem; border-radius: 12px;
     background: var(--surface); border: 1px solid var(--border); color: var(--text);
   }
   .notif-item.fresh { border-color: rgba(163,230,53,0.45); background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(163,230,53,0.03)); }
+  .ni-main { text-align: left; display: flex; flex-direction: column; gap: 2px; width: 100%; background: none; border: none; color: inherit; cursor: pointer; padding: 0; }
   .ni-title { font-family: var(--font-display); font-weight: 700; font-size: 0.92rem; }
   .ni-body { font-size: 0.82rem; color: var(--text-muted); }
+  .ni-actions { display: flex; gap: 0.5rem; margin-top: 0.55rem; }
+  .ni-act { flex: 1; padding: 0.45rem 0.7rem; border-radius: 9px; font-weight: 800; font-size: 0.82rem; cursor: pointer; border: 1px solid var(--border); }
+  .ni-act.accept { color: #06210f; border: none; background: var(--brand-grad, linear-gradient(135deg,#34d399,#a3e635)); }
+  .ni-act.decline { color: #f87171; background: transparent; border-color: rgba(248,113,113,0.4); }
+  .ni-done { display: inline-block; margin-top: 0.5rem; font-size: 0.8rem; font-weight: 800; }
+  .ni-done.accepted { color: var(--brand-2); }
+  .ni-done.declined { color: var(--text-faint); }
   .menu-card:hover:not(.disabled) .mc-arrow { transform: translateX(3px); color: var(--brand-2); }
 
   /* Modal action button (reused brand button) */
