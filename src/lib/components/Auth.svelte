@@ -158,6 +158,26 @@
       isLoading = false;
     }
   }
+
+  async function signInWithApple() {
+    errorMsg = '';
+    isLoading = true;
+    try {
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: { redirectTo: redirectUrl }
+      });
+      if (error) {
+        errorMsg = `Apple sign-in failed: ${error.message}`;
+        track('apple_signin_error', { message: error.message });
+        isLoading = false;
+      }
+    } catch (e) {
+      errorMsg = 'Apple sign-in failed. Try again, or use email & password.';
+      isLoading = false;
+    }
+  }
 </script>
 
 <div class="auth-screen">
@@ -167,13 +187,11 @@
       <img class="wordmark" src="/wordmark-slogan.png" alt="WordBank — Spend Less. Think More." />
     </div>
 
-    <h2 class="auth-title">
-      {#if showReset}
-        Reset password
-      {:else}
-        {isLogin ? 'Welcome back' : 'Create your account'}
-      {/if}
-    </h2>
+    {#if showReset}
+      <h2 class="auth-title">Reset password</h2>
+    {:else if !isLogin}
+      <h2 class="auth-title">Create your account</h2>
+    {/if}
 
     {#if showReset}
       <input class="field" type="email" bind:value={resetEmail} placeholder="Your email" />
@@ -206,6 +224,11 @@
         <button class="btn-ghost full google" on:click={signInWithGoogle}>
           <img src="/googlelogo.png" alt="Google icon" class="google-icon" />
           Continue with Google
+        </button>
+
+        <button class="btn-ghost full apple" on:click={signInWithApple}>
+          <svg class="apple-icon" viewBox="0 0 384 512" aria-hidden="true"><path fill="currentColor" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>
+          Continue with Apple
         </button>
       {/if}
 
@@ -310,13 +333,25 @@
     color: var(--text-muted);
   }
 
+  /* Gold primary button (Log in / Sign up / reset) */
+  .btn-brand {
+    background: linear-gradient(135deg, #fde047, #f59e0b);
+    color: #3a2a00;
+    box-shadow: 0 4px 16px rgba(251, 191, 36, 0.3);
+  }
+  .apple {
+    display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;
+    margin-top: 10px;
+  }
+  .apple-icon { width: 17px; height: 17px; color: var(--text); }
+
   .link {
     background: none;
     border: none;
     padding: 0;
     cursor: pointer;
-    font-weight: 600;
-    color: var(--brand-2);
+    font-weight: 700;
+    color: #fbbf24;
   }
   .link:hover { text-decoration: underline; }
   .link.subtle { color: var(--text-muted); font-weight: 500; }
