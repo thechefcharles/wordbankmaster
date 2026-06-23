@@ -1147,7 +1147,7 @@
             <div class="notif-list">
               {#each $notifications as n (n.id)}
                 <button class="notif-item" class:fresh={!n.read}
-                  on:click={() => { showNotifications = false; if (n.data?.challenge_id) openChallenges(); }}>
+                  on:click={() => { showNotifications = false; if (n.data?.challenge_id) openChallenges(); else if (n.data?.route === 'friends') goto('/friends'); }}>
                   <span class="ni-title">{n.title}</span>
                   <span class="ni-body">{n.body}</span>
                 </button>
