@@ -8,7 +8,7 @@ import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNe
 import { freeplayStart, freeplayNext, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
 import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
 import { makeupStart, makeupBuyLetter, makeupReveal, makeupSubmitGuess } from '$lib/stores/statsStore.js';
-import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, getPowerups, buyPowerup, climbUsePowerup } from '$lib/stores/statsStore.js';
+import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, getPowerups, buyPowerup, climbUsePowerup, getClimbClue } from '$lib/stores/statsStore.js';
 import { createMatch, acceptMatch, matchStart, matchBuyLetter, matchReveal, matchSubmitGuess, matchCheck, matchUsePowerup, matchSabotage } from '$lib/stores/statsStore.js';
 import { track } from '$lib/analytics.js';
 
@@ -582,6 +582,14 @@ async function submitGuessMakeup(state) {
 }
 
 /* ===== Cash Game / the Climb (real-Cash, fluid, par/bounty + heat) ===== */
+/** Refresh the clue for the current climb puzzle (changes each rung). */
+async function refreshClimbClue() {
+  try {
+    const clue = await getClimbClue();
+    gameStore.update(s => ({ ...s, clue }));
+  } catch { /* non-fatal */ }
+}
+
 /** @param {any} board */
 function reconcileClimbBoard(board) {
   if (!board) return;
@@ -607,6 +615,7 @@ export async function fetchClimbGame() {
     const board = await climbStart();
     if (!board) return false;
     reconcileClimbBoard(board);
+    await refreshClimbClue();
     return true;
   } catch (err) {
     console.error('❌ Error starting climb:', err instanceof Error ? err.message : String(err));
@@ -652,7 +661,7 @@ export async function climbAdvance() {
   dailyInFlight = true;
   try {
     const board = await climbNext();
-    if (board) reconcileClimbBoard(board);
+    if (board) { reconcileClimbBoard(board); await refreshClimbClue(); }
   } finally {
     dailyInFlight = false;
   }

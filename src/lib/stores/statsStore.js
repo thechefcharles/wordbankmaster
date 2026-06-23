@@ -368,6 +368,13 @@ export async function getArcadeClue() {
   return data ?? null;
 }
 
+/** Witty clue for the caller's current Cash Game (climb) puzzle. @returns {Promise<string|null>} */
+export async function getClimbClue() {
+  const { data, error } = await supabase.rpc('climb_clue');
+  if (error) { console.error('❌ climb_clue error:', error); return null; }
+  return data ?? null;
+}
+
 /**
  * Today's shared Daily Modifier id (same for every player; rotates by date).
  * @returns {Promise<string|null>}
