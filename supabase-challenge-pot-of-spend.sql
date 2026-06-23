@@ -1,0 +1,26 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Challenges → Economy v3.1 "pot of spend"  (migration: match_settle_pot_of_spend) ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Challenges now express the core "spend less" mechanic with real money.
+--
+-- Escrow (unchanged, in accept_match/create_match): a wagered match debits `wager`
+-- ('wager_stake') and sets participant bankroll = budget = GREATEST(wager, 500).
+-- So spent = budget − bankroll, and buy-in == budget for wagered games.
+--
+-- _match_settle (rewritten):
+--   • No real contest (v_paid<2 OR nobody solved) → full buy-in refund ('wager_refund').
+--   • Otherwise: refund each player's UNSPENT buy-in (their leftover bankroll), and the
+--     POT = Σ everyone's spend. Distribute by rank (total_score = solved desc, spend asc):
+--       winner-take-all, or podium 60/(rest)/20% of the pot.
+--   • "You only ever lose what you spent." Zero-sum: winner's net = others' total spend.
+--   • Logs REAL spent/earned/net to the Play Log (game_results) for WAGERED settled games
+--     → challenge rows now have a true return multiple (earned/spent). Friendly (wager=0)
+--     and refunded games log null money (unchanged).
+--
+-- Verified (rolled-back 2-player sim, wager 500): edith spent 120 / test1 spent 300, both
+--   solved 3/3 → pot 420 → edith (rank 1) earned 420, net +300, multiple 3.5×; test1 net
+--   −300; settle-ledger edith +800 (380 refund + 420 pot), test1 +200 refund. With the −500
+--   escrow each: edith +300, test1 −300 → zero-sum.
+--
+-- Client copy: builder objective + "Buy-in" label updated (src/routes/+page.svelte).
+-- Full body applied via MCP; see git history.

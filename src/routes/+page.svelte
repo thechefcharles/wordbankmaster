@@ -1248,7 +1248,7 @@
                 </label>
               </div>
               <div class="ch-row">
-                <label class="ch-field"><span>Wager ($0 = friendly)</span>
+                <label class="ch-field"><span>Buy-in ($0 = friendly)</span>
                   <input class="ch-input" type="number" min="0" step="100" bind:value={mbWager} />
                 </label>
                 <label class="ch-field"><span>Respond within</span>
@@ -1259,7 +1259,7 @@
                 <span class="ch-tog-box">{mbItemsAllowed ? '✓' : ''}</span>
                 ⚡ Allow power-ups — players can bring & use items they own
               </button>
-              <p class="ch-objective">Your wager is your spending budget (min $500). Buy as few letters as you can — <strong>solve spending the least and you take the pot.</strong> Guesses are free.</p>
+              <p class="ch-objective">Your buy-in (min $500) is your spending cap. Buy as few letters as you can — <strong>unspent cash comes back, the pot is everyone’s spend, and the most efficient solver takes it.</strong> You only ever lose what you spend. Guesses are free.</p>
               <button class="ch-create" disabled={mbBusy} on:click={submitNewMatch} style="width:100%;">Send challenge ⚔️</button>
               {#if mbMsg}<p class="add-msg">{mbMsg}</p>{/if}
             </div>
