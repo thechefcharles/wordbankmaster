@@ -1872,7 +1872,7 @@
     margin: 0 auto;
     text-align: center;
     font-family: var(--font-ui);
-    padding: 16px 12px 248px; /* space so content stays above fixed Solve + keyboard */
+    padding: 16px 12px calc(env(safe-area-inset-bottom, 0px) + 244px); /* space so content stays above fixed Solve + keyboard */
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -2004,7 +2004,7 @@
     flex-wrap: wrap;
     gap: 8px;
     justify-content: center;
-    margin: 0 0 22px;
+    margin: 0 0 12px;
   }
   .category-chip {
     font-family: var(--font-display);
@@ -2043,7 +2043,7 @@
   .fold-bar.broke .fold-btn { color: #f87171; border-color: rgba(248,113,113,0.5); }
   .puzzle-clue {
     max-width: 340px;
-    margin: 10px auto 18px;
+    margin: 8px auto 12px;
     font-family: var(--font-ui);
     font-size: 0.98rem;
     font-style: italic;
@@ -2864,9 +2864,9 @@
 
   .game-logo {
     display: block;
-    width: min(64vw, 230px);
+    width: min(52vw, 180px);
     height: auto;
-    margin: 6px auto 16px;
+    margin: 2px auto 10px;
     filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.5));
   }
 

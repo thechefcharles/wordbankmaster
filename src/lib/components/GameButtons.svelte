@@ -128,7 +128,7 @@
 
 .message-box {
   position: fixed;
-  bottom: 232px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 232px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 1002;
@@ -150,7 +150,9 @@
 --------------------------- */
 .main-button-wrapper {
   position: fixed;
-  bottom: 188px; /* clears the futuristic keyboard (~172px) + gap */
+  /* Sit above the keyboard, which is lifted by the safe-area inset — match it so
+     the button never overlaps the top key row on phones with a home indicator. */
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 188px);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
