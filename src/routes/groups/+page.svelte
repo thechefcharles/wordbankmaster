@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { getMyGroups, getGroup, createGroup, leaveGroup, addGroupMember, removeGroupMember, renameGroup, listFriends, getGroupMessages, sendGroupMessage } from '$lib/stores/statsStore.js';
+  import { getMyGroups, getGroup, createGroup, leaveGroup, addGroupMember, removeGroupMember, renameGroup, listFriends, getGroupMessages, sendGroupMessage, getGroupStandings } from '$lib/stores/statsStore.js';
   import { supabase } from '$lib/supabaseClient.js';
   import { track } from '$lib/analytics.js';
 
@@ -17,6 +17,22 @@
   // rename
   let renaming = $state(false);
   let renameInput = $state('');
+
+  // Wealth | Compete tab (the latter = in-group challenge standings)
+  let gtab = $state('wealth');
+  /** @type {any|null} */
+  let standings = $state(null);
+  let standingsLoading = $state(false);
+  const mfmt = (/** @type {any} */ n) => '$' + Math.round(Number(n ?? 0)).toLocaleString();
+
+  async function switchTab(/** @type {string} */ t) {
+    gtab = t;
+    if (t === 'compete' && !standings && open) {
+      standingsLoading = true;
+      standings = await getGroupStandings(open.id);
+      standingsLoading = false;
+    }
+  }
 
   // add-friends picker
   /** @type {{username:string,name:string}[]} */
@@ -82,12 +98,13 @@
   /** @param {any} g */
   async function openGroup(g) {
     open = g; renaming = false; showAdd = false; addMsg = '';
+    gtab = 'wealth'; standings = null;
     if (!friends.length) friends = await listFriends();
   }
   /** @param {string} id */
   async function view(id) { await openGroup(await getGroup(id)); }
 
-  function backToList() { open = null; renaming = false; showAdd = false; }
+  function backToList() { open = null; renaming = false; showAdd = false; gtab = 'wealth'; standings = null; }
 
   async function leave() {
     if (!open || busy) return;
@@ -141,8 +158,14 @@
         {#if open.is_owner}<button class="rename-btn" onclick={startRename} title="Rename group">✏️</button>{/if}
       {/if}
     </div>
-    <p class="sub">Net Worth · {open.members.length} member{open.members.length === 1 ? '' : 's'}</p>
+    <p class="sub">{open.members.length} member{open.members.length === 1 ? '' : 's'}</p>
 
+    <div class="g-tabs">
+      <button class="g-tab" class:active={gtab === 'wealth'} onclick={() => switchTab('wealth')}>💰 Wealth</button>
+      <button class="g-tab" class:active={gtab === 'compete'} onclick={() => switchTab('compete')}>⚔️ Compete</button>
+    </div>
+
+    {#if gtab === 'wealth'}
     <div class="table-wrap">
       <table>
         <thead><tr><th>#</th><th>Player</th><th>Net Worth</th><th>Cash</th>{#if open.is_owner}<th></th>{/if}</tr></thead>
@@ -159,6 +182,44 @@
         </tbody>
       </table>
     </div>
+    {:else}
+      <!-- ⚔️ Compete: in-group challenge standings -->
+      {#if standingsLoading}
+        <p class="msg">Loading…</p>
+      {:else if !standings || standings.total_matches === 0}
+        <p class="compete-empty">No group challenges yet. Start one from <button class="link" onclick={() => goto('/')}>the menu</button> — pick this group as the opponent.</p>
+      {:else}
+        <p class="compete-sub">{standings.total_matches} group challenge{standings.total_matches === 1 ? '' : 's'} played</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Player</th><th>W</th><th>Played</th><th>Win %</th></tr></thead>
+            <tbody>
+              {#each standings.members as m, i}
+                <tr class={m.is_me ? 'me-row' : (i < 3 && m.wins > 0 ? 'top-three' : '')}>
+                  <td class="rank">{#if i === 0 && m.wins > 0}🏆{:else}{i + 1}{/if}</td>
+                  <td class="name">{m.is_me ? 'You' : m.name}</td>
+                  <td class="score-cell">{m.wins}</td>
+                  <td>{m.played}</td>
+                  <td class="dim">{m.win_pct}%</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+
+        {#if (standings.recent ?? []).length}
+          <div class="recent-h">Recent matches</div>
+          <div class="recent">
+            {#each standings.recent as r}
+              <div class="recent-row">
+                <span class="r-win">🏆 @{r.winner}</span>
+                <span class="r-meta">{r.players} players · {r.pack_size} puzzle{r.pack_size === 1 ? '' : 's'}{#if Number(r.wager) > 0} · ${Number(r.wager).toLocaleString()}{/if}</span>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      {/if}
+    {/if}
 
     <!-- ➕ Add friends -->
     <button class="add-toggle" onclick={() => { showAdd = !showAdd; addMsg = ''; }}>
@@ -241,7 +302,21 @@
   .groups-page { max-width: 560px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
   .back-btn { display: inline-block; margin-bottom: 1rem; padding: 0.55rem 1.1rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 0.9rem; }
   h1 { font-family: var(--font-display); font-size: 1.7rem; margin: 0; }
-  .sub { color: var(--text-muted); font-size: 0.9rem; margin: 0.2rem 0 1.2rem; }
+  .sub { color: var(--text-muted); font-size: 0.9rem; margin: 0.2rem 0 1rem; }
+
+  .g-tabs { display: flex; gap: 8px; margin: 0 0 14px; }
+  .g-tab { flex: 1; padding: 9px 0; border-radius: 12px; border: 1px solid var(--border); background: var(--surface);
+    color: var(--text-muted); font-weight: 700; font-size: 0.88rem; cursor: pointer; }
+  .g-tab.active { background: linear-gradient(135deg, #fde047, #f59e0b); color: #3a2a00; border-color: transparent; }
+  .compete-sub { color: var(--text-faint); font-size: 0.8rem; margin: 0 0 10px; }
+  .compete-empty { color: var(--text-muted); text-align: center; padding: 24px 10px; font-size: 0.9rem; }
+  .dim { color: var(--text-faint); }
+  .recent-h { color: var(--text-faint); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 18px 0 8px; }
+  .recent { display: flex; flex-direction: column; gap: 6px; }
+  .recent-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 11px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  .r-win { font-weight: 700; color: var(--gold); font-size: 0.86rem; }
+  .r-meta { color: var(--text-faint); font-size: 0.74rem; text-align: right; }
   .loading, .empty { color: var(--text-muted); padding: 1.5rem 0; text-align: center; }
   .g-head { display: flex; align-items: center; gap: 0.6rem; }
   .rename-btn { background: none; border: none; cursor: pointer; font-size: 1rem; opacity: 0.7; }
