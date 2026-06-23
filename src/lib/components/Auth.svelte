@@ -11,6 +11,7 @@
   let errorMsg = '';
   let isLoading = false;
   let isLogin = true;
+  let keepLoggedIn = true; // "keep me logged in" — false = sign out when the browser closes
 
   // Inside the native (Capacitor) app, Google blocks OAuth in the embedded
   // webview so it kicks out to Safari. Hide it there — native testers use
@@ -54,20 +55,38 @@
     errorMsg = '';
 
     if (!email || !password) {
-      errorMsg = 'Email and password are required.';
+      errorMsg = isLogin ? 'Enter your email or username and password.' : 'Email and password are required.';
       isLoading = false;
       return;
     }
 
     try {
-      const { data, error } = isLogin
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password });
+      /** @type {any} */ let result;
+      if (isLogin) {
+        // Accept email OR username — resolve a username to its email first.
+        let loginEmail = email.trim();
+        if (!loginEmail.includes('@')) {
+          const { data: resolved } = await supabase.rpc('email_for_login', { p_identifier: loginEmail });
+          if (!resolved) { errorMsg = 'No account found with that username.'; isLoading = false; return; }
+          loginEmail = resolved;
+        }
+        result = await supabase.auth.signInWithPassword({ email: loginEmail, password });
+      } else {
+        result = await supabase.auth.signUp({ email, password });
+      }
+      const { data, error } = result;
 
       if (error || !data?.user?.id) {
         errorMsg = error?.message || "Authentication failed.";
         return;
       }
+
+      // Remember-me: persist the choice; mark this browser session active so the
+      // layout can sign out on next cold open when "keep me logged in" is off.
+      try {
+        localStorage.setItem('wb_keep', keepLoggedIn ? '1' : '0');
+        sessionStorage.setItem('wb_sess', '1');
+      } catch { /* storage blocked — default to persistent */ }
 
       track(isLogin ? 'login' : 'signup', { platform: isNativeApp ? 'ios' : 'web' });
       user.set(/** @type {{ id: string }} */ (data.user));
@@ -211,8 +230,18 @@
       </p>
 
     {:else}
-      <input class="field" type="email" bind:value={email} placeholder="Email" />
-      <input class="field" type="password" bind:value={password} placeholder="Password" />
+      <input class="field" type={isLogin ? 'text' : 'email'} bind:value={email}
+        placeholder={isLogin ? 'Email or username' : 'Email'}
+        autocapitalize="none" autocorrect="off" spellcheck="false"
+        autocomplete={isLogin ? 'username' : 'email'} />
+      <input class="field" type="password" bind:value={password} placeholder="Password" autocomplete={isLogin ? 'current-password' : 'new-password'} />
+
+      {#if isLogin}
+        <label class="remember">
+          <input type="checkbox" bind:checked={keepLoggedIn} />
+          <span>Keep me logged in</span>
+        </label>
+      {/if}
 
       <button class="btn-brand full" on:click={handleAuth} disabled={isLoading}>
         {isLoading ? 'Loading…' : (isLogin ? 'Log in' : 'Sign up')}
@@ -299,6 +328,12 @@
   }
 
   .field { margin: 10px 0; text-align: left; }
+
+  .remember {
+    display: flex; align-items: center; gap: 9px; margin: 4px 2px 2px; cursor: pointer;
+    font-size: 0.88rem; color: var(--text-muted); user-select: none;
+  }
+  .remember input { width: 17px; height: 17px; accent-color: #f59e0b; cursor: pointer; }
 
   .full { width: 100%; }
   .btn-brand.full { margin-top: 6px; padding: 15px; font-size: 1.02rem; }
