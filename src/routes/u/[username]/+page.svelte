@@ -108,7 +108,7 @@
     {#if (p.badges ?? []).length}
       <section class="badges">
         <div class="b-h">Badges · {p.badges.length}</div>
-        <div class="b-wrap">{#each p.badges as b}<span class="badge">🏅 {b}</span>{/each}</div>
+        <div class="b-wrap">{#each p.badges as b}<span class="badge">🏅 {(b || '').replace(/_/g, ' ').replace(/\b\w/g, (/** @type {string} */ c) => c.toUpperCase())}</span>{/each}</div>
       </section>
     {/if}
   {/if}

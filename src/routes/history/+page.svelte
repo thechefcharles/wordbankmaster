@@ -71,9 +71,10 @@
     }
   }
 
-  onMount(() => track('history_view'));
-  // initial load + reload whenever a filter changes
-  $effect(() => { mode; result; sort; load(true); });
+  onMount(() => { track('history_view'); load(true); });
+  // filters reload explicitly (an $effect here would self-invalidate: load() writes offset)
+  function setMode(/** @type {any} */ k) { mode = k; load(true); }
+  function setResult(/** @type {any} */ k) { result = k; load(true); }
 </script>
 
 <svelte:head><title>WordBank — History</title></svelte:head>
@@ -84,17 +85,17 @@
 
   <div class="chips">
     {#each MODES as m}
-      <button class="chip" class:active={mode === m.k} onclick={() => mode = /** @type {any} */ (m.k)}>{m.label}</button>
+      <button class="chip" class:active={mode === m.k} onclick={() => setMode(m.k)}>{m.label}</button>
     {/each}
   </div>
 
   <div class="row2">
     <div class="seg">
       {#each [['all','All'],['won','Won'],['lost','Lost'],['tie','Tie']] as [k, l]}
-        <button class="seg-btn" class:active={result === k} onclick={() => result = /** @type {any} */ (k)}>{l}</button>
+        <button class="seg-btn" class:active={result === k} onclick={() => setResult(k)}>{l}</button>
       {/each}
     </div>
-    <select class="sort" bind:value={sort}>
+    <select class="sort" bind:value={sort} onchange={() => load(true)}>
       <option value="recent">Newest</option>
       <option value="net">Biggest net</option>
       <option value="multiple">Highest ×</option>
@@ -127,8 +128,13 @@
               </span>
             </span>
             <span class="right">
-              {#if r.net != null}<span class="net" class:neg={Number(r.net) < 0}>{money(r.net)}</span>{/if}
-              {#if mult(r.multiple_x100)}<span class="mult">{mult(r.multiple_x100)}</span>{/if}
+              {#if r.game_mode === 'challenge' && r.net == null}
+                <span class="oc {r.outcome}">{r.outcome === 'won' ? 'WON' : r.outcome === 'tie' ? 'TIE' : 'LOST'}</span>
+                {#if Number(r.pot) > 0}<span class="mult">${Number(r.pot).toLocaleString()} pot</span>{/if}
+              {:else}
+                {#if r.net != null}<span class="net" class:neg={Number(r.net) < 0}>{money(r.net)}</span>{/if}
+                {#if mult(r.multiple_x100)}<span class="mult">{mult(r.multiple_x100)}</span>{/if}
+              {/if}
               <span class="date">{when(r.played_at)}</span>
             </span>
           </button>
@@ -187,6 +193,10 @@
   .net.neg, b.neg { color: #fb7185; }
   .mult { color: var(--gold); font-size: 0.74rem; font-weight: 700; }
   .date { color: var(--text-faint); font-size: 0.7rem; }
+  .oc { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 6px; }
+  .oc.won { background: rgba(126,224,168,0.18); color: #7ee0a8; }
+  .oc.lost { background: rgba(251,113,133,0.18); color: #fb7185; }
+  .oc.tie { background: var(--surface-2); color: var(--text-muted); }
 
   .detail-inline { padding: 0 13px 13px 49px; }
   .answer { color: var(--gold); font-weight: 700; margin: 0 0 8px; }
