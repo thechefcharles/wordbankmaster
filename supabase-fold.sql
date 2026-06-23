@@ -1,0 +1,16 @@
+-- Fold / broke-timer  (migration: fold_daily_and_match)
+-- Lets a stuck player concede a puzzle, and forces resolution when broke.
+--
+-- match_fold(match_id): forfeit the CURRENT pack puzzle — advance to the next
+--   position WITHOUT crediting a solve (bankroll carries; ranking stays
+--   solved×1M + bankroll). On the last puzzle → state 'done' + settle.
+-- daily_fold(): mark today's Daily 'lost', reveal the full phrase for closure.
+--   Attendance/streak-for-showing-up was already credited at daily_start.
+--
+-- Client (Daily + Challenges only; Cash Game keeps leave-and-return):
+--  - "Fold" button (🏳️ Give up / Fold puzzle) — voluntary concede.
+--  - Broke-timer: when you can't afford the cheapest still-buyable letter, a 60s
+--    clock starts; guess in time or auto-Fold. Carries to the next pack puzzle if
+--    still broke. Consequence: you lose the puzzle + the Cash already spent (in
+--    the pot); you keep unspent Cash. Rank = puzzles solved first, so folding
+--    directly lowers your win chance — never free.

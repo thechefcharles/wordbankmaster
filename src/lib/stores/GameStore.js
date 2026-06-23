@@ -3,13 +3,13 @@
 import { writable, get } from 'svelte/store';
 import confetti from 'canvas-confetti';
 import { fx } from '$lib/sound.js';
-import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, getDailyModifier, getDailyClue, getArcadeClue } from '$lib/stores/statsStore.js';
+import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, dailyFold as dailyFoldRpc, getDailyModifier, getDailyClue, getArcadeClue } from '$lib/stores/statsStore.js';
 import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNext, arcadeUsePowerup, arcadeCashout } from '$lib/stores/statsStore.js';
 import { freeplayStart, freeplayNext, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
 import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
 import { makeupStart, makeupBuyLetter, makeupReveal, makeupSubmitGuess } from '$lib/stores/statsStore.js';
 import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, getPowerups, buyPowerup, climbUsePowerup, getClimbClue } from '$lib/stores/statsStore.js';
-import { createMatch, acceptMatch, matchStart, matchBuyLetter, matchReveal, matchSubmitGuess, matchCheck, matchUsePowerup, matchSabotage } from '$lib/stores/statsStore.js';
+import { createMatch, acceptMatch, matchStart, matchBuyLetter, matchReveal, matchSubmitGuess, matchFold as matchFoldRpc, matchCheck, matchUsePowerup, matchSabotage } from '$lib/stores/statsStore.js';
 import { track } from '$lib/analytics.js';
 
 /* ================================
@@ -876,6 +876,30 @@ async function submitGuessDaily(state) {
   try {
     const board = await dailySubmitGuess(guess);
     if (board) reconcileDailyBoard(board);
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
+/** Fold (give up) today's Daily — marks it lost, reveals the answer. */
+export async function dailyFold() {
+  if (dailyInFlight) return;
+  dailyInFlight = true;
+  try {
+    const board = await dailyFoldRpc();
+    if (board) reconcileDailyBoard(board);
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
+/** Fold (forfeit) the current Challenge puzzle — advances without a solve. */
+export async function matchFold() {
+  if (!activeMatchId || dailyInFlight) return;
+  dailyInFlight = true;
+  try {
+    const board = await matchFoldRpc(activeMatchId);
+    if (board) reconcileMatchBoard(board);
   } finally {
     dailyInFlight = false;
   }

@@ -670,6 +670,12 @@ export async function matchSubmitGuess(id, guess) {
   if (error) { console.error('❌ match_submit_guess:', error); return null; }
   return data;
 }
+/** Fold (forfeit) the current match puzzle → advances without a solve. @param {string} id */
+export async function matchFold(id) {
+  const { data, error } = await supabase.rpc('match_fold', { p_id: id });
+  if (error) { console.error('❌ match_fold:', error); return null; }
+  return data;
+}
 /** Force the server to settle a Blitz match when its clock expires. @param {string} id */
 export async function matchCheck(id) {
   const { data, error } = await supabase.rpc('match_check', { p_id: id });
@@ -784,6 +790,12 @@ export async function dailyReveal() {
 export async function dailySubmitGuess(guess) {
   const { data, error } = await supabase.rpc('daily_submit_guess', { p_guess: guess });
   if (error) { console.error('❌ daily_submit_guess error:', error); return null; }
+  return data;
+}
+/** Fold (give up) today's Daily → marks it lost and reveals the answer. */
+export async function dailyFold() {
+  const { data, error } = await supabase.rpc('daily_fold');
+  if (error) { console.error('❌ daily_fold error:', error); return null; }
   return data;
 }
 

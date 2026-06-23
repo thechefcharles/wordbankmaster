@@ -4,7 +4,7 @@
   import { supabase } from '$lib/supabaseClient';
   import { get } from 'svelte/store';
 
-  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
   import { getMyChallenges, getPowerups, getMyMatches, getMyGroups, getMatch } from '$lib/stores/statsStore.js';
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
@@ -307,6 +307,58 @@
   // Free Play live: clean status + the trickle you'd earn.
   $: freeLive = ($gameStore.gameMode === 'freeplay' && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost')
     ? { clean: ($gameStore.incorrectLetters?.length ?? 0) === 0 } : null;
+
+  // ── Fold + broke-timer (Daily + Challenges) ──────────────────────────────
+  // You're "broke" when you can't afford the cheapest still-buyable letter →
+  // a 60s clock starts; guess it or you auto-Fold (lose the puzzle).
+  const LETTER_COSTS = { Q:30,W:50,E:140,R:120,T:120,Y:60,U:80,I:110,O:90,P:80,A:130,S:120,D:80,F:60,G:70,H:70,J:30,K:50,L:80,Z:40,X:40,C:80,V:50,B:60,N:100,M:70 };
+  $: foldMode = ($gameStore.gameMode === 'daily' || $gameStore.gameMode === 'match');
+  $: gameActive = $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost';
+  $: isBroke = (() => {
+    if (!foldMode || !gameActive) return false;
+    const mod = $gameStore.modifier, discount = mod === 'discount', vowelHalf = mod === 'vowel_vision';
+    const purchased = new Set(($gameStore.purchasedLetters || []).filter(Boolean));
+    const incorrect = new Set($gameStore.incorrectLetters || []);
+    let minCost = Infinity;
+    for (const [L, base] of Object.entries(LETTER_COSTS)) {
+      if (purchased.has(L) || incorrect.has(L)) continue;
+      let c = base;
+      if (discount) c = Math.ceil(c * 0.75);
+      if (vowelHalf && 'AEIOU'.includes(L)) c = Math.ceil(c * 0.5);
+      if (c < minCost) minCost = c;
+    }
+    return minCost !== Infinity && ($gameStore.bankroll || 0) < minCost;
+  })();
+  let brokeDeadline = 0, brokeLeft = 0, brokeTimer = null, brokeFiring = false;
+  $: if (browser) manageBrokeTimer(isBroke);
+  function manageBrokeTimer(broke) {
+    if (broke && !brokeTimer) {
+      brokeDeadline = Date.now() + 60000; brokeLeft = 60;
+      brokeTimer = setInterval(() => {
+        brokeLeft = Math.max(0, Math.ceil((brokeDeadline - Date.now()) / 1000));
+        if (brokeLeft <= 0) { clearInterval(brokeTimer); brokeTimer = null; doFold(true); }
+      }, 250);
+    } else if (!broke && brokeTimer) {
+      clearInterval(brokeTimer); brokeTimer = null;
+    }
+  }
+  /** @param {boolean} auto */
+  async function doFold(auto = false) {
+    if (brokeFiring) return;
+    brokeFiring = true;
+    if (brokeTimer) { clearInterval(brokeTimer); brokeTimer = null; }
+    try {
+      fx(auto ? 'bust' : 'tap');
+      if ($gameStore.gameMode === 'daily') await dailyFold();
+      else if ($gameStore.gameMode === 'match') await matchFold();
+    } finally { brokeFiring = false; }
+  }
+  function confirmFold() {
+    const ok = window.confirm($gameStore.gameMode === 'match'
+      ? 'Fold this puzzle? You lose it and move to the next — you keep your unspent Cash.'
+      : 'Give up today’s Daily? It counts as a loss and reveals the answer.');
+    if (ok) doFold(false);
+  }
   $: matchRemaining = (() => {
     if (!matchBlitz || !matchInfo?.started_at) return 0;
     const start = new Date(matchInfo.started_at).getTime();
@@ -510,7 +562,7 @@
     );
     pressureTimer = setInterval(() => { pressureNow = Date.now(); }, 250);
   });
-  onDestroy(() => clearInterval(pressureTimer));
+  onDestroy(() => { clearInterval(pressureTimer); if (brokeTimer) clearInterval(brokeTimer); });
 
   // Bump this key whenever the tutorial gains new content — it re-shows for
   // everyone on next login (v3 = persistent Cash, spend-the-least, attendance, no loans).
@@ -1510,6 +1562,17 @@
       <PhraseDisplay on:revealComplete={onPhraseRevealComplete} />
     </section>
 
+    <!-- 🏳️ Fold + broke-timer (Daily + Challenges only) -->
+    {#if foldMode && gameActive}
+      <div class="fold-bar" class:broke={isBroke}>
+        {#if isBroke}
+          <span class="fold-timer">⏱ 0:{String(brokeLeft).padStart(2, '0')}</span>
+          <span class="fold-warn">Out of Cash — guess in time or you {$gameStore.gameMode === 'match' ? 'fold this puzzle' : 'lose the Daily'}</span>
+        {/if}
+        <button class="fold-btn" on:click={confirmFold}>🏳️ {$gameStore.gameMode === 'match' ? 'Fold puzzle' : 'Give up'}</button>
+      </div>
+    {/if}
+
     <!-- 💰 Bankroll Display -->
     <section class="stats-section">
       <div class="bankroll-container">
@@ -1884,6 +1947,20 @@
     padding: 6px 13px;
     border-radius: var(--r-pill);
   }
+  .fold-bar { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 6px auto 2px; }
+  .fold-bar.broke {
+    padding: 8px 14px; border-radius: 12px; max-width: 340px;
+    background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.5);
+    animation: pressurePulse 1s ease-in-out infinite;
+  }
+  .fold-timer { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.25rem; color: #f87171; }
+  .fold-warn { font-size: 0.76rem; color: #fca5a5; flex: 1 1 140px; text-align: left; }
+  .fold-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--text-faint);
+    border-radius: 10px; padding: 5px 12px; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+  }
+  .fold-btn:hover { color: var(--text-muted); border-color: var(--border-strong); }
+  .fold-bar.broke .fold-btn { color: #f87171; border-color: rgba(248,113,113,0.5); }
   .puzzle-clue {
     max-width: 340px;
     margin: 10px auto 18px;
