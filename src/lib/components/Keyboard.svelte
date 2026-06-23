@@ -241,7 +241,7 @@
   --------------------------- */
   .keyboard-container {
     position: fixed;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); /* lifted off the bottom edge */
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 9px); /* lifted off the bottom edge */
     left: 50%;
     transform: translateX(-50%);
     width: 100%;
@@ -251,17 +251,17 @@
     padding: 6px 8px; /* side padding so edge keys never clip */
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
     z-index: 1000;
   }
   .keyboard-row {
     display: flex;
     justify-content: center;
-    gap: 6px;
+    gap: 5px;
     flex-wrap: nowrap;
   }
   :global(body) {
-    padding-bottom: 196px; /* Space for the taller, lifted keyboard */
+    padding-bottom: 176px; /* Space for the lifted keyboard */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -273,11 +273,11 @@
   .key {
     flex: 1 1 0;
     min-width: 0;
-    height: 54px;
-    border: 1px solid #aeb2bb;
-    background: linear-gradient(#f7f8fa, #c6c9d1);
-    color: #16181c;
-    border-radius: 9px;
+    height: 47px;
+    border: 1px solid rgba(251, 191, 36, 0.32);
+    background: linear-gradient(160deg, #1c1f28, #0c0e13);
+    color: #f4e7c6;
+    border-radius: 8px;
     cursor: pointer;
     display: flex;
     flex-direction: column;
@@ -288,19 +288,20 @@
     position: relative;
     box-sizing: border-box;
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.95),
-      inset 0 -2px 3px rgba(0, 0, 0, 0.2),
-      0 3px 0 #9498a0,
-      0 5px 8px rgba(0, 0, 0, 0.45);
-    transition: transform 0.1s var(--ease-spring), box-shadow 0.12s, filter 0.12s;
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      inset 0 0 10px rgba(251, 191, 36, 0.06),
+      0 2px 0 rgba(0, 0, 0, 0.6),
+      0 4px 8px rgba(0, 0, 0, 0.5);
+    transition: transform 0.1s var(--ease-spring), box-shadow 0.12s, border-color 0.15s;
   }
   .key:hover:not(.purchased):not(.incorrect):not(.disabled) {
-    filter: brightness(1.05);
+    border-color: rgba(251, 191, 36, 0.6);
+    box-shadow: inset 0 0 14px rgba(251, 191, 36, 0.12), 0 2px 0 rgba(0,0,0,0.6), 0 4px 10px rgba(0,0,0,0.5);
     transform: translateY(-1px);
   }
   .key:active,
   .key:focus-visible {
-    transform: translateY(2px) scale(0.97);
+    transform: translateY(1px) scale(0.97);
     border-color: #fde047 !important;
     outline: none;
     box-shadow:
@@ -314,23 +315,23 @@
     position: absolute;
     top: 3px;
     left: 5px;
-    font-size: 9px;
+    font-size: 8px;
     line-height: 1;
-    color: rgba(0, 0, 0, 0.42);
+    color: rgba(251, 191, 36, 0.4);
   }
 
-  /* Delete: prominent red key (like an ATM CANCEL), wider so it can't be missed */
+  /* Delete: gold-accent futuristic key (guess mode), wider so it can't be missed */
   .key.delete {
-    flex: 1.6 1 0;
-    background: linear-gradient(#ff8074, #d8402f) !important;
-    color: #fff !important;
-    border-color: #b5311f !important;
+    flex: 1.5 1 0;
+    background: linear-gradient(160deg, #2c2410, #16110a) !important;
+    color: #fde047 !important;
+    border-color: rgba(251, 191, 36, 0.6) !important;
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.4),
-      0 3px 0 #9e2a1c,
-      0 5px 8px rgba(0, 0, 0, 0.45) !important;
+      inset 0 0 12px rgba(251, 191, 36, 0.18),
+      0 2px 0 rgba(0, 0, 0, 0.6),
+      0 4px 8px rgba(0, 0, 0, 0.5) !important;
   }
-  .key.delete .letter { font-size: 22px; color: #fff; }
+  .key.delete .letter { font-size: 19px; color: #fde047; }
   @keyframes blink {
   0% { opacity: 1; }
   50% { opacity: 0; }
@@ -342,15 +343,16 @@
   --------------------------- */
   .letter {
     line-height: 1;
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 17px;
+    font-family: 'Orbitron', var(--font-display);
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.02em;
     color: inherit; /* so purchased/incorrect state colors on .key apply */
   }
   .price {
     line-height: 1;
-    font-size: 9px;
-    color: #565a62;
+    font-size: 8.5px;
+    color: rgba(251, 191, 36, 0.55);
     font-variant-numeric: tabular-nums;
   }
 
