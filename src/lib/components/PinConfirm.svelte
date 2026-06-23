@@ -47,7 +47,9 @@
 
 <style>
   .pc-overlay {
-    position: fixed; inset: 0; z-index: 4000; display: grid; place-items: center; padding: 1.2rem;
+    /* above every in-page modal (challenge/shop modals are z-index 9999) so the
+       PIN pad is actually visible + tappable when confirming from inside one */
+    position: fixed; inset: 0; z-index: 100000; display: grid; place-items: center; padding: 1.2rem;
     background: radial-gradient(70% 50% at 50% 18%, rgba(251,191,36,0.12), rgba(0,0,0,0) 60%), rgba(5,5,5,0.92);
     backdrop-filter: blur(4px);
   }
