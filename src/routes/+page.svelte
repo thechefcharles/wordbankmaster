@@ -225,8 +225,11 @@
   // PIN gate: unlock screen for returning users; set-PIN after username for new ones.
   $: showPinUnlock = loggedIn && hasInitialized && $pinLocked;
   $: showPinSetup = loggedIn && hasInitialized && !$pinLocked && pinNotSet && !needsUsername;
+  // A pending challenge invite to surface prominently on the home menu.
+  $: pendingInvite = (myMatches ?? []).find((m) => m.my_state === 'invited' && m.status === 'open');
   function onPinUnlocked() { markUnlocked(); pinLocked.set(false); }
   function onPinSet() { markUnlocked(); pinNotSet = false; }
+  function onPinSkip() { markUnlocked(); pinNotSet = false; } // no device PIN; can set later in My Account
   function onPinLogout() { clearPin(); pinLocked.set(false); pinNotSet = false; handleLogout(); }
   // Lobby music: play in the menu only — not while locked, setting a PIN, or in-game.
   $: if (browser) { (loggedIn && hasInitialized && showMainMenu && !showPinUnlock && !showPinSetup) ? startMusic() : stopMusic(); }
@@ -1019,7 +1022,7 @@
       on:unlocked={onPinUnlocked} on:logout={onPinLogout} />
   {:else if showPinSetup}
     <PinGate mode="set" uid={sessionUid} name={maUsername}
-      on:pinset={onPinSet} on:logout={onPinLogout} />
+      on:pinset={onPinSet} on:skip={onPinSkip} on:logout={onPinLogout} />
   {/if}
 
   {#if !loggedIn}
@@ -1048,6 +1051,16 @@
       </div>
       {#if menuView === 'home'}
         <div class="main-menu-buttons stagger">
+          {#if pendingInvite}
+            <button class="invite-banner" on:click={() => respondToMatch(pendingInvite)}>
+              <span class="ib-icon">⚔️</span>
+              <span class="ib-text">
+                <strong>{pendingInvite.host} challenged you!</strong>
+                <small>{pendingInvite.pack_size} puzzle{pendingInvite.pack_size === 1 ? '' : 's'}{#if pendingInvite.wager > 0} · ${pendingInvite.wager.toLocaleString()}{/if}</small>
+              </span>
+              <span class="ib-play">Play →</span>
+            </button>
+          {/if}
           <button class="menu-card primary" style="--i: 0" on:click={() => { menuView = 'play'; fx('tap'); }}>
             <span class="mc-title">Play Now</span>
           </button>
@@ -1161,13 +1174,14 @@
 
           {#if matchResults}
             <!-- Results card -->
-            <h2>🏆 Results</h2>
-            <p class="cat-sub">{matchResults.pack_size} puzzle{matchResults.pack_size === 1 ? '' : 's'}{#if matchResults.wager > 0} · ${matchResults.wager?.toLocaleString()} · {matchResults.payout === 'podium' ? 'podium 3·2·1' : 'winner-take-all'}{/if}</p>
+            {@const noSolve = (matchResults.participants ?? []).every((x) => (x.solved ?? 0) === 0)}
+            <h2>{noSolve ? '🤝 Tie' : '🏆 Results'}</h2>
+            <p class="cat-sub">{matchResults.pack_size} puzzle{matchResults.pack_size === 1 ? '' : 's'}{#if matchResults.wager > 0} · ${matchResults.wager?.toLocaleString()} · {matchResults.payout === 'podium' ? 'podium 3·2·1' : 'winner-take-all'}{/if}{#if noSolve && matchResults.wager > 0} · wager refunded{/if}</p>
             <div class="ch-list">
               {#each matchResults.participants as p, i}
                 <div class="ch-item">
                   <div class="ch-info">
-                    <span class="ch-vs">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + (i + 1)} {p.is_me ? 'You' : p.name}</span>
+                    <span class="ch-vs">{noSolve ? '🤝' : i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + (i + 1)} {p.is_me ? 'You' : p.name}</span>
                     <span class="ch-meta">{p.state === 'done' ? `solved ${p.solved ?? 0}/${matchResults.pack_size}` : p.state}</span>
                   </div>
                   <span class="ch-result">{p.spent != null ? '$' + p.spent.toLocaleString() + ' spent' : '—'}</span>
@@ -2232,6 +2246,20 @@
     box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
   }
   .mc-badge.gift { background: transparent; border: none; box-shadow: none; font-size: 1.1rem; top: -10px; right: -8px; }
+  /* home "you've been challenged" banner */
+  .invite-banner {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 13px 16px; border-radius: 14px; cursor: pointer; text-align: left;
+    background: linear-gradient(135deg, rgba(52,211,153,0.18), rgba(251,191,36,0.12));
+    border: 1px solid rgba(52,211,153,0.5);
+    animation: invitePulse 1.8s ease-in-out infinite;
+  }
+  @keyframes invitePulse { 0%,100% { box-shadow: 0 0 16px rgba(52,211,153,0.18); } 50% { box-shadow: 0 0 30px rgba(52,211,153,0.42); } }
+  .ib-icon { font-size: 1.6rem; }
+  .ib-text { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .ib-text strong { font-family: var(--font-display); font-weight: 800; font-size: 1rem; color: var(--text); }
+  .ib-text small { font-size: 0.78rem; color: var(--text-muted); }
+  .ib-play { font-family: var(--font-display); font-weight: 800; color: var(--brand-2); font-size: 0.9rem; white-space: nowrap; }
   /* Daily status chip on the Play Now card */
   .daily-chip {
     font-size: 0.68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap;
