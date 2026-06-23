@@ -23,6 +23,7 @@
   import { startMusic, stopMusic, musicEnabled, musicVolume, setMusicVolume, toggleMusic, TRACKS, currentTrackId, selectTrack } from '$lib/music.js';
   import PinGate from '$lib/components/PinGate.svelte';
   import { pinLocked, hasPinFor, clearPin, markUnlocked, sessionIsUnlocked } from '$lib/pin.js';
+  import { requirePin } from '$lib/pinConfirm.js';
   import { goto } from '$app/navigation';
 
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
@@ -702,6 +703,8 @@
     if (mbBusy) return;
     if (mbTarget === 'friend' && !mbOpponent.trim()) { mbMsg = 'Pick an opponent.'; return; }
     if (mbTarget === 'group' && !mbGroupId) { mbMsg = 'Pick a group.'; return; }
+    const w = Math.floor(Number(mbWager) || 0);
+    try { await requirePin(w > 0 ? `Enter challenge · $${w.toLocaleString()} wager` : 'Enter challenge'); } catch { return; }
     mbBusy = true; mbMsg = 'Creating…';
     const res = await startMatch({
       opponent: mbTarget === 'friend' ? mbOpponent.trim() : null,
@@ -726,6 +729,10 @@
   async function respondToMatch(m) {
     if (mbBusy) return;
     if (m.status === 'settled') { matchResults = await getMatch(m.id); return; }
+    // Accepting an invite commits your wager → confirm with PIN (resuming doesn't).
+    if (m.my_state === 'invited') {
+      try { await requirePin(m.wager > 0 ? `Enter challenge · $${Number(m.wager).toLocaleString()} wager` : 'Enter challenge'); } catch { return; }
+    }
     mbBusy = true;
     const ok = m.my_state === 'invited' ? await acceptAndPlayMatch(m.id) : await resumeMatch(m.id);
     mbBusy = false;
