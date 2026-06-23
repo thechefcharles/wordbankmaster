@@ -1,14 +1,15 @@
 <script>
   import { goto } from '$app/navigation';
-  import { toasts, dismissToast } from '$lib/stores/notificationStore.js';
+  import { toasts, dismissToast, requestInbox } from '$lib/stores/notificationStore.js';
   import { fx } from '$lib/sound.js';
 
   /** @param {any} t */
   function open(t) {
     fx('select');
     dismissToast(t.id);
-    // Challenge toasts (incoming + result) all live in the home Challenges inbox.
-    goto('/?challenges=1');
+    // Challenge toasts (incoming, result, sabotage, chat) all open the home Challenges inbox.
+    goto('/');
+    requestInbox();
   }
 </script>
 
