@@ -4,7 +4,7 @@
   import MatchDetailModal from '$lib/components/MatchDetailModal.svelte';
   import { track } from '$lib/analytics.js';
 
-  /** @type {'all'|'daily'|'climb'|'arcade'|'challenge'} */
+  /** @type {'all'|'daily'|'climb'|'challenge'} */
   let mode = $state('all');
   /** @type {'all'|'won'|'lost'|'tie'} */
   let result = $state('all');
@@ -25,7 +25,7 @@
 
   const MODES = [
     { k: 'all', label: 'All' }, { k: 'daily', label: '📅 Daily' },
-    { k: 'climb', label: '🎰 Cash Game' }, { k: 'arcade', label: '🎲 Arcade' },
+    { k: 'climb', label: '🎰 Cash Game' },
     { k: 'challenge', label: '⚔️ Versus' }
   ];
   const icon = (/** @type {string} */ m) =>

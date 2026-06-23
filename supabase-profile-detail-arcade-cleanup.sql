@@ -1,0 +1,69 @@
+-- Stats audit: Arcade is no longer a playable mode (the Play menu offers Daily /
+-- Cash Game / Free Play / Blitz-soon). Applied to prod via MCP migration
+-- `profile_detail_drop_arcade_fold_makeup`.
+--
+-- Changes to get_profile_detail():
+--   • Dropped the `arcade` block (it read dead profiles.highest_arcade_* columns).
+--   • Daily section now counts game_mode IN ('daily','makeup') — a make-up IS a
+--     daily, just played late, so it counts toward played / won / best× / fastest.
+--
+-- Front-end companion changes (not SQL): removed the 🎲 Arcade section from the
+-- Profile Stats tab and the Arcade filter tab from History. The History icon map
+-- keeps an 'arcade' → 🎲 fallback so legacy game_results rows still render.
+
+CREATE OR REPLACE FUNCTION public.get_profile_detail()
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE v_uid uuid := auth.uid(); p public.profiles; v_climb int;
+BEGIN
+  IF v_uid IS NULL THEN RETURN NULL; END IF;
+  PERFORM public._ensure_bank(v_uid);
+  SELECT * INTO p FROM public.profiles WHERE id = v_uid;
+  SELECT position INTO v_climb FROM public.climb_state WHERE user_id = v_uid;
+  RETURN jsonb_build_object(
+    'username', p.username, 'color', p.equipped_color, 'title', p.equipped_title,
+    'net_worth', COALESCE(p.bank,0), 'cash', COALESCE(p.bank,0),
+    'overall', (SELECT jsonb_build_object(
+        'puzzles_solved', COALESCE(sum(COALESCE(solved_count, CASE WHEN outcome='won' THEN 1 ELSE 0 END)),0),
+        'games_played', count(*), 'earned', COALESCE(sum(earned),0), 'spent', COALESCE(sum(spent),0),
+        'avg_multiple', round(avg(multiple_x100) FILTER (WHERE multiple_x100 IS NOT NULL))::int,
+        'best_multiple', max(multiple_x100), 'clean_solves', count(*) FILTER (WHERE clean))
+      FROM public.game_results WHERE user_id = v_uid),
+    -- Daily includes make-ups (a make-up IS a daily, just played late).
+    'daily', (SELECT jsonb_build_object(
+        'current_streak', COALESCE(p.current_win_streak,0), 'best_streak', COALESCE(p.highest_win_streak,0),
+        'played', count(*), 'won', count(*) FILTER (WHERE outcome='won'),
+        'best_multiple', max(multiple_x100), 'fastest_ms', min(time_ms) FILTER (WHERE outcome='won'))
+      FROM public.game_results WHERE user_id = v_uid AND game_mode IN ('daily','makeup')),
+    'cash_game', jsonb_build_object('position', COALESCE(v_climb,0)) ||
+      (SELECT jsonb_build_object('solved', count(*) FILTER (WHERE outcome='won'),
+        'earned', COALESCE(sum(earned) FILTER (WHERE outcome='won'),0),
+        'best_multiple', max(multiple_x100), 'fastest_ms', min(time_ms) FILTER (WHERE outcome='won'))
+       FROM public.game_results WHERE user_id = v_uid AND game_mode='climb'),
+    'challenges_1v1', (SELECT jsonb_build_object(
+        'wins', count(*) FILTER (WHERE outcome='won'), 'losses', count(*) FILTER (WHERE outcome='lost'),
+        'ties', count(*) FILTER (WHERE outcome='tie'), 'played', count(*),
+        'biggest_pot', COALESCE(max(earned) FILTER (WHERE outcome='won'),0))
+      FROM public.game_results WHERE user_id = v_uid AND game_mode='challenge' AND group_id IS NULL),
+    'challenges_group', (SELECT jsonb_build_object(
+        'played', count(*), 'wins', count(*) FILTER (WHERE rank = 1),
+        'podiums', count(*) FILTER (WHERE rank <= 3),
+        'biggest_pot', COALESCE(max(earned) FILTER (WHERE outcome='won'),0))
+      FROM public.game_results WHERE user_id = v_uid AND game_mode='challenge' AND group_id IS NOT NULL),
+    'categories', (SELECT COALESCE(jsonb_agg(jsonb_build_object('category', category, 'solves', solves, 'best_multiple', bm) ORDER BY solves DESC), '[]'::jsonb)
+      FROM (SELECT category, sum(COALESCE(solved_count, CASE WHEN outcome='won' THEN 1 ELSE 0 END)) AS solves, max(multiple_x100) AS bm
+            FROM public.game_results WHERE user_id = v_uid AND category IS NOT NULL
+            GROUP BY category HAVING sum(COALESCE(solved_count, CASE WHEN outcome='won' THEN 1 ELSE 0 END)) > 0) c),
+    'rivals', (SELECT COALESCE(jsonb_agg(jsonb_build_object(
+        'name', public._display_name(opponent_id), 'wins', wins, 'losses', losses, 'ties', ties) ORDER BY played DESC, wins DESC), '[]'::jsonb)
+      FROM (SELECT opponent_id, count(*) AS played,
+              count(*) FILTER (WHERE outcome='won') AS wins,
+              count(*) FILTER (WHERE outcome='lost') AS losses,
+              count(*) FILTER (WHERE outcome='tie') AS ties
+            FROM public.game_results
+            WHERE user_id = v_uid AND game_mode='challenge' AND opponent_id IS NOT NULL
+            GROUP BY opponent_id ORDER BY played DESC LIMIT 8) r)
+  );
+END; $function$;
