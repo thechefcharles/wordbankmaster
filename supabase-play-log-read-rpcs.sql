@@ -1,0 +1,30 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Play Log read side — history list, 1v1 head-to-head, challenge detail      ║
+-- ║  (migration: play_log_v2_read_rpcs — applied via MCP)                       ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Powers the /history page. Reads the enriched game_results (see supabase-play-log-v2.sql).
+--
+-- get_history(p_mode, p_result, p_category, p_opponent, p_group, p_since, p_until,
+--             p_sort, p_limit, p_offset) → TABLE
+--   Self-only (auth.uid()). Stackable filters; sort recent|net|multiple|fastest;
+--   offset pagination (limit capped 100). Joins daily_puzzles for puzzle_phrase
+--   (re-see the answer) + groups for group_name + _display_name for opponent_name.
+--   Client wrapper: getHistory(filters) in statsStore.js.
+--
+-- get_head_to_head(p_opponent) → jsonb { opponent_id, opponent_name, wins, losses,
+--   ties, total, last5:[{outcome,played_at,net}] } over game_mode='challenge' rows
+--   where opponent_id = p_opponent. No new table — pure query over the Play Log.
+--   Client: getHeadToHead(opponentId).
+--
+-- get_match_detail(p_match_id) → jsonb { match{...}, group_name, participants[
+--   {user_id,name,is_me,solved,score,state,rank} ordered by score], pack[
+--   {position,category,phrase}] }. Participants-only (returns NULL otherwise).
+--   Spoiler-safe: pack phrases are NULL until the match status='settled'.
+--   Client: getMatchDetail(matchId) → opened from a challenge row in /history.
+--
+-- All three GRANT EXECUTE TO authenticated. Full bodies applied via MCP; see git
+-- history / live definitions. Verified: get_history returns rows under jwt-impersonation.
+--
+-- NEXT (STATS_AND_HISTORY_DESIGN.md §8): public profile /u/[username] + H2H surface,
+--   group Compete tab, challenge "Results" inbox button → get_match_detail view,
+--   then activity feed. Competitive spent/earned still deferred (matches rank by score).
