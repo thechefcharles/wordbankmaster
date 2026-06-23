@@ -770,7 +770,7 @@
     else {
       mbMsg = res?.reason === 'no_opponent' ? 'No player with that username.'
         : res?.reason === 'insufficient' ? 'Not enough Cash for that wager.'
-        : res?.reason === 'min_wager' ? 'Minimum wager is $100.'
+        : res?.reason === 'min_wager' ? 'Minimum wager is $500 (or $0 for a friendly).'
         : res?.reason === 'self' ? "You can't challenge yourself."
         : res?.reason === 'not_member' ? "You're not in that group."
         : res?.reason === 'no_puzzles' ? 'No puzzles in those categories.'
@@ -1043,7 +1043,7 @@
           </button>
           <button class="account-ic" on:click={handleMenuMyAccount} title="My Account">👤</button>
         </div>
-        <img class="menu-mark spin" src="/logo-coin.png" alt="" width="84" height="84" />
+        <video class="menu-mark" src="/coin.mp4" poster="/coin-poster.jpg" autoplay loop muted playsinline disablepictureinpicture></video>
         <img class="menu-wordmark" src="/wordmark-slogan.png" alt="WordBank — Spend Less. Think More." />
       </div>
       {#if menuView === 'home'}
@@ -2132,10 +2132,12 @@
   .streak-chip.lit .sc-flame { filter: none; }
   .menu-mark {
     width: min(46vw, 172px);
+    aspect-ratio: 1;
     height: auto;
-    object-fit: contain;
+    object-fit: cover;
+    border-radius: 50%;
     margin-bottom: 4px;
-    filter: drop-shadow(0 0 26px rgba(251, 191, 36, 0.55)) drop-shadow(0 10px 40px rgba(251, 191, 36, 0.4));
+    box-shadow: 0 0 26px rgba(251, 191, 36, 0.55), 0 10px 44px rgba(251, 191, 36, 0.4);
   }
   /* Mario-style coin spin: flat horizontal flip (edge-on at 90°/270°) + a gentle bob */
   .menu-mark.spin { animation: coinSpin 2.6s linear infinite; will-change: transform; backface-visibility: visible; }
