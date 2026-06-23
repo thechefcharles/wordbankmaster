@@ -11,7 +11,7 @@
 --   state active|solved|stuck|complete).  RLS self-read.
 --
 -- _climb_puzzle_at(pos)  -- puzzle at a sequence position (null past the end).
--- _climb_bounty(pid)     -- round_to_$10( 0.65 × Σ distinct letter_cost ).
+-- _climb_bounty(pid)     -- round_to_$10( 0.85 × Σ distinct letter_cost ).  [v3.2; was 0.65]
 -- _climb_board(uid)      -- masked board (your real Cash IS the bankroll) +
 --   { climb:{bounty,heat,attempts,spent,position,stuck,last_gain,state} }.
 -- _climb_resolve(uid)    -- on solve: pay bounty × heat (once), state=solved,

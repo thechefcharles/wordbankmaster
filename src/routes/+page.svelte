@@ -314,7 +314,8 @@
   // ── Fold + broke-timer (Daily + Challenges) ──────────────────────────────
   // You're "broke" when you can't afford the cheapest still-buyable letter →
   // a 60s clock starts; guess it or you auto-Fold (lose the puzzle).
-  const LETTER_COSTS = { Q:30,W:50,E:140,R:120,T:120,Y:60,U:80,I:110,O:90,P:80,A:130,S:120,D:80,F:60,G:70,H:70,J:30,K:50,L:80,Z:40,X:40,C:80,V:50,B:60,N:100,M:70 };
+  // Mirror of the server-authoritative public.letter_cost() (economy v3.2: −25%, cheapest $20).
+  const LETTER_COSTS = { Q:20,W:40,E:100,R:90,T:90,Y:50,U:60,I:80,O:70,P:60,A:100,S:90,D:60,F:50,G:50,H:50,J:20,K:40,L:60,Z:30,X:30,C:60,V:40,B:50,N:80,M:50 };
   $: foldMode = ($gameStore.gameMode === 'daily' || $gameStore.gameMode === 'match');
   $: gameActive = $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost';
   $: isBroke = (() => {

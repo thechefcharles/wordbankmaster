@@ -8,8 +8,10 @@
 -- redundant with spend anyway). Same shape as the Climb bounty → Daily & Climb now
 -- consistent ("a puzzle is worth a % of its full-reveal cost").
 --
--- _daily_reward(pid) = GREATEST(100, $10-rounded 0.70 × Σ distinct letter_cost).
---   0.70 (vs the Climb's 0.65) since the Daily has no heat multiplier. KNOB.
+-- _daily_reward(pid) = GREATEST(100, $10-rounded 1.20 × Σ distinct letter_cost).
+--   [v3.2; was 0.70] k=1.20 > 1.0 → Daily is the forgiving paycheck (a solve always
+--   nets +); Climb stays steep at 0.85 (full reveal loses). KNOB. See
+--   supabase-economy-v3-2-rebalance.sql.
 -- _daily_live(spent, reward) → { spent, reward, net=reward−spent }.
 -- daily_start / _daily_resolve_and_return feed the fixed reward into live.
 -- _finalize_daily: credits the gross reward; game_results.score = NET PROFIT
