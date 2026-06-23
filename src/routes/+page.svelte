@@ -5,7 +5,7 @@
   import { get } from 'svelte/store';
 
   import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
-  import { getMyChallenges, getPowerups, getMyMatches, getMyGroups, getMatch } from '$lib/stores/statsStore.js';
+  import { getMyChallenges, getPowerups, getMyMatches, getMyGroups, getMatch, getMatchDetail } from '$lib/stores/statsStore.js';
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
@@ -33,6 +33,7 @@
   import Auth from '$lib/components/Auth.svelte';
   import Tutorial from '$lib/components/Tutorial.svelte';
   import PowerupTray from '$lib/components/PowerupTray.svelte';
+  import MatchDetailModal from '$lib/components/MatchDetailModal.svelte';
 
   export let data;
 
@@ -784,7 +785,7 @@
   /** @param {any} m */
   async function respondToMatch(m) {
     if (mbBusy) return;
-    if (m.status === 'settled') { matchResults = await getMatch(m.id); return; }
+    if (m.status === 'settled') { matchResults = { loading: true }; matchResults = await getMatchDetail(m.id); return; }
     // Accepting an invite commits your wager → confirm with PIN (resuming doesn't).
     if (m.my_state === 'invited') {
       try { await requirePin(m.wager > 0 ? `Enter challenge · $${Number(m.wager).toLocaleString()} wager` : 'Enter challenge'); } catch { return; }
@@ -1174,26 +1175,9 @@
       <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Challenge Friends">
         <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showChallenges = false}></button>
         <div class="modal-content main-menu-modal ch-modal">
-          <button class="close-btn" on:click={() => { if (matchResults) matchResults = null; else showChallenges = false; }}>❌</button>
+          <button class="close-btn" on:click={() => showChallenges = false}>❌</button>
 
-          {#if matchResults}
-            <!-- Results card -->
-            {@const noSolve = (matchResults.participants ?? []).every((x) => (x.solved ?? 0) === 0)}
-            <h2>{noSolve ? '🤝 Tie' : '🏆 Results'}</h2>
-            <p class="cat-sub">{matchResults.pack_size} puzzle{matchResults.pack_size === 1 ? '' : 's'}{#if matchResults.wager > 0} · ${matchResults.wager?.toLocaleString()} · {matchResults.payout === 'podium' ? 'podium 3·2·1' : 'winner-take-all'}{/if}{#if noSolve && matchResults.wager > 0} · wager refunded{/if}</p>
-            <div class="ch-list">
-              {#each matchResults.participants as p, i}
-                <div class="ch-item">
-                  <div class="ch-info">
-                    <span class="ch-vs">{noSolve ? '🤝' : i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + (i + 1)} {p.is_me ? 'You' : p.name}</span>
-                    <span class="ch-meta">{p.state === 'done' ? `solved ${p.solved ?? 0}/${matchResults.pack_size}` : p.state}</span>
-                  </div>
-                  <span class="ch-result">{p.spent != null ? '$' + p.spent.toLocaleString() + ' spent' : '—'}</span>
-                </div>
-              {/each}
-            </div>
-            <button class="ch-create" on:click={() => matchResults = null} style="width:100%;margin-top:0.8rem;">Back</button>
-          {:else}
+          {#if true}
             <h2>⚔️ Challenge Friends</h2>
             <p class="cat-sub">Build a match — a pack of puzzles vs a friend or a group. Same puzzles for everyone.</p>
 
@@ -1284,6 +1268,9 @@
         </div>
       </div>
     {/if}
+
+    <!-- Settled-challenge results (shared with /history) -->
+    <MatchDetailModal detail={matchResults} on:close={() => matchResults = null} />
 
     <!-- 🔔 Notifications panel -->
     {#if showNotifications}

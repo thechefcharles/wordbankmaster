@@ -16,11 +16,15 @@
 --   where opponent_id = p_opponent. No new table — pure query over the Play Log.
 --   Client: getHeadToHead(opponentId).
 --
--- get_match_detail(p_match_id) → jsonb { match{...}, group_name, participants[
---   {user_id,name,is_me,solved,score,state,rank} ordered by score], pack[
+-- get_match_detail(p_match_id) → jsonb { match{...,budget}, group_name, participants[
+--   {user_id,name,is_me,solved,score,spent,state,rank} ordered by score], pack[
 --   {position,category,phrase}] }. Participants-only (returns NULL otherwise).
+--   spent = GREATEST(0, budget − bankroll), budget = max(wager,500) (matches get_match).
 --   Spoiler-safe: pack phrases are NULL until the match status='settled'.
---   Client: getMatchDetail(matchId) → opened from a challenge row in /history.
+--   Client: getMatchDetail(matchId) → shared MatchDetailModal.svelte, opened from a
+--   challenge row in /history AND the challenge inbox "Results" button.
+--   (migrations: match_detail_add_spent, fix_match_detail_window_in_agg — the latter
+--    moves rank() into a subquery; window fns can't nest inside jsonb_agg, a runtime bug.)
 --
 -- All three GRANT EXECUTE TO authenticated. Full bodies applied via MCP; see git
 -- history / live definitions. Verified: get_history returns rows under jwt-impersonation.

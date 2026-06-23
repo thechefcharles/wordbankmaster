@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { getHistory, getMatchDetail } from '$lib/stores/statsStore.js';
+  import MatchDetailModal from '$lib/components/MatchDetailModal.svelte';
   import { track } from '$lib/analytics.js';
 
   /** @type {'all'|'daily'|'climb'|'arcade'|'challenge'} */
@@ -21,9 +22,8 @@
 
   /** which solo row is expanded (id) */
   let openRow = $state('');
-  /** challenge detail modal */
+  /** challenge detail modal (shared MatchDetailModal) */
   let detail = $state(/** @type {any} */ (null));
-  let detailLoading = $state(false);
 
   const MODES = [
     { k: 'all', label: 'All' }, { k: 'daily', label: '📅 Daily' },
@@ -62,10 +62,9 @@
   /** @param {any} r */
   async function openDetail(r) {
     if (r.game_mode === 'challenge' && r.match_id) {
-      detailLoading = true; detail = { loading: true, row: r };
+      detail = { loading: true };
       const d = await getMatchDetail(r.match_id);
-      detail = d ? { ...d, row: r } : null;
-      detailLoading = false;
+      detail = d || null;
       if (!d) error = 'Could not load that challenge.';
     } else {
       openRow = openRow === r.id ? '' : r.id;
@@ -156,49 +155,8 @@
   {/if}
 </main>
 
-<!-- Challenge detail -->
-{#if detail}
-  <div class="modal-overlay" role="button" tabindex="0"
-       onclick={() => detail = null} onkeydown={(e) => { if (e.key === 'Escape') detail = null; }}>
-    <div class="modal" role="dialog" tabindex="0" onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>
-      <button class="x" onclick={() => detail = null}>✕</button>
-      {#if detail.loading}
-        <p class="msg">Loading…</p>
-      {:else}
-        <h2 class="m-title">⚔️ {detail.group_name || (detail.row?.opponent_name ? '@' + detail.row.opponent_name : 'Challenge')}</h2>
-        <p class="m-sub">
-          {detail.match?.pack_size} puzzle{detail.match?.pack_size === 1 ? '' : 's'}
-          · {detail.match?.payout === 'podium' ? 'podium' : 'winner-take-all'}
-          {#if Number(detail.match?.wager) > 0}· ${detail.match.wager} buy-in{:else}· friendly{/if}
-          {#if detail.match?.status !== 'settled'}· <em>in progress</em>{/if}
-        </p>
-
-        <div class="standings">
-          {#each (detail.participants || []) as p}
-            <div class="st-row" class:me={p.is_me}>
-              <span class="st-rank">{p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : '#' + p.rank}</span>
-              <span class="st-name">{p.is_me ? 'You' : '@' + (p.name || 'player')}</span>
-              <span class="st-meta">solved {p.solved ?? 0}/{detail.match?.pack_size} · {p.score ?? 0} pts</span>
-            </div>
-          {/each}
-        </div>
-
-        {#if detail.pack?.length}
-          <div class="pack">
-            <div class="pack-h">Puzzles</div>
-            {#each detail.pack as pk}
-              <div class="pk-row">
-                <span class="pk-pos">{pk.position + 1}</span>
-                <span class="pk-cat">{pk.category}</span>
-                <span class="pk-ans">{pk.phrase ? '“' + pk.phrase + '”' : '🔒'}</span>
-              </div>
-            {/each}
-          </div>
-        {/if}
-      {/if}
-    </div>
-  </div>
-{/if}
+<!-- Challenge detail (shared with the challenge inbox) -->
+<MatchDetailModal {detail} on:close={() => detail = null} />
 
 <style>
   .h-page { max-width: 560px; margin: 0 auto; padding: 16px 14px 60px; }
@@ -240,26 +198,4 @@
 
   .msg { color: var(--text-muted); text-align: center; padding: 24px 0; }
   .msg.err { color: #fb7185; }
-
-  .modal-overlay { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; padding: 18px;
-    background: rgba(5,5,5,0.78); backdrop-filter: blur(4px); }
-  .modal { width: 100%; max-width: 440px; max-height: 86vh; overflow-y: auto; position: relative;
-    background: var(--surface-strong); border: 1px solid var(--border-strong); border-radius: var(--r-lg); padding: 20px; }
-  .x { position: absolute; top: 12px; right: 14px; background: none; border: none; color: var(--text-muted); font-size: 1rem; cursor: pointer; }
-  .m-title { font-family: var(--font-display); font-size: 1.25rem; margin: 0 0 4px; }
-  .m-sub { color: var(--text-faint); font-size: 0.8rem; margin: 0 0 16px; }
-
-  .standings { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
-  .st-row { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: var(--r-sm); background: var(--surface); }
-  .st-row.me { background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.3); }
-  .st-rank { flex: 0 0 28px; font-weight: 700; }
-  .st-name { flex: 1; font-weight: 700; color: var(--text); }
-  .st-meta { color: var(--text-faint); font-size: 0.76rem; }
-
-  .pack { border-top: 1px solid var(--border); padding-top: 12px; }
-  .pack-h { color: var(--text-faint); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
-  .pk-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 0.84rem; }
-  .pk-pos { flex: 0 0 20px; color: var(--text-faint); }
-  .pk-cat { flex: 0 0 auto; color: var(--text-muted); font-size: 0.74rem; }
-  .pk-ans { color: var(--gold); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
