@@ -23,7 +23,7 @@ export const GET = async ({ url, cookies }) => {
             cookies.set(name, value, {
               ...options,
               path: '/',
-              httpOnly: true,
+              httpOnly: false, // browser Supabase client must read the session via document.cookie
               sameSite: 'lax',
               secure: import.meta.env.PROD
             });

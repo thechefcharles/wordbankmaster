@@ -32,7 +32,10 @@ export const GET = async ({ url, cookies }) => {
             cookies.set(name, value, {
               ...options,
               path: '/',
-              httpOnly: true,
+              // MUST be JS-readable: the app reads the session with the BROWSER
+              // Supabase client (document.cookie). httpOnly here = the session is
+              // set but invisible to the app → "No session" after Google sign-in.
+              httpOnly: false,
               sameSite: 'lax',
               secure: import.meta.env.PROD
             });
