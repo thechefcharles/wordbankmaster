@@ -58,23 +58,6 @@ export async function getDailyStatus(userId) {
   };
 }
 
-/**
- * Today's 3 daily quests (same for everyone) + progress + reward state.
- * @returns {Promise<{ quests:{id:string,emoji:string,label:string,target:number,progress:number,done:boolean}[], all_done:boolean, reward_claimed:boolean, resets_in_seconds:number }>}
- */
-export async function getDailyQuests() {
-  const { data, error } = await supabase.rpc('get_daily_quests');
-  if (error || !data) {
-    if (error) console.error('❌ Error fetching daily quests:', error);
-    return { quests: [], all_done: false, reward_claimed: false, resets_in_seconds: 0 };
-  }
-  return {
-    quests: Array.isArray(data.quests) ? data.quests : [],
-    all_done: !!data.all_done,
-    reward_claimed: !!data.reward_claimed,
-    resets_in_seconds: data.resets_in_seconds ?? 0
-  };
-}
 
 /** My Cash: balance (= Net Worth) and recent ledger. (v3: loans removed.)
  * @returns {Promise<{ bank:number, net_worth:number, ledger:any[] }>} */
@@ -260,13 +243,6 @@ export async function equipCosmetic(id) {
 export async function unequipCosmetic(kind) {
   const { data, error } = await supabase.rpc('unequip_cosmetic', { p_kind: kind });
   if (error || !data) { if (error) console.error('❌ unequip_cosmetic:', error); return { ok: false }; }
-  return data;
-}
-
-/** Claim the all-quests-done reward (pays Bank). @returns {Promise<{ok:boolean, reason?:string, amount?:number, bank?:number}>} */
-export async function claimQuestReward() {
-  const { data, error } = await supabase.rpc('claim_quest_reward');
-  if (error || !data) { if (error) console.error('❌ claim_quest_reward:', error); return { ok: false }; }
   return data;
 }
 
