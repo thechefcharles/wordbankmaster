@@ -104,10 +104,11 @@ h1, h2, h3, h4 {
 
 button { font-family: inherit; }
 
-/* Press = the button turns GOLD (fill + glow), app-wide. Works on touch (phones)
-   too — the layout adds a touchstart listener so iOS applies :active.
+/* Press = a brief GOLD flash, driven by a real click/tap (the layout toggles
+   .gold-flash on click). Using click — not :active — means scrolling or brushing
+   a button on a phone never lights it up; only a genuine activation does.
    Component rules (.menu-card, .key) layer a stronger version on top. */
-button:active {
+button.gold-flash {
   outline: none;
   border-color: #fde047;
   background: linear-gradient(135deg, #fde047, #f59e0b);
