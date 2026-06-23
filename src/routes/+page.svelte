@@ -9,7 +9,7 @@
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getDailyGhost, getDailyQuests, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getDailyGhost, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest } from '$lib/stores/statsStore.js';
   import { unreadCount, notifications, markAllNotificationsRead, refreshNotifications } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
@@ -58,14 +58,6 @@
   let dailyStatus = /** @type {{ has_played_today: boolean, last_daily_won: boolean|null, daily_bankroll: number, arcade_bankroll: number, current_streak: number, streak_freezes: number, today_score: number } | null} */ (null);
   $: dailyDone = menuDailyPlayed && !(savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost');
   $: dailyInProgress = savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost';
-  /** Daily-quest progress for the menu card. */
-  let questProgress = { done: 0, total: 3, all_done: false, reward_claimed: false };
-  async function refreshQuests() {
-    try {
-      const q = await getDailyQuests();
-      questProgress = { done: q.quests.filter((x) => x.done).length, total: q.quests.length || 3, all_done: q.all_done, reward_claimed: q.reward_claimed };
-    } catch { /* non-fatal */ }
-  }
   /** Net Worth for the menu chip. */
   let netWorth = /** @type {number|null} */ (null);
   async function refreshBank() {
@@ -158,7 +150,6 @@
       getDailyStatus(session.user.id)
         .then((ds) => { dailyStatus = ds; menuDailyPlayed = ds.has_played_today; })
         .catch((e) => console.error('daily status:', e));
-      refreshQuests();
       refreshBank();
       refreshChallengeCount();
       // First-run username gate: prompt if this account hasn't claimed one yet.
@@ -863,7 +854,6 @@
     showMainMenu = true;
     // Refresh the daily completion indicator (e.g. just finished today's daily).
     getDailyStatus(currentUser.id).then((s) => { dailyStatus = s; menuDailyPlayed = s.has_played_today; });
-    refreshQuests();
     refreshBank();
     refreshChallengeCount();
     refreshNotifications();
@@ -1088,7 +1078,6 @@
           </button>
           <button class="menu-card" style="--i: 2" on:click={() => { menuView = 'progress'; fx('tap'); }}>
             <span class="mc-title">Progress</span>
-            {#if questProgress.all_done && !questProgress.reward_claimed}<span class="mc-badge gift" title="Quest reward ready">🎁</span>{/if}
           </button>
           <button class="menu-card" style="--i: 3" on:click={() => goto('/shop')}>
             <span class="mc-title">Shop</span>
@@ -1146,24 +1135,14 @@
           <h2 class="sub-title">Progress</h2>
         </div>
         <div class="main-menu-buttons stagger">
-          <button class="menu-card" style="--i: 0" on:click={handleMenuLeaderboard}>
-            <span class="mc-title">Leaderboard</span>
+          <button class="menu-card" style="--i: 0" on:click={() => goto('/profile')}>
+            <span class="mc-title">You</span>
           </button>
-          <button class="menu-card" style="--i: 1" on:click={() => goto('/badges')}>
-            <span class="mc-title">Achievements</span>
+          <button class="menu-card" style="--i: 1" on:click={handleMenuLeaderboard}>
+            <span class="mc-title">Ranks</span>
           </button>
-          <button class="menu-card" style="--i: 2" on:click={() => goto('/quests')}>
-            <span class="mc-title">Daily Quests</span>
-            {#if questProgress.all_done && !questProgress.reward_claimed}<span class="mc-badge gift">🎁</span>{:else}<span class="mc-stat">{questProgress.done}/{questProgress.total}</span>{/if}
-          </button>
-          <button class="menu-card" style="--i: 3" on:click={() => goto('/profile')}>
-            <span class="mc-title">Stats</span>
-          </button>
-          <button class="menu-card" style="--i: 4" on:click={() => goto('/history')}>
-            <span class="mc-title">History</span>
-          </button>
-          <button class="menu-card" style="--i: 5" on:click={() => goto('/activity')}>
-            <span class="mc-title">Activity</span>
+          <button class="menu-card" style="--i: 2" on:click={() => goto('/activity')}>
+            <span class="mc-title">Feed</span>
           </button>
         </div>
       {/if}

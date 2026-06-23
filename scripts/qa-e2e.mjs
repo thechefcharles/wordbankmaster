@@ -67,7 +67,7 @@ try {
   (await page.locator('.menu-card').count()) > 0 ? ok('reach-menu') : bad('reach-menu', 'no menu cards');
 
   // ---------- 4. Page sweep (console-error / hang detection) ----------
-  const pages = ['/history', '/activity', '/leaderboard', '/groups', '/profile', '/badges', '/quests', '/bank', '/streak', '/friends', '/shop'];
+  const pages = ['/history', '/activity', '/leaderboard', '/groups', '/profile', '/badges', '/bank', '/streak', '/friends', '/shop'];
   for (const path of pages) {
     label = path;
     const before = errors.length;
