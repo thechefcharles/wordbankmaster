@@ -9,7 +9,7 @@
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getDailyGhost, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getDailyGhost, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, getPersonalBests } from '$lib/stores/statsStore.js';
   import { unreadCount, notifications, markAllNotificationsRead, refreshNotifications, inboxRequest } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
@@ -304,6 +304,26 @@
   // Free Play live: clean status + the trickle you'd earn.
   $: freeLive = ($gameStore.gameMode === 'freeplay' && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost')
     ? { clean: ($gameStore.incorrectLetters?.length ?? 0) === 0 } : null;
+
+  // Solo "beat your best" goal line: your lowest winning spend for this mode.
+  /** @type {Record<string, number>|null} */
+  let personalBests = null;
+  $: if (browser && loggedIn && hasInitialized && personalBests === null) {
+    personalBests = {}; // guard against refetch while the promise resolves
+    getPersonalBests().then((b) => personalBests = b);
+  }
+  $: soloBest = (() => { const v = personalBests?.[$gameStore.gameMode]; return typeof v === 'number' ? v : null; })();
+  $: soloSpent = isClimb ? (climbLive?.spent ?? null) : (dLive ? dLive.spent : null);
+  $: showGoalLine = soloBest !== null && soloSpent !== null
+    && ($gameStore.gameMode === 'daily' || $gameStore.gameMode === 'makeup' || isClimb);
+  // Refresh the best after each solo win (e.g. a Cash Game run improves it mid-session).
+  let _prevSoloGS = '';
+  function refreshBestOnWin(/** @type {string} */ gs, /** @type {string} */ mode) {
+    const solo = mode === 'daily' || mode === 'makeup' || mode === 'climb';
+    if (gs === 'won' && _prevSoloGS !== 'won' && solo && personalBests) getPersonalBests().then((b) => personalBests = b);
+    _prevSoloGS = gs;
+  }
+  $: refreshBestOnWin($gameStore.gameState, $gameStore.gameMode);
 
   // ── Fold + broke-timer (Daily + Challenges) ──────────────────────────────
   // You're "broke" when you can't afford the cheapest still-buyable letter →
@@ -1644,6 +1664,11 @@
       {:else if freeLive}
         <p class="live-line">Solve {freeLive.clean ? 'clean ' : ''}to win <b>+${freeLive.clean ? 50 : 25}</b></p>
       {/if}
+      {#if showGoalLine}
+        <p class="goal-line" class:beating={soloSpent <= soloBest}>
+          {#if soloSpent <= soloBest}🔥 Under your best{:else}🎯 Beat your best{/if}: <b>{soloBest === 0 ? 'free' : '$' + soloBest.toLocaleString()}</b>
+        </p>
+      {/if}
     </section>
 
     <!-- 💎 Arcade power-up tray (earned this run) -->
@@ -2789,6 +2814,9 @@
   .live-line { margin: 9px auto 0; text-align: center; font-size: 0.82rem; color: var(--text-muted); }
   .live-line b { display: inline-block; font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; color: var(--brand-2); }
   .live-line b.lose { color: #fb7185; }
+  .goal-line { margin: 6px auto 0; text-align: center; font-size: 0.76rem; font-weight: 600; color: var(--text-faint); }
+  .goal-line b { font-family: var(--font-display); font-weight: 800; color: var(--brand-2); font-variant-numeric: tabular-nums; }
+  .goal-line.beating, .goal-line.beating b { color: #7ee0a8; }
 
   /* Cash Game (Climb) gamified HUD */
   .climb-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; max-width: 360px; margin: 0 auto 14px; }

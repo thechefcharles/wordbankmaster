@@ -68,6 +68,14 @@ export async function getBank() {
     ledger: Array.isArray(data.ledger) ? data.ledger : [] };
 }
 
+/** Lowest winning spend per mode (e.g. { daily: 20, climb: 60 }) — powers the
+ *  solo "beat your best" goal line. @returns {Promise<Record<string, number>>} */
+export async function getPersonalBests() {
+  const { data, error } = await supabase.rpc('get_personal_bests');
+  if (error) { console.error('❌ get_personal_bests:', error); return {}; }
+  return data && typeof data === 'object' ? data : {};
+}
+
 /** My chosen username (null until claimed). @returns {Promise<string|null>} */
 export async function getMyUsername() {
   const { data, error } = await supabase.rpc('get_my_username');
