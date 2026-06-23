@@ -1,0 +1,24 @@
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  Make-up daily now mirrors the regular daily (migration: makeup_mirror_daily_real_cash) ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- Bugs reported: make-up (play a past day from the streak calendar) showed no clue and
+-- started with a sandboxed $1000 instead of the player's real Cash.
+--
+-- Fix — make-up = playing that day's daily for real:
+--   • makeup_start: session bankroll seeded 0 (was 1000); board returns the player's REAL
+--     bank (like daily_start), plus the puzzle `clue` and a `live` {spent,reward,net} HUD.
+--   • makeup_buy_letter / makeup_reveal: spend REAL Cash (profiles.bank), track s.spent
+--     (was the fabricated s.bankroll).
+--   • _makeup_resolve_and_return: on the first transition to won, pays the puzzle reward
+--     ('makeup_reward') + records the category solve + writes a Play Log row with
+--     game_mode='makeup'. Loss = real bank < 20. Returns real bank + live + clue.
+--
+-- Stats impact (verified): a solved make-up writes ONE game_results row, game_mode='makeup' →
+--   counts in puzzles_solved / History / efficiency, but is EXCLUDED from today's daily
+--   leaderboard (which filters game_mode='daily') and does NOT touch the daily streak.
+--   Verified live (mka, bank 2500): solve "The Ice Age" → bank 3140 (+640 reward, $0 spent),
+--   play_log [{makeup, won, earned 640, solved 1}], puzzles_solved 1, daily_rows 0.
+--
+-- Client: reconcileMakeupBoard sets `clue` (GameStore.js); dLive HUD extended to make-up;
+--   make-up banner copy updated ("earns the puzzle's Cash"); History icon 🗓️ for makeup.
+-- Full bodies applied via MCP; see git history.

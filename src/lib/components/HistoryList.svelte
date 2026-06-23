@@ -29,7 +29,7 @@
     { k: 'challenge', label: '⚔️ Versus' }
   ];
   const icon = (/** @type {string} */ m) =>
-    m === 'daily' ? '📅' : m === 'climb' ? '🎰' : m === 'arcade' ? '🎲' : m === 'challenge' ? '⚔️' : '🎮';
+    m === 'daily' ? '📅' : m === 'makeup' ? '🗓️' : m === 'climb' ? '🎰' : m === 'arcade' ? '🎲' : m === 'challenge' ? '⚔️' : '🎮';
   const money = (/** @type {any} */ n) => (Number(n) < 0 ? '−$' : '+$') + Math.abs(Math.round(Number(n ?? 0))).toLocaleString();
   const mult = (/** @type {any} */ x) => x ? (Number(x) / 100).toFixed(1) + '×' : '';
   const when = (/** @type {string} */ t) => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
