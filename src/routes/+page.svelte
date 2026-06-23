@@ -22,7 +22,7 @@
   import { soundEnabled, toggleSound, fx } from '$lib/sound.js';
   import { startMusic, stopMusic, musicEnabled, musicVolume, setMusicVolume, toggleMusic, TRACKS, currentTrackId, selectTrack } from '$lib/music.js';
   import PinGate from '$lib/components/PinGate.svelte';
-  import { pinLocked, hasPinFor, clearPin } from '$lib/pin.js';
+  import { pinLocked, hasPinFor, clearPin, markUnlocked, sessionIsUnlocked } from '$lib/pin.js';
   import { goto } from '$app/navigation';
 
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
@@ -134,7 +134,9 @@
       // Device PIN gate (approach A): if a PIN is set on this device, lock until it's
       // entered; otherwise mark that we should prompt to set one (after username).
       sessionUid = session.user.id;
-      if (hasPinFor(sessionUid)) pinLocked.set(true);
+      // Lock only on a cold open (close → reopen), not on in-app navigation back
+      // to the menu — sessionIsUnlocked() persists the unlock for this app session.
+      if (hasPinFor(sessionUid)) { if (!sessionIsUnlocked()) pinLocked.set(true); }
       else pinNotSet = true;
 
       // Make-up daily launched from the streak calendar → drop straight into the board.
@@ -222,8 +224,8 @@
   // PIN gate: unlock screen for returning users; set-PIN after username for new ones.
   $: showPinUnlock = loggedIn && hasInitialized && $pinLocked;
   $: showPinSetup = loggedIn && hasInitialized && !$pinLocked && pinNotSet && !needsUsername;
-  function onPinUnlocked() { pinLocked.set(false); }
-  function onPinSet() { pinNotSet = false; }
+  function onPinUnlocked() { markUnlocked(); pinLocked.set(false); }
+  function onPinSet() { markUnlocked(); pinNotSet = false; }
   function onPinLogout() { clearPin(); pinLocked.set(false); pinNotSet = false; handleLogout(); }
   // Lobby music: play in the menu only — not while locked, setting a PIN, or in-game.
   $: if (browser) { (loggedIn && hasInitialized && showMainMenu && !showPinUnlock && !showPinSetup) ? startMusic() : stopMusic(); }

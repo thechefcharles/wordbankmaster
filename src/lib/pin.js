@@ -58,11 +58,21 @@ export function tooManyFails() {
   return pinFails() >= MAX_PIN_FAILS;
 }
 
+// Session unlock flag (sessionStorage): survives in-app navigation + refresh, but
+// is cleared when the app/tab is closed. So the PIN is asked on a cold open — not
+// every time you return to the menu.
+const UNLOCKED_KEY = 'wb_unlocked';
+export function markUnlocked() { if (browser) sessionStorage.setItem(UNLOCKED_KEY, '1'); }
+export function sessionIsUnlocked() { return !!(browser && sessionStorage.getItem(UNLOCKED_KEY) === '1'); }
+/** Force a re-lock this session (e.g. before a purchase). */
+export function relock() { if (browser) sessionStorage.removeItem(UNLOCKED_KEY); pinLocked.set(true); }
+
 /** Forget the PIN (forgot-PIN / logout). Keeps the remembered name unless full=true. */
 export function clearPin(full = false) {
   if (!browser) return;
   localStorage.removeItem(HASH_KEY);
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem(FAILS_KEY);
+  sessionStorage.removeItem(UNLOCKED_KEY);
   if (full) localStorage.removeItem(NAME_KEY);
 }
