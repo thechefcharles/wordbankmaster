@@ -9,7 +9,7 @@
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getDailyGhost, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, getPersonalBests } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getDailyGhost, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getPersonalBests } from '$lib/stores/statsStore.js';
   import { unreadCount, notifications, markAllNotificationsRead, refreshNotifications, inboxRequest } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
@@ -219,8 +219,53 @@
   // PIN gate: unlock screen for returning users; set-PIN after username for new ones.
   $: showPinUnlock = loggedIn && hasInitialized && $pinLocked;
   $: showPinSetup = loggedIn && hasInitialized && !$pinLocked && pinNotSet && !needsUsername;
-  // A pending challenge invite to surface prominently on the home menu.
-  $: pendingInvite = (myMatches ?? []).find((m) => m.my_state === 'invited' && m.status === 'open');
+  // ===== Home "act-now" banner: the single most-urgent thing needing me =====
+  /** @type {any[]} incoming friend requests [{id,name,username}] */
+  let friendRequests = [];
+  /** @param {any} m */
+  function expiryLabel(m) {
+    if (!m?.settles_at) return '';
+    const ms = new Date(m.settles_at).getTime() - Date.now();
+    if (ms <= 0) return 'expiring';
+    const h = ms / 3600000;
+    if (h < 1) return 'expires in ' + Math.max(1, Math.round(ms / 60000)) + 'm';
+    if (h < 24) return 'expires in ' + Math.round(h) + 'h';
+    return 'expires in ' + Math.round(h / 24) + 'd';
+  }
+  // Challenges where it's my turn, soonest-to-expire first.
+  $: turnMatches = (myMatches ?? [])
+    .filter((m) => m.status === 'open' && m.my_state !== 'done')
+    .slice()
+    .sort((a, b) => new Date(a.settles_at || 0).getTime() - new Date(b.settles_at || 0).getTime());
+  // Priority: your-turn challenge → friend request → "challenge a friend" CTA.
+  $: actNow = (() => {
+    if (turnMatches.length) {
+      const m = turnMatches[0];
+      const invited = m.my_state === 'invited';
+      const exp = expiryLabel(m);
+      return { kind: 'match', icon: '⚔️',
+        title: invited ? `${m.host} challenged you` : `Your turn vs ${m.host}`,
+        sub: `${m.pack_size} puzzle${m.pack_size === 1 ? '' : 's'}${m.wager > 0 ? ' · $' + m.wager.toLocaleString() : ''}${exp ? ' · ' + exp : ''}`,
+        cta: (invited ? 'Play' : 'Resume') + ' →',
+        more: (turnMatches.length - 1) + friendRequests.length,
+        primary: () => respondToMatch(m), moreAction: () => openChallenges() };
+    }
+    if (friendRequests.length) {
+      const r = friendRequests[0];
+      return { kind: 'friend', icon: '👋',
+        title: `${r.name || '@' + r.username} wants to be friends`, sub: 'Tap to accept',
+        cta: 'Accept →', more: friendRequests.length - 1,
+        primary: () => acceptFriend(r), moreAction: () => goto('/friends') };
+    }
+    return { kind: 'empty', icon: '⚔️', title: 'Challenge a friend', sub: '', cta: '→',
+      more: 0, primary: () => openChallenges('new'), moreAction: null };
+  })();
+  /** @param {any} r */
+  async function acceptFriend(r) {
+    fx('tap');
+    await respondFriendRequest(r.id, true);
+    await refreshChallengeCount();
+  }
   function onPinUnlocked() { markUnlocked(); pinLocked.set(false); }
   function onPinSet() { markUnlocked(); clearPinSkipped(); pinNotSet = false; }
   function onPinSkip() { markUnlocked(); markPinSkipped(sessionUid); pinNotSet = false; } // remember the skip so it doesn't nag every open
@@ -800,22 +845,25 @@
   let mbSearchTimer;
   const WINDOWS = [{ s: 3600, l: '1 hour' }, { s: 21600, l: '6 hours' }, { s: 86400, l: '24 hours' }, { s: 172800, l: '48 hours' }, { s: 604800, l: '1 week' }];
 
-  /** Count of matches that still need my action, for the menu badge. */
+  /** Refresh the data behind the home act-now banner (matches + friend requests). */
   async function refreshChallengeCount() {
     if (!get(user)?.id) return;
     try {
-      myMatches = await getMyMatches();
+      const [matches, reqs] = await Promise.all([getMyMatches(), listFriendRequests()]);
+      myMatches = matches;
+      friendRequests = reqs.incoming ?? [];
       challengeCount = myMatches.filter((m) => m.status === 'open' && m.my_state !== 'done').length;
-      friendReqCount = await getFriendRequestCount();
+      friendReqCount = friendRequests.length;
     } catch { /* non-fatal */ }
   }
-  async function openChallenges() {
+  /** @param {'inbox'|'new'} [forceTab] */
+  async function openChallenges(forceTab) {
     if (!get(user)?.id) return;
     mbMsg = ''; matchResults = null;
     showChallenges = true;
     [myMatches, myGroups] = await Promise.all([getMyMatches(), getMyGroups()]);
     challengeCount = myMatches.filter((m) => m.status === 'open' && m.my_state !== 'done').length;
-    chTab = myMatches.length ? 'inbox' : 'new'; // land on the list if you have any
+    chTab = forceTab ?? (myMatches.length ? 'inbox' : 'new'); // land on the list if you have any
   }
 
   // ===== Notifications panel (bell) =====
@@ -1135,22 +1183,25 @@
       </div>
       {#if menuView === 'home'}
         <div class="main-menu-buttons stagger">
-          {#if pendingInvite}
-            <button class="invite-banner" on:click={() => respondToMatch(pendingInvite)}>
-              <span class="ib-icon">⚔️</span>
-              <span class="ib-text">
-                <strong>{pendingInvite.host} challenged you!</strong>
-                <small>{pendingInvite.pack_size} puzzle{pendingInvite.pack_size === 1 ? '' : 's'}{#if pendingInvite.wager > 0} · ${pendingInvite.wager.toLocaleString()}{/if}</small>
+          <!-- 🎯 Act-now banner: the single most-urgent thing needing me -->
+          <div class="act-banner" class:cta={actNow.kind === 'empty'}>
+            <button class="ab-main" on:click={actNow.primary}>
+              <span class="ab-icon">{actNow.icon}</span>
+              <span class="ab-text">
+                <strong>{actNow.title}</strong>
+                {#if actNow.sub}<small>{actNow.sub}</small>{/if}
               </span>
-              <span class="ib-play">Play →</span>
+              <span class="ab-cta">{actNow.cta}</span>
             </button>
-          {/if}
+            {#if actNow.more > 0 && actNow.moreAction}
+              <button class="ab-more" on:click={actNow.moreAction} title="See all">+{actNow.more}</button>
+            {/if}
+          </div>
           <button class="menu-card primary" style="--i: 0" on:click={() => { menuView = 'play'; fx('tap'); }}>
             <span class="mc-title">Play Now</span>
           </button>
           <button class="menu-card" style="--i: 1" on:click={() => { menuView = 'challenge'; fx('tap'); }}>
             <span class="mc-title">Challenge Friends</span>
-            {#if challengeCount + friendReqCount > 0}<span class="mc-badge" title="{challengeCount} match{challengeCount === 1 ? '' : 'es'}, {friendReqCount} friend request{friendReqCount === 1 ? '' : 's'}">{challengeCount + friendReqCount}</span>{/if}
           </button>
           <button class="menu-card" style="--i: 2" on:click={() => { menuView = 'community'; fx('tap'); }}>
             <span class="mc-title">Community</span>
@@ -2367,19 +2418,33 @@
   }
   .mc-badge.gift { background: transparent; border: none; box-shadow: none; font-size: 1.1rem; top: -10px; right: -8px; }
   /* home "you've been challenged" banner */
-  .invite-banner {
-    display: flex; align-items: center; gap: 12px; width: 100%;
+  /* Home act-now banner: most-urgent item + optional "+N more" chip */
+  .act-banner { display: flex; align-items: stretch; gap: 8px; width: 100%; }
+  .ab-main {
+    flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px;
     padding: 13px 16px; border-radius: 14px; cursor: pointer; text-align: left;
-    background: linear-gradient(135deg, rgba(251, 191, 36,0.18), rgba(251,191,36,0.12));
-    border: 1px solid rgba(251, 191, 36,0.5);
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.18), rgba(251, 191, 36, 0.12));
+    border: 1px solid rgba(251, 191, 36, 0.5);
     animation: invitePulse 1.8s ease-in-out infinite;
   }
-  @keyframes invitePulse { 0%,100% { box-shadow: 0 0 16px rgba(251, 191, 36,0.18); } 50% { box-shadow: 0 0 30px rgba(251, 191, 36,0.42); } }
-  .ib-icon { font-size: 1.6rem; }
-  .ib-text { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-  .ib-text strong { font-family: var(--font-display); font-weight: 800; font-size: 1rem; color: var(--text); }
-  .ib-text small { font-size: 0.78rem; color: var(--text-muted); }
-  .ib-play { font-family: var(--font-display); font-weight: 800; color: var(--brand-2); font-size: 0.9rem; white-space: nowrap; }
+  @keyframes invitePulse { 0%,100% { box-shadow: 0 0 16px rgba(251, 191, 36, 0.18); } 50% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.42); } }
+  .ab-icon { font-size: 1.6rem; flex: none; }
+  .ab-text { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .ab-text strong { font-family: var(--font-display); font-weight: 800; font-size: 1rem; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ab-text small { font-size: 0.78rem; color: var(--text-muted); }
+  .ab-cta { font-family: var(--font-display); font-weight: 800; color: var(--brand-2); font-size: 0.9rem; white-space: nowrap; flex: none; }
+  .ab-more {
+    flex: none; padding: 0 14px; border-radius: 14px; cursor: pointer; white-space: nowrap;
+    border: 1px solid var(--border-strong); background: var(--surface);
+    color: var(--text-muted); font-family: var(--font-display); font-weight: 800; font-size: 0.82rem;
+  }
+  .ab-more:hover { border-color: var(--brand-2); color: var(--brand-2); }
+  /* Empty state = subtle CTA, no pulse/glow */
+  .act-banner.cta .ab-main {
+    background: var(--surface); border: 1px dashed var(--border-strong); animation: none;
+  }
+  .act-banner.cta .ab-text strong { font-weight: 700; color: var(--text-muted); }
   /* Daily status chip on the Play Now card */
   .daily-chip {
     font-size: 0.68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap;
