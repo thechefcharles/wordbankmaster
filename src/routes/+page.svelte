@@ -354,6 +354,8 @@
   // Free Play live: clean status + the trickle you'd earn.
   $: freeLive = ($gameStore.gameMode === 'freeplay' && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost')
     ? { clean: ($gameStore.incorrectLetters?.length ?? 0) === 0 } : null;
+  // Unified solo money hero (Daily · Makeup · Cash Game): net you keep if you solve now.
+  $: soloHero = climbLive ? { net: climbLive.net } : (dLive ? { net: dLive.net } : null);
 
 
   // ── Fold + broke-timer (Daily + Challenges) ──────────────────────────────
@@ -1638,20 +1640,20 @@
 
     <!-- ⚔️ Challenge match HUD -->
     {#if isMatch && matchInfo && !matchInfo.done}
-      <div class="climb-hud">
-        <div class="ch-cell"><span class="ch-val">{matchInfo.position}/{matchInfo.pack_size}</span><span class="ch-label">Puzzle</span></div>
-        {#if matchInfo.mode === 'blitz'}
+      {#if matchBlitz}
+        <div class="climb-hud">
+          <div class="ch-cell"><span class="ch-val">{matchInfo.position}/{matchInfo.pack_size}</span><span class="ch-label">Puzzle</span></div>
           <div class="ch-cell"><span class="ch-val ch-gold">{(matchInfo.total_score ?? 0).toLocaleString()}</span><span class="ch-label">Score</span></div>
-        {:else}
-          <div class="ch-cell"><span class="ch-val ch-gold">${(matchInfo.spent ?? 0).toLocaleString()}</span><span class="ch-label">Spent</span></div>
-        {/if}
-        {#if matchBlitz}
           <div class="ch-cell"><span class="ch-val">×{matchCombo}</span><span class="ch-label">Combo</span></div>
           <div class="ch-cell" class:hot={matchRemaining <= 10}><span class="ch-val">⏱️{matchRemaining}</span><span class="ch-label">Time</span></div>
+        </div>
+      {:else}
+        {#if matchInfo.pack_size > 1}<p class="match-pos">Puzzle {matchInfo.position}/{matchInfo.pack_size}</p>{/if}
+        {#if matchInfo.standing}
+          <StandingStrip standing={matchInfo.standing} spent={matchInfo.spent ?? 0} />
+        {:else}
+          <p class="live-line">Spent <b>${(matchInfo.spent ?? 0).toLocaleString()}</b> of ${(matchInfo.budget ?? 0).toLocaleString()} · 🏆 spend the least to win</p>
         {/if}
-      </div>
-      {#if matchInfo.standing}
-        <StandingStrip standing={matchInfo.standing} spent={matchInfo.spent ?? 0} />
       {/if}
       {#if (matchInfo.my_debuffs ?? []).length}
         <p class="debuff-banner">{(matchInfo.my_debuffs ?? []).map((/** @type {string} */ d) => DEBUFF_LABEL[d] ?? d).join(' · ')}</p>
@@ -1725,14 +1727,14 @@
       </div>
     {/if}
 
-    <!-- 💰 Bankroll Display -->
+    <!-- 💰 Money hero -->
     <section class="stats-section">
-      {#if isClimb && climbLive}
-        <!-- Cash Game: one bounty number = what you keep, ticking down as you spend -->
-        <div class="bounty-panel" class:loss={climbLive.net < 0}>
+      {#if soloHero}
+        <!-- Daily · Makeup · Cash Game: one number = what you keep, ticking down as you spend -->
+        <div class="bounty-panel" class:loss={soloHero.net < 0}>
           {#if hotHandFlash}<span class="hot-hand-flash">🔥 Hot Hand +$250</span>{/if}
-          <span class="bp-label">{climbLive.net >= 0 ? '🏆 Solve now to keep' : '⚠️ You’re losing money'}</span>
-          <span class="bp-amount">{climbLive.net >= 0 ? '$' : '−$'}{Math.abs(climbLive.net).toLocaleString()}</span>
+          <span class="bp-label">{soloHero.net >= 0 ? '🏆 Solve now to keep' : '⚠️ You’re losing money'}</span>
+          <span class="bp-amount">{soloHero.net >= 0 ? '$' : '−$'}{Math.abs(soloHero.net).toLocaleString()}</span>
           <span class="bp-balance">Balance ${Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span>
         </div>
       {:else if isFreeplay}
@@ -1744,29 +1746,6 @@
         </div>
         {#if freeLive}
           <p class="live-line">Solve {freeLive.clean ? 'clean ' : ''}to bank <b>+${freeLive.clean ? 50 : 25}</b> real Cash</p>
-        {/if}
-      {:else}
-        <div class="bankroll-container">
-          <div class="bankroll-box" class:pulse-up={bankrollPulse === 'up'} class:pulse-down={bankrollPulse === 'down'}>
-            {#if bankrollPulse}
-              <span class="bankroll-delta {bankrollPulse}">{bankrollDelta > 0 ? '+' : '−'}${Math.abs(bankrollDelta)}</span>
-            {/if}
-            {#if hotHandFlash}
-              <span class="hot-hand-flash">🔥 Hot Hand +$250</span>
-            {/if}
-            <span class="bankroll-label">Balance</span>
-            <span class="bankroll-amount">
-              <span class="currency">$</span>
-              {#each digits as d}
-                <FlipDigit digit={+d} />
-              {/each}
-            </span>
-          </div>
-        </div>
-        {#if dLive}
-          <p class="live-line">Worth ${dLive.reward.toLocaleString()} · spent ${dLive.spent.toLocaleString()} · profit <b class:lose={dLive.net < 0}>{dLive.net >= 0 ? '+' : '−'}${Math.abs(dLive.net).toLocaleString()}</b></p>
-        {:else if matchLive}
-          <p class="live-line">Spent <b>${matchLive.spent.toLocaleString()}</b> of ${matchLive.budget.toLocaleString()} · 🏆 spend the least to win</p>
         {/if}
       {/if}
     </section>
@@ -2045,6 +2024,7 @@
   .ah-label { font-size: 0.55rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
   /* Cash Game (Climb) HUD */
   .climb-hud { display: flex; gap: 8px; width: 100%; max-width: 360px; margin: 0 auto 12px; }
+  .match-pos { text-align: center; font-family: var(--font-display); font-weight: 700; font-size: 0.8rem; color: var(--text-muted); margin: 0 0 8px; }
   .ch-cell {
     flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px;
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md, 12px);
