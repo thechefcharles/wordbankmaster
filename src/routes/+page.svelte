@@ -1603,6 +1603,28 @@
     <!-- 🧠 Game Logo -->
     <img class="game-logo" src="/wordmark.png" alt="WordBank" />
 
+    <!-- 💰 Bankroll — top of every mode. Challenge/1v1 = one number (left to spend) + one depleting bar. -->
+    {#if $gameStore.currentPhrase && $gameStore.gameMode}
+      {#if isMatch && matchInfo && !matchBlitz && !matchInfo.done}
+        {@const buyin = matchInfo.budget ?? 0}
+        {@const left = Math.max(0, buyin - (matchInfo.spent ?? 0))}
+        <div class="top-bank">
+          <div class="tb-row"><span class="tb-cap">💰 Left to spend</span><span class="tb-amt">${left.toLocaleString()}</span></div>
+          <div class="tb-bar"><span class="tb-fill" style="width:{buyin > 0 ? Math.max(0, Math.min(100, (left / buyin) * 100)) : 100}%"></span></div>
+          <div class="tb-sub">of your ${buyin.toLocaleString()} buy-in</div>
+        </div>
+      {:else if isFreeplay}
+        <button class="top-bank tap" disabled={fpCashBusy} on:click={tapCredits}>
+          <div class="tb-row"><span class="tb-cap">🎟️ Credits</span><span class="tb-amt cr">{Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span></div>
+          <div class="tb-sub">tap to cash out at 40:1</div>
+        </button>
+      {:else if !matchBlitz}
+        <div class="top-bank">
+          <div class="tb-row"><span class="tb-cap">💰 Bankroll</span><span class="tb-amt">${Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span></div>
+        </div>
+      {/if}
+    {/if}
+
     <!-- 🔍 Diagnostic banner (shows when init failed) -->
     {#if initError}
       <div class="diagnostic-banner">
@@ -1681,8 +1703,7 @@
         </div>
       {:else}
         {#if matchInfo.pack_size > 1}<p class="match-pos">Puzzle {matchInfo.position}/{matchInfo.pack_size}</p>{/if}
-        <StandingStrip standing={matchInfo.standing ?? null} spent={matchInfo.spent ?? 0}
-          bankroll={Math.max(0, (matchInfo.budget ?? 0) - (matchInfo.spent ?? 0))} {netWorth} />
+        <StandingStrip standing={matchInfo.standing ?? null} />
       {/if}
       {#if (matchInfo.my_debuffs ?? []).length}
         <p class="debuff-banner">{(matchInfo.my_debuffs ?? []).map((/** @type {string} */ d) => DEBUFF_LABEL[d] ?? d).join(' · ')}</p>
@@ -1758,25 +1779,20 @@
     <!-- 💰 Money hero -->
     <section class="stats-section">
       {#if soloHero}
-        <!-- Daily · Makeup · Cash Game: one number = what you keep, ticking down as you spend -->
+        <!-- Daily · Makeup · Cash Game: the number you keep if you solve now (bankroll is up top) -->
         <div class="bounty-panel" class:loss={soloHero.net < 0}>
           <span class="bp-label">{soloHero.net >= 0 ? '🏆 Solve now to keep' : '⚠️ You’re losing money'}</span>
           <span class="bp-amount">{soloHero.net >= 0 ? '$' : '−$'}{Math.abs(soloHero.net).toLocaleString()}</span>
-          <span class="bp-balance">Balance ${Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span>
         </div>
       {:else if isFreeplay}
-        <!-- Free Play: play-money "Credits" (separate pool, never touches real Cash) -->
+        <!-- Free Play: credits are up top; here just the cash-out + your Cash + reward -->
         <div class="credits-panel">
-          <button class="cr-tap" on:click={tapCredits} disabled={fpCashBusy} title="Tap to cash out credits for Cash">
-            <span class="cr-label">🎟️ Credits</span>
-            <span class="cr-amount">{Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span>
-          </button>
           {#if (($gameStore.bankroll ?? 0) - 2000) >= 40}
             <button class="cr-cashout" disabled={fpCashBusy} on:click={doFreeplayCashout}>
               💵 Cash out ${Math.min(50, Math.floor((($gameStore.bankroll ?? 0) - 2000) / 40))}
             </button>
           {:else}
-            <span class="cr-note">Play money · tap credits to cash out at 40:1</span>
+            <span class="cr-note">Play money · cash out at 40:1</span>
           {/if}
           <span class="cr-wallet">💰 Cash {netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}</span>
         </div>
@@ -2990,16 +3006,25 @@
   .bp-amount { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 2.3rem; line-height: 1.05; color: #fcd34d;
     text-shadow: 0 0 18px rgba(251,191,36,0.45); font-variant-numeric: tabular-nums; transition: color 0.2s; }
   .bounty-panel.loss .bp-amount { color: #fb7185; text-shadow: none; }
-  .bp-balance { margin-top: 3px; font-size: 0.74rem; color: var(--text-faint); }
+  /* 💰 Top bankroll bar (very top, all modes) */
+  .top-bank { width: 100%; max-width: 340px; margin: 0 auto 12px; padding: 9px 16px; border-radius: 14px;
+    border: 1px solid rgba(253, 224, 71, 0.4); background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(251, 191, 36, 0.03)); }
+  .top-bank.tap { cursor: pointer; display: block; text-align: left;
+    border-color: rgba(167, 139, 250, 0.55); border-style: dashed;
+    background: linear-gradient(135deg, rgba(167, 139, 250, 0.13), rgba(167, 139, 250, 0.03)); }
+  .top-bank.tap:disabled { cursor: default; opacity: 0.6; }
+  .tb-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .tb-cap { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brand-2); }
+  .tb-amt { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.7rem; line-height: 1; color: #fcd34d; font-variant-numeric: tabular-nums; }
+  .tb-amt.cr { color: #c4b5fd; }
+  .top-bank.tap .tb-cap { color: #c4b5fd; }
+  .tb-bar { margin-top: 7px; height: 9px; border-radius: 999px; background: rgba(255,255,255,0.10); overflow: hidden; }
+  .tb-fill { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #fbbf24, #fde047); transition: width 0.35s ease; }
+  .tb-sub { margin-top: 5px; font-size: 0.66rem; color: var(--text-faint); }
   /* Free Play play-money "Credits" — violet + dashed so it reads as not-real-Cash */
   .credits-panel { display: flex; flex-direction: column; align-items: center; gap: 1px;
     width: 100%; max-width: 320px; margin: 0 auto; padding: 13px 18px; border-radius: var(--r-lg, 18px);
     border: 1px dashed rgba(167, 139, 250, 0.55); background: linear-gradient(135deg, rgba(167, 139, 250, 0.13), rgba(167, 139, 250, 0.03)); }
-  .cr-tap { display: flex; flex-direction: column; align-items: center; gap: 1px; background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 12px; }
-  .cr-tap:hover:not(:disabled) { background: rgba(196, 181, 253, 0.08); }
-  .cr-tap:disabled { cursor: default; }
-  .cr-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #c4b5fd; }
-  .cr-amount { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 2.1rem; line-height: 1.1; color: #c4b5fd; font-variant-numeric: tabular-nums; }
   .cr-note { margin-top: 2px; font-size: 0.68rem; color: var(--text-faint); }
   .cr-cashout { margin-top: 5px; padding: 0.4rem 0.9rem; border-radius: 999px; cursor: pointer; font-weight: 800; font-size: 0.8rem;
     color: #04240f; background: linear-gradient(135deg, #6ee7b7, #34d399); border: none; }
