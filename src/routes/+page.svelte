@@ -43,6 +43,7 @@
 
   // UI state
   let showTutorial = false;
+  let showLaunchWelcome = false;
   let menuView = 'home'; // 'home' | 'play' | 'challenge' | 'progress'
   let blitzSoon = false;
   let showResultModal = false;
@@ -622,6 +623,18 @@
     showTutorial = true;
   }
 
+  // One-time launch welcome for returning players (we reset everyone to a fresh
+  // Day-1 start). New users get the tutorial instead (it sets this key on dismiss).
+  const LAUNCH_KEY = 'wb_launch_welcome_v1';
+  $: if (browser && loggedIn && hasInitialized && showMainMenu && !needsUsername && !showPinUnlock && !showPinSetup
+         && !showTutorial && localStorage.getItem(TUTORIAL_KEY) === 'true' && localStorage.getItem(LAUNCH_KEY) !== '1') {
+    showLaunchWelcome = true;
+  }
+  function dismissLaunchWelcome() {
+    showLaunchWelcome = false;
+    if (browser) localStorage.setItem(LAUNCH_KEY, '1');
+  }
+
   // Deep link from a public profile's "⚔️ Challenge" button: /?challenge=<username>
   let challengeDeepLinkDone = false;
   $: if (browser && loggedIn && hasInitialized && !needsUsername && !showPinUnlock && !showPinSetup && !challengeDeepLinkDone) {
@@ -651,7 +664,8 @@
   }
   function dismissTutorial() {
     showTutorial = false;
-    if (browser) localStorage.setItem(TUTORIAL_KEY, 'true');
+    // New users just onboarded — they don't also need the launch welcome.
+    if (browser) { localStorage.setItem(TUTORIAL_KEY, 'true'); localStorage.setItem(LAUNCH_KEY, '1'); }
   }
 
   // ===== Pre-game "How to win" objective card =====
@@ -1142,6 +1156,24 @@
         <button class="gu-cancel" on:click={cancelGiveUp}>Keep playing</button>
         <button class="gu-confirm" on:click={doGiveUp}>🏳️ Give up</button>
       </div>
+    </div>
+  </div>
+{/if}
+
+<!-- 🎉 One-time launch welcome (returning players after the fresh-start reset) -->
+{#if showLaunchWelcome}
+  <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Welcome to WordBank">
+    <div class="modal-content welcome-modal">
+      <img class="wc-coin" src="/logo-coin.png" alt="" width="76" height="76" />
+      <h2 class="wc-title">Welcome to WordBank 🎉</h2>
+      <p class="wc-sub">We’ve officially launched — and everyone’s starting fresh.</p>
+      <ul class="wc-list">
+        <li><span>💰</span> <b>$2,000</b> in the bank to play with</li>
+        <li><span>📅</span> Today is <b>Day 1</b> of the Daily</li>
+        <li><span>🎰</span> The Cash Game ladder restarts at puzzle 1</li>
+        <li><span>🏆</span> Leaderboards are wide open — go claim a spot</li>
+      </ul>
+      <button class="wc-btn" on:click={dismissLaunchWelcome}>Let’s play →</button>
     </div>
   </div>
 {/if}
@@ -2512,6 +2544,17 @@
   @keyframes chatPulse { 0%,100% { box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 0 0 rgba(244,63,94,0.5); } 50% { box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 0 6px rgba(244,63,94,0); } }
   .mcb-label { font-family: var(--font-display); font-size: 0.84rem; }
   .mc-dot { position: absolute; top: 3px; right: 3px; width: 10px; height: 10px; border-radius: 999px; background: #f43f5e; box-shadow: 0 0 0 2px var(--bg, #0a0e14); }
+  .welcome-modal { max-width: 380px; text-align: center; }
+  .wc-coin { display: block; margin: 0 auto 0.5rem; }
+  .wc-title { font-family: var(--font-display); font-size: 1.4rem; margin: 0 0 0.35rem; }
+  .wc-sub { font-size: 0.92rem; color: var(--text-muted); margin: 0 0 1rem; }
+  .wc-list { list-style: none; padding: 0; margin: 0 0 1.2rem; display: flex; flex-direction: column; gap: 0.55rem; text-align: left; }
+  .wc-list li { display: flex; align-items: center; gap: 0.6rem; font-size: 0.9rem; color: var(--text);
+    background: var(--surface-2, rgba(255,255,255,0.04)); border: 1px solid var(--border); border-radius: 12px; padding: 0.6rem 0.8rem; }
+  .wc-list li span { font-size: 1.15rem; }
+  .wc-list b { color: #fde047; }
+  .wc-btn { width: 100%; padding: 0.85rem; border-radius: 13px; border: none; cursor: pointer; font-weight: 800; font-size: 1rem;
+    color: #3a2a00; background: linear-gradient(135deg, #fde047, #f59e0b); }
   .giveup-modal { max-width: 360px; text-align: center; }
   .gu-title { font-family: var(--font-display); font-size: 1.2rem; margin: 0 0 0.5rem; }
   .gu-text { font-size: 0.88rem; color: var(--text-muted); margin: 0 0 1.2rem; line-height: 1.4; }
