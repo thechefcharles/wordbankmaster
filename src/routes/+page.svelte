@@ -9,7 +9,7 @@
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
   import { getDailyStatus, getDailyGhost, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout } from '$lib/stores/statsStore.js';
-  import { unreadCount, refreshNotifications, inboxRequest, inboxTarget } from '$lib/stores/notificationStore.js';
+  import { unreadCount, refreshNotifications, inboxRequest, inboxTarget, markChallengeNotifRead, markFriendNotifRead } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
   import {
@@ -222,6 +222,14 @@
   // ===== Home "act-now" banner: the single most-urgent thing needing me =====
   /** @type {any[]} incoming friend requests [{id,name,username}] */
   let friendRequests = [];
+  // When a new notification lands (badge ticks up), refresh the act-now banner's
+  // matches/requests too — so a fresh challenge shows up live, not just the count.
+  let _prevUnread = 0;
+  $: handleUnreadRise($unreadCount);
+  function handleUnreadRise(/** @type {number} */ n) {
+    if (browser && loggedIn && hasInitialized && n > _prevUnread) refreshChallengeCount();
+    _prevUnread = n;
+  }
   // Challenges where it's my turn, soonest-to-expire first.
   $: turnMatches = (myMatches ?? [])
     .filter((m) => m.status === 'open' && m.my_state !== 'done')
@@ -254,6 +262,7 @@
   async function acceptFriend(r) {
     fx('tap');
     await respondFriendRequest(r.id, true);
+    markFriendNotifRead(r.id);
     await refreshChallengeCount();
   }
   function onPinUnlocked() { markUnlocked(); pinLocked.set(false); }
@@ -943,7 +952,7 @@
     mbBusy = true;
     const ok = m.my_state === 'invited' ? await acceptAndPlayMatch(m.id) : await resumeMatch(m.id);
     mbBusy = false;
-    if (ok) launchMatchPlay();
+    if (ok) { markChallengeNotifRead(m.id); launchMatchPlay(); }
     else mbMsg = 'Could not open that challenge.';
   }
   /** Play a challenge with a budget capped at your current Cash. @param {any} m */

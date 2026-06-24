@@ -41,10 +41,10 @@
     // Start the global notification poller whenever a session is present,
     // and react to sign-in / sign-out across every route.
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) startNotifications();
+      if (data.session) startNotifications(data.session.user?.id);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) startNotifications();
+      if (session) startNotifications(session.user?.id);
       else stopNotifications();
     });
     return () => sub.subscription.unsubscribe();

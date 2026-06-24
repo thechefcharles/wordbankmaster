@@ -166,9 +166,10 @@ export async function getNotifications() {
   if (error || !data) { if (error) console.error('❌ get_notifications:', error); return { items: [], unread_count: 0 }; }
   return { items: Array.isArray(data.items) ? data.items : [], unread_count: data.unread_count ?? 0 };
 }
-/** Mark all my notifications read. */
-export async function markNotificationsRead() {
-  const { error } = await supabase.rpc('mark_notifications_read');
+/** Mark notifications read — all, one challenge (matchId), or one friend request (fromId).
+ *  @param {string|null} [matchId] @param {string|null} [fromId] */
+export async function markNotificationsRead(matchId = null, fromId = null) {
+  const { error } = await supabase.rpc('mark_notifications_read', { p_match_id: matchId, p_from_id: fromId });
   if (error) console.error('❌ mark_notifications_read:', error);
 }
 
