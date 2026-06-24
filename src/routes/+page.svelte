@@ -36,6 +36,8 @@
   import StandingStrip from '$lib/components/StandingStrip.svelte';
   import PowerupTray from '$lib/components/PowerupTray.svelte';
   import MatchDetailModal from '$lib/components/MatchDetailModal.svelte';
+  import LeaderboardPanel from '$lib/components/LeaderboardPanel.svelte';
+  import ActivityPanel from '$lib/components/ActivityPanel.svelte';
 
   export let data;
 
@@ -644,7 +646,7 @@
       const params = new URLSearchParams(window.location.search);
       const ch = params.get('challenge');
       if (ch) {
-        openChallenges().then(() => { mbTarget = 'friend'; mbOpponent = ch; });
+        newChallenge().then(() => { mbTarget = 'friend'; mbOpponent = ch; });
         params.delete('challenge');
       }
       // Settings/account deep link from the Profile page's ⚙️ gear (/?account=1)
@@ -800,9 +802,9 @@
     }
   }
   // ===== Challenge Builder (configurable packs vs friends/groups) =====
-  let showChallenges = false;
-  /** Which view of the Challenges modal: the inbox list vs the new-match builder. */
-  let chTab = /** @type {'inbox'|'new'} */ ('inbox');
+  let showChallenges = false; // the New-Challenge builder modal
+  /** Which Community hub tab is showing. */
+  let communityTab = /** @type {'challenges'|'leaderboard'|'activity'|'people'} */ ('challenges');
   /** @type {any[]} */
   let myMatches = [];
   /** @type {any[]} */
@@ -856,14 +858,27 @@
       friendReqCount = friendRequests.length;
     } catch { /* non-fatal */ }
   }
-  /** @param {'inbox'|'new'} [forceTab] */
-  async function openChallenges(forceTab) {
+  /** Open the New-Challenge builder modal. */
+  async function newChallenge() {
     if (!get(user)?.id) return;
-    mbMsg = ''; matchResults = null;
+    mbMsg = '';
+    myGroups = await getMyGroups();
     showChallenges = true;
+  }
+  /** Go to the Community hub. @param {'challenges'|'leaderboard'|'activity'|'people'} [tab] */
+  async function openCommunity(tab) {
+    if (!get(user)?.id) return;
+    matchResults = null;
+    communityTab = tab ?? 'challenges';
+    menuView = 'community';
+    showMainMenu = true;
     [myMatches, myGroups] = await Promise.all([getMyMatches(), getMyGroups()]);
     challengeCount = myMatches.filter((m) => m.status === 'open' && m.my_state !== 'done').length;
-    chTab = forceTab ?? (myMatches.length ? 'inbox' : 'new'); // land on the list if you have any
+  }
+  /** Back-compat shim for existing callers (banner "+N more", toasts, result modal). */
+  async function openChallenges(forceTab) {
+    if (forceTab === 'new') return newChallenge();
+    return openCommunity('challenges');
   }
 
   // ===== Notifications panel (bell) =====
@@ -1200,13 +1215,10 @@
           <button class="menu-card primary" style="--i: 0" on:click={() => { menuView = 'play'; fx('tap'); }}>
             <span class="mc-title">Play Now</span>
           </button>
-          <button class="menu-card" style="--i: 1" on:click={() => { menuView = 'challenge'; fx('tap'); }}>
-            <span class="mc-title">Challenge Friends</span>
-          </button>
-          <button class="menu-card" style="--i: 2" on:click={() => { menuView = 'community'; fx('tap'); }}>
+          <button class="menu-card" style="--i: 1" on:click={() => { fx('tap'); openCommunity('challenges'); }}>
             <span class="mc-title">Community</span>
           </button>
-          <button class="menu-card" style="--i: 3" on:click={() => goto('/shop')}>
+          <button class="menu-card" style="--i: 2" on:click={() => goto('/shop')}>
             <span class="mc-title">Store</span>
           </button>
         </div>
@@ -1237,38 +1249,58 @@
           {#if blitzSoon}<p class="pm-soon-note">⚡ Solo Blitz is coming soon!</p>{/if}
         </div>
 
-      {:else if menuView === 'challenge'}
-        <div class="sub-head">
-          <button class="sub-back" on:click={() => { menuView = 'home'; fx('tap'); }}>← Back</button>
-          <h2 class="sub-title">Challenge Friends</h2>
-        </div>
-        <div class="main-menu-buttons stagger">
-          <button class="menu-card primary" style="--i: 0" on:click={openChallenges}>
-            <span class="mc-title">Start Challenge</span>
-            {#if challengeCount > 0}<span class="mc-badge" title="{challengeCount} waiting">{challengeCount}</span>{/if}
-          </button>
-          <button class="menu-card" style="--i: 1" on:click={() => goto('/friends')}>
-            <span class="mc-title">Friends</span>
-            {#if friendReqCount > 0}<span class="mc-badge" title="{friendReqCount} friend request{friendReqCount === 1 ? '' : 's'}">{friendReqCount}</span>{/if}
-          </button>
-          <button class="menu-card" style="--i: 2" on:click={() => goto('/groups')}>
-            <span class="mc-title">Groups</span>
-          </button>
-        </div>
-
       {:else if menuView === 'community'}
         <div class="sub-head">
           <button class="sub-back" on:click={() => { menuView = 'home'; fx('tap'); }}>← Back</button>
           <h2 class="sub-title">Community</h2>
+          <button class="sub-people" title="Friends & Groups" aria-label="Friends & Groups" on:click={() => { communityTab = 'people'; fx('tap'); }}>👥</button>
         </div>
-        <div class="main-menu-buttons stagger">
-          <button class="menu-card" style="--i: 0" on:click={handleMenuLeaderboard}>
-            <span class="mc-title">Leaderboard</span>
-          </button>
-          <button class="menu-card" style="--i: 1" on:click={() => goto('/activity')}>
-            <span class="mc-title">Activity</span>
-          </button>
+        <div class="comm-tabs">
+          <button class="comm-tab" class:active={communityTab === 'challenges'} on:click={() => { communityTab = 'challenges'; fx('tap'); }}>Challenges</button>
+          <button class="comm-tab" class:active={communityTab === 'leaderboard'} on:click={() => { communityTab = 'leaderboard'; fx('tap'); }}>Leaderboard</button>
+          <button class="comm-tab" class:active={communityTab === 'activity'} on:click={() => { communityTab = 'activity'; fx('tap'); }}>Activity</button>
         </div>
+
+        {#if communityTab === 'challenges'}
+          <div class="comm-body">
+            <button class="ch-new-btn" on:click={newChallenge}>＋ New Challenge</button>
+            {#if myMatches.length}
+              <div class="ch-list">
+                {#each myMatches as m}
+                  <div class="ch-item">
+                    <div class="ch-info">
+                      <span class="ch-vs">{m.is_host ? 'You hosted' : m.host + ' invited you'}</span>
+                      <span class="ch-meta">{m.pack_size} puzzle{m.pack_size === 1 ? '' : 's'} · {m.players} players{#if m.wager > 0} · ${m.wager?.toLocaleString()}{/if}</span>
+                    </div>
+                    {#if m.status === 'settled'}
+                      <button class="ch-play ghost" disabled={mbBusy} on:click={() => respondToMatch(m)}>Results</button>
+                    {:else if m.my_state !== 'done'}
+                      <button class="ch-play" disabled={mbBusy} on:click={() => respondToMatch(m)}>{m.my_state === 'invited' ? 'Play' : 'Resume'}</button>
+                    {:else}
+                      <span class="ch-waiting">Waiting…</span>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            {:else}
+              <p class="ch-empty">No challenges yet. Tap <b>＋ New Challenge</b> to start one.</p>
+            {/if}
+          </div>
+        {:else if communityTab === 'leaderboard'}
+          <div class="comm-body"><LeaderboardPanel /></div>
+        {:else if communityTab === 'activity'}
+          <div class="comm-body"><ActivityPanel /></div>
+        {:else}
+          <div class="comm-body people">
+            <button class="menu-card" on:click={() => goto('/friends')}>
+              <span class="mc-title">Friends</span>
+              {#if friendReqCount > 0}<span class="mc-badge" title="{friendReqCount} request{friendReqCount === 1 ? '' : 's'}">{friendReqCount}</span>{/if}
+            </button>
+            <button class="menu-card" on:click={() => goto('/groups')}>
+              <span class="mc-title">Groups</span>
+            </button>
+          </div>
+        {/if}
       {/if}
     </div>
 
@@ -1299,38 +1331,10 @@
         <div class="modal-content main-menu-modal ch-modal">
           <button class="close-btn" on:click={() => showChallenges = false}>❌</button>
 
-          <h2>⚔️ Challenges</h2>
-          <div class="ch-tabs">
-            <button type="button" class="ch-tab" class:active={chTab === 'inbox'} on:click={() => chTab = 'inbox'}>📥 Inbox{#if myMatches.length} · {myMatches.length}{/if}</button>
-            <button type="button" class="ch-tab" class:active={chTab === 'new'} on:click={() => chTab = 'new'}>⚔️ New</button>
-          </div>
+          <h2>⚔️ New Challenge</h2>
+          <p class="cat-sub">Build a match — a pack of puzzles vs a friend or a group. Same puzzles for everyone.</p>
 
-          {#if chTab === 'inbox'}
-            {#if myMatches.length}
-              <div class="ch-list">
-                {#each myMatches as m}
-                  <div class="ch-item">
-                    <div class="ch-info">
-                      <span class="ch-vs">{m.is_host ? 'You hosted' : m.host + ' invited you'}</span>
-                      <span class="ch-meta">{m.pack_size} puzzle{m.pack_size === 1 ? '' : 's'} · {m.players} players{#if m.wager > 0} · ${m.wager?.toLocaleString()}{/if}</span>
-                    </div>
-                    {#if m.status === 'settled'}
-                      <button class="ch-play ghost" disabled={mbBusy} on:click={() => respondToMatch(m)}>Results</button>
-                    {:else if m.my_state !== 'done'}
-                      <button class="ch-play" disabled={mbBusy} on:click={() => respondToMatch(m)}>{m.my_state === 'invited' ? 'Play' : 'Resume'}</button>
-                    {:else}
-                      <span class="ch-waiting">Waiting…</span>
-                    {/if}
-                  </div>
-                {/each}
-              </div>
-            {:else}
-              <p class="ch-empty">No challenges yet. Tap <b>⚔️ New</b> to start one.</p>
-            {/if}
-          {:else}
-            <p class="cat-sub">Build a match — a pack of puzzles vs a friend or a group. Same puzzles for everyone.</p>
-
-            <div class="ch-new">
+          <div class="ch-new">
               <!-- Opponent: friend or group -->
               <div class="ch-modes">
                 <button type="button" class="ch-mode" class:active={mbTarget === 'friend'} on:click={() => mbTarget = 'friend'}>👤 A friend<small>by username</small></button>
@@ -1393,7 +1397,6 @@
               <button class="ch-create" disabled={mbBusy} on:click={submitNewMatch} style="width:100%;">Send challenge ⚔️</button>
               {#if mbMsg}<p class="add-msg">{mbMsg}</p>{/if}
             </div>
-          {/if}
         </div>
       </div>
     {/if}
@@ -1823,7 +1826,7 @@
               {#if matchInfo?.status === 'settled'}
                 <button class="share-btn" on:click={async () => { const id = matchInfo?.id; showResultModal = false; hasTriggeredModal = false; goToMainMenu(); matchResults = { loading: true }; matchResults = await getMatchDetail(id); }}>View Results</button>
               {:else}
-                <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); openChallenges(); }}>Challenge Friends</button>
+                <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); newChallenge(); }}>Challenge Friends</button>
               {/if}
               <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Menu</button>
             </div>
@@ -1870,7 +1873,7 @@
             {/if}
             <p class="arcade-gain">We'll settle the pot once your friend plays.</p>
             <div class="result-actions">
-              <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; openChallenges(); }}>Challenge Friends</button>
+              <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); newChallenge(); }}>Challenge Friends</button>
               <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Menu</button>
             </div>
           {:else}
@@ -2220,6 +2223,25 @@
   }
   .sub-back:hover { transform: translateX(-2px); border-color: var(--border-strong); background: var(--surface-2); }
   .sub-title { font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; }
+  .sub-people {
+    margin-left: auto; width: 40px; height: 40px; display: grid; place-items: center; font-size: 1.1rem;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; cursor: pointer;
+  }
+  .sub-people:hover { border-color: var(--brand-2); }
+  /* Community hub tabs + body */
+  .comm-tabs { display: flex; gap: 8px; width: 100%; margin: 12px 0 14px; }
+  .comm-tab { flex: 1; padding: 9px 0; border-radius: 12px; border: 1px solid var(--border); background: var(--surface);
+    color: var(--text-muted); font-family: var(--font-display); font-weight: 700; font-size: 0.86rem; cursor: pointer; }
+  .comm-tab.active { background: linear-gradient(135deg, #fde047, #f59e0b); color: #3a2a00; border-color: transparent; }
+  .comm-body { width: 100%; }
+  .comm-body.people { display: flex; flex-direction: column; gap: 0.6rem; }
+  .ch-new-btn {
+    width: 100%; margin-bottom: 12px; padding: 12px; border-radius: 14px; border: none; cursor: pointer;
+    font-family: var(--font-display); font-weight: 800; font-size: 0.95rem; color: #3a2a00;
+    background: var(--brand-grad, linear-gradient(135deg, #fbbf24, #fde047));
+    box-shadow: 0 6px 18px rgba(251, 191, 36, 0.25);
+  }
+  .ch-new-btn:hover { filter: brightness(1.05); }
   .menu-hero {
     display: flex;
     flex-direction: column;
