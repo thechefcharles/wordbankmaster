@@ -1250,6 +1250,7 @@
             <span class="mc-title">Blitz</span><span class="mc-stat">Soon</span>
           </button>
           {#if blitzSoon}<p class="pm-soon-note">⚡ Solo Blitz is coming soon!</p>{/if}
+          <button class="play-vs-link" on:click={() => { fx('tap'); newChallenge(); }}>⚔️ Or challenge a friend →</button>
         </div>
 
       {:else if menuView === 'community'}
@@ -2221,6 +2222,12 @@
   .act-sec:not(:first-child) { margin-top: 20px; }
   .comm-body { width: 100%; }
   .comm-body.people { display: flex; flex-direction: column; gap: 0.6rem; }
+  /* Subtle "play with friends" nudge under the solo modes */
+  .play-vs-link {
+    width: 100%; margin-top: 4px; padding: 10px; background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-family: var(--font-ui); font-weight: 600; font-size: 0.84rem;
+  }
+  .play-vs-link:hover { color: var(--brand-2); }
   .ch-new-btn {
     width: 100%; margin-bottom: 12px; padding: 12px; border-radius: 14px; border: none; cursor: pointer;
     font-family: var(--font-display); font-weight: 800; font-size: 0.95rem; color: #3a2a00;
