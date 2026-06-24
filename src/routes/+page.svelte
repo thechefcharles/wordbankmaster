@@ -375,7 +375,7 @@
   }
   function confirmFold() {
     const ok = window.confirm($gameStore.gameMode === 'match'
-      ? 'Fold this puzzle? You lose it and move to the next — you keep your unspent Cash.'
+      ? 'Give up this puzzle? You lose it and move to the next — you keep your unspent stake.'
       : 'Give up today’s Daily? It counts as a loss and reveals the answer.');
     if (ok) doFold(false);
   }
@@ -437,6 +437,8 @@
   // --- per-match chat (1v1 + group challenges) ---
   let matchChatOpen = false;
   let matchChatUnread = false;
+  /** @type {string|null} id of the newest message you've already seen */
+  let matchChatSeenId = null;
   /** @type {any[]} */
   let matchMessages = [];
   let matchChatInput = '';
@@ -452,17 +454,27 @@
 
   async function loadMatchMsgs() {
     if (!matchChatId) return;
-    const prevLen = matchMessages.length;
     const m = await getMatchMessages(matchChatId);
     if (matchChatId == null) return;
     matchMessages = m;
-    if (!matchChatOpen && m.length > prevLen) matchChatUnread = true;
-    if (matchChatOpen) tick().then(() => { if (matchChatScroll) matchChatScroll.scrollTop = matchChatScroll.scrollHeight; });
+    const newest = m.length ? m[m.length - 1] : null;
+    if (matchChatOpen) {
+      // Reading the thread = caught up.
+      if (newest) matchChatSeenId = newest.id;
+      matchChatUnread = false;
+      tick().then(() => { if (matchChatScroll) matchChatScroll.scrollTop = matchChatScroll.scrollHeight; });
+    } else if (matchChatSeenId === null) {
+      // First sync: treat the existing backlog as already seen (don't nag).
+      if (newest) matchChatSeenId = newest.id;
+    } else if (newest && !newest.is_me && newest.id !== matchChatSeenId) {
+      // Light up only for a NEW message from someone else you haven't opened.
+      matchChatUnread = true;
+    }
   }
   function teardownMatchChat() {
     if (matchChannel) { supabase.removeChannel(matchChannel); matchChannel = null; }
     clearInterval(matchChatPoll);
-    matchChatId = null; matchMessages = []; matchChatOpen = false; matchChatUnread = false;
+    matchChatId = null; matchMessages = []; matchChatOpen = false; matchChatUnread = false; matchChatSeenId = null;
   }
   /** @param {string|null|undefined} id */
   function syncMatchChat(id) {
@@ -476,7 +488,7 @@
       .subscribe();
     matchChatPoll = setInterval(loadMatchMsgs, 20000);
   }
-  $: syncMatchChat(isMatch ? matchInfo?.id : null);
+  $: syncMatchChat((isMatch && !showMainMenu) ? matchInfo?.id : null);
   function openMatchChat() { matchChatOpen = true; matchChatUnread = false; loadMatchMsgs(); }
   async function sendMatchChat() {
     const body = matchChatInput.trim();
@@ -1050,14 +1062,18 @@
 {#if loggedIn && hasInitialized && !showMainMenu}
   <button class="menu-back-btn" title="Main menu" on:click={goToMainMenu}>← Menu</button>
 {/if}
+<!-- ❓ How to play THIS game type (top-right) -->
+{#if loggedIn && hasInitialized && !showMainMenu && $gameStore.gameMode}
+  <button class="help-btn" title="How to play" aria-label="How to play this game" on:click={() => showObjectiveFor($gameStore.gameMode, true)}>?</button>
+{/if}
 
-<!-- 💬 Match chat (1v1 + group challenges) -->
-{#if isMatch && matchInfo}
+<!-- 💬 Match chat (1v1 + group challenges) — only inside a live match, never on the menu -->
+{#if isMatch && matchInfo && !showMainMenu}
   <button class="match-chat-btn" class:unread={matchChatUnread} title="Trash talk" on:click={openMatchChat}>
     💬 <span class="mcb-label">Chat</span>{#if matchChatUnread}<span class="mc-dot"></span>{/if}
   </button>
 {/if}
-{#if matchChatOpen}
+{#if matchChatOpen && !showMainMenu}
   <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Match chat">
     <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => matchChatOpen = false}></button>
     <div class="modal-content chat-modal">
@@ -1067,7 +1083,7 @@
         {#if matchMessages.length}
           {#each matchMessages as m}
             <div class="cmsg" class:mine={m.is_me}>
-              {#if !m.is_me}<span class="cm-name">{m.name}</span>{/if}
+              <span class="cm-name">{m.is_me ? 'You' : m.name}</span>
               <span class="cm-body">{m.body}</span>
             </div>
           {/each}
@@ -1560,9 +1576,15 @@
       {:else}
         {#if matchInfo.pack_size > 1}<p class="match-pos">Puzzle {matchInfo.position}/{matchInfo.pack_size}</p>{/if}
         {#if matchInfo.standing}
-          <StandingStrip standing={matchInfo.standing} spent={matchInfo.spent ?? 0} />
+          <StandingStrip standing={matchInfo.standing} spent={matchInfo.spent ?? 0}
+            bankroll={Math.max(0, (matchInfo.budget ?? 0) - (matchInfo.spent ?? 0))} {netWorth} />
         {:else}
-          <p class="live-line">Spent <b>${(matchInfo.spent ?? 0).toLocaleString()}</b> of ${(matchInfo.budget ?? 0).toLocaleString()} · 🏆 spend the least to win</p>
+          <div class="match-money">
+            <span class="mm-cell">Spent <b>${(matchInfo.spent ?? 0).toLocaleString()}</b></span>
+            <span class="mm-cell">Stake left <b>${Math.max(0, (matchInfo.budget ?? 0) - (matchInfo.spent ?? 0)).toLocaleString()}</b></span>
+            <span class="mm-cell wallet">Wallet {netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}</span>
+          </div>
+          <p class="live-line">🏆 Spend the least to win</p>
         {/if}
       {/if}
       {#if (matchInfo.my_debuffs ?? []).length}
@@ -1614,7 +1636,6 @@
     <div class="puzzle-meta">
       {#if $gameStore.category}<span class="category-chip">{$gameStore.category}</span>{/if}
       {#if dailyMod}<span class="mod-chip" title={dailyMod.name + ' — ' + dailyMod.blurb}>{dailyMod.emoji} {dailyMod.name}</span>{/if}
-      <button class="obj-chip" title="How to win" aria-label="How to win" on:click={() => showObjectiveFor($gameStore.gameMode, true)}>🎯</button>
     </div>
     {#if $gameStore.clue}
       <p class="puzzle-clue">{$gameStore.clue}</p>
@@ -1631,9 +1652,9 @@
       <div class="fold-bar" class:broke={isBroke}>
         {#if isBroke}
           <span class="fold-timer">⏱ 0:{String(brokeLeft).padStart(2, '0')}</span>
-          <span class="fold-warn">Out of Cash — guess in time or you {$gameStore.gameMode === 'match' ? 'fold this puzzle' : 'lose the Daily'}</span>
+          <span class="fold-warn">Out of Cash — guess in time or you {$gameStore.gameMode === 'match' ? 'give up this one' : 'lose the Daily'}</span>
         {/if}
-        <button class="fold-btn" on:click={confirmFold}>🏳️ {$gameStore.gameMode === 'match' ? 'Fold puzzle' : 'Give up'}</button>
+        <button class="fold-btn" on:click={confirmFold}>🏳️ {$gameStore.gameMode === 'match' && (matchInfo?.pack_size ?? 1) > 1 ? 'Give up this one' : 'Give up'}</button>
       </div>
     {/if}
 
@@ -1656,6 +1677,7 @@
           {:else}
             <span class="cr-note">Play money · cash out at 40:1 in the Store</span>
           {/if}
+          <span class="cr-wallet">Wallet {netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}</span>
         </div>
         {#if freeLive}
           <p class="live-line">Solve {freeLive.clean ? 'clean ' : ''}for <b>+{freeLive.clean ? 250 : 120}</b> credits</p>
@@ -1972,16 +1994,6 @@
     border-radius: var(--r-pill);
   }
   /* ⓘ re-open the "How to win" card */
-  .obj-chip {
-    font-size: 0.82rem;
-    line-height: 1;
-    color: var(--brand-2);
-    background: rgba(253, 224, 71, 0.10);
-    border: 1px solid rgba(253, 224, 71, 0.28);
-    padding: 6px 10px;
-    border-radius: var(--r-pill);
-    cursor: pointer;
-  }
   .fold-bar { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 6px auto 2px; }
   .fold-bar.broke {
     padding: 8px 14px; border-radius: 12px; max-width: 340px;
@@ -2440,9 +2452,17 @@
     border: 1px solid var(--border-strong, var(--border)); backdrop-filter: blur(10px);
   }
   .menu-back-btn:hover { border-color: var(--brand-2); }
-  /* match chat */
+  /* how-to-play (top-right, mirrors the back button) */
+  .help-btn {
+    position: fixed; top: 14px; right: 14px; z-index: 1000;
+    width: 38px; height: 38px; border-radius: 999px; cursor: pointer; font-weight: 800; font-size: 1.1rem; line-height: 1;
+    display: grid; place-items: center; color: var(--text);
+    background: var(--surface-strong, rgba(20,28,40,0.85)); border: 1px solid var(--border-strong, var(--border)); backdrop-filter: blur(10px);
+  }
+  .help-btn:hover { border-color: var(--brand-2); color: var(--brand-2); }
+  /* match chat — sits just below the help button so they never overlap */
   .match-chat-btn {
-    position: fixed; top: 12px; right: 14px; z-index: 1000;
+    position: fixed; top: 60px; right: 14px; z-index: 1000;
     display: flex; align-items: center; gap: 5px; padding: 9px 14px; border-radius: 999px; cursor: pointer;
     font-size: 1.02rem; font-weight: 700; color: var(--text);
     background: var(--surface-strong, rgba(20,28,40,0.9)); border: 1px solid rgba(251,191,36,0.5); backdrop-filter: blur(10px);
@@ -2466,6 +2486,7 @@
   }
   .cmsg.mine { align-self: flex-end; background: rgba(253, 224, 71,0.12); border-color: rgba(253, 224, 71,0.3); }
   .cm-name { font-size: 0.66rem; font-weight: 700; color: var(--brand-2); }
+  .cmsg.mine .cm-name { align-self: flex-end; color: var(--text-faint); }
   .cm-body { font-size: 0.88rem; color: var(--text); word-break: break-word; }
   .chat-input-row { display: flex; gap: 0.5rem; margin-top: 0.7rem; }
   .chat-input { flex: 1; min-width: 0; padding: 0.6rem 0.9rem; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 0.95rem; }
@@ -2858,6 +2879,12 @@
   .cr-amount { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 2.1rem; line-height: 1.1; color: #c4b5fd; font-variant-numeric: tabular-nums; }
   .cr-note { margin-top: 2px; font-size: 0.68rem; color: var(--text-faint); }
   .cr-ready { margin-top: 2px; font-size: 0.68rem; font-weight: 700; color: #6ee7b7; }
+  .cr-wallet { margin-top: 3px; font-size: 0.66rem; color: var(--text-faint); }
+  /* Challenge money fallback (no finished rivals yet) */
+  .match-money { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 12px;
+    max-width: 360px; margin: 0 auto 4px; font-size: 0.84rem; color: var(--text-muted); }
+  .match-money .mm-cell b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .match-money .wallet { color: var(--text-faint); font-size: 0.78rem; }
 
   /* Cash Game (Climb) gamified HUD */
   .climb-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; max-width: 360px; margin: 0 auto 14px; }

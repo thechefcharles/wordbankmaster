@@ -26,10 +26,10 @@
         goal: 'Survival mode — keep your streak alive.',
         win: 'The bigger your streak, the bigger the payout.',
         bar: 'One slip ends the run.' };
-      case 'freeplay': return { icon: '🎯', title: 'Free Play',
-        goal: 'Practice with zero stakes.',
-        win: 'Every solve pays a little Cash.',
-        bar: 'Grind back anytime.' };
+      case 'freeplay': return { icon: '🎟️', title: 'Free Play',
+        goal: 'Play with credits — never your real Cash.',
+        win: 'Solve to earn credits (+250 clean). Go broke and you reset to 2,000.',
+        bar: 'Build a stack, then cash out in the Store (40 credits = $1).' };
       case 'makeup': return { icon: '🗓️', title: 'Make-up Daily',
         goal: 'Play a daily you missed.',
         win: 'Same rules — solve it as cheaply as you can.',
