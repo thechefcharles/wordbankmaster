@@ -659,9 +659,15 @@ export async function createMatch(opts) {
   return data;
 }
 /** @param {string} id @returns {Promise<{ok:boolean, reason?:string, match?:any}>} */
-export async function acceptMatch(id) {
-  const { data, error } = await supabase.rpc('accept_match', { p_id: id });
+export async function acceptMatch(id, reduced = false) {
+  const { data, error } = await supabase.rpc('accept_match', { p_id: id, p_reduced: reduced });
   if (error || !data) { if (error) console.error('❌ accept_match:', error); return { ok: false }; }
+  return data;
+}
+/** Decline an invited challenge (voids + refunds if it can no longer happen). @param {string} id */
+export async function declineMatch(id) {
+  const { data, error } = await supabase.rpc('decline_match', { p_id: id });
+  if (error || !data) { if (error) console.error('❌ decline_match:', error); return { ok: false }; }
   return data;
 }
 /** @param {string} id @returns {Promise<any|null>} */

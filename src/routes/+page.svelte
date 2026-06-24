@@ -5,7 +5,7 @@
   import { get } from 'svelte/store';
 
   import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
-  import { getMyChallenges, getPowerups, getMyMatches, getMyGroups, getMatch, getMatchDetail } from '$lib/stores/statsStore.js';
+  import { getMyChallenges, getPowerups, getMyMatches, getMyGroups, getMatch, getMatchDetail, declineMatch } from '$lib/stores/statsStore.js';
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
@@ -943,12 +943,16 @@
     if (Number(m.wager) > 0 && netWorth != null) s.push({ label: 'Your Cash', value: '$' + Math.round(netWorth).toLocaleString() });
     return s;
   }
+  /** A challenge whose buy-in I can't fully afford — drives the play-or-decline sheet. */
+  let shortMatch = /** @type {any|null} */ (null);
   /** @param {any} m */
   async function respondToMatch(m) {
     if (mbBusy) return;
     if (m.status === 'settled') { matchResults = { loading: true }; matchResults = await getMatchDetail(m.id); return; }
     // Accepting an invite commits your buy-in → confirm with PIN (resuming doesn't).
     if (m.my_state === 'invited') {
+      // Can't afford the full buy-in → offer "play with what you have" or decline.
+      if (Number(m.wager) > 0 && netWorth != null && netWorth < Number(m.wager)) { shortMatch = m; return; }
       try { await requirePin(`Accept @${m.host}'s challenge`, matchStakes(m)); } catch { return; }
     }
     mbBusy = true;
@@ -956,6 +960,26 @@
     mbBusy = false;
     if (ok) launchMatchPlay();
     else mbMsg = 'Could not open that challenge.';
+  }
+  /** Play a challenge with a budget capped at your current Cash. @param {any} m */
+  async function playReduced(m) {
+    shortMatch = null;
+    const cap = Math.round(netWorth ?? 0);
+    const stakes = matchStakes(m).map((s) => s.label === 'Buy-in' ? { label: 'Buy-in (capped)', value: '$' + cap.toLocaleString() } : s);
+    try { await requirePin(`Play with $${cap.toLocaleString()}`, stakes); } catch { return; }
+    mbBusy = true;
+    const ok = await acceptAndPlayMatch(m.id, true);
+    mbBusy = false;
+    if (ok) launchMatchPlay();
+    else mbMsg = 'Could not open that challenge.';
+  }
+  /** Decline an invited challenge (refunds the host if it can't proceed). @param {any} m */
+  async function declineChallenge(m) {
+    shortMatch = null;
+    mbBusy = true;
+    await declineMatch(m.id);
+    await refreshChallengeCount();
+    mbBusy = false;
   }
   function launchMatchPlay() {
     showChallenges = false;
@@ -1439,6 +1463,24 @@
 
     <!-- Settled-challenge results (shared with /history) -->
     <MatchDetailModal detail={matchResults} on:close={() => matchResults = null} />
+
+    <!-- 💸 Can't afford the full buy-in: play with what you have, or decline -->
+    {#if shortMatch}
+      <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Not enough Cash">
+        <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => shortMatch = null}></button>
+        <div class="modal-content sm-modal">
+          <div class="sm-icon">💸</div>
+          <h2>Not enough for the full buy-in</h2>
+          <div class="sm-rows">
+            <div class="sm-row"><span>This challenge</span><b>${Number(shortMatch.wager).toLocaleString()} buy-in</b></div>
+            <div class="sm-row"><span>You have</span><b>${Math.round(netWorth ?? 0).toLocaleString()}</b></div>
+          </div>
+          <p class="sm-note">You only ever lose what you spend — play with a smaller budget, or decline.</p>
+          <button class="sm-play" disabled={mbBusy} on:click={() => playReduced(shortMatch)}>Play with ${Math.round(netWorth ?? 0).toLocaleString()}</button>
+          <button class="sm-decline" disabled={mbBusy} on:click={() => declineChallenge(shortMatch)}>Decline challenge</button>
+        </div>
+      </div>
+    {/if}
 
     <!-- Streak message (when Daily is disabled and user taps it) -->
     {#if showStreakMessage}
@@ -2257,6 +2299,22 @@
     box-shadow: 0 6px 18px rgba(251, 191, 36, 0.25);
   }
   .ch-new-btn:hover { filter: brightness(1.05); }
+  /* Short-on-Cash sheet */
+  .sm-modal { max-width: 360px; text-align: center; }
+  .sm-icon { font-size: 2.4rem; margin-bottom: 6px; }
+  .sm-modal h2 { font-family: var(--font-display); font-size: 1.2rem; margin: 0 0 14px; }
+  .sm-rows { display: flex; flex-direction: column; gap: 6px; margin: 0 0 12px; padding: 12px 14px;
+    border-radius: 14px; border: 1px solid var(--border); background: var(--surface); }
+  .sm-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 0.88rem; color: var(--text-muted); }
+  .sm-row b { font-family: var(--font-display); color: var(--text); }
+  .sm-note { font-size: 0.8rem; color: var(--text-faint); margin: 0 0 16px; }
+  .sm-play { width: 100%; padding: 13px; border: none; border-radius: 14px; cursor: pointer; margin-bottom: 8px;
+    font-family: var(--font-display); font-weight: 800; font-size: 0.98rem; color: #3a2a00;
+    background: var(--brand-grad, linear-gradient(135deg, #fbbf24, #fde047)); box-shadow: 0 6px 18px rgba(251,191,36,0.25); }
+  .sm-play:disabled { opacity: 0.5; }
+  .sm-decline { width: 100%; padding: 11px; border-radius: 14px; cursor: pointer;
+    border: 1px solid rgba(251,113,133,0.4); background: transparent; color: #fb7185; font-weight: 700; font-size: 0.9rem; }
+  .sm-decline:disabled { opacity: 0.5; }
   .menu-hero {
     display: flex;
     flex-direction: column;
