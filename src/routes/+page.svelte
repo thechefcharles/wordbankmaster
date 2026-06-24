@@ -227,16 +227,6 @@
   // ===== Home "act-now" banner: the single most-urgent thing needing me =====
   /** @type {any[]} incoming friend requests [{id,name,username}] */
   let friendRequests = [];
-  /** @param {any} m */
-  function expiryLabel(m) {
-    if (!m?.settles_at) return '';
-    const ms = new Date(m.settles_at).getTime() - Date.now();
-    if (ms <= 0) return 'expiring';
-    const h = ms / 3600000;
-    if (h < 1) return 'expires in ' + Math.max(1, Math.round(ms / 60000)) + 'm';
-    if (h < 24) return 'expires in ' + Math.round(h) + 'h';
-    return 'expires in ' + Math.round(h / 24) + 'd';
-  }
   // Challenges where it's my turn, soonest-to-expire first.
   $: turnMatches = (myMatches ?? [])
     .filter((m) => m.status === 'open' && m.my_state !== 'done')
@@ -244,21 +234,21 @@
     .sort((a, b) => new Date(a.settles_at || 0).getTime() - new Date(b.settles_at || 0).getTime());
   // Priority: your-turn challenge → friend request → "challenge a friend" CTA.
   $: actNow = (() => {
+    // Name is the bold title (short, never cuts a word); the verb is the muted sub.
     if (turnMatches.length) {
       const m = turnMatches[0];
       const invited = m.my_state === 'invited';
-      const exp = expiryLabel(m);
       return { kind: 'match', icon: '⚔️',
-        title: invited ? `${m.host} challenged you` : `Your turn vs ${m.host}`,
-        sub: exp || '', // keep it clean — stakes (puzzles/buy-in) show at the PIN confirm
+        title: m.host,
+        sub: invited ? 'Challenged you' : 'Your turn',
         cta: (invited ? 'Play' : 'Resume') + ' →',
-        more: (turnMatches.length - 1) + friendRequests.length,
+        more: turnMatches.length - 1, // other challenges waiting
         primary: () => respondToMatch(m), moreAction: () => openChallenges() };
     }
     if (friendRequests.length) {
       const r = friendRequests[0];
       return { kind: 'friend', icon: '👋',
-        title: `${r.name || '@' + r.username} wants to be friends`, sub: 'Tap to accept',
+        title: r.name || '@' + r.username, sub: 'Wants to be friends',
         cta: 'Accept →', more: friendRequests.length - 1,
         primary: () => acceptFriend(r), moreAction: () => goto('/friends') };
     }
@@ -1235,7 +1225,7 @@
               <span class="ab-cta">{actNow.cta}</span>
             </button>
             {#if actNow.more > 0 && actNow.moreAction}
-              <button class="ab-more" on:click={actNow.moreAction} title="See all">+{actNow.more}</button>
+              <button class="ab-more" on:click={actNow.moreAction} title="See all your challenges">+{actNow.more} more</button>
             {/if}
           </div>
           <button class="menu-card primary" style="--i: 0" on:click={() => { menuView = 'play'; fx('tap'); }}>
