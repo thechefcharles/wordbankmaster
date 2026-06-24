@@ -38,6 +38,13 @@
     <div class="pc-card">
       <h2 class="pc-title">Enter your PIN</h2>
       <p class="pc-reason">{$pinConfirm.reason}</p>
+      {#if $pinConfirm.details?.length}
+        <div class="pc-stakes">
+          {#each $pinConfirm.details as d}
+            <div class="pc-stake"><span class="pc-sk-label">{d.label}</span><span class="pc-sk-value">{d.value}</span></div>
+          {/each}
+        </div>
+      {/if}
       <PinPad bind:this={pad} {error} on:submit={onSubmit} on:change={() => (msg = '')} />
       {#if msg}<p class="pc-msg">{msg}</p>{/if}
       <button class="pc-cancel" on:click={cancel}>Cancel</button>
@@ -55,7 +62,12 @@
   }
   .pc-card { width: 100%; max-width: 360px; text-align: center; }
   .pc-title { font-family: var(--font-display); font-size: 1.35rem; margin: 0 0 0.2rem; }
-  .pc-reason { color: #fbbf24; font-weight: 700; font-size: 0.95rem; margin: 0 0 1.4rem; }
+  .pc-reason { color: #fbbf24; font-weight: 700; font-size: 0.95rem; margin: 0 0 1rem; }
+  .pc-stakes { width: 100%; max-width: 280px; margin: 0 auto 1.3rem; display: flex; flex-direction: column; gap: 6px;
+    padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(253,224,71,0.3); background: rgba(251,191,36,0.06); }
+  .pc-stake { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 0.86rem; }
+  .pc-sk-label { color: var(--text-muted, #aeb8c6); }
+  .pc-sk-value { font-family: var(--font-display); font-weight: 700; color: var(--text, #fff); }
   .pc-msg { margin-top: 0.9rem; font-size: 0.86rem; color: #f87171; }
   .pc-cancel { margin-top: 1.4rem; background: none; border: none; color: var(--text-faint); font-size: 0.85rem; text-decoration: underline; cursor: pointer; }
 </style>
