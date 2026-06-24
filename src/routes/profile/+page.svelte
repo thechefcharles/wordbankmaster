@@ -5,9 +5,11 @@
   import { getProfileDetail } from '$lib/stores/statsStore.js';
   import HistoryList from '$lib/components/HistoryList.svelte';
   import BadgesPanel from '$lib/components/BadgesPanel.svelte';
+  import NotificationsPanel from '$lib/components/NotificationsPanel.svelte';
+  import { unreadCount, markAllNotificationsRead } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
 
-  /** @type {'stats'|'history'|'badges'} */
+  /** @type {'stats'|'history'|'badges'|'alerts'} */
   let tab = $state('stats');
   /** @type {any|null} */
   let d = $state(null);
@@ -16,9 +18,16 @@
   onMount(async () => {
     track('profile_view');
     const t = $page.url.searchParams.get('tab');
-    if (t === 'history' || t === 'badges') tab = t;
+    if (t === 'history' || t === 'badges' || t === 'alerts') tab = /** @type {any} */ (t);
     try { d = await getProfileDetail(); } finally { loading = false; }
   });
+
+  // Viewing your alerts clears the unread badge.
+  $effect(() => { if (tab === 'alerts') markAllNotificationsRead(); });
+  /** @param {any} n */
+  function notifNav(n) {
+    if (n?.type === 'challenge_incoming' || n?.data?.match_id || n?.data?.challenge_id) goto('/');
+  }
 
   const fmt = (/** @type {any} */ n) => '$' + Math.round(Number(n ?? 0)).toLocaleString();
   const mult = (/** @type {any} */ x) => x ? (Number(x) / 100).toFixed(1) + '×' : '—';
@@ -50,6 +59,7 @@
     </header>
 
     <div class="tabs">
+      <button class="tab" class:active={tab === 'alerts'} onclick={() => tab = 'alerts'}>🔔{#if $unreadCount > 0}<span class="tab-count">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}</button>
       <button class="tab" class:active={tab === 'stats'} onclick={() => tab = 'stats'}>Stats</button>
       <button class="tab" class:active={tab === 'history'} onclick={() => tab = 'history'}>History</button>
       <button class="tab" class:active={tab === 'badges'} onclick={() => tab = 'badges'}>Badges</button>
@@ -128,8 +138,10 @@
       {/if}
     {:else if tab === 'history'}
       <HistoryList />
-    {:else}
+    {:else if tab === 'badges'}
       <BadgesPanel />
+    {:else}
+      <NotificationsPanel onNavigate={notifNav} />
     {/if}
   {/if}
 </main>
@@ -156,6 +168,8 @@
   .tab { flex: 1; padding: 9px 0; border-radius: 12px; border: 1px solid var(--border); background: var(--surface);
     color: var(--text-muted); font-weight: 700; font-size: 0.88rem; cursor: pointer; }
   .tab.active { background: linear-gradient(135deg, #fde047, #f59e0b); color: #3a2a00; border-color: transparent; }
+  .tab-count { display: inline-grid; place-items: center; min-width: 16px; height: 16px; padding: 0 4px; margin-left: 3px;
+    border-radius: 999px; background: #f43f5e; color: #fff; font-size: 0.62rem; font-weight: 800; vertical-align: middle; }
 
   .sec-title { font-family: var(--font-display); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em;
     text-transform: uppercase; color: var(--gold); text-align: left; margin: 18px 2px 8px; }

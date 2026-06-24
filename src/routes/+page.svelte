@@ -10,7 +10,7 @@
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
   import { getDailyStatus, getDailyGhost, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests } from '$lib/stores/statsStore.js';
-  import { unreadCount, markAllNotificationsRead, refreshNotifications, inboxRequest, inboxTarget } from '$lib/stores/notificationStore.js';
+  import { unreadCount, refreshNotifications, inboxRequest, inboxTarget } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
   import {
@@ -40,7 +40,6 @@
   import ActivityPanel from '$lib/components/ActivityPanel.svelte';
   import FriendsPanel from '$lib/components/FriendsPanel.svelte';
   import GroupsPanel from '$lib/components/GroupsPanel.svelte';
-  import NotificationsPanel from '$lib/components/NotificationsPanel.svelte';
 
   export let data;
 
@@ -634,13 +633,11 @@
       window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
     } catch { /* non-fatal */ }
   }
-  // A tapped toast opens the Community tab it routed to (challenges / activity / people).
+  // A tapped challenge toast / deep-link opens Community ▸ Challenges (people fallback).
   let _inboxSeen = 0;
   $: if (browser && $inboxRequest > _inboxSeen && loggedIn && hasInitialized && !needsUsername && !showPinUnlock && !showPinSetup) {
     _inboxSeen = $inboxRequest;
-    const t = $inboxTarget;
-    if (t === 'people') { openCommunity('people'); peopleTab = 'friends'; }
-    else if (t === 'activity') openCommunityActivity();
+    if ($inboxTarget === 'people') { openCommunity('people'); peopleTab = 'friends'; }
     else openCommunity('challenges');
   }
   function dismissTutorial() {
@@ -845,16 +842,6 @@
     showMainMenu = true;
     [myMatches, myGroups] = await Promise.all([getMyMatches(), getMyGroups()]);
     challengeCount = myMatches.filter((m) => m.status === 'open' && m.my_state !== 'done').length;
-  }
-  /** Open Community ▸ Activity and clear the unread dot. */
-  async function openCommunityActivity() {
-    await openCommunity('activity');
-    markAllNotificationsRead();
-  }
-  /** Tapping a notification routes to where you'd act on it. @param {any} n */
-  function notifNavigate(n) {
-    if (n.type === 'friend_request' || n.data?.route === 'friends') { openCommunity('people'); peopleTab = 'friends'; }
-    else if (n.type === 'challenge_incoming' || n.data?.challenge_id || n.data?.match_id) openCommunity('challenges');
   }
   /** Back-compat shim for existing callers (banner "+N more", toasts, result modal). */
   async function openChallenges(forceTab) {
@@ -1207,33 +1194,29 @@
           <button class="bank-chip" on:click={() => goto('/bank')} title="Your Cash">
             <span class="bc-coin">💰</span>{netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}
           </button>
-          <button class="account-ic" on:click={() => goto('/profile')} title="Profile">👤</button>
+          <button class="account-ic" on:click={() => goto($unreadCount > 0 ? '/profile?tab=alerts' : '/profile')} title="Profile">
+            👤{#if $unreadCount > 0}<span class="account-count" title="{$unreadCount} new">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}
+          </button>
         </div>
         <video class="menu-mark" src="/coin.mp4" poster="/coin-poster.jpg" autoplay loop muted playsinline disablepictureinpicture></video>
         <img class="menu-wordmark" src="/wordmark-slogan.png" alt="WordBank — Spend Less. Think More." />
       </div>
       {#if menuView === 'home'}
         <div class="main-menu-buttons stagger">
-          <!-- 🎯 Act-now banner: the single most-urgent thing needing me -->
-          <div class="act-banner" class:cta={actNow.kind === 'empty'}>
-            <button class="ab-main" on:click={actNow.primary}>
-              <span class="ab-icon">{actNow.icon}</span>
-              <span class="ab-text">
-                <strong>{actNow.title}</strong>
-                {#if actNow.sub}<small>{actNow.sub}</small>{/if}
-              </span>
-              <span class="ab-cta">{actNow.cta}</span>
-            </button>
-            {#if actNow.more > 0 && actNow.moreAction}
-              <button class="ab-more" on:click={actNow.moreAction} title="See all your challenges">+{actNow.more} more</button>
-            {/if}
-          </div>
+          <!-- 🎯 Act-now banner: just the most-recent challenge above Play (more live in Community / Profile alerts) -->
+          <button class="ab-main" class:cta={actNow.kind === 'empty'} on:click={actNow.primary}>
+            <span class="ab-icon">{actNow.icon}</span>
+            <span class="ab-text">
+              <strong>{actNow.title}</strong>
+              {#if actNow.sub}<small>{actNow.sub}</small>{/if}
+            </span>
+            <span class="ab-cta">{actNow.cta}</span>
+          </button>
           <button class="menu-card primary" style="--i: 0" on:click={() => { menuView = 'play'; fx('tap'); }}>
             <span class="mc-title">Play Now</span>
           </button>
           <button class="menu-card" style="--i: 1" on:click={() => { fx('tap'); openCommunity('challenges'); }}>
             <span class="mc-title">Community</span>
-            {#if $unreadCount > 0}<span class="mc-count" title="{$unreadCount} new">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}
           </button>
           <button class="menu-card" style="--i: 2" on:click={() => goto('/shop')}>
             <span class="mc-title">Store</span>
@@ -1287,7 +1270,7 @@
           <div class="comm-tabs">
             <button class="comm-tab" class:active={communityTab === 'challenges'} on:click={() => { communityTab = 'challenges'; fx('tap'); }}>Challenges</button>
             <button class="comm-tab" class:active={communityTab === 'leaderboard'} on:click={() => { communityTab = 'leaderboard'; fx('tap'); }}>Leaderboard</button>
-            <button class="comm-tab" class:active={communityTab === 'activity'} on:click={() => { communityTab = 'activity'; fx('tap'); markAllNotificationsRead(); }}>Activity{#if $unreadCount > 0}<span class="comm-count">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}</button>
+            <button class="comm-tab" class:active={communityTab === 'activity'} on:click={() => { communityTab = 'activity'; fx('tap'); }}>Activity</button>
           </div>
         {/if}
 
@@ -1319,12 +1302,7 @@
         {:else if communityTab === 'leaderboard'}
           <div class="comm-body"><LeaderboardPanel /></div>
         {:else if communityTab === 'activity'}
-          <div class="comm-body">
-            <div class="act-sec">📥 For you</div>
-            <NotificationsPanel onNavigate={notifNavigate} onChange={refreshChallengeCount} />
-            <div class="act-sec">📣 Feed</div>
-            <ActivityPanel />
-          </div>
+          <div class="comm-body"><ActivityPanel /></div>
         {:else}
           <div class="comm-body">
             {#if peopleTab === 'friends'}
@@ -2293,6 +2271,7 @@
   .hero-top .streak-chip { justify-self: start; }
   .hero-top .bank-chip { justify-self: center; }
   .account-ic {
+    position: relative;
     justify-self: end;
     display: inline-grid; place-items: center;
     width: 42px; height: 42px; border-radius: 50%;
@@ -2301,6 +2280,13 @@
   }
   .account-ic:hover { transform: translateY(-1px); border-color: rgba(251,191,36,0.5); }
   .account-ic:active { transform: scale(0.94); }
+  /* unread notification count, off the top-right of the avatar */
+  .account-count {
+    position: absolute; top: -4px; right: -4px; display: grid; place-items: center;
+    min-width: 19px; height: 19px; padding: 0 5px; border-radius: 999px;
+    background: #f43f5e; color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 0.68rem;
+    box-shadow: 0 0 0 2px var(--bg, #0a0e14);
+  }
   .bank-chip {
     display: inline-flex;
     align-items: center;
@@ -2474,9 +2460,8 @@
   .mc-badge.gift { background: transparent; border: none; box-shadow: none; font-size: 1.1rem; top: -10px; right: -8px; }
   /* home "you've been challenged" banner */
   /* Home act-now banner: most-urgent item + optional "+N more" chip */
-  .act-banner { display: flex; align-items: stretch; gap: 8px; width: 100%; }
   .ab-main {
-    flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px;
+    width: 100%; min-width: 0; display: flex; align-items: center; gap: 12px;
     padding: 13px 16px; border-radius: 14px; cursor: pointer; text-align: left;
     background: linear-gradient(135deg, rgba(251, 191, 36, 0.18), rgba(251, 191, 36, 0.12));
     border: 1px solid rgba(251, 191, 36, 0.5);
@@ -2489,17 +2474,9 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ab-text small { font-size: 0.78rem; color: var(--text-muted); }
   .ab-cta { font-family: var(--font-display); font-weight: 800; color: var(--brand-2); font-size: 0.9rem; white-space: nowrap; flex: none; }
-  .ab-more {
-    flex: none; padding: 0 14px; border-radius: 14px; cursor: pointer; white-space: nowrap;
-    border: 1px solid var(--border-strong); background: var(--surface);
-    color: var(--text-muted); font-family: var(--font-display); font-weight: 800; font-size: 0.82rem;
-  }
-  .ab-more:hover { border-color: var(--brand-2); color: var(--brand-2); }
   /* Empty state = subtle CTA, no pulse/glow */
-  .act-banner.cta .ab-main {
-    background: var(--surface); border: 1px dashed var(--border-strong); animation: none;
-  }
-  .act-banner.cta .ab-text strong { font-weight: 700; color: var(--text-muted); }
+  .ab-main.cta { background: var(--surface); border: 1px dashed var(--border-strong); animation: none; }
+  .ab-main.cta .ab-text strong { font-weight: 700; color: var(--text-muted); }
   /* Daily status chip on the Play Now card */
   .daily-chip {
     font-size: 0.68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap;

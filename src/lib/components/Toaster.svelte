@@ -7,14 +7,10 @@
   function open(t) {
     fx('select');
     dismissToast(t.id);
-    // Route to the right Community tab: requests → People, your-turn challenge →
-    // Challenges, everything ambient (result, sabotage, chat) → Activity.
-    const target =
-      (t.type === 'friend_request' || t.data?.route === 'friends') ? 'people'
-      : t.type === 'challenge_incoming' ? 'challenges'
-      : 'activity';
-    goto('/');
-    requestInbox(target);
+    // Your-turn challenge → home Community ▸ Challenges; everything else (results,
+    // sabotage, chat, friend requests) → your alerts inbox in Profile.
+    if (t.type === 'challenge_incoming') { goto('/'); requestInbox('challenges'); }
+    else goto('/profile?tab=alerts');
   }
 </script>
 
