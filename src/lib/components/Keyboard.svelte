@@ -82,6 +82,12 @@
    * 🔹 Global key handling: letters, Enter (submit), ESC (cancel), Backspace, Space.
    */
   function handleKeyDown(event: KeyboardEvent): void {
+    // Don't hijack typing in a text field (chat, username, search, wager…).
+    // Without this the game eats every keystroke — preventDefault stops the
+    // character and blur() closes the field, so e.g. chat won't accept input.
+    const el = document.activeElement as HTMLElement | null;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+
     const state = get(gameStore);
     const gameOver = state.gameState === 'won' || state.gameState === 'lost';
     const key = event.key.toUpperCase();
