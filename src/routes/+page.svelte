@@ -1735,6 +1735,16 @@
           <span class="bp-amount">{climbLive.net >= 0 ? '$' : '−$'}{Math.abs(climbLive.net).toLocaleString()}</span>
           <span class="bp-balance">Balance ${Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span>
         </div>
+      {:else if isFreeplay}
+        <!-- Free Play: play-money "Credits" (separate pool, never touches real Cash) -->
+        <div class="credits-panel">
+          <span class="cr-label">🎟️ Credits</span>
+          <span class="cr-amount">{Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span>
+          <span class="cr-note">Play money · doesn't touch your Cash</span>
+        </div>
+        {#if freeLive}
+          <p class="live-line">Solve {freeLive.clean ? 'clean ' : ''}to bank <b>+${freeLive.clean ? 50 : 25}</b> real Cash</p>
+        {/if}
       {:else}
         <div class="bankroll-container">
           <div class="bankroll-box" class:pulse-up={bankrollPulse === 'up'} class:pulse-down={bankrollPulse === 'down'}>
@@ -1757,8 +1767,6 @@
           <p class="live-line">Worth ${dLive.reward.toLocaleString()} · spent ${dLive.spent.toLocaleString()} · profit <b class:lose={dLive.net < 0}>{dLive.net >= 0 ? '+' : '−'}${Math.abs(dLive.net).toLocaleString()}</b></p>
         {:else if matchLive}
           <p class="live-line">Spent <b>${matchLive.spent.toLocaleString()}</b> of ${matchLive.budget.toLocaleString()} · 🏆 spend the least to win</p>
-        {:else if freeLive}
-          <p class="live-line">Solve {freeLive.clean ? 'clean ' : ''}to win <b>+${freeLive.clean ? 50 : 25}</b></p>
         {/if}
       {/if}
     </section>
@@ -2989,6 +2997,13 @@
     text-shadow: 0 0 18px rgba(251,191,36,0.45); font-variant-numeric: tabular-nums; transition: color 0.2s; }
   .bounty-panel.loss .bp-amount { color: #fb7185; text-shadow: none; }
   .bp-balance { margin-top: 3px; font-size: 0.74rem; color: var(--text-faint); }
+  /* Free Play play-money "Credits" — violet + dashed so it reads as not-real-Cash */
+  .credits-panel { display: flex; flex-direction: column; align-items: center; gap: 1px;
+    width: 100%; max-width: 320px; margin: 0 auto; padding: 13px 18px; border-radius: var(--r-lg, 18px);
+    border: 1px dashed rgba(167, 139, 250, 0.55); background: linear-gradient(135deg, rgba(167, 139, 250, 0.13), rgba(167, 139, 250, 0.03)); }
+  .cr-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #c4b5fd; }
+  .cr-amount { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 2.1rem; line-height: 1.1; color: #c4b5fd; font-variant-numeric: tabular-nums; }
+  .cr-note { margin-top: 2px; font-size: 0.68rem; color: var(--text-faint); }
 
   /* Cash Game (Climb) gamified HUD */
   .climb-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; max-width: 360px; margin: 0 auto 14px; }
