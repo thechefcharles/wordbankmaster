@@ -9,7 +9,7 @@
   import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getDailyGhost, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getPersonalBests } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getDailyGhost, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests } from '$lib/stores/statsStore.js';
   import { unreadCount, markAllNotificationsRead, refreshNotifications, inboxRequest, inboxTarget } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
@@ -355,25 +355,6 @@
   $: freeLive = ($gameStore.gameMode === 'freeplay' && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost')
     ? { clean: ($gameStore.incorrectLetters?.length ?? 0) === 0 } : null;
 
-  // Solo "beat your best" goal line: your lowest winning spend for this mode.
-  /** @type {Record<string, number>|null} */
-  let personalBests = null;
-  $: if (browser && loggedIn && hasInitialized && personalBests === null) {
-    personalBests = {}; // guard against refetch while the promise resolves
-    getPersonalBests().then((b) => personalBests = b);
-  }
-  $: soloBest = (() => { const v = personalBests?.[$gameStore.gameMode]; return typeof v === 'number' ? v : null; })();
-  $: soloSpent = isClimb ? (climbLive?.spent ?? null) : (dLive ? dLive.spent : null);
-  $: showGoalLine = soloBest !== null && soloSpent !== null
-    && ($gameStore.gameMode === 'daily' || $gameStore.gameMode === 'makeup' || isClimb);
-  // Refresh the best after each solo win (e.g. a Cash Game run improves it mid-session).
-  let _prevSoloGS = '';
-  function refreshBestOnWin(/** @type {string} */ gs, /** @type {string} */ mode) {
-    const solo = mode === 'daily' || mode === 'makeup' || mode === 'climb';
-    if (gs === 'won' && _prevSoloGS !== 'won' && solo && personalBests) getPersonalBests().then((b) => personalBests = b);
-    _prevSoloGS = gs;
-  }
-  $: refreshBestOnWin($gameStore.gameState, $gameStore.gameMode);
 
   // ── Fold + broke-timer (Daily + Challenges) ──────────────────────────────
   // You're "broke" when you can't afford the cheapest still-buyable letter →
@@ -1630,20 +1611,20 @@
           <span class="heat-x">🔥 ×{climbHeat}</span>
         </div>
       </div>
-      {#if climb.state === 'active' && selfPups.length}
-        <p class="cp-hint">Your power-ups · tap to use · stock up in the Store</p>
-        <div class="climb-pups">
-          {#each selfPups as item}
-            {@const used = (climb.equipped ?? []).includes(item.id)}
-            {@const owned = item.owned ?? 0}
-            <button class="cp" class:equipped={used} class:empty={owned <= 0 && !used}
-              disabled={owned <= 0 || used}
-              on:click={() => handleClimbPup(item)} title={item.name}>
-              <span class="cp-ic">{PUP_ICON[item.id] ?? '✨'}</span>
-              <span class="cp-tag">{used ? '✓' : owned > 0 ? '×' + owned : '—'}</span>
-            </button>
-          {/each}
-        </div>
+      {#if climb.state === 'active'}
+        {@const ownedClimb = selfPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0)}
+        {#if ownedClimb.length}
+          <div class="climb-pups owned">
+            {#each ownedClimb as item}
+              {@const used = (climb.equipped ?? []).includes(item.id)}
+              <button class="cp" class:equipped={used} disabled={used}
+                on:click={() => handleClimbPup(item)} title={item.name}>
+                <span class="cp-ic">{PUP_ICON[item.id] ?? '✨'}</span>
+                <span class="cp-tag">{used ? '✓' : '×' + item.owned}</span>
+              </button>
+            {/each}
+          </div>
+        {/if}
       {/if}
       {#if climb.stuck && $gameStore.gameState !== 'won'}
         <div class="climb-stuck">
@@ -1746,39 +1727,39 @@
 
     <!-- 💰 Bankroll Display -->
     <section class="stats-section">
-      <div class="bankroll-container">
-        <div class="bankroll-box" class:pulse-up={bankrollPulse === 'up'} class:pulse-down={bankrollPulse === 'down'}>
-          {#if bankrollPulse}
-            <span class="bankroll-delta {bankrollPulse}">{bankrollDelta > 0 ? '+' : '−'}${Math.abs(bankrollDelta)}</span>
-          {/if}
-          {#if hotHandFlash}
-            <span class="hot-hand-flash">🔥 Hot Hand +$250</span>
-          {/if}
-          <span class="bankroll-label">Balance</span>
-          <span class="bankroll-amount">
-            <span class="currency">$</span>
-            {#each digits as d}
-              <FlipDigit digit={+d} />
-            {/each}
-          </span>
+      {#if isClimb && climbLive}
+        <!-- Cash Game: one bounty number = what you keep, ticking down as you spend -->
+        <div class="bounty-panel" class:loss={climbLive.net < 0}>
+          {#if hotHandFlash}<span class="hot-hand-flash">🔥 Hot Hand +$250</span>{/if}
+          <span class="bp-label">{climbLive.net >= 0 ? '🏆 Solve now to keep' : '⚠️ You’re losing money'}</span>
+          <span class="bp-amount">{climbLive.net >= 0 ? '$' : '−$'}{Math.abs(climbLive.net).toLocaleString()}</span>
+          <span class="bp-balance">Balance ${Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span>
         </div>
-      </div>
-      {#if dLive}
-        <p class="live-line">Worth ${dLive.reward.toLocaleString()} · spent ${dLive.spent.toLocaleString()} · profit <b class:lose={dLive.net < 0}>{dLive.net >= 0 ? '+' : '−'}${Math.abs(dLive.net).toLocaleString()}</b></p>
-      {:else if climbLive}
-        <div class="prize-panel" class:loss={climbLive.net < 0}>
-          <span class="pz-prize">🏆 ${climbLive.payout.toLocaleString()}</span>
-          <span class="pz-keep">{climbLive.net >= 0 ? `keep +$${climbLive.net.toLocaleString()} if you solve` : `losing $${Math.abs(climbLive.net).toLocaleString()} — ease off`}</span>
+      {:else}
+        <div class="bankroll-container">
+          <div class="bankroll-box" class:pulse-up={bankrollPulse === 'up'} class:pulse-down={bankrollPulse === 'down'}>
+            {#if bankrollPulse}
+              <span class="bankroll-delta {bankrollPulse}">{bankrollDelta > 0 ? '+' : '−'}${Math.abs(bankrollDelta)}</span>
+            {/if}
+            {#if hotHandFlash}
+              <span class="hot-hand-flash">🔥 Hot Hand +$250</span>
+            {/if}
+            <span class="bankroll-label">Balance</span>
+            <span class="bankroll-amount">
+              <span class="currency">$</span>
+              {#each digits as d}
+                <FlipDigit digit={+d} />
+              {/each}
+            </span>
+          </div>
         </div>
-      {:else if matchLive}
-        <p class="live-line">Spent <b>${matchLive.spent.toLocaleString()}</b> of ${matchLive.budget.toLocaleString()} · 🏆 spend the least to win</p>
-      {:else if freeLive}
-        <p class="live-line">Solve {freeLive.clean ? 'clean ' : ''}to win <b>+${freeLive.clean ? 50 : 25}</b></p>
-      {/if}
-      {#if showGoalLine}
-        <p class="goal-line" class:beating={soloSpent <= soloBest}>
-          {#if soloSpent <= soloBest}🔥 Under your best{:else}🎯 Beat your best{/if}: <b>{soloBest === 0 ? 'free' : '$' + soloBest.toLocaleString()}</b>
-        </p>
+        {#if dLive}
+          <p class="live-line">Worth ${dLive.reward.toLocaleString()} · spent ${dLive.spent.toLocaleString()} · profit <b class:lose={dLive.net < 0}>{dLive.net >= 0 ? '+' : '−'}${Math.abs(dLive.net).toLocaleString()}</b></p>
+        {:else if matchLive}
+          <p class="live-line">Spent <b>${matchLive.spent.toLocaleString()}</b> of ${matchLive.budget.toLocaleString()} · 🏆 spend the least to win</p>
+        {:else if freeLive}
+          <p class="live-line">Solve {freeLive.clean ? 'clean ' : ''}to win <b>+${freeLive.clean ? 50 : 25}</b></p>
+        {/if}
       {/if}
     </section>
 
@@ -2067,6 +2048,7 @@
   .ch-label { font-size: 0.55rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
   .cp-hint { font-size: 0.66rem; color: var(--text-faint); text-align: center; margin: 0 0 5px; }
   .climb-pups { display: flex; gap: 6px; width: 100%; max-width: 360px; margin: 0 auto 12px; justify-content: space-between; }
+  .climb-pups.owned { justify-content: center; gap: 10px; margin-bottom: 10px; }
   .cp {
     flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 7px 2px;
     border-radius: 10px; cursor: pointer; border: 1px solid var(--border); background: var(--surface);
@@ -2995,9 +2977,18 @@
   .live-line { margin: 9px auto 0; text-align: center; font-size: 0.82rem; color: var(--text-muted); }
   .live-line b { display: inline-block; font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; color: var(--brand-2); }
   .live-line b.lose { color: #fb7185; }
-  .goal-line { margin: 6px auto 0; text-align: center; font-size: 0.76rem; font-weight: 600; color: var(--text-faint); }
-  .goal-line b { font-family: var(--font-display); font-weight: 800; color: var(--brand-2); font-variant-numeric: tabular-nums; }
-  .goal-line.beating, .goal-line.beating b { color: #7ee0a8; }
+  /* Cash Game bounty panel: one hero number (what you keep) that ticks down as you spend */
+  .bounty-panel { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    width: 100%; max-width: 340px; margin: 0 auto; padding: 14px 18px; border-radius: var(--r-lg, 18px);
+    border: 1px solid rgba(253, 224, 71, 0.4); background: linear-gradient(135deg, rgba(251, 191, 36, 0.14), rgba(251, 191, 36, 0.04));
+    box-shadow: 0 0 22px rgba(251, 191, 36, 0.16); }
+  .bounty-panel.loss { border-color: rgba(251,113,133,0.5); background: linear-gradient(135deg, rgba(251,113,133,0.13), rgba(251,113,133,0.03)); box-shadow: none; }
+  .bp-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brand-2); }
+  .bounty-panel.loss .bp-label { color: #fb7185; }
+  .bp-amount { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 2.3rem; line-height: 1.05; color: #fcd34d;
+    text-shadow: 0 0 18px rgba(251,191,36,0.45); font-variant-numeric: tabular-nums; transition: color 0.2s; }
+  .bounty-panel.loss .bp-amount { color: #fb7185; text-shadow: none; }
+  .bp-balance { margin-top: 3px; font-size: 0.74rem; color: var(--text-faint); }
 
   /* Cash Game (Climb) gamified HUD */
   .climb-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; max-width: 360px; margin: 0 auto 14px; }
@@ -3017,17 +3008,6 @@
   .heat-x { position: relative; z-index: 1; font-family: var(--font-display); font-weight: 800; font-size: 0.85rem; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
   .heat-meter.hot { border-color: rgba(251,146,60,0.6); box-shadow: 0 0 16px rgba(251,146,60,0.3); }
 
-  .prize-panel {
-    display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 12px auto 0; max-width: 320px;
-    padding: 12px 18px; border-radius: 16px;
-    background: linear-gradient(135deg, rgba(251,191,36,0.16), rgba(251,191,36,0.04));
-    border: 1px solid rgba(251,191,36,0.45); box-shadow: 0 0 24px rgba(251,191,36,0.12);
-  }
-  .prize-panel.loss { background: linear-gradient(135deg, rgba(251,113,133,0.14), rgba(251,113,133,0.03)); border-color: rgba(251,113,133,0.45); box-shadow: none; }
-  .pz-prize { font-family: var(--font-display); font-weight: 800; font-size: 1.9rem; line-height: 1; color: #fcd34d; text-shadow: 0 0 16px rgba(251,191,36,0.45); }
-  .prize-panel.loss .pz-prize { color: #fb7185; text-shadow: none; }
-  .pz-keep { font-size: 0.78rem; font-weight: 600; color: var(--brand-2); }
-  .prize-panel.loss .pz-keep { color: #fb7185; }
 
   .bankroll-amount {
     display: inline-flex;
