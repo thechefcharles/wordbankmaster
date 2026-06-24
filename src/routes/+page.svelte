@@ -8,7 +8,7 @@
   import { getMyChallenges, getPowerups, getMyMatches, getMyGroups, getMatch, getMatchDetail, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getDailyGhost, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getDailyGhost, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout } from '$lib/stores/statsStore.js';
   import { unreadCount, refreshNotifications, inboxRequest, inboxTarget } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
@@ -378,6 +378,35 @@
   function confirmFold() { fx('tap'); showGiveUp = true; }
   function cancelGiveUp() { fx('tap'); showGiveUp = false; }
   function doGiveUp() { showGiveUp = false; doFold(false); }
+
+  // Free Play: cash out credits → real Cash right from the board (40:1, $50/day cap).
+  let fpCashBusy = false;
+  async function doFreeplayCashout() {
+    if (fpCashBusy) return;
+    fpCashBusy = true;
+    const st = await getFreeplayCashoutStatus();
+    fpCashBusy = false;
+    if (!st) return;
+    const amt = Math.min(st.max_cash ?? 0, st.cap_remaining ?? 0);
+    if (amt <= 0) {
+      gameStore.update((s) => ({ ...s, cashToast: { amount: 0, label: "Daily $50 cash-out cap reached — back tomorrow" } }));
+      return;
+    }
+    try {
+      await requirePin(`Cash out ${(amt * 40).toLocaleString()} credits → $${amt}`, [
+        { label: 'Credits', value: (amt * 40).toLocaleString() },
+        { label: 'You receive', value: '$' + amt }
+      ]);
+    } catch { return; }
+    fpCashBusy = true;
+    const res = await freeplayCashout(amt);
+    fpCashBusy = false;
+    if (res?.ok) {
+      fx('win');
+      gameStore.update((s) => ({ ...s, bankroll: res.bankroll, cashToast: { amount: res.cashed, label: 'Cashed out to your Cash!' } }));
+      await refreshBank();
+    }
+  }
   $: matchRemaining = (() => {
     if (!matchBlitz || !matchInfo?.started_at) return 0;
     const start = new Date(matchInfo.started_at).getTime();
@@ -1128,7 +1157,7 @@
 
 {#if $gameStore.cashToast}
   <button class="attendance-toast" on:click={() => gameStore.update(s => ({ ...s, cashToast: null }))}>
-    <strong>+${$gameStore.cashToast.amount.toLocaleString()}</strong> · {$gameStore.cashToast.label}
+    {#if $gameStore.cashToast.amount > 0}<strong>+${$gameStore.cashToast.amount.toLocaleString()}</strong> · {/if}{$gameStore.cashToast.label}
   </button>
 {/if}
 
@@ -1681,9 +1710,11 @@
           <span class="cr-label">🎟️ Credits</span>
           <span class="cr-amount">{Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span>
           {#if (($gameStore.bankroll ?? 0) - 2000) >= 40}
-            <span class="cr-ready">💵 ${Math.floor((($gameStore.bankroll ?? 0) - 2000) / 40)} ready — cash out in Store</span>
+            <button class="cr-cashout" disabled={fpCashBusy} on:click={doFreeplayCashout}>
+              💵 Cash out ${Math.min(50, Math.floor((($gameStore.bankroll ?? 0) - 2000) / 40))}
+            </button>
           {:else}
-            <span class="cr-note">Play money · cash out at 40:1 in the Store</span>
+            <span class="cr-note">Play money · cash out at 40:1 (Store or here)</span>
           {/if}
           <span class="cr-wallet">💰 Cash {netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}</span>
         </div>
@@ -2894,8 +2925,10 @@
   .cr-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #c4b5fd; }
   .cr-amount { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 2.1rem; line-height: 1.1; color: #c4b5fd; font-variant-numeric: tabular-nums; }
   .cr-note { margin-top: 2px; font-size: 0.68rem; color: var(--text-faint); }
-  .cr-ready { margin-top: 2px; font-size: 0.68rem; font-weight: 700; color: #6ee7b7; }
-  .cr-wallet { margin-top: 3px; font-size: 0.66rem; color: var(--text-faint); }
+  .cr-cashout { margin-top: 5px; padding: 0.4rem 0.9rem; border-radius: 999px; cursor: pointer; font-weight: 800; font-size: 0.8rem;
+    color: #04240f; background: linear-gradient(135deg, #6ee7b7, #34d399); border: none; }
+  .cr-cashout:disabled { opacity: 0.5; cursor: default; }
+  .cr-wallet { margin-top: 4px; font-size: 0.66rem; color: var(--text-faint); }
   /* Cash Game (Climb) gamified HUD */
   .climb-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; max-width: 360px; margin: 0 auto 14px; }
   .climb-level {

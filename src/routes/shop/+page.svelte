@@ -107,33 +107,33 @@
     <h1>🛍️ Store</h1>
     <span class="bank-chip">💰 ${bank.toLocaleString()}</span>
   </div>
+  {#if cashout && cashout.credits > 0}
+    <div class="cashout-card">
+      <div class="co-top">
+        <div>
+          <span class="co-label">🎟️ Free Play credits</span>
+          <span class="co-credits">{cashout.credits.toLocaleString()}</span>
+        </div>
+        {#if cashout.max_cash > 0 && cashout.cap_remaining > 0}
+          <button class="co-btn" disabled={busy === 'cashout'} onclick={doCashout}>
+            💵 Cash out ${Math.min(cashout.max_cash, cashout.cap_remaining)}
+          </button>
+        {:else if cashout.cap_remaining <= 0}
+          <span class="co-pending">Daily $50 cap reached</span>
+        {:else}
+          <span class="co-pending">Earn {(2040 - cashout.credits).toLocaleString()} more to cash out</span>
+        {/if}
+      </div>
+      <p class="co-note">First 2,000 credits are your stake. Cash out the rest at 40 credits = $1 (up to $50/day).</p>
+    </div>
+  {/if}
+
   <p class="sub">Stock up on power-ups to bring into the Cash Game &amp; challenges, and spend on flair. Cosmetics are pure show — no pay-to-win.</p>
 
   {#if loading}
     <p class="loading">Loading…</p>
   {:else}
     {#if msg}<p class="msg">{msg}</p>{/if}
-
-    {#if cashout && cashout.credits > 0}
-      <div class="cashout-card">
-        <div class="co-top">
-          <div>
-            <span class="co-label">🎟️ Free Play credits</span>
-            <span class="co-credits">{cashout.credits.toLocaleString()}</span>
-          </div>
-          {#if cashout.max_cash > 0 && cashout.cap_remaining > 0}
-            <button class="co-btn" disabled={busy === 'cashout'} onclick={doCashout}>
-              💵 Cash out ${Math.min(cashout.max_cash, cashout.cap_remaining)}
-            </button>
-          {:else if cashout.cap_remaining <= 0}
-            <span class="co-pending">Daily $50 cap reached</span>
-          {:else}
-            <span class="co-pending">Earn {(2040 - cashout.credits).toLocaleString()} more to cash out</span>
-          {/if}
-        </div>
-        <p class="co-note">First 2,000 credits are your stake. Cash out the rest at 40 credits = $1 (up to $50/day).</p>
-      </div>
-    {/if}
 
     <h2 class="section">⚡ Power-ups</h2>
     <p class="section-note">Carry one of each. Bring them to the Cash Game or a challenge and use them whenever you like — the Daily stays power-up-free.</p>
