@@ -1592,16 +1592,8 @@
         </div>
       {:else}
         {#if matchInfo.pack_size > 1}<p class="match-pos">Puzzle {matchInfo.position}/{matchInfo.pack_size}</p>{/if}
-        {#if matchInfo.standing}
-          <StandingStrip standing={matchInfo.standing} spent={matchInfo.spent ?? 0}
-            bankroll={Math.max(0, (matchInfo.budget ?? 0) - (matchInfo.spent ?? 0))} {netWorth} />
-        {:else}
-          <div class="match-money">
-            <span class="mm-cell">Spent <b>${(matchInfo.spent ?? 0).toLocaleString()}</b></span>
-            <span class="mm-cell">Left to spend <b>${Math.max(0, (matchInfo.budget ?? 0) - (matchInfo.spent ?? 0)).toLocaleString()}</b></span>
-            <span class="mm-cell wallet">💰 Cash {netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}</span>
-          </div>
-        {/if}
+        <StandingStrip standing={matchInfo.standing ?? null} spent={matchInfo.spent ?? 0}
+          bankroll={Math.max(0, (matchInfo.budget ?? 0) - (matchInfo.spent ?? 0))} {netWorth} />
       {/if}
       {#if (matchInfo.my_debuffs ?? []).length}
         <p class="debuff-banner">{(matchInfo.my_debuffs ?? []).map((/** @type {string} */ d) => DEBUFF_LABEL[d] ?? d).join(' · ')}</p>
@@ -2904,12 +2896,6 @@
   .cr-note { margin-top: 2px; font-size: 0.68rem; color: var(--text-faint); }
   .cr-ready { margin-top: 2px; font-size: 0.68rem; font-weight: 700; color: #6ee7b7; }
   .cr-wallet { margin-top: 3px; font-size: 0.66rem; color: var(--text-faint); }
-  /* Challenge money fallback (no finished rivals yet) */
-  .match-money { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 12px;
-    max-width: 360px; margin: 0 auto 4px; font-size: 0.84rem; color: var(--text-muted); }
-  .match-money .mm-cell b { color: var(--text); font-variant-numeric: tabular-nums; }
-  .match-money .wallet { color: var(--text-faint); font-size: 0.78rem; }
-
   /* Cash Game (Climb) gamified HUD */
   .climb-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; max-width: 360px; margin: 0 auto 14px; }
   .climb-level {
