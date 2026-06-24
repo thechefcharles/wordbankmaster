@@ -7,9 +7,14 @@
   function open(t) {
     fx('select');
     dismissToast(t.id);
-    // Challenge toasts (incoming, result, sabotage, chat) all open the home Challenges inbox.
+    // Route to the right Community tab: requests → People, your-turn challenge →
+    // Challenges, everything ambient (result, sabotage, chat) → Activity.
+    const target =
+      (t.type === 'friend_request' || t.data?.route === 'friends') ? 'people'
+      : t.type === 'challenge_incoming' ? 'challenges'
+      : 'activity';
     goto('/');
-    requestInbox();
+    requestInbox(target);
   }
 </script>
 
