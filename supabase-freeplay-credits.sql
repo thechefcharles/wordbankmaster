@@ -1,0 +1,35 @@
+-- Free Play "Credits" economy (Phases 3–4). Free Play is a persistent play-money
+-- sandbox that is fully separate from real Cash until you choose to cash out.
+--
+-- Applied to prod via MCP migrations:
+--   freeplay_persistent_credits   (Phase 3: persistent credits + earn-on-solve)
+--   freeplay_cashout              (Phase 4: cash-out RPCs)
+--
+-- MODEL
+--   * Credits live in freeplay_sessions.bankroll and now PERSIST across puzzles and
+--     sessions (previously reset to 1000 each puzzle).
+--   * New players start at 2000 credits. Existing sessions were backfilled to
+--     GREATEST(bankroll, 2000).
+--   * You spend credits on letters and EARN credits on solve: +250 clean / +120
+--     otherwise (added to bankroll — no more direct real-Cash payout from Free Play).
+--   * Go broke (bankroll < 50 at the start of the next puzzle / a new session) and you
+--     reset to 2000. freeplay_start and freeplay_next both apply the reset.
+--
+-- CASH-OUT (in the Store)
+--   * freeplay_cashout_status() → { credits, cashable_credits, max_cash, rate:40,
+--     floor:2000, daily_cap:50, cap_remaining }.
+--   * freeplay_cashout(p_amount int default null) converts credits → real Cash at
+--     40 credits = $1 (so 2000 cashable credits = $50). The first 2000 credits are a
+--     non-cashable stake floor (cashable = bankroll - 2000). Whole dollars only.
+--     Capped at $50/day (summed from bank_ledger reason 'freeplay_cashout'). Passing
+--     null cashes out the max allowed. Real Cash is added via _bank_credit.
+--
+-- Verified (rolled back): new=2000, carry-over=3400, broke->2000, restart keeps 2750;
+-- clean solve bank 1800->2050 with real Cash UNCHANGED; 4200 credits → cashable 2200,
+-- max $55 capped to $50 (2000 credits spent, bank->2200), 2nd same-day attempt =
+-- daily_cap, 1500 credits = $0 cashable.
+--
+-- Frontend: src/routes/shop/+page.svelte cash-out card (getFreeplayCashoutStatus /
+-- freeplayCashout in statsStore.js, PIN-confirmed). Free Play board shows a
+-- "💵 $X ready — cash out in Store" hint once cashable ≥ $1, and the solve line reads
+-- "Solve clean for +250 credits".
