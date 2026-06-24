@@ -747,9 +747,9 @@ export async function matchSabotageOpponent(targetId, powerupId) {
   }
 }
 
-/** Accept (escrow) an invited match and start playing. @param {string} id @returns {Promise<boolean>} */
-export async function acceptAndPlayMatch(id) {
-  const resp = await acceptMatch(id);
+/** Accept (escrow) an invited match and start playing. @param {string} id @param {boolean} [reduced] stake only what you have @returns {Promise<boolean>} */
+export async function acceptAndPlayMatch(id, reduced = false) {
+  const resp = await acceptMatch(id, reduced);
   if (!resp?.ok) return false;
   track('match_accept');
   activeMatchId = id;
