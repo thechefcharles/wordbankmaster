@@ -2,6 +2,7 @@
 // and surfaces brand-new items as transient toasts (visible from any screen).
 import { writable } from 'svelte/store';
 import { getNotifications, markNotificationsRead } from '$lib/stores/statsStore.js';
+import { supabase } from '$lib/supabaseClient';
 
 /** @type {import('svelte/store').Writable<any[]>} */
 export const notifications = writable([]);
@@ -25,6 +26,8 @@ let started = false;
 let primed = false; // first poll seeds knownIds without toasting history
 /** @type {(() => void)|undefined} */
 let onVis;
+/** @type {any} */
+let channel;
 
 async function poll() {
   const res = await getNotifications();
@@ -50,13 +53,20 @@ export function dismissToast(id) {
   toasts.update((t) => t.filter((x) => x.id !== id));
 }
 
-export function startNotifications() {
+/** @param {string} [uid] subscribe to this user's notifications for instant updates */
+export function startNotifications(uid) {
   if (started || typeof window === 'undefined') return;
   started = true;
   poll();
   pollTimer = setInterval(poll, POLL_MS);
   onVis = () => { if (!document.hidden) poll(); };
   document.addEventListener('visibilitychange', onVis);
+  // Realtime: a new challenge / friend request shows up instantly (not just on poll).
+  if (uid) {
+    channel = supabase.channel(`notifs:${uid}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${uid}` }, () => poll())
+      .subscribe();
+  }
 }
 
 export function stopNotifications() {
@@ -69,6 +79,7 @@ export function stopNotifications() {
   if (pollTimer) clearInterval(pollTimer);
   pollTimer = undefined;
   if (onVis && typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis);
+  if (channel) { supabase.removeChannel(channel); channel = undefined; }
 }
 
 /** Force an immediate refresh (e.g. after acting on a challenge). */
@@ -80,4 +91,31 @@ export async function markAllNotificationsRead() {
   await markNotificationsRead();
   unreadCount.set(0);
   notifications.update((list) => list.map((n) => ({ ...n, read: true })));
+}
+
+/** Optimistically clear the badge for notifications matching a predicate, then sync. */
+function clearLocal(/** @type {(n:any)=>boolean} */ match) {
+  notifications.update((list) => {
+    let cleared = 0;
+    const next = list.map((n) => {
+      if (!n.read && match(n)) { cleared++; return { ...n, read: true }; }
+      return n;
+    });
+    if (cleared) unreadCount.update((c) => Math.max(0, c - cleared));
+    return next;
+  });
+}
+/** Clear the notification(s) for one challenge — e.g. after accepting it from the banner. */
+export async function markChallengeNotifRead(/** @type {string} */ matchId) {
+  if (!matchId) return;
+  clearLocal((n) => n?.data?.match_id === matchId);
+  await markNotificationsRead(matchId, null);
+  if (started) await poll();
+}
+/** Clear the friend-request notification from one person — e.g. accepting from the banner. */
+export async function markFriendNotifRead(/** @type {string} */ fromId) {
+  if (!fromId) return;
+  clearLocal((n) => n?.data?.from_id === fromId);
+  await markNotificationsRead(null, fromId);
+  if (started) await poll();
 }

@@ -1,0 +1,22 @@
+-- Notifications: instant delivery + targeted clearing (2026-06-24).
+-- Challenges (create_match) and friend requests (add_friend) already _notify the
+-- recipient; these changes make the top-right badge update live and let the
+-- act-now banner clear the right notification when you act on it.
+--
+-- Applied to prod via MCP:
+--   * ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+--     (notifications now broadcasts INSERTs; RLS notifications_self =
+--      user_id = auth.uid() scopes delivery to the recipient. The client subscribes
+--      in notificationStore.startNotifications(uid) → poll() on insert.)
+--   * mark_notifications_read migrations (by_match / by_match_or_from):
+--       mark_notifications_read(p_match_id uuid default null, p_from_id uuid default null)
+--       - no args  → mark ALL my unread read (unchanged behavior)
+--       - p_match_id → clear one challenge's notifs (banner-accept a challenge)
+--       - p_from_id  → clear one person's friend-request notif (banner-accept a friend)
+--     Front: notificationStore.markChallengeNotifRead(matchId) /
+--     markFriendNotifRead(fromId); +page respondToMatch + acceptFriend call them.
+--     +page also refreshes getMyMatches when unreadCount rises, so a new challenge
+--     shows in the banner live (not just the badge).
+--
+-- Verified live (2 accounts): A challenges B → B badge 0→1 within ~5s with no refresh;
+-- B accepts via the banner → badge → 0.
