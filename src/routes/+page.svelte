@@ -4,9 +4,8 @@
   import { supabase } from '$lib/supabaseClient';
   import { get } from 'svelte/store';
 
-  import { gameStore, fetchDailyGame, fetchArcadeGame, arcadeContinue, fetchFreeplayGame, freeplayContinue, arcadeCashOut, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, fetchFreeplayGame, freeplayContinue, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
   import { getMyChallenges, getPowerups, getMyMatches, getMyGroups, getMatch, getMatchDetail, declineMatch } from '$lib/stores/statsStore.js';
-  import { powerupInfo } from '$lib/powerups.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
   import { getDailyStatus, getDailyGhost, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests } from '$lib/stores/statsStore.js';
@@ -34,7 +33,6 @@
   import Tutorial from '$lib/components/Tutorial.svelte';
   import ObjectiveCard from '$lib/components/ObjectiveCard.svelte';
   import StandingStrip from '$lib/components/StandingStrip.svelte';
-  import PowerupTray from '$lib/components/PowerupTray.svelte';
   import MatchDetailModal from '$lib/components/MatchDetailModal.svelte';
   import LeaderboardPanel from '$lib/components/LeaderboardPanel.svelte';
   import ActivityPanel from '$lib/components/ActivityPanel.svelte';
@@ -191,11 +189,7 @@
     !$gameWasRestored
   ) {
     const gameMode = localStorage.getItem('gameMode') || 'daily';
-    if (gameMode === 'arcade') {
-      fetchArcadeGame().then((ok) => {
-        if (!ok) initError = "Arcade failed to load.";
-      });
-    } else if (gameMode === 'freeplay') {
+    if (gameMode === 'freeplay') {
       // Free Play isn't deep-link restorable — send back to the menu to re-pick.
       showMainMenu = true;
     } else if (gameMode === 'makeup') {
@@ -285,20 +279,6 @@
     if (typeof b === 'number') _prevBankroll = b;
   }
 
-  // 🔥 Hot Hand flash — +$250 per 3 correct letters in a row (arcade). The
-  // server sends last_bonus on the buy that pops it; flash only while playing.
-  let hotHandFlash = false;
-  let _prevBonus = 0;
-  $: {
-    const lb = $gameStore.arcadeRun?.last_bonus ?? 0;
-    const playing = $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost';
-    if (lb > 0 && lb !== _prevBonus && playing) {
-      hotHandFlash = true;
-      fx('multiplier');
-      setTimeout(() => { hotHandFlash = false; }, 1300);
-    }
-    _prevBonus = lb;
-  }
 
   // ---- Daily result: medal + shareable card ----
   const PUZZLE_EPOCH = Date.UTC(2026, 5, 1); // 2026-06-01
@@ -524,17 +504,6 @@
   $: chScore = ($gameStore.challengeInfo?.score ?? Math.floor($gameStore.bankroll || 0));
   $: resultBankroll = Math.max(0, Math.floor($gameStore.bankroll || 0));
   $: resultMedal = medalFor(resultBankroll, resultWon);
-  // Arcade rolling-survival run state
-  $: arun = $gameStore.arcadeRun;
-  $: arcadeMult = ((arun?.multiplier ?? 100) / 100).toFixed(2);
-  $: arcadePayout = Math.round(500 * (arun?.multiplier ?? 100) / 100); // next solve is worth this
-  $: arcadeWinnings = Math.max(0, Math.floor(($gameStore.bankroll ?? 0) - 1500)); // bankable above the house stake
-  let cashingOut = false;
-  async function handleBankIt() {
-    if (cashingOut || arcadeWinnings <= 0) return;
-    cashingOut = true;
-    try { await arcadeCashOut(); } finally { cashingOut = false; }
-  }
 
   // ⏱️ Pressure-mode challenge clock (server-authoritative; this just displays + triggers the check)
   let pressureNow = browser ? Date.now() : 0;
@@ -652,7 +621,7 @@
   /** @type {{ mode: string, ctx: any } | null} */
   let objective = null;
   let _wasMenu = true;
-  const SOLO_MODES = ['daily', 'climb', 'arcade', 'freeplay', 'makeup'];
+  const SOLO_MODES = ['daily', 'climb', 'freeplay', 'makeup'];
 
   function buildObjectiveCtx(/** @type {string} */ mode) {
     if (mode !== 'match') return {};
@@ -743,20 +712,6 @@
     } else {
       initError = 'Cash Game failed to load.';
     }
-  }
-
-  // After solving, advance to the next puzzle (bankroll + streak carry over).
-  async function handleArcadeContinue() {
-    showResultModal = false;
-    hasTriggeredModal = false;
-    await arcadeContinue();
-  }
-
-  // After a run ends (broke), start a fresh run.
-  async function handleArcadeNewRun() {
-    showResultModal = false;
-    hasTriggeredModal = false;
-    await fetchArcadeGame();
   }
 
   // ----- Free Play (unranked, pick a category) -----
@@ -1543,19 +1498,6 @@
     {/if}
 
     <!-- 🕹️ Arcade gauntlet HUD -->
-    {#if $gameStore.gameMode === 'arcade' && arun}
-      <div class="arcade-hud">
-        <div class="ah-cell"><span class="ah-val">{(arun.position ?? 0) + 1}</span><span class="ah-label">Puzzle</span></div>
-        <div class="ah-cell ah-mult"><span class="ah-val">×{arcadeMult}</span><span class="ah-label">Streak</span></div>
-        <div class="ah-cell"><span class="ah-val ah-gold">+${arcadePayout.toLocaleString()}</span><span class="ah-label">Solve</span></div>
-      </div>
-      {#if $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost' && arcadeWinnings > 0}
-        <button class="bank-it-btn" on:click={handleBankIt} disabled={cashingOut}>
-          💰 Bank ${arcadeWinnings.toLocaleString()} <span class="bib-sub">end run, keep winnings</span>
-        </button>
-      {/if}
-    {/if}
-
     <!-- ⏱️ Pressure-mode challenge clock -->
     {#if pressureActive}
       <div class="pressure-hud" class:danger={pressureRemaining <= 10}>
@@ -1700,7 +1642,6 @@
       {#if soloHero}
         <!-- Daily · Makeup · Cash Game: one number = what you keep, ticking down as you spend -->
         <div class="bounty-panel" class:loss={soloHero.net < 0}>
-          {#if hotHandFlash}<span class="hot-hand-flash">🔥 Hot Hand +$250</span>{/if}
           <span class="bp-label">{soloHero.net >= 0 ? '🏆 Solve now to keep' : '⚠️ You’re losing money'}</span>
           <span class="bp-amount">{soloHero.net >= 0 ? '$' : '−$'}{Math.abs(soloHero.net).toLocaleString()}</span>
           <span class="bp-balance">Balance ${Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span>
@@ -1717,9 +1658,6 @@
         {/if}
       {/if}
     </section>
-
-    <!-- 💎 Arcade power-up tray (earned this run) -->
-    <PowerupTray />
 
     <!-- 🎮 Solve / Cancel Buttons -->
     <section class="buttons-section">
@@ -1854,42 +1792,6 @@
               <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); newChallenge(); }}>Challenge Friends</button>
               <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Menu</button>
             </div>
-          {:else}
-            <!-- Arcade rolling-bankroll survival -->
-            {#if resultWon}
-              <div class="result-medal">✅</div>
-              <h2>Solved! +${(arun?.last_gain ?? 0).toLocaleString()}</h2>
-              <p class="result-sub">Bankroll ${resultBankroll.toLocaleString()} · streak ×{arcadeMult}</p>
-              {#if arun?.last_earn}
-                {@const earned = powerupInfo(arun.last_earn)}
-                <p class="arcade-earn">Earned {earned.emoji} {earned.name} — {earned.feat}!</p>
-              {/if}
-              <div class="result-actions">
-                <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
-                <button class="next-puzzle-button" on:click={handleArcadeContinue}>Continue</button>
-              </div>
-            {:else if $gameStore.arcadeCashedOut}
-              <div class="result-medal">💰</div>
-              <h2>Cashed Out! +${(arun?.last_gain ?? 0).toLocaleString()}</h2>
-              <p class="result-sub">Banked into your account · {arun?.furthest ?? 0} {(arun?.furthest ?? 0) === 1 ? 'puzzle' : 'puzzles'} solved</p>
-              <div class="result-actions">
-                <button class="share-btn" on:click={() => goto('/bank')}>View Bank</button>
-                <button class="next-puzzle-button" on:click={handleArcadeNewRun}>New Run</button>
-              </div>
-            {:else}
-              <div class="result-medal">🏁</div>
-              <h2>Run Over</h2>
-              <p class="result-sub">Busted before you could bank it.</p>
-              <div class="result-bankroll">
-                <span class="rb-label">Peak Bankroll</span>
-                <span class="rb-amount">${(arun?.banked ?? 0).toLocaleString()}</span>
-              </div>
-              <p class="arcade-gain">{arun?.furthest ?? 0} {(arun?.furthest ?? 0) === 1 ? 'puzzle' : 'puzzles'} solved</p>
-              <div class="result-actions">
-                <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
-                <button class="next-puzzle-button" on:click={handleArcadeNewRun}>New Run</button>
-              </div>
-            {/if}
           {/if}
         </div>
       </div>
