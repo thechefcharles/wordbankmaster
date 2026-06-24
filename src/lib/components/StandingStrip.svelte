@@ -1,12 +1,16 @@
 <script>
-  // Live directional standing for a challenge (Phase 2 of OBJECTIVE_HUD_SPEC).
-  // Shows rank + ahead/behind vs FINISHED rivals — never the exact spend to beat
+  // Live challenge HUD. Shows your own money clearly (Spent · Stake left · Wallet)
+  // plus a directional rank vs FINISHED rivals — never the exact spend to beat
   // (the server only sends a direction). The lead-flip is the reward moment.
+  // "First to play / set the bar" is intentionally dropped: when no one has
+  // finished yet we just show your own numbers and the objective.
   import { fx } from '$lib/sound.js';
 
   /** @type {{ field_size:number, finished:number, rank:number, state:'lead'|'behind'|'tied'|'first_to_play', provisional?:boolean } | null} */
   export let standing = null;
   /** @type {number} */ export let spent = 0;
+  /** @type {number} in-game stake you have left to spend this match */ export let bankroll = 0;
+  /** @type {number|null} your total Cash wallet (separate from the match stake) */ export let netWorth = null;
 
   // Chime when you flip INTO the lead. prevState lives outside the reactive
   // dependency graph (read/written inside a fn) so it can't self-invalidate.
@@ -19,23 +23,28 @@
 
   const ord = (/** @type {number} */ n) => { const s = ['th','st','nd','rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
   const medal = (/** @type {number} */ r) => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : '#' + r;
+  const money = (/** @type {number|null} */ n) => n == null ? '—' : '$' + Math.round(n).toLocaleString();
+  $: ranked = !!standing && standing.state !== 'first_to_play';
   $: msg = !standing ? '' :
     standing.state === 'lead' ? "✓ You're in the lead" :
     standing.state === 'behind' ? '▲ Spend less to take the lead' :
     standing.state === 'tied' ? 'Dead even — spend less to pull ahead' :
-    '🚩 Set the bar — spend as little as you can';
+    '🏆 Spend as little as you can';
 </script>
 
 {#if standing}
   {#key standing.state}
     <div class="standing {standing.state}">
       <div class="top">
-        {#if standing.state === 'first_to_play'}
-          <span class="rank">🚩 First to play</span>
-        {:else}
+        {#if ranked}
           <span class="rank">{medal(standing.rank)} {ord(standing.rank)} of {standing.field_size}{#if standing.provisional}<span class="sofar">so far</span>{/if}</span>
         {/if}
-        <span class="spent">Spent <b>${spent.toLocaleString()}</b></span>
+        <span class="spent" class:solo={!ranked}>Spent <b>{money(spent)}</b></span>
+      </div>
+      <div class="money">
+        <span class="m">Stake left <b>{money(bankroll)}</b></span>
+        <span class="dot">·</span>
+        <span class="m wallet">Wallet {money(netWorth)}</span>
       </div>
       <div class="msg">{msg}</div>
     </div>
@@ -63,10 +72,18 @@
   }
   .sofar { margin-left: 6px; font-family: var(--font-ui, sans-serif); font-weight: 600; font-size: 0.62rem;
     text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint, #8090a0); }
-  .spent { font-weight: 600; color: var(--text-muted, #c2cbd8); font-size: 0.84rem; }
-  .spent b { color: var(--text, #fff); font-variant-numeric: tabular-nums; }
+  .spent { font-weight: 700; color: var(--text, #fff); font-size: 0.92rem; }
+  .spent.solo { margin-left: 0; }
+  .spent b { font-variant-numeric: tabular-nums; }
+  .money {
+    display: flex; align-items: center; gap: 7px; margin-top: 4px;
+    font-family: var(--font-ui, sans-serif); font-size: 0.78rem; color: var(--text-muted, #c2cbd8);
+  }
+  .money b { color: var(--text, #fff); font-variant-numeric: tabular-nums; }
+  .money .dot { color: var(--text-faint, #6b7686); }
+  .money .wallet { color: var(--text-faint, #8090a0); }
   .msg {
-    margin-top: 3px; text-align: left;
+    margin-top: 4px; text-align: left;
     font-family: var(--font-ui, sans-serif); font-size: 0.76rem; font-weight: 600;
   }
 
