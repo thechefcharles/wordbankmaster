@@ -1,0 +1,22 @@
+-- Launch security hardening (2026-06-24). Applied to prod via MCP migration
+-- `security_lockdown_internal_funcs_and_rls`. Surfaced by get_advisors(security).
+--
+-- CRITICAL — Cash-minting exploit closed:
+--   All internal SECURITY DEFINER helpers (public._*) had the default EXECUTE-to-PUBLIC
+--   grant, so anon/authenticated could call them directly over PostgREST
+--   (/rest/v1/rpc/_*). e.g. _bank_credit(p_uid, p_delta, p_reason) would credit ANY
+--   account real Cash. Fix: loop pg_proc for public funcs starting with '_' and
+--   REVOKE EXECUTE FROM anon, authenticated, PUBLIC. Internal callers are SECURITY
+--   DEFINER and run as the owner, so chained calls (e.g. daily solve →
+--   _daily_reward → _bank_credit) are unaffected. Verified: QA 19/19 incl. daily-solve;
+--   has_function_privilege('authenticated','_bank_credit',...) = false; public RPCs
+--   (freeplay_start/get_bank/freeplay_cashout) still true.
+--
+-- RLS enabled (deny-all; app reads these only via definer RPCs, never direct .from()):
+--   networth_snapshots, puzzles, climb_sequence, challenge_pack, daily_stats.
+--
+-- STILL OPEN (advisor warnings, deliberately deferred — not launch-blocking):
+--   * function_search_path_mutable (~180 funcs) — set `SET search_path = ''` per func.
+--   * vulnerable_postgres_version — upgrade Postgres (dashboard).
+--   * auth_leaked_password_protection — enable HaveIBeenPwned check (Auth settings).
+--   * rls_enabled_no_policy (9 INFO) — tables with RLS on + no policy (deny-all is fine).
