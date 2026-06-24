@@ -9,9 +9,12 @@ export const unreadCount = writable(0);
 /** @type {import('svelte/store').Writable<{id:string,title:string,body:string,data:any}[]>} */
 export const toasts = writable([]);
 
-/** Bumped when something (e.g. a tapped challenge toast) wants the home Challenges inbox opened. */
+/** Bumped when something (e.g. a tapped toast) wants a Community tab opened. */
 export const inboxRequest = writable(0);
-export function requestInbox() { inboxRequest.update((n) => n + 1); }
+/** Which Community tab the next inboxRequest should land on. */
+export const inboxTarget = writable(/** @type {'challenges'|'activity'|'people'} */ ('challenges'));
+/** @param {'challenges'|'activity'|'people'} [target] */
+export function requestInbox(target = 'challenges') { inboxTarget.set(target); inboxRequest.update((n) => n + 1); }
 
 const POLL_MS = 45000;
 /** @type {ReturnType<typeof setInterval>|undefined} */
@@ -39,7 +42,7 @@ async function poll() {
 
 /** @param {any} n */
 function pushToast(n) {
-  toasts.update((t) => [...t, { id: n.id, title: n.title, body: n.body, data: n.data }]);
+  toasts.update((t) => [...t, { id: n.id, title: n.title, body: n.body, data: n.data, type: n.type }]);
   setTimeout(() => dismissToast(n.id), 6000);
 }
 /** @param {string} id */

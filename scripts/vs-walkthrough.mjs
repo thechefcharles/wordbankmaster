@@ -54,9 +54,14 @@ async function playSolve(p, answer, wrong) {
   await p.getByRole('button', { name: /^submit$/i }).first().click().catch(async () => { await p.keyboard.press('Enter'); });
   await wait(p, 2500);
 }
+// Community hub → Challenges tab (the inbox of your matches).
 async function openChallengeInbox(p) {
-  await p.getByRole('button', { name: /challenge friends/i }).first().click().catch(() => {}); await wait(p, 600);
-  await p.getByRole('button', { name: /start challenge/i }).first().click().catch(() => {}); await wait(p, 1200);
+  await p.locator('.menu-card').filter({ hasText: 'Community' }).first().click().catch(() => {}); await wait(p, 1200);
+}
+// Community → Challenges → the New-Challenge builder modal.
+async function openNewChallenge(p) {
+  await openChallengeInbox(p);
+  await p.getByRole('button', { name: /New Challenge/i }).first().click().catch(() => {}); await wait(p, 1000);
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -68,7 +73,7 @@ if (PHASE === 'setup') {
 
 if (PHASE === 'create') {
   const c = await ctx(); const p = await c.newPage(); await login(p, A);
-  await openChallengeInbox(p);
+  await openNewChallenge(p);
   await p.locator('input.ch-input').first().fill(B.user); await wait(p, 800);
   // pack size 1
   await p.locator('select.ch-input').first().selectOption('1').catch(() => {});

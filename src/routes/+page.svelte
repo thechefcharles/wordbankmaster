@@ -10,7 +10,7 @@
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
   import { getDailyStatus, getDailyGhost, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getPersonalBests } from '$lib/stores/statsStore.js';
-  import { unreadCount, notifications, markAllNotificationsRead, refreshNotifications, inboxRequest } from '$lib/stores/notificationStore.js';
+  import { unreadCount, markAllNotificationsRead, refreshNotifications, inboxRequest, inboxTarget } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
   import {
@@ -40,6 +40,7 @@
   import ActivityPanel from '$lib/components/ActivityPanel.svelte';
   import FriendsPanel from '$lib/components/FriendsPanel.svelte';
   import GroupsPanel from '$lib/components/GroupsPanel.svelte';
+  import NotificationsPanel from '$lib/components/NotificationsPanel.svelte';
 
   export let data;
 
@@ -660,11 +661,14 @@
       window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
     } catch { /* non-fatal */ }
   }
-  // A tapped challenge toast (incoming / result / sabotage / chat) opens the inbox.
+  // A tapped toast opens the Community tab it routed to (challenges / activity / people).
   let _inboxSeen = 0;
   $: if (browser && $inboxRequest > _inboxSeen && loggedIn && hasInitialized && !needsUsername && !showPinUnlock && !showPinSetup) {
     _inboxSeen = $inboxRequest;
-    openChallenges();
+    const t = $inboxTarget;
+    if (t === 'people') { openCommunity('people'); peopleTab = 'friends'; }
+    else if (t === 'activity') openCommunityActivity();
+    else openCommunity('challenges');
   }
   function dismissTutorial() {
     showTutorial = false;
@@ -819,20 +823,6 @@
   let myGroups = [];
   let challengeCount = 0; // matches awaiting my play (badge on the Challenges card)
   let friendReqCount = 0; // incoming friend requests (badge on Friends)
-  /** @type {Record<string, 'accepted'|'declined'>} responded friend-request notifications (by id) */
-  let notifResponded = {};
-  /** Accept/decline a friend request straight from the bell panel. @param {any} n @param {boolean} accept */
-  async function respondNotif(n, accept) {
-    const fromId = n?.data?.from_id;
-    if (!fromId || notifResponded[n.id]) return;
-    const res = await respondFriendRequest(fromId, accept);
-    if (res?.ok) {
-      notifResponded = { ...notifResponded, [n.id]: accept ? 'accepted' : 'declined' };
-      fx(accept ? 'win' : 'tap');
-      refreshNotifications();
-      refreshChallengeCount();
-    }
-  }
   /** @type {any|null} */
   let matchResults = null; // a settled match's results being viewed
   // Builder form
@@ -883,18 +873,22 @@
     [myMatches, myGroups] = await Promise.all([getMyMatches(), getMyGroups()]);
     challengeCount = myMatches.filter((m) => m.status === 'open' && m.my_state !== 'done').length;
   }
+  /** Open Community ▸ Activity and clear the unread dot. */
+  async function openCommunityActivity() {
+    await openCommunity('activity');
+    markAllNotificationsRead();
+  }
+  /** Tapping a notification routes to where you'd act on it. @param {any} n */
+  function notifNavigate(n) {
+    if (n.type === 'friend_request' || n.data?.route === 'friends') { openCommunity('people'); peopleTab = 'friends'; }
+    else if (n.type === 'challenge_incoming' || n.data?.challenge_id || n.data?.match_id) openCommunity('challenges');
+  }
   /** Back-compat shim for existing callers (banner "+N more", toasts, result modal). */
   async function openChallenges(forceTab) {
     if (forceTab === 'new') return newChallenge();
     return openCommunity('challenges');
   }
 
-  // ===== Notifications panel (bell) =====
-  let showNotifications = false;
-  async function openNotifications() {
-    showNotifications = true;
-    await markAllNotificationsRead();
-  }
   function onMbOppInput() {
     clearTimeout(mbSearchTimer);
     const q = mbOpponent.trim();
@@ -1225,6 +1219,7 @@
           </button>
           <button class="menu-card" style="--i: 1" on:click={() => { fx('tap'); openCommunity('challenges'); }}>
             <span class="mc-title">Community</span>
+            {#if $unreadCount > 0}<span class="mc-dot" title="New activity"></span>{/if}
           </button>
           <button class="menu-card" style="--i: 2" on:click={() => goto('/shop')}>
             <span class="mc-title">Store</span>
@@ -1277,7 +1272,7 @@
           <div class="comm-tabs">
             <button class="comm-tab" class:active={communityTab === 'challenges'} on:click={() => { communityTab = 'challenges'; fx('tap'); }}>Challenges</button>
             <button class="comm-tab" class:active={communityTab === 'leaderboard'} on:click={() => { communityTab = 'leaderboard'; fx('tap'); }}>Leaderboard</button>
-            <button class="comm-tab" class:active={communityTab === 'activity'} on:click={() => { communityTab = 'activity'; fx('tap'); }}>Activity</button>
+            <button class="comm-tab" class:active={communityTab === 'activity'} on:click={() => { communityTab = 'activity'; fx('tap'); markAllNotificationsRead(); }}>Activity{#if $unreadCount > 0}<span class="comm-dot"></span>{/if}</button>
           </div>
         {/if}
 
@@ -1309,7 +1304,12 @@
         {:else if communityTab === 'leaderboard'}
           <div class="comm-body"><LeaderboardPanel /></div>
         {:else if communityTab === 'activity'}
-          <div class="comm-body"><ActivityPanel /></div>
+          <div class="comm-body">
+            <div class="act-sec">📥 For you</div>
+            <NotificationsPanel onNavigate={notifNavigate} onChange={refreshChallengeCount} />
+            <div class="act-sec">📣 Feed</div>
+            <ActivityPanel />
+          </div>
         {:else}
           <div class="comm-body">
             {#if peopleTab === 'friends'}
@@ -1421,42 +1421,6 @@
 
     <!-- Settled-challenge results (shared with /history) -->
     <MatchDetailModal detail={matchResults} on:close={() => matchResults = null} />
-
-    <!-- 🔔 Notifications panel -->
-    {#if showNotifications}
-      <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Notifications">
-        <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showNotifications = false}></button>
-        <div class="modal-content main-menu-modal ch-modal">
-          <button class="close-btn" on:click={() => showNotifications = false}>❌</button>
-          <h2>🔔 Notifications</h2>
-          {#if $notifications.length === 0}
-            <p class="cat-sub">No notifications yet. Challenge a friend to get started!</p>
-          {:else}
-            <div class="notif-list">
-              {#each $notifications as n (n.id)}
-                <div class="notif-item" class:fresh={!n.read}>
-                  <button class="ni-main"
-                    on:click={() => { showNotifications = false; if (n.data?.route === 'friends') goto('/friends'); else if (n.data?.challenge_id || n.data?.match_id || n.data?.route === 'challenge') openChallenges(); }}>
-                    <span class="ni-title">{n.title}</span>
-                    <span class="ni-body">{n.body}</span>
-                  </button>
-                  {#if n.type === 'friend_request' && n.data?.from_id}
-                    {#if notifResponded[n.id]}
-                      <span class="ni-done {notifResponded[n.id]}">{notifResponded[n.id] === 'accepted' ? '✓ Friends' : 'Declined'}</span>
-                    {:else}
-                      <div class="ni-actions">
-                        <button class="ni-act accept" on:click={() => respondNotif(n, true)}>Accept</button>
-                        <button class="ni-act decline" on:click={() => respondNotif(n, false)}>Decline</button>
-                      </div>
-                    {/if}
-                  {/if}
-                </div>
-              {/each}
-            </div>
-          {/if}
-        </div>
-      </div>
-    {/if}
 
     <!-- Streak message (when Daily is disabled and user taps it) -->
     {#if showStreakMessage}
@@ -2251,6 +2215,10 @@
   .comm-tab { flex: 1; padding: 9px 0; border-radius: 12px; border: 1px solid var(--border); background: var(--surface);
     color: var(--text-muted); font-family: var(--font-display); font-weight: 700; font-size: 0.86rem; cursor: pointer; }
   .comm-tab.active { background: linear-gradient(135deg, #fde047, #f59e0b); color: #3a2a00; border-color: transparent; }
+  .comm-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #f43f5e; margin-left: 6px; vertical-align: middle; }
+  .menu-card .mc-dot { top: 12px; right: 14px; }
+  .act-sec { font-family: var(--font-display); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold); text-align: left; margin: 6px 2px 8px; }
+  .act-sec:not(:first-child) { margin-top: 20px; }
   .comm-body { width: 100%; }
   .comm-body.people { display: flex; flex-direction: column; gap: 0.6rem; }
   .ch-new-btn {
