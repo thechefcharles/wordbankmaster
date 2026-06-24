@@ -4,7 +4,7 @@
   import { supabase } from '$lib/supabaseClient';
   import { get } from 'svelte/store';
 
-  import { gameStore, fetchDailyGame, fetchFreeplayGame, freeplayContinue, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, fetchFreeplayGame, fetchFreeplayResume, freeplayContinue, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
   import { getMyChallenges, getPowerups, getMyMatches, getMyGroups, getMatch, getMatchDetail, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
@@ -63,6 +63,7 @@
   let dailyStatus = /** @type {{ has_played_today: boolean, last_daily_won: boolean|null, daily_bankroll: number, arcade_bankroll: number, current_streak: number, streak_freezes: number, today_score: number } | null} */ (null);
   $: dailyDone = menuDailyPlayed && !(savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost');
   $: dailyInProgress = savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost';
+  $: climbInProgress = savedGameInfo?.gameMode === 'climb' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost';
   /** Net Worth for the menu chip. */
   let netWorth = /** @type {number|null} */ (null);
   async function refreshBank() {
@@ -372,6 +373,7 @@
       fx(auto ? 'bust' : 'tap');
       if ($gameStore.gameMode === 'daily') await dailyFold();
       else if ($gameStore.gameMode === 'match') await matchFold();
+      else if ($gameStore.gameMode === 'freeplay') await freeplayContinue(); // skip to a fresh puzzle
     } finally { brokeFiring = false; }
   }
   // Give-up confirm layer (in-app, not window.confirm).
@@ -382,6 +384,11 @@
 
   // Free Play: cash out credits → real Cash right from the board (40:1, $50/day cap).
   let fpCashBusy = false;
+  // Tapping the credits number cashes out when you're above the $1 floor.
+  function tapCredits() {
+    if (($gameStore.bankroll ?? 0) - 2000 >= 40) doFreeplayCashout();
+    else gameStore.update((s) => ({ ...s, cashToast: { amount: 0, label: 'Reach 2,040 credits to cash out for real Cash' } }));
+  }
   async function doFreeplayCashout() {
     if (fpCashBusy) return;
     fpCashBusy = true;
@@ -596,12 +603,13 @@
     } catch { /* clipboard unavailable */ }
   }
 
-  // ✅ Auto-save whenever state is valid
+  // ✅ Auto-save the moment a board is live (even before the first letter) so you
+  // can always resume — and keep saving as you play.
   $: if (
     loggedIn &&
     $gameStore.currentPhrase &&
     $gameStore.category &&
-    $gameStore.purchasedLetters.length > 0
+    Array.isArray($gameStore.purchasedLetters)
   ) {
     saveGameToLocalStorage();
   }
@@ -771,8 +779,15 @@
 
   // ----- Free Play (unranked, pick a category) -----
   let showCategorySelect = false;
-  function handleMenuFreeplay() {
+  $: freeplayInProgress = savedGameInfo?.gameMode === 'freeplay' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost';
+  async function handleMenuFreeplay() {
     if (!get(user)?.id) return;
+    // Resume the exact in-progress puzzle if there is one; otherwise pick a category.
+    if (freeplayInProgress) {
+      localStorage.setItem('gameMode', 'freeplay');
+      const ok = await fetchFreeplayResume();
+      if (ok) { hasInitialized = true; showMainMenu = false; return; }
+    }
     showCategorySelect = true;
   }
   /** @param {string} category */
@@ -1148,9 +1163,11 @@
   <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Give up">
     <button type="button" class="modal-backdrop" aria-label="Cancel" on:click={cancelGiveUp}></button>
     <div class="modal-content giveup-modal">
-      <h2 class="gu-title">Give up {$gameStore.gameMode === 'match' ? 'this puzzle' : "today's Daily"}?</h2>
+      <h2 class="gu-title">Give up {$gameStore.gameMode === 'match' ? 'this puzzle' : $gameStore.gameMode === 'freeplay' ? 'this one' : "today's Daily"}?</h2>
       <p class="gu-text">{$gameStore.gameMode === 'match'
         ? 'You lose this puzzle and move on — your unspent budget is refunded to your Cash.'
+        : $gameStore.gameMode === 'freeplay'
+        ? 'You’ll skip to a fresh puzzle — you keep your credits (you only lose what you spent on this one).'
         : 'It counts as a loss and reveals the answer.'}</p>
       <div class="gu-actions">
         <button class="gu-cancel" on:click={cancelGiveUp}>Keep playing</button>
@@ -1288,9 +1305,11 @@
           </button>
           <button class="menu-card" style="--i: 1" on:click={handleMenuClimb}>
             <span class="mc-title">Cash Game</span>
+            {#if climbInProgress}<span class="daily-chip prog">⏳ Resume</span>{/if}
           </button>
           <button class="menu-card" style="--i: 2" on:click={handleMenuFreeplay}>
-            <span class="mc-title">Free Play</span>
+            <span class="mc-title">{freeplayInProgress ? 'Resume Free Play' : 'Free Play'}</span>
+            {#if freeplayInProgress}<span class="daily-chip prog">⏳ Resume</span>{/if}
           </button>
           <button class="menu-card" style="--i: 3" on:click={() => { blitzSoon = true; fx('tap'); setTimeout(() => blitzSoon = false, 2500); }}>
             <span class="mc-title">Blitz</span><span class="mc-stat">Soon</span>
@@ -1716,8 +1735,8 @@
       <PhraseDisplay on:revealComplete={onPhraseRevealComplete} />
     </section>
 
-    <!-- 🏳️ Fold + broke-timer (Daily + Challenges only) -->
-    {#if foldMode && gameActive}
+    <!-- 🏳️ Give up (Daily + Challenges + Free Play) · broke-timer is Daily/Challenge only -->
+    {#if (foldMode || isFreeplay) && gameActive}
       <div class="fold-bar" class:broke={isBroke}>
         {#if isBroke}
           <span class="fold-timer">⏱ 0:{String(brokeLeft).padStart(2, '0')}</span>
@@ -1739,14 +1758,16 @@
       {:else if isFreeplay}
         <!-- Free Play: play-money "Credits" (separate pool, never touches real Cash) -->
         <div class="credits-panel">
-          <span class="cr-label">🎟️ Credits</span>
-          <span class="cr-amount">{Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span>
+          <button class="cr-tap" on:click={tapCredits} disabled={fpCashBusy} title="Tap to cash out credits for Cash">
+            <span class="cr-label">🎟️ Credits</span>
+            <span class="cr-amount">{Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span>
+          </button>
           {#if (($gameStore.bankroll ?? 0) - 2000) >= 40}
             <button class="cr-cashout" disabled={fpCashBusy} on:click={doFreeplayCashout}>
               💵 Cash out ${Math.min(50, Math.floor((($gameStore.bankroll ?? 0) - 2000) / 40))}
             </button>
           {:else}
-            <span class="cr-note">Play money · cash out at 40:1 (Store or here)</span>
+            <span class="cr-note">Play money · tap credits to cash out at 40:1</span>
           {/if}
           <span class="cr-wallet">💰 Cash {netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}</span>
         </div>
@@ -2965,6 +2986,9 @@
   .credits-panel { display: flex; flex-direction: column; align-items: center; gap: 1px;
     width: 100%; max-width: 320px; margin: 0 auto; padding: 13px 18px; border-radius: var(--r-lg, 18px);
     border: 1px dashed rgba(167, 139, 250, 0.55); background: linear-gradient(135deg, rgba(167, 139, 250, 0.13), rgba(167, 139, 250, 0.03)); }
+  .cr-tap { display: flex; flex-direction: column; align-items: center; gap: 1px; background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 12px; }
+  .cr-tap:hover:not(:disabled) { background: rgba(196, 181, 253, 0.08); }
+  .cr-tap:disabled { cursor: default; }
   .cr-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #c4b5fd; }
   .cr-amount { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 2.1rem; line-height: 1.1; color: #c4b5fd; font-variant-numeric: tabular-nums; }
   .cr-note { margin-top: 2px; font-size: 0.68rem; color: var(--text-faint); }

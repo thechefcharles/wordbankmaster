@@ -4,6 +4,12 @@
 -- Applied to prod via MCP migrations:
 --   freeplay_persistent_credits   (Phase 3: persistent credits + earn-on-solve)
 --   freeplay_cashout              (Phase 4: cash-out RPCs)
+--   freeplay_resume               (resume the in-progress puzzle, no reset)
+
+-- freeplay_resume(): returns _freeplay_response(uid) if the session state='active',
+-- else NULL — lets the menu resume your exact puzzle instead of freeplay_start (which
+-- always rolls a new one). Front: GameStore.fetchFreeplayResume(); handleMenuFreeplay
+-- resumes when savedGameInfo says a freeplay game is in progress, else category picker.
 --
 -- MODEL
 --   * Credits live in freeplay_sessions.bankroll and now PERSIST across puzzles and

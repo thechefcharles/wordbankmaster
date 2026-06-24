@@ -5,7 +5,7 @@ import confetti from 'canvas-confetti';
 import { fx } from '$lib/sound.js';
 import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, dailyFold as dailyFoldRpc, getDailyModifier, getDailyClue, getArcadeClue } from '$lib/stores/statsStore.js';
 import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNext, arcadeUsePowerup, arcadeCashout } from '$lib/stores/statsStore.js';
-import { freeplayStart, freeplayNext, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
+import { freeplayStart, freeplayNext, freeplayResume, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
 import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
 import { makeupStart, makeupBuyLetter, makeupReveal, makeupSubmitGuess } from '$lib/stores/statsStore.js';
 import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, getPowerups, buyPowerup, climbUsePowerup, getClimbClue } from '$lib/stores/statsStore.js';
@@ -358,6 +358,21 @@ export async function fetchFreeplayGame(category) {
     return true;
   } catch (err) {
     console.error('❌ Error starting free play:', err instanceof Error ? err.message : String(err));
+    return false;
+  }
+}
+
+/** Resume the in-progress Free Play puzzle. Returns true if a live board was
+ *  restored, false if there's nothing to resume (caller picks a category). */
+export async function fetchFreeplayResume() {
+  try {
+    const board = await freeplayResume();
+    if (!board) return false;
+    reconcileFreeplayBoard(board);
+    await refreshFreeplayClue();
+    return true;
+  } catch (err) {
+    console.error('❌ Error resuming free play:', err instanceof Error ? err.message : String(err));
     return false;
   }
 }
