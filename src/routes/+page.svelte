@@ -250,7 +250,7 @@
       const exp = expiryLabel(m);
       return { kind: 'match', icon: '⚔️',
         title: invited ? `${m.host} challenged you` : `Your turn vs ${m.host}`,
-        sub: `${m.pack_size} puzzle${m.pack_size === 1 ? '' : 's'}${m.wager > 0 ? ' · $' + m.wager.toLocaleString() : ''}${exp ? ' · ' + exp : ''}`,
+        sub: exp || '', // keep it clean — stakes (puzzles/buy-in) show at the PIN confirm
         cta: (invited ? 'Play' : 'Resume') + ' →',
         more: (turnMatches.length - 1) + friendRequests.length,
         primary: () => respondToMatch(m), moreAction: () => openChallenges() };
@@ -905,7 +905,13 @@
     if (mbTarget === 'friend' && !mbOpponent.trim()) { mbMsg = 'Pick an opponent.'; return; }
     if (mbTarget === 'group' && !mbGroupId) { mbMsg = 'Pick a group.'; return; }
     const w = Math.floor(Number(mbWager) || 0);
-    try { await requirePin(w > 0 ? `Enter challenge · $${w.toLocaleString()} wager` : 'Enter challenge'); } catch { return; }
+    const createStakes = [
+      { label: mbTarget === 'group' ? 'Group' : 'Opponent', value: mbTarget === 'group' ? (myGroups.find((g) => g.id === mbGroupId)?.name || 'Group') : '@' + mbOpponent.trim() },
+      { label: 'Puzzles', value: String(mbPackSize) },
+      { label: 'Buy-in', value: w > 0 ? '$' + w.toLocaleString() : 'Friendly' },
+      { label: 'Payout', value: mbPayout === 'podium' ? 'Podium 3·2·1' : 'Winner takes all' }
+    ];
+    try { await requirePin(w > 0 ? 'Send & stake your buy-in' : 'Send this challenge', createStakes); } catch { return; }
     mbBusy = true; mbMsg = 'Creating…';
     const res = await startMatch({
       opponent: mbTarget === 'friend' ? mbOpponent.trim() : null,
@@ -926,13 +932,24 @@
         : 'Could not create the challenge.';
     }
   }
+  /** Stakes shown on the PIN confirm. @param {any} m */
+  function matchStakes(m) {
+    const s = [
+      { label: m.is_host ? 'Players' : 'Opponent', value: m.is_host ? `${m.players}` : '@' + m.host },
+      { label: 'Puzzles', value: String(m.pack_size) },
+      { label: 'Buy-in', value: Number(m.wager) > 0 ? '$' + Number(m.wager).toLocaleString() : 'Friendly' },
+      { label: 'Payout', value: m.payout === 'podium' ? 'Podium 3·2·1' : 'Winner takes all' }
+    ];
+    if (Number(m.wager) > 0 && netWorth != null) s.push({ label: 'Your Cash', value: '$' + Math.round(netWorth).toLocaleString() });
+    return s;
+  }
   /** @param {any} m */
   async function respondToMatch(m) {
     if (mbBusy) return;
     if (m.status === 'settled') { matchResults = { loading: true }; matchResults = await getMatchDetail(m.id); return; }
-    // Accepting an invite commits your wager → confirm with PIN (resuming doesn't).
+    // Accepting an invite commits your buy-in → confirm with PIN (resuming doesn't).
     if (m.my_state === 'invited') {
-      try { await requirePin(m.wager > 0 ? `Enter challenge · $${Number(m.wager).toLocaleString()} wager` : 'Enter challenge'); } catch { return; }
+      try { await requirePin(`Accept @${m.host}'s challenge`, matchStakes(m)); } catch { return; }
     }
     mbBusy = true;
     const ok = m.my_state === 'invited' ? await acceptAndPlayMatch(m.id) : await resumeMatch(m.id);
