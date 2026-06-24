@@ -313,6 +313,12 @@ export async function freeplayNext() {
   if (error) { console.error('❌ freeplay_next error:', error); return null; }
   return data;
 }
+/** Resume an in-progress Free Play puzzle (null if none active). @returns {Promise<object|null>} */
+export async function freeplayResume() {
+  const { data, error } = await supabase.rpc('freeplay_resume');
+  if (error) { console.error('❌ freeplay_resume error:', error); return null; }
+  return data ?? null;
+}
 /** @param {string} letter @returns {Promise<object|null>} */
 export async function freeplayBuyLetter(letter) {
   const { data, error } = await supabase.rpc('freeplay_buy_letter', { p_letter: letter });
