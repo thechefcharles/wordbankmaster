@@ -576,6 +576,19 @@ export async function buyPowerup(id) {
   if (error || !data) { if (error) console.error('❌ buy_powerup:', error); return { ok: false }; }
   return data;
 }
+/* ===== Free Play cash-out (credits → real Cash, 40:1, $50/day cap) ===== */
+/** @returns {Promise<{credits:number,cashable_credits:number,max_cash:number,rate:number,floor:number,daily_cap:number,cap_remaining:number}|null>} */
+export async function getFreeplayCashoutStatus() {
+  const { data, error } = await supabase.rpc('freeplay_cashout_status');
+  if (error || !data) { if (error) console.error('❌ freeplay_cashout_status:', error); return null; }
+  return data;
+}
+/** Cash out credits (null = the max allowed). @param {number|null} amount @returns {Promise<any>} */
+export async function freeplayCashout(amount = null) {
+  const { data, error } = await supabase.rpc('freeplay_cashout', { p_amount: amount });
+  if (error || !data) { if (error) console.error('❌ freeplay_cashout:', error); return { ok: false }; }
+  return data;
+}
 /** Use a power-up in the Climb. @param {string} id @returns {Promise<any>} */
 export async function climbUsePowerup(id) {
   const { data, error } = await supabase.rpc('climb_use_powerup', { p_id: id });

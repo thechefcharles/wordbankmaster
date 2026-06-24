@@ -1651,10 +1651,14 @@
         <div class="credits-panel">
           <span class="cr-label">🎟️ Credits</span>
           <span class="cr-amount">{Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span>
-          <span class="cr-note">Play money · doesn't touch your Cash</span>
+          {#if (($gameStore.bankroll ?? 0) - 2000) >= 40}
+            <span class="cr-ready">💵 ${Math.floor((($gameStore.bankroll ?? 0) - 2000) / 40)} ready — cash out in Store</span>
+          {:else}
+            <span class="cr-note">Play money · cash out at 40:1 in the Store</span>
+          {/if}
         </div>
         {#if freeLive}
-          <p class="live-line">Solve {freeLive.clean ? 'clean ' : ''}to bank <b>+${freeLive.clean ? 50 : 25}</b> real Cash</p>
+          <p class="live-line">Solve {freeLive.clean ? 'clean ' : ''}for <b>+{freeLive.clean ? 250 : 120}</b> credits</p>
         {/if}
       {/if}
     </section>
@@ -2853,6 +2857,7 @@
   .cr-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #c4b5fd; }
   .cr-amount { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 2.1rem; line-height: 1.1; color: #c4b5fd; font-variant-numeric: tabular-nums; }
   .cr-note { margin-top: 2px; font-size: 0.68rem; color: var(--text-faint); }
+  .cr-ready { margin-top: 2px; font-size: 0.68rem; font-weight: 700; color: #6ee7b7; }
 
   /* Cash Game (Climb) gamified HUD */
   .climb-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; max-width: 360px; margin: 0 auto 14px; }

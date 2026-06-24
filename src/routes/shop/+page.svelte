@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { getShop, buyCosmetic, equipCosmetic, unequipCosmetic, getPowerups, buyPowerup } from '$lib/stores/statsStore.js';
+  import { getShop, buyCosmetic, equipCosmetic, unequipCosmetic, getPowerups, buyPowerup, getFreeplayCashoutStatus, freeplayCashout } from '$lib/stores/statsStore.js';
   import { requirePin } from '$lib/pinConfirm.js';
   import { track } from '$lib/analytics.js';
   import { fx } from '$lib/sound.js';
@@ -33,12 +33,31 @@
   /** @type {any[]} */
   let sabs = $state([]);
 
+  /** @type {any|null} */
+  let cashout = $state(null);
+
   async function load() {
-    const [shop, pu] = await Promise.all([getShop(), getPowerups()]);
+    const [shop, pu, co] = await Promise.all([getShop(), getPowerups(), getFreeplayCashoutStatus()]);
     bank = shop.bank;
     items = shop.items;
     pups = (pu.items || []).filter((/** @type {any} */ i) => i.kind === 'climb');
     sabs = (pu.items || []).filter((/** @type {any} */ i) => i.kind === 'sabotage');
+    cashout = co;
+  }
+
+  async function doCashout() {
+    if (busy || !cashout) return;
+    const amt = Math.min(cashout.max_cash, cashout.cap_remaining);
+    if (amt <= 0) return;
+    try { await requirePin(`Cash out ${(amt * 40).toLocaleString()} credits → $${amt}`, [
+      { label: 'Credits', value: (amt * 40).toLocaleString() },
+      { label: 'You receive', value: '$' + amt }
+    ]); } catch { return; }
+    busy = 'cashout'; msg = '';
+    const res = await freeplayCashout(amt);
+    busy = '';
+    if (res?.ok) { fx('win'); track('freeplay_cashout', { cash: res.cashed }); await load(); }
+    else { msg = res?.reason === 'daily_cap' ? "You've hit today's $50 cash-out cap — come back tomorrow." : 'Could not cash out right now.'; }
   }
 
   /** @param {any} item */
@@ -94,6 +113,27 @@
     <p class="loading">Loading…</p>
   {:else}
     {#if msg}<p class="msg">{msg}</p>{/if}
+
+    {#if cashout && cashout.credits > 0}
+      <div class="cashout-card">
+        <div class="co-top">
+          <div>
+            <span class="co-label">🎟️ Free Play credits</span>
+            <span class="co-credits">{cashout.credits.toLocaleString()}</span>
+          </div>
+          {#if cashout.max_cash > 0 && cashout.cap_remaining > 0}
+            <button class="co-btn" disabled={busy === 'cashout'} onclick={doCashout}>
+              💵 Cash out ${Math.min(cashout.max_cash, cashout.cap_remaining)}
+            </button>
+          {:else if cashout.cap_remaining <= 0}
+            <span class="co-pending">Daily $50 cap reached</span>
+          {:else}
+            <span class="co-pending">Earn {(2040 - cashout.credits).toLocaleString()} more to cash out</span>
+          {/if}
+        </div>
+        <p class="co-note">First 2,000 credits are your stake. Cash out the rest at 40 credits = $1 (up to $50/day).</p>
+      </div>
+    {/if}
 
     <h2 class="section">⚡ Power-ups</h2>
     <p class="section-note">Carry one of each. Bring them to the Cash Game or a challenge and use them whenever you like — the Daily stays power-up-free.</p>
@@ -186,6 +226,20 @@
   .sub { color: var(--text-muted); font-size: 0.9rem; margin: 0.2rem 0 1.4rem; }
   .loading { color: var(--text-muted); padding: 2rem; text-align: center; }
   .msg { text-align: center; color: #f87171; font-size: 0.88rem; margin: 0 0 1rem; }
+  .cashout-card {
+    border: 1px solid rgba(110, 231, 183, 0.35); border-radius: 16px; padding: 0.9rem 1rem; margin: 0 0 1.2rem;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(20, 26, 38, 0.6));
+  }
+  .co-top { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; }
+  .co-label { display: block; font-size: 0.74rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.05em; }
+  .co-credits { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.6rem; color: #6ee7b7; }
+  .co-btn {
+    padding: 0.6rem 0.95rem; border-radius: 11px; border: none; cursor: pointer; font-weight: 800; font-size: 0.9rem;
+    color: #04240f; background: linear-gradient(135deg, #6ee7b7, #34d399); white-space: nowrap;
+  }
+  .co-btn:disabled { opacity: 0.5; cursor: default; }
+  .co-pending { font-size: 0.78rem; color: var(--text-muted); text-align: right; }
+  .co-note { font-size: 0.72rem; color: var(--text-faint); margin: 0.6rem 0 0; line-height: 1.35; }
   .section { font-family: var(--font-display); font-size: 1.05rem; margin: 1.4rem 0 0.4rem; }
   .section-note { font-size: 0.76rem; color: var(--text-faint); margin: 0 0 0.8rem; }
   .card.pup { align-items: center; text-align: center; gap: 0.3rem; }
