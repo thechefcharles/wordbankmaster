@@ -25,11 +25,8 @@
   const medal = (/** @type {number} */ r) => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : '#' + r;
   const money = (/** @type {number|null} */ n) => n == null ? '—' : '$' + Math.round(n).toLocaleString();
   $: ranked = !!standing && standing.state !== 'first_to_play';
-  $: msg = !standing ? '' :
-    standing.state === 'lead' ? "✓ You're in the lead" :
-    standing.state === 'behind' ? '▲ Spend less to take the lead' :
-    standing.state === 'tied' ? 'Dead even — spend less to pull ahead' :
-    '🏆 Spend as little as you can';
+  // Only celebrate the lead on the board — the "how to win" objective lives in the ? help.
+  $: msg = standing && standing.state === 'lead' ? "✓ In the lead" : '';
 </script>
 
 {#if standing}
@@ -42,11 +39,11 @@
         <span class="spent" class:solo={!ranked}>Spent <b>{money(spent)}</b></span>
       </div>
       <div class="money">
-        <span class="m">Stake left <b>{money(bankroll)}</b></span>
+        <span class="m">Left to spend <b>{money(bankroll)}</b></span>
         <span class="dot">·</span>
-        <span class="m wallet">Wallet {money(netWorth)}</span>
+        <span class="m wallet">💰 Cash {money(netWorth)}</span>
       </div>
-      <div class="msg">{msg}</div>
+      {#if msg}<div class="msg">{msg}</div>{/if}
     </div>
   {/key}
 {/if}

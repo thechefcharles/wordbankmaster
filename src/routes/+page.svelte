@@ -373,12 +373,11 @@
       else if ($gameStore.gameMode === 'match') await matchFold();
     } finally { brokeFiring = false; }
   }
-  function confirmFold() {
-    const ok = window.confirm($gameStore.gameMode === 'match'
-      ? 'Give up this puzzle? You lose it and move to the next — you keep your unspent stake.'
-      : 'Give up today’s Daily? It counts as a loss and reveals the answer.');
-    if (ok) doFold(false);
-  }
+  // Give-up confirm layer (in-app, not window.confirm).
+  let showGiveUp = false;
+  function confirmFold() { fx('tap'); showGiveUp = true; }
+  function cancelGiveUp() { fx('tap'); showGiveUp = false; }
+  function doGiveUp() { showGiveUp = false; doFold(false); }
   $: matchRemaining = (() => {
     if (!matchBlitz || !matchInfo?.started_at) return 0;
     const start = new Date(matchInfo.started_at).getTime();
@@ -659,6 +658,7 @@
     else if (_wasMenu && $gameStore.gameMode && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost') {
       _wasMenu = false;
       showObjectiveFor($gameStore.gameMode);
+      refreshBank(); // keep the on-board "Cash" fresh (e.g. a challenge buy-in was just paid)
     }
   }
 
@@ -1095,6 +1095,23 @@
         <input class="chat-input" placeholder="Message…" maxlength="500" bind:value={matchChatInput}
           on:keydown={(e) => { if (e.key === 'Enter') sendMatchChat(); }} />
         <button class="chat-send" on:click={sendMatchChat} disabled={matchChatBusy || !matchChatInput.trim()}>Send</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- 🏳️ Give-up confirm layer -->
+{#if showGiveUp}
+  <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Give up">
+    <button type="button" class="modal-backdrop" aria-label="Cancel" on:click={cancelGiveUp}></button>
+    <div class="modal-content giveup-modal">
+      <h2 class="gu-title">Give up {$gameStore.gameMode === 'match' ? 'this puzzle' : "today's Daily"}?</h2>
+      <p class="gu-text">{$gameStore.gameMode === 'match'
+        ? 'You lose this puzzle and move on — your unspent budget is refunded to your Cash.'
+        : 'It counts as a loss and reveals the answer.'}</p>
+      <div class="gu-actions">
+        <button class="gu-cancel" on:click={cancelGiveUp}>Keep playing</button>
+        <button class="gu-confirm" on:click={doGiveUp}>🏳️ Give up</button>
       </div>
     </div>
   </div>
@@ -1581,10 +1598,9 @@
         {:else}
           <div class="match-money">
             <span class="mm-cell">Spent <b>${(matchInfo.spent ?? 0).toLocaleString()}</b></span>
-            <span class="mm-cell">Stake left <b>${Math.max(0, (matchInfo.budget ?? 0) - (matchInfo.spent ?? 0)).toLocaleString()}</b></span>
-            <span class="mm-cell wallet">Wallet {netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}</span>
+            <span class="mm-cell">Left to spend <b>${Math.max(0, (matchInfo.budget ?? 0) - (matchInfo.spent ?? 0)).toLocaleString()}</b></span>
+            <span class="mm-cell wallet">💰 Cash {netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}</span>
           </div>
-          <p class="live-line">🏆 Spend the least to win</p>
         {/if}
       {/if}
       {#if (matchInfo.my_debuffs ?? []).length}
@@ -1654,7 +1670,7 @@
           <span class="fold-timer">⏱ 0:{String(brokeLeft).padStart(2, '0')}</span>
           <span class="fold-warn">Out of Cash — guess in time or you {$gameStore.gameMode === 'match' ? 'give up this one' : 'lose the Daily'}</span>
         {/if}
-        <button class="fold-btn" on:click={confirmFold}>🏳️ {$gameStore.gameMode === 'match' && (matchInfo?.pack_size ?? 1) > 1 ? 'Give up this one' : 'Give up'}</button>
+        <button class="fold-btn" on:click={confirmFold}>🏳️ Give Up?</button>
       </div>
     {/if}
 
@@ -1677,7 +1693,7 @@
           {:else}
             <span class="cr-note">Play money · cash out at 40:1 in the Store</span>
           {/if}
-          <span class="cr-wallet">Wallet {netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}</span>
+          <span class="cr-wallet">💰 Cash {netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}</span>
         </div>
         {#if freeLive}
           <p class="live-line">Solve {freeLive.clean ? 'clean ' : ''}for <b>+{freeLive.clean ? 250 : 120}</b> credits</p>
@@ -2473,6 +2489,14 @@
   @keyframes chatPulse { 0%,100% { box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 0 0 rgba(244,63,94,0.5); } 50% { box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 0 6px rgba(244,63,94,0); } }
   .mcb-label { font-family: var(--font-display); font-size: 0.84rem; }
   .mc-dot { position: absolute; top: 3px; right: 3px; width: 10px; height: 10px; border-radius: 999px; background: #f43f5e; box-shadow: 0 0 0 2px var(--bg, #0a0e14); }
+  .giveup-modal { max-width: 360px; text-align: center; }
+  .gu-title { font-family: var(--font-display); font-size: 1.2rem; margin: 0 0 0.5rem; }
+  .gu-text { font-size: 0.88rem; color: var(--text-muted); margin: 0 0 1.2rem; line-height: 1.4; }
+  .gu-actions { display: flex; gap: 0.6rem; }
+  .gu-actions button { flex: 1; padding: 0.75rem 0.7rem; border-radius: 12px; cursor: pointer; font-weight: 800; font-size: 0.9rem; }
+  .gu-cancel { border: 1px solid var(--border-strong, var(--border)); background: var(--surface-2, rgba(255,255,255,0.05)); color: var(--text); }
+  .gu-confirm { border: none; background: rgba(248,113,113,0.18); border: 1px solid rgba(248,113,113,0.5); color: #fca5a5; }
+  .gu-confirm:hover { background: rgba(248,113,113,0.28); }
   .chat-modal { max-width: 440px; }
   .chat-h { font-family: var(--font-display); font-size: 1.15rem; margin: 0 0 0.8rem; }
   .chat-msgs {
