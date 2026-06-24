@@ -756,6 +756,8 @@
   }
   // ===== Challenge Builder (configurable packs vs friends/groups) =====
   let showChallenges = false;
+  /** Which view of the Challenges modal: the inbox list vs the new-match builder. */
+  let chTab = /** @type {'inbox'|'new'} */ ('inbox');
   /** @type {any[]} */
   let myMatches = [];
   /** @type {any[]} */
@@ -813,6 +815,7 @@
     showChallenges = true;
     [myMatches, myGroups] = await Promise.all([getMyMatches(), getMyGroups()]);
     challengeCount = myMatches.filter((m) => m.status === 'open' && m.my_state !== 'done').length;
+    chTab = myMatches.length ? 'inbox' : 'new'; // land on the list if you have any
   }
 
   // ===== Notifications panel (bell) =====
@@ -1245,8 +1248,35 @@
         <div class="modal-content main-menu-modal ch-modal">
           <button class="close-btn" on:click={() => showChallenges = false}>❌</button>
 
-          {#if true}
-            <h2>⚔️ Challenge Friends</h2>
+          <h2>⚔️ Challenges</h2>
+          <div class="ch-tabs">
+            <button type="button" class="ch-tab" class:active={chTab === 'inbox'} on:click={() => chTab = 'inbox'}>📥 Inbox{#if myMatches.length} · {myMatches.length}{/if}</button>
+            <button type="button" class="ch-tab" class:active={chTab === 'new'} on:click={() => chTab = 'new'}>⚔️ New</button>
+          </div>
+
+          {#if chTab === 'inbox'}
+            {#if myMatches.length}
+              <div class="ch-list">
+                {#each myMatches as m}
+                  <div class="ch-item">
+                    <div class="ch-info">
+                      <span class="ch-vs">{m.is_host ? 'You hosted' : m.host + ' invited you'}</span>
+                      <span class="ch-meta">{m.pack_size} puzzle{m.pack_size === 1 ? '' : 's'} · {m.players} players{#if m.wager > 0} · ${m.wager?.toLocaleString()}{/if}</span>
+                    </div>
+                    {#if m.status === 'settled'}
+                      <button class="ch-play ghost" disabled={mbBusy} on:click={() => respondToMatch(m)}>Results</button>
+                    {:else if m.my_state !== 'done'}
+                      <button class="ch-play" disabled={mbBusy} on:click={() => respondToMatch(m)}>{m.my_state === 'invited' ? 'Play' : 'Resume'}</button>
+                    {:else}
+                      <span class="ch-waiting">Waiting…</span>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            {:else}
+              <p class="ch-empty">No challenges yet. Tap <b>⚔️ New</b> to start one.</p>
+            {/if}
+          {:else}
             <p class="cat-sub">Build a match — a pack of puzzles vs a friend or a group. Same puzzles for everyone.</p>
 
             <div class="ch-new">
@@ -1312,26 +1342,6 @@
               <button class="ch-create" disabled={mbBusy} on:click={submitNewMatch} style="width:100%;">Send challenge ⚔️</button>
               {#if mbMsg}<p class="add-msg">{mbMsg}</p>{/if}
             </div>
-
-            {#if myMatches.length}
-              <div class="ch-list">
-                {#each myMatches as m}
-                  <div class="ch-item">
-                    <div class="ch-info">
-                      <span class="ch-vs">{m.is_host ? 'You hosted' : m.host + ' invited you'}</span>
-                      <span class="ch-meta">{m.pack_size} puzzle{m.pack_size === 1 ? '' : 's'} · {m.players} players{#if m.wager > 0} · ${m.wager?.toLocaleString()}{/if}</span>
-                    </div>
-                    {#if m.status === 'settled'}
-                      <button class="ch-play ghost" disabled={mbBusy} on:click={() => respondToMatch(m)}>Results</button>
-                    {:else if m.my_state !== 'done'}
-                      <button class="ch-play" disabled={mbBusy} on:click={() => respondToMatch(m)}>{m.my_state === 'invited' ? 'Play' : 'Resume'}</button>
-                    {:else}
-                      <span class="ch-waiting">Waiting…</span>
-                    {/if}
-                  </div>
-                {/each}
-              </div>
-            {/if}
           {/if}
         </div>
       </div>
@@ -1569,39 +1579,44 @@
       {#if (matchInfo.my_debuffs ?? []).length}
         <p class="debuff-banner">{(matchInfo.my_debuffs ?? []).map((/** @type {string} */ d) => DEBUFF_LABEL[d] ?? d).join(' · ')}</p>
       {/if}
-      {#if matchInfo.items_allowed && selfPups.length}
-        <p class="cp-hint">Your power-ups · tap to use — the group is notified</p>
-        <div class="climb-pups">
-          {#each selfPups as item}
-            {@const used = (matchInfo.used_powerups ?? []).includes(item.id)}
-            {@const owned = item.owned ?? 0}
-            <button class="cp" class:equipped={used} class:empty={owned <= 0 && !used}
-              disabled={owned <= 0 || used} on:click={() => handleMatchPup(item)} title={item.name}>
-              <span class="cp-ic">{PUP_ICON[item.id] ?? '✨'}</span>
-              <span class="cp-tag">{used ? '✓' : owned > 0 ? '×' + owned : '—'}</span>
-            </button>
-          {/each}
-        </div>
-      {/if}
-      {#if matchInfo.items_allowed && sabPups.some((/** @type {any} */ i) => (i.owned ?? 0) > 0) && (matchInfo.opponents ?? []).length}
-        <p class="cp-hint sab">😈 Sabotage · hit an opponent</p>
-        <div class="climb-pups">
-          {#each sabPups as item}
-            {@const owned = item.owned ?? 0}
-            <button class="cp sab" class:empty={owned <= 0} class:arming={pendingSabotage === item.id}
-              disabled={owned <= 0} on:click={() => tapSabotage(item)} title={item.name}>
-              <span class="cp-ic">{PUP_ICON[item.id] ?? '✨'}</span>
-              <span class="cp-tag">{owned > 0 ? '×' + owned : '—'}</span>
-            </button>
-          {/each}
-        </div>
-        {#if pendingSabotage}
-          <div class="sab-targets">
-            <span class="sab-pick">Hit who?</span>
-            {#each matchInfo.opponents ?? [] as opp}
-              <button class="sab-target" on:click={() => pickSabTarget(opp.id)}>{opp.name}</button>
+      {#if matchInfo.items_allowed}
+        {@const ownedSelf = selfPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0)}
+        {@const ownedSab = sabPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0)}
+        {#if ownedSelf.length}
+          <p class="cp-hint">Your power-ups · tap to use — the group is notified</p>
+          <div class="climb-pups">
+            {#each ownedSelf as item}
+              {@const used = (matchInfo.used_powerups ?? []).includes(item.id)}
+              <button class="cp" class:equipped={used} disabled={used}
+                on:click={() => handleMatchPup(item)} title={item.name}>
+                <span class="cp-ic">{PUP_ICON[item.id] ?? '✨'}</span>
+                <span class="cp-tag">{used ? '✓' : '×' + item.owned}</span>
+              </button>
             {/each}
           </div>
+        {/if}
+        {#if ownedSab.length && (matchInfo.opponents ?? []).length}
+          <p class="cp-hint sab">😈 Sabotage · tap an item, then pick who to hit</p>
+          <div class="climb-pups">
+            {#each ownedSab as item}
+              <button class="cp sab" class:arming={pendingSabotage === item.id}
+                on:click={() => tapSabotage(item)} title={item.name}>
+                <span class="cp-ic">{PUP_ICON[item.id] ?? '✨'}</span>
+                <span class="cp-tag">×{item.owned}</span>
+              </button>
+            {/each}
+          </div>
+          {#if pendingSabotage}
+            <div class="sab-targets">
+              <span class="sab-pick">Hit who?</span>
+              {#each matchInfo.opponents ?? [] as opp}
+                <button class="sab-target" on:click={() => pickSabTarget(opp.id)}>{opp.name}</button>
+              {/each}
+            </div>
+          {/if}
+        {/if}
+        {#if !ownedSelf.length && !ownedSab.length}
+          <p class="cp-hint">⚡ Power-ups are on — you don't own any yet. Grab some in the Store to use them here.</p>
         {/if}
       {/if}
     {/if}
@@ -2512,6 +2527,12 @@
 
   /* Challenges modal */
   .ch-modal { max-width: 440px; }
+  .ch-tabs { display: flex; gap: 8px; margin: 4px 0 14px; }
+  .ch-tab { flex: 1; padding: 9px 0; border-radius: 12px; border: 1px solid var(--border); background: var(--surface);
+    color: var(--text-muted); font-family: var(--font-display); font-weight: 700; font-size: 0.9rem; cursor: pointer; }
+  .ch-tab.active { background: linear-gradient(135deg, #fde047, #f59e0b); color: #3a2a00; border-color: transparent; }
+  .ch-empty { color: var(--text-muted); font-size: 0.92rem; padding: 2rem 1rem; }
+  .ch-empty b { color: var(--brand-2); }
   .ch-new { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
   .ch-modes { display: flex; gap: 0.5rem; }
   .ch-mode {
@@ -2994,6 +3015,12 @@
     border-radius: var(--r-xl);
     width: 90%;
     max-width: 400px;
+    /* Never taller than the screen — scroll internally so the close button and
+       all controls stay reachable (was trapping users on tall forms). */
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     text-align: center;
     box-shadow: var(--shadow-lg);
     animation: slideIn 0.35s var(--ease-out);
