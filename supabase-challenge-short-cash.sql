@@ -27,3 +27,12 @@
 -- _match_settle: spend/refund/spent now use coalesce(start_budget, greatest(wager,500))
 -- per participant instead of one match-level budget.
 -- (body applied via migration match_settle_per_participant_budget)
+
+-- End-to-end fix (migrations match_board_per_participant_budget +
+-- getmatch_detail_per_participant_budget): _match_board, get_match and
+-- get_match_detail also computed the budget/spent against the match wager, so a
+-- reduced player's board showed "Spent $200 of $500" and standings compared the
+-- wrong budgets. All three now use each participant's start_budget. match_buy_letter
+-- already caps spending at the live bankroll, so the reduced budget is enforced.
+-- Verified live: a $300 player accepts a $500 challenge → board shows "$0 of $300",
+-- stakes $300 (bank→0), bankroll=start_budget=300.
