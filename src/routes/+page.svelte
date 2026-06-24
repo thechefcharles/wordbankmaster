@@ -38,6 +38,8 @@
   import MatchDetailModal from '$lib/components/MatchDetailModal.svelte';
   import LeaderboardPanel from '$lib/components/LeaderboardPanel.svelte';
   import ActivityPanel from '$lib/components/ActivityPanel.svelte';
+  import FriendsPanel from '$lib/components/FriendsPanel.svelte';
+  import GroupsPanel from '$lib/components/GroupsPanel.svelte';
 
   export let data;
 
@@ -805,6 +807,12 @@
   let showChallenges = false; // the New-Challenge builder modal
   /** Which Community hub tab is showing. */
   let communityTab = /** @type {'challenges'|'leaderboard'|'activity'|'people'} */ ('challenges');
+  /** Which People sub-tab (when communityTab === 'people'). */
+  let peopleTab = /** @type {'friends'|'groups'} */ ('friends');
+  /** Start a challenge with a friend from the People list. @param {string} username */
+  function challengeFriend(username) {
+    newChallenge().then(() => { mbTarget = 'friend'; mbOpponent = username; });
+  }
   /** @type {any[]} */
   let myMatches = [];
   /** @type {any[]} */
@@ -1251,15 +1259,27 @@
 
       {:else if menuView === 'community'}
         <div class="sub-head">
-          <button class="sub-back" on:click={() => { menuView = 'home'; fx('tap'); }}>← Back</button>
-          <h2 class="sub-title">Community</h2>
-          <button class="sub-people" title="Friends & Groups" aria-label="Friends & Groups" on:click={() => { communityTab = 'people'; fx('tap'); }}>👥</button>
+          {#if communityTab === 'people'}
+            <button class="sub-back" on:click={() => { communityTab = 'challenges'; fx('tap'); }}>← Community</button>
+            <h2 class="sub-title">People</h2>
+          {:else}
+            <button class="sub-back" on:click={() => { menuView = 'home'; fx('tap'); }}>← Back</button>
+            <h2 class="sub-title">Community</h2>
+            <button class="sub-people" title="Friends & Groups" aria-label="Friends & Groups" on:click={() => { communityTab = 'people'; fx('tap'); }}>👥</button>
+          {/if}
         </div>
-        <div class="comm-tabs">
-          <button class="comm-tab" class:active={communityTab === 'challenges'} on:click={() => { communityTab = 'challenges'; fx('tap'); }}>Challenges</button>
-          <button class="comm-tab" class:active={communityTab === 'leaderboard'} on:click={() => { communityTab = 'leaderboard'; fx('tap'); }}>Leaderboard</button>
-          <button class="comm-tab" class:active={communityTab === 'activity'} on:click={() => { communityTab = 'activity'; fx('tap'); }}>Activity</button>
-        </div>
+        {#if communityTab === 'people'}
+          <div class="comm-tabs">
+            <button class="comm-tab" class:active={peopleTab === 'friends'} on:click={() => { peopleTab = 'friends'; fx('tap'); }}>Friends{#if friendReqCount > 0} · {friendReqCount}{/if}</button>
+            <button class="comm-tab" class:active={peopleTab === 'groups'} on:click={() => { peopleTab = 'groups'; fx('tap'); }}>Groups</button>
+          </div>
+        {:else}
+          <div class="comm-tabs">
+            <button class="comm-tab" class:active={communityTab === 'challenges'} on:click={() => { communityTab = 'challenges'; fx('tap'); }}>Challenges</button>
+            <button class="comm-tab" class:active={communityTab === 'leaderboard'} on:click={() => { communityTab = 'leaderboard'; fx('tap'); }}>Leaderboard</button>
+            <button class="comm-tab" class:active={communityTab === 'activity'} on:click={() => { communityTab = 'activity'; fx('tap'); }}>Activity</button>
+          </div>
+        {/if}
 
         {#if communityTab === 'challenges'}
           <div class="comm-body">
@@ -1291,14 +1311,12 @@
         {:else if communityTab === 'activity'}
           <div class="comm-body"><ActivityPanel /></div>
         {:else}
-          <div class="comm-body people">
-            <button class="menu-card" on:click={() => goto('/friends')}>
-              <span class="mc-title">Friends</span>
-              {#if friendReqCount > 0}<span class="mc-badge" title="{friendReqCount} request{friendReqCount === 1 ? '' : 's'}">{friendReqCount}</span>{/if}
-            </button>
-            <button class="menu-card" on:click={() => goto('/groups')}>
-              <span class="mc-title">Groups</span>
-            </button>
+          <div class="comm-body">
+            {#if peopleTab === 'friends'}
+              <FriendsPanel onChallenge={challengeFriend} />
+            {:else}
+              <GroupsPanel />
+            {/if}
           </div>
         {/if}
       {/if}
