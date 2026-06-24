@@ -1219,7 +1219,7 @@
           </button>
           <button class="menu-card" style="--i: 1" on:click={() => { fx('tap'); openCommunity('challenges'); }}>
             <span class="mc-title">Community</span>
-            {#if $unreadCount > 0}<span class="mc-dot" title="New activity"></span>{/if}
+            {#if $unreadCount > 0}<span class="mc-count" title="{$unreadCount} new">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}
           </button>
           <button class="menu-card" style="--i: 2" on:click={() => goto('/shop')}>
             <span class="mc-title">Store</span>
@@ -1273,7 +1273,7 @@
           <div class="comm-tabs">
             <button class="comm-tab" class:active={communityTab === 'challenges'} on:click={() => { communityTab = 'challenges'; fx('tap'); }}>Challenges</button>
             <button class="comm-tab" class:active={communityTab === 'leaderboard'} on:click={() => { communityTab = 'leaderboard'; fx('tap'); }}>Leaderboard</button>
-            <button class="comm-tab" class:active={communityTab === 'activity'} on:click={() => { communityTab = 'activity'; fx('tap'); markAllNotificationsRead(); }}>Activity{#if $unreadCount > 0}<span class="comm-dot"></span>{/if}</button>
+            <button class="comm-tab" class:active={communityTab === 'activity'} on:click={() => { communityTab = 'activity'; fx('tap'); markAllNotificationsRead(); }}>Activity{#if $unreadCount > 0}<span class="comm-count">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}</button>
           </div>
         {/if}
 
@@ -2216,8 +2216,13 @@
   .comm-tab { flex: 1; padding: 9px 0; border-radius: 12px; border: 1px solid var(--border); background: var(--surface);
     color: var(--text-muted); font-family: var(--font-display); font-weight: 700; font-size: 0.86rem; cursor: pointer; }
   .comm-tab.active { background: linear-gradient(135deg, #fde047, #f59e0b); color: #3a2a00; border-color: transparent; }
-  .comm-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #f43f5e; margin-left: 6px; vertical-align: middle; }
-  .menu-card .mc-dot { top: 12px; right: 14px; }
+  /* Unread-count badges (Activity tab + Community card) */
+  .comm-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px;
+    border-radius: 999px; background: #f43f5e; color: #fff; font-family: var(--font-display);
+    font-weight: 800; font-size: 0.68rem; margin-left: 6px; vertical-align: middle; }
+  .menu-card .mc-count { position: absolute; top: 10px; right: 12px; display: grid; place-items: center;
+    min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: #f43f5e; color: #fff;
+    font-family: var(--font-display); font-weight: 800; font-size: 0.72rem; box-shadow: 0 0 0 2px var(--bg, #0a0e14); }
   .act-sec { font-family: var(--font-display); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold); text-align: left; margin: 6px 2px 8px; }
   .act-sec:not(:first-child) { margin-top: 20px; }
   .comm-body { width: 100%; }
