@@ -1961,6 +1961,9 @@
               {#if dailyPlacement && dailyPlacement.rank > 0 && dailyPlacement.total > 1}
                 <p class="daily-placement">{dailyPlacement.rank === 1 ? '🥇' : dailyPlacement.rank === 2 ? '🥈' : dailyPlacement.rank === 3 ? '🥉' : '🏅'} #{dailyPlacement.rank} of {dailyPlacement.total} among friends today</p>
               {/if}
+              {#if !$gameStore.twistUsed && dailyMod}
+                <p class="twist-kept">🎟️ You kept your <b>{dailyMod.name}</b> Twist — it's now a power-up for Cash Game &amp; Challenges</p>
+              {/if}
             {:else}
               <div class="result-bankroll">
                 <span class="rb-label">Banked</span>
@@ -3493,6 +3496,9 @@
   .ds-amount.lose { color: #fb7185; text-shadow: 0 0 18px rgba(251,113,133,0.35); }
   .ds-cash { font-size: 0.8rem; color: var(--text-muted); }
   .daily-placement { font-family: var(--font-display); font-weight: 700; font-size: 0.9rem; color: #fcd34d; margin: 0 0 14px; }
+  .twist-kept { font-size: 0.82rem; line-height: 1.35; color: #6ee7b7; margin: 0 0 14px; padding: 8px 12px;
+    background: rgba(110,231,183,0.1); border: 1px solid rgba(110,231,183,0.32); border-radius: 12px; }
+  .twist-kept b { color: #a7f3d0; }
   .ghost-compare {
     margin: 2px auto 16px;
     padding: 10px 14px;
