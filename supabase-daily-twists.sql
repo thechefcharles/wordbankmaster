@@ -1,0 +1,31 @@
+-- Daily "Twists" + leveler + honest losses (2026-06-25).
+-- Migration: daily_twists_rotation_leveler_losses.
+--
+-- TWISTS (all helpers, one per weekday via _daily_modifier(), dow 0..6):
+--   Sun 🛡️ insured (first wrong letter free) · Mon 🏷️ discount (25% off all) ·
+--   Tue 👁️ vowel_vision (vowels 50% off) · Wed ⚖️ flat_rate (every letter $50) ·
+--   Thu 🎁 free_vowel (one vowel revealed free) · Fri 🔡 consonant_sale (consonants 25% off) ·
+--   Sat 🅰️ head_start (first letter of each word free).
+--   (Replaces old md5%4 pool incl. the 2 inert mods Big Bank / Insured-first-GUESS.)
+--   Effects live in daily_buy_letter (pricing/insured) + daily_start (free reveals).
+--
+-- LEVELER: daily_start(p_powerups, p_use_twist boolean default true). Choose BEFORE
+--   starting, locked on the session (daily_sessions.twist_active). Use Twist → bounty ×1.0;
+--   Go Pure (no twist) → bounty ×1.5 via _daily_reward_eff(pid, twist). Board responses now
+--   carry { modifier (null if Pure), twist_active, bounty_mult }.
+--
+-- LOSSES: daily_fold now calls _finalize_daily(p_won=false) → logs a game_results row
+--   (outcome='lost', earned 0, net=-spent, no bounty credit, no flawless). Win-rate /
+--   "played" / history are now honest. _finalize_daily guards the bounty _bank_credit to wins.
+--
+-- STREAK unchanged = ATTENDANCE (showing up), increments in daily_start; not solve-based
+--   (owner's call). See [[wordbank-economy-v3-1]].
+--
+-- Frontend: powerups.js MODIFIERS (the 7); dailyStart(powerups, useTwist) → p_use_twist;
+--   GameStore reconcileDailyBoard reads modifier/twist_active/bounty_mult (store fields
+--   twistActive/bountyMult); +page pre-game Twist-choice modal (Use it / Go Pure) shown on
+--   a FRESH daily (resume skips it); board shows the mod-chip or a "🎯 Pure · ×1.5" chip.
+--
+-- Verified (rolled back + live): rotation (Thu=free_vowel), Pure bounty ×1.5 ($780 board),
+--   discount E=75, flat=50, insured first-wrong=$0, free_vowel revealed both A's of FAJITAS,
+--   fold logs outcome='lost'.

@@ -414,8 +414,8 @@ export async function fetchArcadeLeaderboard(period = 'daily') {
  * @param {string[]} [powerups] - pre-game power-ups to activate (only applied on a fresh session)
  * @returns {Promise<object|null>} board
  */
-export async function dailyStart(powerups = []) {
-  const { data, error } = await supabase.rpc('daily_start', { p_powerups: powerups });
+export async function dailyStart(powerups = [], useTwist = true) {
+  const { data, error } = await supabase.rpc('daily_start', { p_powerups: powerups, p_use_twist: useTwist });
   if (error) { console.error('❌ daily_start error:', error); return null; }
   return data;
 }
