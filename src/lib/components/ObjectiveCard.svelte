@@ -3,7 +3,18 @@
   // player always knows the objective. Solo modes show it once (the parent gates
   // on localStorage); challenges show it every entry (they carry the stakes).
   import { createEventDispatcher } from 'svelte';
+  import { MODIFIERS } from '$lib/powerups.js';
   const dispatch = createEventDispatcher();
+
+  let page = 0; // 0 = how to win, 1 = power-ups (daily only)
+  // Power-ups a player can use in the Daily: the weekday Twists + the Bounty Boosts.
+  const DAILY_PUPS = [
+    { group: 'Daily Twist — one free helper each weekday', items: Object.values(MODIFIERS) },
+    { group: 'Bounty Boosts — buy in the Store, stack your multiplier', items: [
+      { emoji: '💥', name: 'Bounty Boost', blurb: 'Adds ×0.5 to your bounty multiplier' },
+      { emoji: '💎', name: 'Jackpot', blurb: 'Adds ×1.0 to your bounty multiplier' }
+    ] }
+  ];
 
   /** @type {string} */ export let mode;
   /** @type {{ opponent?: string, wager?: number, packSize?: number, fieldSize?: number }} */
@@ -57,15 +68,35 @@
 
 <div class="obj-overlay" role="dialog" aria-modal="true" aria-label="How to win">
   <div class="obj-card">
-    <span class="obj-pill">🎯 How to win</span>
-    <div class="obj-icon">{c.icon}</div>
-    <h2 class="obj-title">{c.title}</h2>
+    {#if page === 0}
+      <span class="obj-pill">🎯 How to win</span>
+      <div class="obj-icon">{c.icon}</div>
+      <h2 class="obj-title">{c.title}</h2>
 
-    <p class="obj-goal">{c.goal}</p>
-    <div class="obj-win"><span class="obj-win-key">WIN</span>{c.win}</div>
-    {#if c.bar}<p class="obj-bar">{c.bar}</p>{/if}
+      <p class="obj-goal">{c.goal}</p>
+      <div class="obj-win"><span class="obj-win-key">WIN</span>{c.win}</div>
+      {#if c.bar}<p class="obj-bar">{c.bar}</p>{/if}
 
-    <button class="obj-btn" on:click={go}>Let’s go →</button>
+      {#if mode === 'daily'}
+        <button class="obj-link" on:click={() => page = 1}>🎁 Power-ups &amp; boosts →</button>
+      {/if}
+      <button class="obj-btn" on:click={go}>Let’s go →</button>
+    {:else}
+      <span class="obj-pill">🎁 Power-ups</span>
+      <h2 class="obj-title">Daily Power-ups</h2>
+      <div class="pup-list">
+        {#each DAILY_PUPS as grp}
+          <div class="pup-group-h">{grp.group}</div>
+          {#each grp.items as it}
+            <div class="pup-row">
+              <span class="pup-e">{it.emoji}</span>
+              <span class="pup-txt"><span class="pup-n">{it.name}</span><span class="pup-d">{it.blurb}</span></span>
+            </div>
+          {/each}
+        {/each}
+      </div>
+      <button class="obj-btn ghost" on:click={() => page = 0}>← Back</button>
+    {/if}
   </div>
 </div>
 
@@ -142,4 +173,20 @@
   }
   .obj-btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
   .obj-btn:active { transform: scale(0.97); }
+  .obj-btn.ghost { background: var(--surface-2, rgba(255,255,255,0.08)); color: var(--text, #fff); box-shadow: none; }
+  .obj-link { display: inline-block; margin: 0 0 12px; padding: 8px 14px; border-radius: 999px; cursor: pointer;
+    border: 1px solid rgba(110,231,183,0.45); background: rgba(110,231,183,0.1);
+    font-family: var(--font-display, sans-serif); font-weight: 800; font-size: 0.82rem; color: #6ee7b7; }
+  .obj-link:hover { background: rgba(110,231,183,0.18); }
+  /* power-ups page */
+  .pup-list { text-align: left; max-height: 46vh; overflow-y: auto; margin: 4px 0 16px;
+    border: 1px solid var(--border, rgba(255,255,255,0.1)); border-radius: 14px; padding: 4px 12px; }
+  .pup-group-h { font-family: var(--font-display, sans-serif); font-size: 0.66rem; font-weight: 800; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--brand-2, #fcd34d); margin: 12px 0 4px; }
+  .pup-row { display: flex; gap: 11px; align-items: flex-start; padding: 7px 0; border-bottom: 1px solid var(--border, rgba(255,255,255,0.07)); }
+  .pup-row:last-child { border-bottom: none; }
+  .pup-e { font-size: 1.25rem; flex: none; width: 26px; text-align: center; line-height: 1.3; }
+  .pup-txt { display: flex; flex-direction: column; gap: 1px; }
+  .pup-n { font-family: var(--font-display, sans-serif); font-weight: 700; font-size: 0.88rem; color: var(--text, #fff); }
+  .pup-d { font-size: 0.78rem; line-height: 1.35; color: var(--text-muted, #aeb8c6); }
 </style>
