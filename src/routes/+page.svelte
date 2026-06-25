@@ -1424,15 +1424,24 @@
       </div>
       {#if menuView === 'home'}
         <div class="main-menu-buttons stagger">
-          <!-- 🎯 Act-now banner: just the most-recent challenge above Play (more live in Community / Profile alerts) -->
-          <button class="ab-main" class:cta={actNow.kind === 'empty'} on:click={actNow.primary}>
-            <span class="ab-icon">{actNow.icon}</span>
-            <span class="ab-text">
-              <strong>{actNow.title}</strong>
-              {#if actNow.sub}<small>{actNow.sub}</small>{/if}
-            </span>
-            <span class="ab-cta">{actNow.cta}</span>
-          </button>
+          <!-- 🎯 Act-now banner: pending challenge/friend request, else the Challenge A Friend CTA -->
+          {#if actNow.kind === 'empty'}
+            <div class="vs-cta-group">
+              <button class="vs-main" on:click={actNow.primary}>⚔️ Challenge A Friend</button>
+              <button class="vs-people" title="Friends &amp; Groups" aria-label="Friends and groups" on:click={() => { fx('tap'); openCommunity('people'); }}>
+                <span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span>
+              </button>
+            </div>
+          {:else}
+            <button class="ab-main" on:click={actNow.primary}>
+              <span class="ab-icon">{actNow.icon}</span>
+              <span class="ab-text">
+                <strong>{actNow.title}</strong>
+                {#if actNow.sub}<small>{actNow.sub}</small>{/if}
+              </span>
+              <span class="ab-cta">{actNow.cta}</span>
+            </button>
+          {/if}
           <button class="menu-card primary" style="--i: 0" on:click={() => { menuView = 'play'; fx('tap'); }}>
             <span class="mc-title">Play Now</span>
           </button>
@@ -2697,8 +2706,6 @@
   .ab-text small { font-size: 0.78rem; color: var(--text-muted); }
   .ab-cta { font-family: var(--font-display); font-weight: 800; color: var(--brand-2); font-size: 0.9rem; white-space: nowrap; flex: none; }
   /* Empty state = subtle CTA, no pulse/glow */
-  .ab-main.cta { background: var(--surface); border: 1px dashed var(--border-strong); animation: none; }
-  .ab-main.cta .ab-text strong { font-weight: 700; color: var(--text-muted); }
   /* Daily status chip on the Play Now card */
   .daily-chip {
     font-size: 0.68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap;
