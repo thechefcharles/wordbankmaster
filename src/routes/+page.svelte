@@ -1656,8 +1656,8 @@
           <div class="tb-sub">tap to cash out at 40:1</div>
         </button>
       {:else if !matchBlitz}
-        <div class="top-bank">
-          <div class="tb-row"><span class="tb-cap">💰 Bankroll</span><span class="tb-amt">${Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span></div>
+        <div class="top-bank solo">
+          <span class="tb-solo">💰 ${Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span>
         </div>
       {/if}
     {/if}
@@ -1819,7 +1819,7 @@
       {#if soloHero}
         <!-- Daily · Makeup · Cash Game: the number you keep if you solve now (bankroll is up top) -->
         <div class="bounty-panel" class:loss={soloHero.net < 0}>
-          <span class="bp-label">{soloHero.net >= 0 ? '🏆 Solve now to keep' : '⚠️ You’re losing money'}</span>
+          <span class="bp-label">{soloHero.net >= 0 ? 'Solve to Earn' : '⚠️ You’re losing money'}</span>
           <span class="bp-amount">{soloHero.net >= 0 ? '$' : '−$'}{Math.abs(soloHero.net).toLocaleString()}</span>
         </div>
       {:else if isFreeplay}
@@ -3063,12 +3063,15 @@
   .bounty-panel.loss { border-color: rgba(251,113,133,0.5); background: linear-gradient(135deg, rgba(251,113,133,0.13), rgba(251,113,133,0.03)); box-shadow: none; }
   .bp-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brand-2); }
   .bounty-panel.loss .bp-label { color: #fb7185; }
-  .bp-amount { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 2.3rem; line-height: 1.05; color: #fcd34d;
-    text-shadow: 0 0 18px rgba(251,191,36,0.45); font-variant-numeric: tabular-nums; transition: color 0.2s; }
+  .bp-amount { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 2.3rem; line-height: 1.05; color: #4ade80;
+    text-shadow: 0 0 18px rgba(52,211,153,0.5); font-variant-numeric: tabular-nums; transition: color 0.2s; }
   .bounty-panel.loss .bp-amount { color: #fb7185; text-shadow: none; }
   /* 💰 Top bankroll bar (very top, all modes) */
   .top-bank { width: 100%; max-width: 340px; margin: 0 auto 12px; padding: 9px 16px; border-radius: 14px;
     border: 1px solid rgba(253, 224, 71, 0.4); background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(251, 191, 36, 0.03)); }
+  /* solo bankroll = a centered gold chip below WordBank (matches the menu) */
+  .top-bank.solo { width: fit-content; max-width: none; margin: 0 auto 12px; padding: 7px 18px; text-align: center; }
+  .tb-solo { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.55rem; color: #fcd34d; font-variant-numeric: tabular-nums; }
   .top-bank.tap { cursor: pointer; display: block; text-align: left;
     border-color: rgba(167, 139, 250, 0.55); border-style: dashed;
     background: linear-gradient(135deg, rgba(167, 139, 250, 0.13), rgba(167, 139, 250, 0.03)); }
