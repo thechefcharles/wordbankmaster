@@ -79,8 +79,10 @@
 
       <div class="sec-title">📅 Daily</div>
       <div class="grid">
-        {@render chip('🔥 ' + (d.daily.current_streak ?? 0), 'Streak')}
-        {@render chip(d.daily.best_streak ?? 0, 'Best streak')}
+        {@render chip('🔥 ' + (d.daily.current_streak ?? 0), 'Play streak')}
+        {@render chip(d.daily.best_streak ?? 0, 'Best play')}
+        {@render chip('🏆 ' + (d.daily.win_streak ?? 0), 'Win streak')}
+        {@render chip(d.daily.best_win_streak ?? 0, 'Best win')}
         {@render chip(pct(d.daily.won ?? 0, d.daily.played ?? 0), 'Win rate')}
         {@render chip(d.daily.won ?? 0, 'Dailies won')}
         {@render chip(mult(d.daily.best_multiple), 'Best ×')}
