@@ -365,6 +365,26 @@
     _prevBank = b;
   }
 
+  // 🎰 Pure-solve payoff: solved WITHOUT using the Twist → fly in a huge ×1.5.
+  let showMultiplier = false;
+  let _multiFired = false;
+  $: handleWinMultiplier($gameStore.gameState, $gameStore.gameMode, $gameStore.twistUsed);
+  /** @param {string} state @param {string} mode @param {boolean} used */
+  function handleWinMultiplier(state, mode, used) {
+    if (!browser) return;
+    if (state === 'won' && mode === 'daily' && !used && !_multiFired) {
+      _multiFired = true;
+      const n = ($gameStore.currentPhrase || '').replace(/ /g, '').length;
+      setTimeout(() => {
+        showMultiplier = true;
+        fx('win');
+        setTimeout(() => { showMultiplier = false; }, 1700);
+      }, Math.min(n, 14) * 95 + 250);
+    } else if (state !== 'won') {
+      _multiFired = false;
+    }
+  }
+
 
   // ── Fold + broke-timer (Daily + Challenges) ──────────────────────────────
   // You're "broke" when you can't afford the cheapest still-buyable letter →
@@ -1256,6 +1276,16 @@
   </button>
 {/if}
 
+<!-- 🎰 Pure-solve ×1.5 multiplier fly-in -->
+{#if showMultiplier}
+  <div class="mult-overlay" aria-hidden="true">
+    <div class="mult-burst">
+      <span class="mult-x">×1.5</span>
+      <span class="mult-sub">Bounty bonus · you kept the Twist!</span>
+    </div>
+  </div>
+{/if}
+
 <main>
   <!-- 👤 First-run: pick a username (required to play socially) -->
   {#if loggedIn && hasInitialized && needsUsername}
@@ -2002,6 +2032,20 @@
     animation: attDrop 0.4s var(--ease-spring, ease) both;
   }
   .attendance-toast strong { font-family: var(--font-display); }
+  /* 🎰 Pure-solve ×1.5 multiplier fly-in */
+  .mult-overlay { position: fixed; inset: 0; z-index: 6000; display: grid; place-items: center; pointer-events: none; }
+  .mult-burst { text-align: center; animation: multIn 1.7s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; }
+  .mult-x { display: block; font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 5.5rem; line-height: 1; color: #4ade80;
+    text-shadow: 0 0 36px rgba(74,222,128,0.85), 0 5px 0 rgba(0,0,0,0.35); }
+  .mult-sub { display: block; margin-top: 8px; font-family: var(--font-display); font-weight: 800; color: #fde047;
+    font-size: 1rem; letter-spacing: 0.07em; text-transform: uppercase; text-shadow: 0 0 14px rgba(251,191,36,0.6); }
+  @keyframes multIn {
+    0%   { opacity: 0; transform: scale(2.6) rotate(-14deg); filter: blur(7px); }
+    16%  { opacity: 1; transform: scale(1) rotate(0deg); filter: blur(0); }
+    28%  { transform: scale(1.14); }
+    72%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.92); }
+  }
   @keyframes attDrop { from { transform: translate(-50%, -60px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
