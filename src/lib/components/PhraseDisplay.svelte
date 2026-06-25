@@ -52,10 +52,17 @@
     clearInterval(revealInterval);
   }
 
+  // 🎰 Win: dramatic box-by-box reveal (each tile pops with green money). Hold the
+  // result modal until the slot-machine sequence finishes.
+  let wonFired = false;
   $: if ($gameStore.gameState === 'won') {
-    setTimeout(() => {
-      dispatch('revealComplete');
-    }, 500);
+    if (!wonFired) {
+      wonFired = true;
+      const n = ($gameStore.currentPhrase || '').replace(/ /g, '').length;
+      setTimeout(() => dispatch('revealComplete'), Math.min(n, 14) * 95 + 750);
+    }
+  } else {
+    wonFired = false;
   }
 
   onDestroy(() => clearInterval(revealInterval));
@@ -107,8 +114,17 @@
             {/if}
 
           {:else}
-            <span class="letter-box {shakeIndexes.has(getGlobalIndex(wIndex, cIndex, $gameStore.currentPhrase)) ? 'shake' : ''}">
-              {$gameStore.purchasedLetters[getGlobalIndex(wIndex, cIndex, $gameStore.currentPhrase)] || ""}
+            {@const gi = getGlobalIndex(wIndex, cIndex, $gameStore.currentPhrase)}
+            {@const won = $gameStore.gameState === 'won'}
+            <span class="letter-box {shakeIndexes.has(gi) ? 'shake' : ''} {won ? 'win' : ''}"
+              style={won ? `animation-delay:${Math.min(gi, 14) * 0.095}s` : ''}>
+              {$gameStore.purchasedLetters[gi] || ""}
+              {#if won}
+                <span class="coin c1" style="animation-delay:{Math.min(gi, 14) * 0.095}s">$</span>
+                <span class="coin c2" style="animation-delay:{Math.min(gi, 14) * 0.095 + 0.07}s">$</span>
+                <span class="coin c3" style="animation-delay:{Math.min(gi, 14) * 0.095 + 0.04}s">$</span>
+                <span class="plus" style="animation-delay:{Math.min(gi, 14) * 0.095 + 0.13}s">+</span>
+              {/if}
             </span>
           {/if}
         {/key}
@@ -135,6 +151,34 @@
   }
   .shake {
     animation: shake 2s ease-in-out;
+  }
+
+  /* 🎰 Win reveal: each tile pops with green money, staggered left→right */
+  .letter-box.win {
+    animation: winPop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+    z-index: 1;
+  }
+  @keyframes winPop {
+    0%   { transform: scale(1); }
+    30%  { transform: scale(1.28) rotate(-5deg); border-color: #4ade80;
+           box-shadow: 0 0 0 3px rgba(74,222,128,0.5), 0 0 22px rgba(74,222,128,0.6); color: #bbf7d0; }
+    60%  { transform: scale(1.12) rotate(4deg); }
+    100% { transform: scale(1); }
+  }
+  .coin, .plus { position: absolute; pointer-events: none; left: 50%; font-family: 'Orbitron', var(--font-display);
+    font-weight: 800; color: #4ade80; text-shadow: 0 0 8px rgba(74,222,128,0.7); opacity: 0; }
+  .coin { top: 6px; font-size: 0.9rem; animation: coinSpray 0.75s ease-out backwards; }
+  .c1 { --dx: -22px; } .c2 { --dx: 20px; } .c3 { --dx: 2px; }
+  @keyframes coinSpray {
+    0%   { opacity: 0; transform: translate(-50%, 0) scale(0.4); }
+    20%  { opacity: 1; transform: translate(-50%, -6px) scale(1.1); }
+    100% { opacity: 0; transform: translate(calc(-50% + var(--dx, 0px)), 32px) scale(0.85); }
+  }
+  .plus { top: -8px; font-size: 1.4rem; animation: plusPop 0.55s ease-out backwards; }
+  @keyframes plusPop {
+    0%   { opacity: 0; transform: translate(-50%, 6px) scale(0.4); }
+    40%  { opacity: 1; transform: translate(-50%, -12px) scale(1.25); }
+    100% { opacity: 0; transform: translate(-50%, -24px) scale(1); }
   }
 
   /* ---------------------------
@@ -172,6 +216,7 @@
     text-align: center;
   }
   .letter-box {
+    position: relative;
     width: 42px;
     min-width: 42px;
     height: 48px;
