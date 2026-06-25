@@ -1474,7 +1474,12 @@
             <span class="mc-title">Blitz</span><span class="mc-stat">Soon</span>
           </button>
           {#if blitzSoon}<p class="pm-soon-note">⚡ Solo Blitz is coming soon!</p>{/if}
-          <button class="play-vs-link" on:click={() => { fx('tap'); newChallenge(); }}>⚔️ Or challenge a friend →</button>
+          <div class="vs-cta-group">
+            <button class="vs-main" on:click={() => { fx('tap'); newChallenge(); }}>⚔️ Challenge A Friend</button>
+            <button class="vs-people" title="Friends &amp; Groups" aria-label="Friends and groups" on:click={() => { fx('tap'); openCommunity('people'); }}>
+              <span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span>
+            </button>
+          </div>
         </div>
 
       {:else if menuView === 'community'}
@@ -2425,11 +2430,24 @@
   .comm-body { width: 100%; }
   .comm-body.people { display: flex; flex-direction: column; gap: 0.6rem; }
   /* Subtle "play with friends" nudge under the solo modes */
-  .play-vs-link {
-    width: 100%; margin-top: 4px; padding: 10px; background: none; border: none; cursor: pointer;
-    color: var(--text-muted); font-family: var(--font-ui); font-weight: 600; font-size: 0.84rem;
-  }
-  .play-vs-link:hover { color: var(--brand-2); }
+  /* Challenge A Friend — gold CTA attached to a blue "friends & groups" button */
+  .vs-cta-group { display: flex; width: 100%; margin-top: 8px; }
+  .vs-main { flex: 1; padding: 12px 14px; cursor: pointer; border: none;
+    font-family: var(--font-display); font-weight: 800; font-size: 0.94rem; letter-spacing: 0.01em; color: #3a2a00;
+    background: linear-gradient(135deg, #fde047, #f59e0b); border-radius: 12px 0 0 12px;
+    box-shadow: 0 3px 10px rgba(245,158,11,0.32), inset 0 1px 0 rgba(255,255,255,0.4); }
+  .vs-main:hover { filter: brightness(1.05); }
+  .vs-main:active { transform: scale(0.99); }
+  .vs-people { position: relative; width: 58px; flex: none; cursor: pointer; display: grid; place-items: center;
+    border: none; border-left: 1.5px solid rgba(0,0,0,0.28); border-radius: 0 12px 12px 0;
+    background: linear-gradient(135deg, #38bdf8, #2563eb);
+    box-shadow: 0 3px 10px rgba(37,99,235,0.32), inset 0 1px 0 rgba(255,255,255,0.25); }
+  .vs-people:hover { filter: brightness(1.08); }
+  .vs-people:active { transform: scale(0.97); }
+  .vs-ppl { font-size: 1.35rem; line-height: 1; }
+  .vs-ppl-plus { position: absolute; top: 7px; right: 9px; width: 14px; height: 14px; border-radius: 50%;
+    background: #fff; color: #2563eb; font-weight: 900; font-size: 0.6rem; line-height: 1; display: grid; place-items: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.35); }
   .ch-new-btn {
     width: 100%; margin-bottom: 12px; padding: 12px; border-radius: 14px; border: none; cursor: pointer;
     font-family: var(--font-display); font-weight: 800; font-size: 0.95rem; color: #3a2a00;
