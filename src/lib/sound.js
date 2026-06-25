@@ -86,6 +86,11 @@ const SOUNDS = {
   },
   wrong: () => tone(150, 0.2, 'sawtooth', 0.11),
   reveal: () => sweep(420, 1150, 0.24, 'triangle', 0.13),
+  // Box landing thunk for the daily opening reveal: a low knock + a bright coin ping.
+  land: () => {
+    tone(180, 0.08, 'square', 0.13);
+    tone(1180, 0.09, 'sine', 0.09, 0.03);
+  },
   win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.2, 'sine', 0.16, i * 0.09)),
   bust: () => sweep(440, 80, 0.55, 'sawtooth', 0.16),
   multiplier: () => {
@@ -114,6 +119,7 @@ const HAPTICS = {
   correct: [14],
   wrong: [22, 36, 22],
   reveal: [12],
+  land: [10],
   win: [18, 40, 18, 40, 36],
   bust: [60, 30, 60],
   multiplier: [10, 24, 10],

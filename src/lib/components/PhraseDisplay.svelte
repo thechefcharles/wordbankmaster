@@ -2,8 +2,47 @@
   import { gameStore } from '$lib/stores/GameStore.js';
   import { onDestroy, createEventDispatcher } from 'svelte';
   import { getGlobalIndex } from '$lib/helpers/gameUtils.js';
+  import { fx } from '$lib/sound.js';
 
   const dispatch = createEventDispatcher();
+
+  // 🎰 Daily opening reveal: each empty space lands one-by-one (shake + money signs
+  // + green plus + a landing thunk), then +page counts the bounty up in green. Driven
+  // by gameStore.dailyIntro, which bumps once on a fresh daily open.
+  const INTRO_STEP = 0.12; // seconds between box landings
+  let introActive = false;
+  let introToken = 0;
+  /** @type {ReturnType<typeof setTimeout>[]} */
+  let introTimers = [];
+  /** @param {number} gi */
+  const introDelay = (gi) => Math.min(gi, 16) * INTRO_STEP;
+
+  $: maybeStartIntro($gameStore.dailyIntroGo);
+  /** @param {number|undefined} tok */
+  function maybeStartIntro(tok) {
+    if (!tok || tok === introToken) return;
+    introToken = tok;
+    runIntro();
+  }
+  function runIntro() {
+    const phrase = $gameStore.currentPhrase || '';
+    /** @type {number[]} */
+    const idxs = [];
+    for (let i = 0; i < phrase.length; i++) if (phrase[i] !== ' ') idxs.push(i);
+    if (!idxs.length) return;
+    introTimers.forEach(clearTimeout);
+    introTimers = [];
+    introActive = true;
+    let lastDelay = 0;
+    for (const gi of idxs) {
+      const d = introDelay(gi);
+      lastDelay = Math.max(lastDelay, d);
+      introTimers.push(setTimeout(() => fx('land'), d * 1000 + 30));
+    }
+    // Climax: the spaces "add up × the multiplier" into the green bounty.
+    introTimers.push(setTimeout(() => { fx('multiplier'); dispatch('introDone'); }, lastDelay * 1000 + 160));
+    introTimers.push(setTimeout(() => { introActive = false; }, lastDelay * 1000 + 950));
+  }
 
   // 📤 Reactive State Setup
 
@@ -65,7 +104,7 @@
     wonFired = false;
   }
 
-  onDestroy(() => clearInterval(revealInterval));
+  onDestroy(() => { clearInterval(revealInterval); introTimers.forEach(clearTimeout); });
 
   // 🎯 Active Guess Slot Logic
   $: activeGuessIndex = $gameStore.gameState === 'guess_mode'
@@ -116,14 +155,20 @@
           {:else}
             {@const gi = getGlobalIndex(wIndex, cIndex, $gameStore.currentPhrase)}
             {@const won = $gameStore.gameState === 'won'}
-            <span class="letter-box {shakeIndexes.has(gi) ? 'shake' : ''} {won ? 'win' : ''}"
-              style={won ? `animation-delay:${Math.min(gi, 14) * 0.095}s` : ''}>
+            {@const intro = introActive && !won}
+            <span class="letter-box {shakeIndexes.has(gi) ? 'shake' : ''} {won ? 'win' : ''} {intro ? 'intro' : ''}"
+              style={won ? `animation-delay:${Math.min(gi, 14) * 0.095}s` : intro ? `animation-delay:${introDelay(gi)}s` : ''}>
               {$gameStore.purchasedLetters[gi] || ""}
               {#if won}
                 <span class="coin c1" style="animation-delay:{Math.min(gi, 14) * 0.095}s">$</span>
                 <span class="coin c2" style="animation-delay:{Math.min(gi, 14) * 0.095 + 0.07}s">$</span>
                 <span class="coin c3" style="animation-delay:{Math.min(gi, 14) * 0.095 + 0.04}s">$</span>
                 <span class="plus" style="animation-delay:{Math.min(gi, 14) * 0.095 + 0.13}s">+</span>
+              {:else if intro}
+                <span class="coin c1" style="animation-delay:{introDelay(gi) + 0.18}s">$</span>
+                <span class="coin c2" style="animation-delay:{introDelay(gi) + 0.25}s">$</span>
+                <span class="coin c3" style="animation-delay:{introDelay(gi) + 0.22}s">$</span>
+                <span class="plus" style="animation-delay:{introDelay(gi) + 0.28}s">+</span>
               {/if}
             </span>
           {/if}
@@ -151,6 +196,20 @@
   }
   .shake {
     animation: shake 2s ease-in-out;
+  }
+
+  /* 🎰 Daily opening reveal: each empty space drops in, rattles, and lands hard */
+  .letter-box.intro {
+    animation: introPop 0.62s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+    z-index: 1;
+  }
+  @keyframes introPop {
+    0%   { opacity: 0; transform: translateY(-34px) scale(0.35) rotate(-9deg); }
+    45%  { opacity: 1; transform: translateY(5px) scale(1.22) rotate(5deg);
+           border-color: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,0.5), 0 0 22px rgba(74,222,128,0.6); }
+    60%  { transform: translateY(0) scale(0.94) rotate(-3deg); }
+    74%  { transform: translateY(0) scale(1.06) rotate(2deg); }
+    100% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
   }
 
   /* 🎰 Win reveal: each tile pops with green money, staggered left→right */

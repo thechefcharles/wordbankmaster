@@ -95,7 +95,9 @@ export const gameStore = writable(/** @type {GameState} */ ({
   climbInfo: null, // { bounty, heat, attempts, spent, position, stuck, last_gain, state } (climb mode)
   matchInfo: null, // { position, pack_size, total_score, last_score, done, status } (challenge match)
   cashToast: null, // { amount, label } — transient Cash-earned toast (attendance / free-play reward)
-  dailyLive: null // { spent, clean, no_vowels, first_try, reward, net } — live Daily HUD metrics
+  dailyLive: null, // { spent, clean, no_vowels, first_try, reward, net } — live Daily HUD metrics
+  dailyIntro: 0, // bumps on a FRESH daily open → ARMS the opening reveal (pending)
+  dailyIntroGo: 0 // bumps once the board is actually visible → PLAYS the opening reveal
 }));
 
 /* ================================
@@ -1150,6 +1152,10 @@ export async function fetchDailyGame() {
     const ab = /** @type {any} */ (board);
     if (ab.attendance != null && ab.attendance > 0) {
       gameStore.update(s => ({ ...s, cashToast: { amount: ab.attendance, label: `Day ${ab.attendance_day} streak · for showing up` } }));
+    }
+    // 🎰 Fresh open (first time today, board still active) → play the opening reveal.
+    if (ab.state === 'active' && ab.attendance != null && ab.attendance > 0) {
+      gameStore.update(s => ({ ...s, dailyIntro: (s.dailyIntro || 0) + 1 }));
     }
     try { const clue = await getDailyClue(); gameStore.update(s => ({ ...s, clue })); } catch { /* non-fatal */ }
     console.log('✅ Daily session started/resumed');
