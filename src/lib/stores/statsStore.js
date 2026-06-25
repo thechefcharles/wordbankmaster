@@ -415,9 +415,15 @@ export async function fetchArcadeLeaderboard(period = 'daily') {
  * @param {string[]} [powerups] - pre-game power-ups to activate (only applied on a fresh session)
  * @returns {Promise<object|null>} board
  */
-export async function dailyStart(powerups = [], useTwist = true) {
-  const { data, error } = await supabase.rpc('daily_start', { p_powerups: powerups, p_use_twist: useTwist });
+export async function dailyStart(powerups = []) {
+  const { data, error } = await supabase.rpc('daily_start', { p_powerups: powerups });
   if (error) { console.error('❌ daily_start error:', error); return null; }
+  return data;
+}
+/** Use today's Daily Twist power-up (applies its effect; bounty drops to ×1.0). */
+export async function dailyUseTwist() {
+  const { data, error } = await supabase.rpc('daily_use_twist');
+  if (error) { console.error('❌ daily_use_twist error:', error); return null; }
   return data;
 }
 
