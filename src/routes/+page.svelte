@@ -2449,29 +2449,72 @@
     justify-content: center;
     gap: 10px;
     text-align: center;
-    padding: 9px 28px;
-    /* real silver bullion plate (rendered) as a 9-slice border — corners stay crisp at any size */
-    border: 13px solid transparent;
-    border-image: url('/silver-button.png') 35 fill / 13px / 0 stretch;
+    padding: 17px 22px;
+    border-radius: 14px;
+    /* brushed-silver chrome plate (CSS) with a beveled chrome frame + gold engraved label */
+    background: linear-gradient(180deg, #fdfefe 0%, #e7ecf1 10%, #c4cdd7 50%, #9ba7b4 78%, #c1cad4 100%);
+    border: 1px solid #8794a2;
     color: #b8860b;
     cursor: pointer;
-    filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.55));
-    transition: transform 0.16s var(--ease-spring), filter 0.2s;
+    overflow: hidden;
+    box-shadow:
+      inset 0 0 0 1.5px rgba(255, 255, 255, 0.85),   /* bright chrome inner edge */
+      inset 0 0 0 3.5px rgba(92, 106, 122, 0.28),     /* groove → recessed brushed panel */
+      inset 0 2px 2px rgba(255, 255, 255, 0.9),       /* top catch-light */
+      inset 0 -3px 6px rgba(70, 85, 100, 0.45),       /* bottom depth */
+      0 5px 12px rgba(0, 0, 0, 0.55),                 /* drop shadow */
+      0 0 16px rgba(205, 222, 240, 0.25);             /* soft glow */
+    transition: transform 0.16s var(--ease-spring), box-shadow 0.2s, filter 0.2s;
+  }
+  /* glossy chrome sheen */
+  .menu-card::before {
+    content: ''; position: absolute; inset: 0; border-radius: inherit; z-index: 0; pointer-events: none;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.15) 14%, rgba(255,255,255,0) 42%, rgba(255,255,255,0.1) 100%),
+      radial-gradient(130% 60% at 50% -10%, rgba(255,255,255,0.55), rgba(255,255,255,0) 60%);
+    mix-blend-mode: screen;
+  }
+  /* moving shine streak */
+  .menu-card::after {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 55%;
+    background: linear-gradient(105deg, transparent 25%, rgba(255,255,255,0.25) 42%, rgba(255,255,255,0.95) 50%, rgba(255,255,255,0.25) 58%, transparent 75%);
+    transform: translateX(-180%) skewX(-12deg);
+    animation: barShine 5s ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * 0.45s);
+    pointer-events: none;
+  }
+  @keyframes barShine {
+    0%, 58% { transform: translateX(-180%) skewX(-12deg); }
+    78%, 100% { transform: translateX(330%) skewX(-12deg); }
   }
   @media (hover: hover) and (pointer: fine) {
     .menu-card:hover:not(.disabled) {
       transform: translateY(-2px);
-      filter: drop-shadow(0 9px 17px rgba(0, 0, 0, 0.55)) brightness(1.06);
+      filter: brightness(1.05);
+      box-shadow:
+        inset 0 0 0 1.5px rgba(255, 255, 255, 0.9),
+        inset 0 0 0 3.5px rgba(92, 106, 122, 0.28),
+        inset 0 -3px 6px rgba(70, 85, 100, 0.45),
+        0 7px 16px rgba(0, 0, 0, 0.55), 0 0 24px rgba(210, 225, 240, 0.4);
     }
   }
-  /* Press = a soft glow flash on a real click/tap. */
   .menu-card.gold-flash:not(.disabled) { transform: translateY(1px) scale(0.99); }
   .menu-card.gold-flash:not(.disabled),
   .menu-card:focus-visible:not(.disabled) {
     outline: none;
-    filter: drop-shadow(0 5px 10px rgba(0,0,0,0.55)) drop-shadow(0 0 14px rgba(255, 220, 90, 0.9));
+    box-shadow:
+      inset 0 0 0 1.5px rgba(255, 255, 255, 0.85),
+      0 0 0 2px rgba(255, 240, 190, 0.9), 0 0 22px rgba(255, 220, 110, 0.7), 0 6px 14px rgba(0, 0, 0, 0.5);
   }
-  .menu-card.primary { filter: drop-shadow(0 6px 13px rgba(0,0,0,0.55)) drop-shadow(0 0 16px rgba(255, 222, 120, 0.3)); }
+  .menu-card.primary {
+    filter: brightness(1.04);
+    box-shadow:
+      inset 0 0 0 1.5px rgba(255, 255, 255, 0.9),
+      inset 0 0 0 3.5px rgba(92, 106, 122, 0.28),
+      inset 0 2px 2px rgba(255, 255, 255, 0.9),
+      inset 0 -3px 6px rgba(70, 85, 100, 0.45),
+      0 6px 14px rgba(0, 0, 0, 0.55), 0 0 22px rgba(210, 225, 240, 0.4);
+  }
   .menu-card.disabled { opacity: 0.5; cursor: not-allowed; }
   .mc-title {
     position: relative; z-index: 1;
