@@ -1,0 +1,16 @@
+-- 💥 Bounty Boost power-ups (migrations `daily_bounty_boost_powerup` + `buy_powerup_stackable_daily`)
+--
+-- Active, owned consumables that ADD to the Daily bounty multiplier, stacking on the
+-- win-streak bonus (total capped ×3.0):
+--   bounty_boost  (+0.5×, $300)   jackpot_boost (+1.0×, $800)
+--
+-- - daily_sessions.bounty_boost numeric: this session's accumulated boost.
+-- - powerups: two kind='daily' entries (only surface in the Daily hotbar + a Store section).
+-- - _daily_bounty_mult(uid) = 1.0 + win-streak bonus (≤0.5) + session bounty_boost, cap 3.0.
+-- - daily_use_boost(p_id): consumes 1 from the 'cash' pool, adds to daily_sessions.bounty_boost,
+--   returns the resolved board. Guards: must be active, must own ≥1, mult < 3.0.
+-- - buy_powerup: kind='daily' items stack up to 5 (others stay one-of-each).
+--
+-- Client: GameStore.useDailyBoost + statsStore.dailyUseBoost; +page loads owned boosts
+-- (getPowerups, kind='daily') into the hotbar next to the Twist and routes use → useDailyBoost;
+-- Store gains a "💥 Bounty Boosts" section.

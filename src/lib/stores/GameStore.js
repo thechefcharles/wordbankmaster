@@ -3,7 +3,7 @@
 import { writable, get } from 'svelte/store';
 import confetti from 'canvas-confetti';
 import { fx } from '$lib/sound.js';
-import { dailyStart, dailyUseTwist, dailyBuyLetter, dailyReveal, dailySubmitGuess, dailyFold as dailyFoldRpc, getDailyModifier, getDailyClue, getArcadeClue } from '$lib/stores/statsStore.js';
+import { dailyStart, dailyUseTwist, dailyUseBoost, dailyBuyLetter, dailyReveal, dailySubmitGuess, dailyFold as dailyFoldRpc, getDailyModifier, getDailyClue, getArcadeClue } from '$lib/stores/statsStore.js';
 import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNext, arcadeUsePowerup, arcadeCashout } from '$lib/stores/statsStore.js';
 import { freeplayStart, freeplayNext, freeplayResume, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
 import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
@@ -1135,6 +1135,18 @@ export async function useDailyTwist() {
     return false;
   } catch (err) {
     console.error('❌ Error using daily twist:', err instanceof Error ? err.message : String(err));
+    return false;
+  }
+}
+
+/** Spend an owned Bounty Boost on today's Daily (bumps the bounty multiplier). */
+export async function useDailyBoost(id) {
+  try {
+    const board = await dailyUseBoost(id);
+    if (board) { reconcileDailyBoard(board); return true; }
+    return false;
+  } catch (err) {
+    console.error('❌ Error using daily boost:', err instanceof Error ? err.message : String(err));
     return false;
   }
 }
