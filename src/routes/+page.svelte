@@ -8,7 +8,7 @@
   import { getMyChallenges, getPowerups, getMyMatches, getMyGroups, getMatch, getMatchDetail, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getDailyGhost, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getDailyGhost, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout, getDailyModifier } from '$lib/stores/statsStore.js';
   import { unreadCount, refreshNotifications, inboxRequest, inboxTarget, markChallengeNotifRead, markFriendNotifRead } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
@@ -755,13 +755,21 @@
       showStreakMessage = true;  // already solved today → come-back summary
       return;
     }
-    // Otherwise start fresh, or resume an in-progress daily (dailyStart resumes).
-    await startDaily();
+    if (inProgress) { await startDaily(true); return; } // resume — Twist choice already locked
+    // Fresh start → ask: Use today's Twist, or Go Pure for a ×1.5 bounty?
+    fx('tap');
+    try { dailyTwistMod = await getDailyModifier(); } catch { dailyTwistMod = null; }
+    showDailyTwist = true;
   }
 
-  async function startDaily() {
+  // Pre-game "Use the Twist or Go Pure" choice (locked once you start).
+  let showDailyTwist = false;
+  /** @type {string|null} */
+  let dailyTwistMod = null;
+  async function startDaily(useTwist = true) {
+    showDailyTwist = false;
     localStorage.setItem('gameMode', 'daily');
-    const ok = await fetchDailyGame();
+    const ok = await fetchDailyGame(useTwist);
     if (ok) {
       hasInitialized = true;
       showMainMenu = false;
@@ -1165,6 +1173,33 @@
           on:keydown={(e) => { if (e.key === 'Enter') sendMatchChat(); }} />
         <button class="chat-send" on:click={sendMatchChat} disabled={matchChatBusy || !matchChatInput.trim()}>Send</button>
       </div>
+    </div>
+  </div>
+{/if}
+
+<!-- 🎲 Daily: Use today's Twist or Go Pure (×1.5 bounty) — locked at start -->
+{#if showDailyTwist}
+  {@const m = dailyTwistMod ? modifierInfo(dailyTwistMod) : null}
+  <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Today's Daily Twist">
+    <div class="modal-content twist-modal">
+      <h2 class="tw-title">Today’s Daily Twist</h2>
+      {#if m}
+        <div class="tw-mod">
+          <span class="tw-emoji">{m.emoji}</span>
+          <span class="tw-name">{m.name}</span>
+          <span class="tw-blurb">{m.blurb}</span>
+        </div>
+      {/if}
+      <p class="tw-q">Use the Twist, or go Pure for a bigger bounty?</p>
+      <div class="tw-actions">
+        <button class="tw-opt use" on:click={() => startDaily(true)}>
+          <strong>✅ Use it</strong><small>{m ? m.blurb : 'today’s help'}</small>
+        </button>
+        <button class="tw-opt pure" on:click={() => startDaily(false)}>
+          <strong>🎯 Go Pure</strong><small>no help · bounty <b>×1.5</b></small>
+        </button>
+      </div>
+      <p class="tw-hint">Locked in once you start.</p>
     </div>
   </div>
 {/if}
@@ -1755,7 +1790,8 @@
     <!-- 🌍 Category + today's modifier chip + witty clue -->
     <div class="puzzle-meta">
       {#if $gameStore.category}<span class="category-chip">{$gameStore.category}</span>{/if}
-      {#if dailyMod}<span class="mod-chip" title={dailyMod.name + ' — ' + dailyMod.blurb}>{dailyMod.emoji} {dailyMod.name}</span>{/if}
+      {#if dailyMod}<span class="mod-chip" title={dailyMod.name + ' — ' + dailyMod.blurb}>{dailyMod.emoji} {dailyMod.name}</span>
+      {:else if $gameStore.gameMode === 'daily' && $gameStore.twistActive === false}<span class="mod-chip pure" title="No Twist — bounty ×1.5">🎯 Pure · ×1.5</span>{/if}
     </div>
     {#if $gameStore.clue}
       <p class="puzzle-clue">{$gameStore.clue}</p>
@@ -2150,6 +2186,7 @@
     border-radius: var(--r-pill, 999px);
     white-space: nowrap;
   }
+  .mod-chip.pure { color: #6ee7b7; background: rgba(16, 185, 129, 0.12); border-color: rgba(110, 231, 183, 0.4); }
 
   .phrase-section {
     width: 100%;
@@ -2604,6 +2641,22 @@
   @keyframes chatPulse { 0%,100% { box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 0 0 rgba(244,63,94,0.5); } 50% { box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 0 6px rgba(244,63,94,0); } }
   .mcb-label { font-family: var(--font-display); font-size: 0.84rem; }
   .mc-dot { position: absolute; top: 3px; right: 3px; width: 10px; height: 10px; border-radius: 999px; background: #f43f5e; box-shadow: 0 0 0 2px var(--bg, #0a0e14); }
+  .twist-modal { max-width: 380px; text-align: center; }
+  .tw-title { font-family: var(--font-display); font-size: 1.25rem; margin: 0 0 0.7rem; }
+  .tw-mod { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0.9rem; margin: 0 0 0.9rem;
+    border-radius: 14px; border: 1px solid rgba(253,224,71,0.4); background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(251,191,36,0.03)); }
+  .tw-emoji { font-size: 1.8rem; line-height: 1; }
+  .tw-name { font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; color: var(--brand-2); }
+  .tw-blurb { font-size: 0.82rem; color: var(--text-muted); }
+  .tw-q { font-size: 0.9rem; color: var(--text); margin: 0 0 0.9rem; }
+  .tw-actions { display: flex; gap: 0.6rem; }
+  .tw-opt { flex: 1; display: flex; flex-direction: column; gap: 3px; padding: 0.85rem 0.6rem; border-radius: 13px; cursor: pointer; border: 1px solid var(--border-strong, var(--border)); background: var(--surface-2, rgba(255,255,255,0.05)); color: var(--text); }
+  .tw-opt strong { font-family: var(--font-display); font-size: 0.98rem; }
+  .tw-opt small { font-size: 0.72rem; color: var(--text-muted); line-height: 1.3; }
+  .tw-opt small b { color: #6ee7b7; }
+  .tw-opt.use { border-color: rgba(253,224,71,0.5); }
+  .tw-opt.pure { border-color: rgba(110,231,183,0.5); background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.03)); }
+  .tw-hint { font-size: 0.68rem; color: var(--text-faint); margin: 0.8rem 0 0; }
   .welcome-modal { max-width: 380px; text-align: center; }
   .wc-coin { display: block; margin: 0 auto 0.5rem; }
   .wc-title { font-family: var(--font-display); font-size: 1.4rem; margin: 0 0 0.35rem; }

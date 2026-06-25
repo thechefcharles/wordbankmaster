@@ -86,7 +86,9 @@ export const gameStore = writable(/** @type {GameState} */ ({
   freeReveals: 0, // owned Free Reveal power-ups (daily)
   arcadeRun: null, // arcade gauntlet run state { state, banked, multiplier, position, total, furthest, last_gain }
   arcadeCashedOut: false, // true when the last arcade run ended via "Bank it" (vs bust)
-  modifier: null, // today's shared Daily Modifier id (daily only)
+  modifier: null, // active Daily Twist id (null when you went Pure)
+  twistActive: true, // did you Use today's Twist (true) or Go Pure (false)?
+  bountyMult: 1, // bounty multiplier (1.0 with Twist, 1.5 Pure)
   clue: null, // witty one-line hint for the current puzzle
   challengeInfo: null, // { mode, started_at, limit_seconds, play_state, score } for the active challenge
   makeupDate: null, // YYYY-MM-DD of the make-up day being played (makeup mode only)
@@ -203,7 +205,11 @@ function reconcileDailyBoard(board) {
     gameMode: 'daily',
     gameState: finished ? board.state : 'default',
     dailyResult: board.daily_result ?? prev.dailyResult ?? null,
-    dailyLive: board.live ?? prev.dailyLive ?? null
+    dailyLive: board.live ?? prev.dailyLive ?? null,
+    // Twist state: active modifier (null when Pure) + the bounty multiplier.
+    modifier: board.modifier !== undefined ? board.modifier : prev.modifier,
+    twistActive: board.twist_active !== undefined ? board.twist_active : (prev.twistActive ?? true),
+    bountyMult: board.bounty_mult !== undefined ? board.bounty_mult : (prev.bountyMult ?? 1)
   }));
   // Only celebrate a FRESH solve: a board carrying daily_result (set by the solve),
   // not when re-opening an already-completed daily (which comes back 'won' with no result).
@@ -1119,25 +1125,21 @@ export function submitGuess() {
  * No localStorage: the server is the source of truth (and prevents replays).
  * The day's shared modifier is applied server-side at start (no client power-ups).
  */
-export async function fetchDailyGame() {
+export async function fetchDailyGame(useTwist = true) {
   try {
     track('daily_start');
-    const board = await dailyStart();
+    const board = await dailyStart([], useTwist);
     if (!board) {
       console.error('❌ daily_start returned no board');
       return false;
     }
-    reconcileDailyBoard(board);
+    reconcileDailyBoard(board); // sets modifier / twistActive / bountyMult from the board
     // Attendance reward (paid once on the first open of the day) → transient toast.
     const ab = /** @type {any} */ (board);
     if (ab.attendance != null && ab.attendance > 0) {
       gameStore.update(s => ({ ...s, cashToast: { amount: ab.attendance, label: `Day ${ab.attendance_day} streak · for showing up` } }));
     }
-    // Today's shared modifier (same for everyone) — drives the banner + key pricing.
-    try {
-      const [mod, clue] = await Promise.all([getDailyModifier(), getDailyClue()]);
-      gameStore.update(s => ({ ...s, modifier: mod, clue }));
-    } catch { /* non-fatal */ }
+    try { const clue = await getDailyClue(); gameStore.update(s => ({ ...s, clue })); } catch { /* non-fatal */ }
     console.log('✅ Daily session started/resumed');
     return true;
   } catch (err) {

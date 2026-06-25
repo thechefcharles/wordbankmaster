@@ -18,10 +18,13 @@ export function powerupInfo(id) {
 // Keys match the server _daily_modifier() pool. `blurb` is the short "twist" line.
 /** @type {Record<string, { emoji: string, name: string, blurb: string }>} */
 export const MODIFIERS = {
-  discount:     { emoji: '🏷️', name: 'Discount Day', blurb: 'Every letter is 25% off' },
-  vowel_vision: { emoji: '👁️', name: 'Vowel Vision', blurb: 'Vowels cost half price' },
-  extra_bank:   { emoji: '💰', name: 'Big Bank',      blurb: 'Start with an extra $250' },
-  insurance:    { emoji: '🛡️', name: 'Insured',       blurb: 'Your first wrong guess is free' }
+  discount:       { emoji: '🏷️', name: 'Discount Day',  blurb: 'Every letter is 25% off' },
+  vowel_vision:   { emoji: '👁️', name: 'Vowel Vision',  blurb: 'Vowels cost half price' },
+  flat_rate:      { emoji: '⚖️', name: 'Flat Rate',     blurb: 'Every letter is a flat $50' },
+  free_vowel:     { emoji: '🎁', name: 'Free Vowel',    blurb: 'One vowel revealed free' },
+  consonant_sale: { emoji: '🔡', name: 'Consonant Sale', blurb: 'Consonants are 25% off' },
+  head_start:     { emoji: '🅰️', name: 'Head Start',    blurb: 'First letter of each word free' },
+  insured:        { emoji: '🛡️', name: 'Insured',       blurb: 'Your first wrong letter is free' }
 };
 
 /** @param {string} id */
