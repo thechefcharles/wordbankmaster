@@ -20,3 +20,15 @@
 --
 -- Verified live (2 accounts): A challenges B → B badge 0→1 within ~5s with no refresh;
 -- B accepts via the banner → badge → 0.
+--
+-- Follow-up (migration notifications_drop_chat_and_clear_friend_requests):
+--   * Chat lives in the in-game 💬 icon only — send_match_message NO LONGER posts a
+--     'challenge_chat' notification, and get_notifications excludes type='challenge_chat'
+--     from both items + unread_count. Existing challenge_chat rows deleted.
+--   * Friend-request notifications now auto-clear: respond_friend_request (and the
+--     add_friend auto-accept branch) DELETE the recipient's friend_request notification
+--     for that requester. respond_friend_request returns ok:true even when the request
+--     was already handled (status 'friends'/'gone'), so a stale Accept resolves the UI
+--     instead of doing nothing. Existing already-handled friend_request notifs deleted.
+--   Verified (rolled back): accept → friends + notif deleted; accept again → 'friends';
+--   live: @Chefcharles inbox left with only the legit challenge (chat + stale request gone).
