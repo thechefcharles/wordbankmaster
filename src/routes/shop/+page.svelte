@@ -27,11 +27,15 @@
     sabotage_fog: { icon: '🌫️', desc: "Hide an opponent's clue" },
     sabotage_toll:        { icon: '🚧', desc: "An opponent's next letter costs 3×" },
     sabotage_vowel_block: { icon: '🚫', desc: "An opponent's vowels cost 3×" },
-    sabotage_lock:        { icon: '🔒', desc: 'Wipe a letter an opponent revealed' }
+    sabotage_lock:        { icon: '🔒', desc: 'Wipe a letter an opponent revealed' },
+    bounty_boost:  { icon: '💥', desc: 'Adds ×0.5 to your Daily bounty' },
+    jackpot_boost: { icon: '💎', desc: 'Adds ×1.0 to your Daily bounty' }
   });
 
   /** @type {any[]} */
   let sabs = $state([]);
+  /** @type {any[]} */
+  let dboost = $state([]);
 
   /** @type {any|null} */
   let cashout = $state(null);
@@ -42,6 +46,7 @@
     items = shop.items;
     pups = (pu.items || []).filter((/** @type {any} */ i) => i.kind === 'climb');
     sabs = (pu.items || []).filter((/** @type {any} */ i) => i.kind === 'sabotage');
+    dboost = (pu.items || []).filter((/** @type {any} */ i) => i.kind === 'daily');
     cashout = co;
   }
 
@@ -134,6 +139,27 @@
     <p class="loading">Loading…</p>
   {:else}
     {#if msg}<p class="msg">{msg}</p>{/if}
+
+    {#if dboost.length}
+      <h2 class="section">💥 Bounty Boosts</h2>
+      <p class="section-note">Stock up, then tap them in the Daily to multiply your bounty — they stack on your win-streak multiplier (carry up to 5 of each).</p>
+      <div class="grid">
+        {#each dboost as item}
+          <div class="card pup" class:owned={item.owned > 0}>
+            <span class="pup-ic">{PUP_META[item.id]?.icon ?? '💥'}</span>
+            <span class="c-label">{item.name}{#if item.owned > 0} <span class="owned-x">×{item.owned}</span>{/if}</span>
+            <span class="pup-desc">{PUP_META[item.id]?.desc ?? ''}</span>
+            {#if item.owned >= 5}
+              <button class="c-btn equip on" disabled>✓ Maxed (5)</button>
+            {:else}
+              <button class="c-btn buy" disabled={busy === item.id || bank < item.price} onclick={() => buyPup(item)}>
+                💰 ${item.price.toLocaleString()}
+              </button>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    {/if}
 
     <h2 class="section">⚡ Power-ups</h2>
     <p class="section-note">Carry one of each. Bring them to the Cash Game or a challenge and use them whenever you like — the Daily stays power-up-free.</p>
@@ -240,6 +266,7 @@
   .co-btn:disabled { opacity: 0.5; cursor: default; }
   .co-pending { font-size: 0.78rem; color: var(--text-muted); text-align: right; }
   .co-note { font-size: 0.72rem; color: var(--text-faint); margin: 0.6rem 0 0; line-height: 1.35; }
+  .owned-x { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 0.78rem; color: #fde047; }
   .section { font-family: var(--font-display); font-size: 1.05rem; margin: 1.4rem 0 0.4rem; }
   .section-note { font-size: 0.76rem; color: var(--text-faint); margin: 0 0 0.8rem; }
   .card.pup { align-items: center; text-align: center; gap: 0.3rem; }

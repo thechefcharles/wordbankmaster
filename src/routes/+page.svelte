@@ -6,7 +6,7 @@
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
 
-  import { gameStore, fetchDailyGame, useDailyTwist, fetchFreeplayGame, fetchFreeplayResume, freeplayContinue, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, useDailyTwist, useDailyBoost, fetchFreeplayGame, fetchFreeplayResume, freeplayContinue, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
   import { getMyChallenges, getPowerups, getMyMatches, getMyGroups, getMatch, getMatchDetail, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
@@ -836,18 +836,37 @@
 
   // ⚡ Power-up hotbar feed. Daily: today's Twist (mode allows only the Twist).
   // Cash Game / Challenges will feed mode-eligible inventory power-ups here later.
-  $: trayPowerups = ($gameStore.gameMode === 'daily' && dailyMod && !$gameStore.twistUsed && gameActive)
-    ? [{ id: 'twist', emoji: dailyMod.emoji, name: dailyMod.name, blurb: dailyMod.blurb, count: 1 }]
+  // Daily hotbar = today's Twist (if unused) + any owned Bounty Boosts you carry.
+  /** @type {{id:string,emoji:string,name:string,blurb:string,count:number}[]} */
+  let dailyBoosts = [];
+  const BOOST_META = /** @type {Record<string,{emoji:string,blurb:string}>} */ ({
+    bounty_boost: { emoji: '💥', blurb: 'Adds ×0.5 to your bounty' },
+    jackpot_boost: { emoji: '💎', blurb: 'Adds ×1.0 to your bounty' }
+  });
+  async function loadDailyBoosts() {
+    try {
+      const r = await getPowerups();
+      dailyBoosts = (r.items ?? [])
+        .filter((/** @type {any} */ i) => i.kind === 'daily' && (i.owned ?? 0) > 0)
+        .map((/** @type {any} */ i) => ({ id: i.id, emoji: BOOST_META[i.id]?.emoji ?? '💥', name: i.name, blurb: BOOST_META[i.id]?.blurb ?? '', count: i.owned }));
+    } catch { dailyBoosts = []; }
+  }
+  $: trayPowerups = ($gameStore.gameMode === 'daily' && gameActive)
+    ? [
+        ...((dailyMod && !$gameStore.twistUsed) ? [{ id: 'twist', emoji: dailyMod.emoji, name: dailyMod.name, blurb: dailyMod.blurb, count: 1 }] : []),
+        ...dailyBoosts
+      ]
     : [];
   /** @param {CustomEvent<any>} e */
   function onUsePowerup(e) {
     const item = e.detail;
     if (item?.id === 'twist') { useTwist(); return; }
-    // (cross-mode inventory power-ups will route here per game mode)
+    if (item?.id === 'bounty_boost' || item?.id === 'jackpot_boost') { useBoost(item.id); return; }
   }
 
   // Use today's Daily Twist power-up (tap the tray slot).
   let dailyTwistBusy = false;
+  let dailyBoostBusy = false;
   async function useTwist() {
     if (dailyTwistBusy || $gameStore.twistUsed) return;
     dailyTwistBusy = true;
@@ -855,12 +874,22 @@
     await useDailyTwist();
     dailyTwistBusy = false;
   }
+  /** @param {string} id */
+  async function useBoost(id) {
+    if (dailyBoostBusy) return;
+    dailyBoostBusy = true;
+    fx('multiplier');
+    await useDailyBoost(id);
+    await loadDailyBoosts();
+    dailyBoostBusy = false;
+  }
   async function startDaily() {
     localStorage.setItem('gameMode', 'daily');
     const ok = await fetchDailyGame();
     if (ok) {
       hasInitialized = true;
       showMainMenu = false;
+      loadDailyBoosts(); // surface any owned Bounty Boosts in the hotbar
       // If the "How to win" card is suppressed (already seen), the board is now
       // visible — play the opening reveal once reactives settle. If the card DOES
       // show, this no-ops (objective set) and the reveal fires on its dismiss.
@@ -1930,7 +1959,7 @@
 
     <!-- ⚡ Power-up hotbar: 2 slots each side of Solve, page through mode-eligible inventory -->
     {#if gameActive}
-      <PowerupHotbar items={trayPowerups} busy={dailyTwistBusy} on:use={onUsePowerup} />
+      <PowerupHotbar items={trayPowerups} busy={dailyTwistBusy || dailyBoostBusy} on:use={onUsePowerup} />
     {/if}
 
     <!-- ⌨️ Keyboard Section (keyboard disables itself via gameStore state) -->

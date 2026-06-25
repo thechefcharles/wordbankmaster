@@ -427,6 +427,13 @@ export async function dailyUseTwist() {
   return data;
 }
 
+/** Spend an owned Bounty Boost on today's Daily (adds to the bounty multiplier). */
+export async function dailyUseBoost(id) {
+  const { data, error } = await supabase.rpc('daily_use_boost', { p_id: id });
+  if (error) { console.error('❌ daily_use_boost error:', error); return null; }
+  return data;
+}
+
 /* ===== Make-up daily (play a past missed day in the current month) =====
    No streak repair, no Bank deposit — fills the calendar + earns week/month badges.
    Each returns a daily board with an extra { makeup: { date } } marker. */
