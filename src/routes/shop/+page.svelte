@@ -5,6 +5,7 @@
   import { requirePin } from '$lib/pinConfirm.js';
   import { track } from '$lib/analytics.js';
   import { fx } from '$lib/sound.js';
+  import InventoryList from '$lib/components/InventoryList.svelte';
 
   let bank = $state(0);
   /** @type {any[]} */
@@ -39,6 +40,7 @@
 
   /** @type {any|null} */
   let cashout = $state(null);
+  let inventoryKey = $state(0); // bump to re-mount the bag after a purchase
 
   async function load() {
     const [shop, pu, co] = await Promise.all([getShop(), getPowerups(), getFreeplayCashoutStatus()]);
@@ -48,6 +50,7 @@
     sabs = (pu.items || []).filter((/** @type {any} */ i) => i.kind === 'sabotage');
     dboost = (pu.items || []).filter((/** @type {any} */ i) => i.kind === 'daily');
     cashout = co;
+    inventoryKey++;
   }
 
   async function doCashout() {
@@ -139,6 +142,13 @@
     <p class="loading">Loading…</p>
   {:else}
     {#if msg}<p class="msg">{msg}</p>{/if}
+
+    {#key inventoryKey}
+      <details class="inv-details">
+        <summary class="inv-summary">🎒 Your Bag</summary>
+        <InventoryList />
+      </details>
+    {/key}
 
     {#if dboost.length}
       <h2 class="section">💥 Bounty Boosts</h2>
@@ -267,6 +277,12 @@
   .co-pending { font-size: 0.78rem; color: var(--text-muted); text-align: right; }
   .co-note { font-size: 0.72rem; color: var(--text-faint); margin: 0.6rem 0 0; line-height: 1.35; }
   .owned-x { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 0.78rem; color: #fde047; }
+  .inv-details { margin: 0 0 0.4rem; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); padding: 0 0.9rem; }
+  .inv-summary { cursor: pointer; padding: 0.85rem 0; font-family: var(--font-display); font-weight: 700; font-size: 0.98rem; list-style: none; }
+  .inv-summary::-webkit-details-marker { display: none; }
+  .inv-summary::after { content: ' ▾'; color: var(--text-faint); }
+  .inv-details[open] .inv-summary::after { content: ' ▴'; }
+  .inv-details[open] { padding-bottom: 0.9rem; }
   .section { font-family: var(--font-display); font-size: 1.05rem; margin: 1.4rem 0 0.4rem; }
   .section-note { font-size: 0.76rem; color: var(--text-faint); margin: 0 0 0.8rem; }
   .card.pup { align-items: center; text-align: center; gap: 0.3rem; }

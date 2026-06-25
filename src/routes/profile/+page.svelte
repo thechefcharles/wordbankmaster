@@ -6,10 +6,11 @@
   import HistoryList from '$lib/components/HistoryList.svelte';
   import BadgesPanel from '$lib/components/BadgesPanel.svelte';
   import NotificationsPanel from '$lib/components/NotificationsPanel.svelte';
+  import InventoryList from '$lib/components/InventoryList.svelte';
   import { unreadCount, markAllNotificationsRead } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
 
-  /** @type {'stats'|'history'|'badges'|'alerts'} */
+  /** @type {'stats'|'items'|'history'|'badges'|'alerts'} */
   let tab = $state('stats');
   /** @type {any|null} */
   let d = $state(null);
@@ -18,7 +19,7 @@
   onMount(async () => {
     track('profile_view');
     const t = $page.url.searchParams.get('tab');
-    if (t === 'history' || t === 'badges' || t === 'alerts') tab = /** @type {any} */ (t);
+    if (t === 'items' || t === 'history' || t === 'badges' || t === 'alerts') tab = /** @type {any} */ (t);
     try { d = await getProfileDetail(); } finally { loading = false; }
   });
 
@@ -61,6 +62,7 @@
     <div class="tabs">
       <button class="tab" class:active={tab === 'alerts'} onclick={() => tab = 'alerts'}>🔔{#if $unreadCount > 0}<span class="tab-count">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}</button>
       <button class="tab" class:active={tab === 'stats'} onclick={() => tab = 'stats'}>Stats</button>
+      <button class="tab" class:active={tab === 'items'} onclick={() => tab = 'items'}>Bag</button>
       <button class="tab" class:active={tab === 'history'} onclick={() => tab = 'history'}>History</button>
       <button class="tab" class:active={tab === 'badges'} onclick={() => tab = 'badges'}>Badges</button>
     </div>
@@ -138,6 +140,9 @@
           {/each}
         </div>
       {/if}
+    {:else if tab === 'items'}
+      <div class="sec-title">🎒 Your Bag</div>
+      <InventoryList />
     {:else if tab === 'history'}
       <HistoryList />
     {:else if tab === 'badges'}
