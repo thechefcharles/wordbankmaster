@@ -12,8 +12,8 @@
     { k: 'daily', label: '📅 Daily' }
   ];
   const PERIOD_BOARDS = ['cash'];
-  /** scope: 'global' | 'friends' | a group id */
-  let scope = $state('friends');
+  /** scope: 'global' (Everyone) | 'friends' | a group id */
+  let scope = $state('global');
   /** @type {'week'|'all'} */
   let period = $state('all');
   /** @type {any[]} */
@@ -57,8 +57,8 @@
 <!-- Scope + period -->
 <div class="filters">
   <select class="filter-select" bind:value={scope}>
-    <option value="friends">Friends</option>
-    <option value="global">Global</option>
+    <option value="global">🌍 Everyone</option>
+    <option value="friends">👋 Friends</option>
     {#each groups as g}<option value={g.id}>👥 {g.name}</option>{/each}
   </select>
   {#if PERIOD_BOARDS.includes(board)}
@@ -71,7 +71,7 @@
 
 <p class="caption">
   {#if board === 'cash'}{period === 'week' ? 'Cash gained this week' : 'Richest players — total Cash'}
-  {:else}Today's Daily score{/if}
+  {:else}Ranked by today's Daily score · {scope === 'global' ? 'everyone' : scope === 'friends' ? 'your friends' : 'this group'}{/if}
 </p>
 
 {#if loading}
@@ -87,7 +87,12 @@
         <tr>
           <th>#</th><th>Player</th>
           {#if board === 'cash'}<th>{period === 'week' ? 'Gained' : 'Cash'}</th>
-          {:else}<th>Score</th>{/if}
+          {:else}
+            <th class="num" title="Cash on Hand">💰 Cash</th>
+            <th class="num" title="Today's Daily score">Score</th>
+            <th class="num" title="Play streak — days in a row played">🔥 Play</th>
+            <th class="num" title="Win streak — days in a row solved">🏆 Win</th>
+          {/if}
         </tr>
       </thead>
       <tbody>
@@ -107,7 +112,10 @@
                 {period === 'week' ? (r.metric >= 0 ? '+' : '') + fmt(r.metric) : fmt(r.net_worth)}
               </td>
             {:else}
-              <td class="metric">{r.played ? Number(r.score).toLocaleString() : '—'}</td>
+              <td class="metric">{fmt(r.net_worth)}</td>
+              <td class="metric gold">{r.played ? Number(r.score).toLocaleString() : '—'}</td>
+              <td class="metric small">{r.play_streak > 0 ? '🔥' + r.play_streak : '—'}</td>
+              <td class="metric small">{r.win_streak > 0 ? '🏆' + r.win_streak : '—'}</td>
             {/if}
           </tr>
         {/each}
@@ -143,9 +151,15 @@
   td.name { font-weight: 600; }
   .name-link { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2); text-underline-offset: 2px; }
   .name-link:hover { text-decoration-color: var(--gold); }
-  td.metric { font-family: var(--font-display); font-weight: 700; color: var(--brand-2); text-align: right; }
+  td.metric { font-family: var(--font-display); font-weight: 700; color: var(--text); text-align: right; white-space: nowrap; }
+  td.metric.gold { color: var(--brand-2); }
+  td.metric.small { font-weight: 700; font-size: 0.82rem; color: var(--text-muted); }
   td.metric.neg { color: #fb7185; }
+  th.num { text-align: right; }
   th:last-child { text-align: right; }
+  /* tighter cells when the Daily board shows 6 columns */
+  th, td { padding: 0.6rem 0.45rem; }
+  td.rank { width: 30px; padding-left: 0.5rem; }
   tr.me { background: rgba(56,189,248,0.1); }
   tr.me td.name { color: #7dd3fc; }
   .title { font-size: 0.68rem; color: var(--text-faint); margin-left: 0.35rem; white-space: nowrap; }
