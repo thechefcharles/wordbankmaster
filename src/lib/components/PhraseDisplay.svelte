@@ -159,7 +159,6 @@
             <span class="letter-box {shakeIndexes.has(gi) ? 'shake' : ''} {won ? 'win' : ''} {intro ? 'intro' : ''}"
               style={won ? `animation-delay:${Math.min(gi, 14) * 0.095}s` : intro ? `animation-delay:${introDelay(gi)}s` : ''}>
               {$gameStore.purchasedLetters[gi] || ""}
-              <span class="tile-dollar" aria-hidden="true">$</span>
               {#if won}
                 <span class="coin c1" style="animation-delay:{Math.min(gi, 14) * 0.095}s">$</span>
                 <span class="coin c2" style="animation-delay:{Math.min(gi, 14) * 0.095 + 0.07}s">$</span>
@@ -227,10 +226,6 @@
     60%  { transform: scale(1.12) rotate(4deg); }
     100% { transform: scale(1); }
   }
-  /* subtle green $ in each tile's corner — every slot carries value toward the bounty */
-  .tile-dollar { position: absolute; bottom: 2px; right: 4px; pointer-events: none; z-index: 2;
-    font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 0.62rem; line-height: 1;
-    color: #4ade80; opacity: 0.55; text-shadow: 0 0 5px rgba(74,222,128,0.5); }
   .coin, .plus { position: absolute; pointer-events: none; left: 50%; font-family: 'Orbitron', var(--font-display);
     font-weight: 800; color: #4ade80; text-shadow: 0 0 8px rgba(74,222,128,0.7); opacity: 0; }
   .coin { top: 6px; font-size: 0.9rem; animation: coinSpray 0.75s ease-out backwards; }
@@ -293,7 +288,7 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    border: 1px solid var(--border);
+    border: 1px solid rgba(74, 222, 128, 0.32);
     background: var(--surface);
     font-family: var(--font-display);
     font-size: 22px;
@@ -301,7 +296,8 @@
     border-radius: 11px;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.05),
-      0 2px 8px rgba(0, 0, 0, 0.3);
+      0 2px 8px rgba(0, 0, 0, 0.3),
+      0 0 9px rgba(74, 222, 128, 0.16);
     color: var(--text);
     backdrop-filter: blur(8px);
     box-sizing: border-box;
