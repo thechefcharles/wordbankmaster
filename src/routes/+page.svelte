@@ -1311,16 +1311,16 @@
             {#if dailyDone}
               <span class="daily-chip {dailyStatus?.last_daily_won ? 'won' : 'lost'}">{dailyStatus?.last_daily_won ? `✅ Solved${dailyStatus?.today_score ? ' · +' + dailyStatus.today_score.toLocaleString() : ''}` : '❌ Didn’t solve'}</span>
             {:else if dailyInProgress}
-              <span class="daily-chip prog">⏳ Resume</span>
+              <span class="daily-chip prog">Resume</span>
             {/if}
           </button>
           <button class="menu-card" style="--i: 1" on:click={handleMenuClimb}>
             <span class="mc-title">Cash Game</span>
-            {#if climbInProgress}<span class="daily-chip prog">⏳ Resume</span>{/if}
+            {#if climbInProgress}<span class="daily-chip prog">Resume</span>{/if}
           </button>
           <button class="menu-card" style="--i: 2" on:click={handleMenuFreeplay}>
             <span class="mc-title">{freeplayInProgress ? 'Resume Free Play' : 'Free Play'}</span>
-            {#if freeplayInProgress}<span class="daily-chip prog">⏳ Resume</span>{/if}
+            {#if freeplayInProgress}<span class="daily-chip prog">Resume</span>{/if}
           </button>
           <button class="menu-card" style="--i: 3" on:click={() => { blitzSoon = true; fx('tap'); setTimeout(() => blitzSoon = false, 2500); }}>
             <span class="mc-title">Blitz</span><span class="mc-stat">Soon</span>
@@ -2421,10 +2421,21 @@
     cursor: pointer;
     overflow: hidden;
     box-shadow:
-      inset 0 2px 1px rgba(255, 255, 255, 0.85),
-      inset 0 -3px 5px rgba(70, 85, 100, 0.4),
-      0 5px 10px rgba(0, 0, 0, 0.5);
+      inset 0 2px 1px rgba(255, 255, 255, 0.9),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6),
+      inset 0 -3px 6px rgba(70, 85, 100, 0.45),
+      0 5px 12px rgba(0, 0, 0, 0.55),
+      0 0 18px rgba(205, 222, 240, 0.28);
     transition: transform 0.16s var(--ease-spring), box-shadow 0.2s, filter 0.2s, color 0.2s, border-color 0.2s;
+  }
+  /* static polished-metal sheen: glossy top highlight + soft crown glow */
+  .menu-card::before {
+    content: '';
+    position: absolute; inset: 0; border-radius: inherit; z-index: 0; pointer-events: none;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.14) 16%, rgba(255,255,255,0) 40%, rgba(255,255,255,0.06) 100%),
+      radial-gradient(130% 64% at 50% -12%, rgba(255,255,255,0.5), rgba(255,255,255,0) 62%);
+    mix-blend-mode: screen;
   }
   /* moving shine streak — staggered per bar via --i */
   .menu-card::after {
@@ -2519,9 +2530,10 @@
     font-size: 0.68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap;
     border: 1px solid var(--border); background: rgba(0,0,0,0.25); color: var(--text);
   }
-  .daily-chip.won   { color: #fbbf24; border-color: rgba(251, 191, 36,0.5);  background: rgba(251, 191, 36,0.14); }
-  .daily-chip.lost  { color: #fb7185; border-color: rgba(251,113,133,0.5); background: rgba(251,113,133,0.14); }
-  .daily-chip.prog  { color: #fbbf24; border-color: rgba(251,191,36,0.5);  background: rgba(251,191,36,0.14); }
+  /* solid fills so chips read clearly on the silver buttons */
+  .daily-chip.won   { color: #3a2a00; border-color: rgba(217,160,20,0.8); background: linear-gradient(135deg, #fde047, #f59e0b); box-shadow: 0 1px 6px rgba(245,158,11,0.45); }
+  .daily-chip.lost  { color: #fff; border-color: rgba(225,80,100,0.85); background: linear-gradient(135deg, #fb7185, #e11d48); box-shadow: 0 1px 6px rgba(225,29,72,0.45); text-shadow: 0 1px 1px rgba(0,0,0,0.25); }
+  .daily-chip.prog  { color: #fff; border-color: rgba(5,150,105,0.85); background: linear-gradient(135deg, #34d399, #059669); box-shadow: 0 1px 6px rgba(5,150,105,0.5); text-shadow: 0 1px 1px rgba(0,0,0,0.25); }
   .progress-modes { border-left-color: rgba(251,191,36,0.3); }
   .mc-arrow { color: var(--text-faint); font-size: 1.1rem; transition: transform 0.2s, color 0.2s; }
   .mc-count {
