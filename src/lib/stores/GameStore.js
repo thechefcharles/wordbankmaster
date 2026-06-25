@@ -3,7 +3,7 @@
 import { writable, get } from 'svelte/store';
 import confetti from 'canvas-confetti';
 import { fx } from '$lib/sound.js';
-import { dailyStart, dailyBuyLetter, dailyReveal, dailySubmitGuess, dailyFold as dailyFoldRpc, getDailyModifier, getDailyClue, getArcadeClue } from '$lib/stores/statsStore.js';
+import { dailyStart, dailyUseTwist, dailyBuyLetter, dailyReveal, dailySubmitGuess, dailyFold as dailyFoldRpc, getDailyModifier, getDailyClue, getArcadeClue } from '$lib/stores/statsStore.js';
 import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNext, arcadeUsePowerup, arcadeCashout } from '$lib/stores/statsStore.js';
 import { freeplayStart, freeplayNext, freeplayResume, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
 import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
@@ -86,9 +86,9 @@ export const gameStore = writable(/** @type {GameState} */ ({
   freeReveals: 0, // owned Free Reveal power-ups (daily)
   arcadeRun: null, // arcade gauntlet run state { state, banked, multiplier, position, total, furthest, last_gain }
   arcadeCashedOut: false, // true when the last arcade run ended via "Bank it" (vs bust)
-  modifier: null, // active Daily Twist id (null when you went Pure)
-  twistActive: true, // did you Use today's Twist (true) or Go Pure (false)?
-  bountyMult: 1, // bounty multiplier (1.0 with Twist, 1.5 Pure)
+  modifier: null, // today's Daily Twist power-up id (daily only)
+  twistUsed: false, // have you used today's Twist? (unused → ×1.5 bounty)
+  bountyMult: 1, // bounty multiplier (1.0 once Twist used, else 1.5)
   clue: null, // witty one-line hint for the current puzzle
   challengeInfo: null, // { mode, started_at, limit_seconds, play_state, score } for the active challenge
   makeupDate: null, // YYYY-MM-DD of the make-up day being played (makeup mode only)
@@ -206,9 +206,9 @@ function reconcileDailyBoard(board) {
     gameState: finished ? board.state : 'default',
     dailyResult: board.daily_result ?? prev.dailyResult ?? null,
     dailyLive: board.live ?? prev.dailyLive ?? null,
-    // Twist state: active modifier (null when Pure) + the bounty multiplier.
+    // Daily Twist: the available modifier id + whether you've used it + bounty multiplier.
     modifier: board.modifier !== undefined ? board.modifier : prev.modifier,
-    twistActive: board.twist_active !== undefined ? board.twist_active : (prev.twistActive ?? true),
+    twistUsed: board.twist_used !== undefined ? board.twist_used : (prev.twistUsed ?? false),
     bountyMult: board.bounty_mult !== undefined ? board.bounty_mult : (prev.bountyMult ?? 1)
   }));
   // Only celebrate a FRESH solve: a board carrying daily_result (set by the solve),
@@ -1125,10 +1125,22 @@ export function submitGuess() {
  * No localStorage: the server is the source of truth (and prevents replays).
  * The day's shared modifier is applied server-side at start (no client power-ups).
  */
-export async function fetchDailyGame(useTwist = true) {
+/** Use today's Daily Twist power-up (applies effect, bounty → ×1.0). */
+export async function useDailyTwist() {
+  try {
+    const board = await dailyUseTwist();
+    if (board) { reconcileDailyBoard(board); return true; }
+    return false;
+  } catch (err) {
+    console.error('❌ Error using daily twist:', err instanceof Error ? err.message : String(err));
+    return false;
+  }
+}
+
+export async function fetchDailyGame() {
   try {
     track('daily_start');
-    const board = await dailyStart([], useTwist);
+    const board = await dailyStart([]);
     if (!board) {
       console.error('❌ daily_start returned no board');
       return false;
