@@ -358,7 +358,6 @@
   let introBuilding = false;
   let _introFired = 0;
   let introCountPop = false;
-  let showIntroMult = false;
   // Play the armed opening reveal — but only when the board is truly on screen
   // (no objective card up, not on the menu). Called from dismissObjective and,
   // when the card is suppressed, right after the board renders.
@@ -375,10 +374,6 @@
     introBuilding = false; // releases the reactive above → bounty counts 0 → net
     introCountPop = true;
     setTimeout(() => { introCountPop = false; }, 1200);
-    if (($gameStore.bountyMult ?? 1) > 1) {
-      showIntroMult = true;
-      setTimeout(() => { showIntroMult = false; }, 2200);
-    }
   }
   let _prevBank = /** @type {number|null} */ (null);
   let _floatId = 0;
@@ -398,14 +393,14 @@
     _prevBank = b;
   }
 
-  // 🎰 Pure-solve payoff: solved WITHOUT using the Twist → fly in a huge ×1.5.
+  // 🎰 Clean-solve payoff: solved with NO wrong letters → fly in a "CLEAN!" burst.
   let showMultiplier = false;
   let _multiFired = false;
-  $: handleWinMultiplier($gameStore.gameState, $gameStore.gameMode, $gameStore.twistUsed);
-  /** @param {string} state @param {string} mode @param {boolean} used */
-  function handleWinMultiplier(state, mode, used) {
+  $: handleCleanSolve($gameStore.gameState, $gameStore.gameMode, ($gameStore.incorrectLetters?.length ?? 0));
+  /** @param {string} state @param {string} mode @param {number} wrong */
+  function handleCleanSolve(state, mode, wrong) {
     if (!browser) return;
-    if (state === 'won' && mode === 'daily' && !used && !_multiFired) {
+    if (state === 'won' && mode === 'daily' && wrong === 0 && !_multiFired) {
       _multiFired = true;
       const n = ($gameStore.currentPhrase || '').replace(/ /g, '').length;
       setTimeout(() => {
@@ -1335,8 +1330,8 @@
 {#if showMultiplier}
   <div class="mult-overlay" aria-hidden="true">
     <div class="mult-burst">
-      <span class="mult-x">×1.5</span>
-      <span class="mult-sub">Bounty bonus · you kept the Twist!</span>
+      <span class="mult-x">✨ CLEAN!</span>
+      <span class="mult-sub">Solved with no wrong letters</span>
     </div>
   </div>
 {/if}
@@ -1901,7 +1896,6 @@
         <div class="bounty-panel" class:loss={soloHero.net < 0} class:count-pop={introCountPop}>
           <span class="bp-label">{soloHero.net >= 0 ? 'Solve to Earn' : '⚠️ You’re losing money'}</span>
           <span class="bp-amount">{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</span>
-          {#if showIntroMult}<span class="bp-mult">×{$gameStore.bountyMult}</span>{/if}
           {#each spendFloaters as f (f.id)}<span class="spend-float">{f.text}</span>{/each}
         </div>
       {:else if isFreeplay}
@@ -2083,7 +2077,7 @@
   /* 🎰 Pure-solve ×1.5 multiplier fly-in */
   .mult-overlay { position: fixed; inset: 0; z-index: 6000; display: grid; place-items: center; pointer-events: none; }
   .mult-burst { text-align: center; animation: multIn 1.7s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; }
-  .mult-x { display: block; font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 5.5rem; line-height: 1; color: #4ade80;
+  .mult-x { display: block; font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 3.4rem; line-height: 1; color: #4ade80;
     text-shadow: 0 0 36px rgba(74,222,128,0.85), 0 5px 0 rgba(0,0,0,0.35); }
   .mult-sub { display: block; margin-top: 8px; font-family: var(--font-display); font-weight: 800; color: #fde047;
     font-size: 1rem; letter-spacing: 0.07em; text-transform: uppercase; text-shadow: 0 0 14px rgba(251,191,36,0.6); }
@@ -3174,17 +3168,6 @@
     0%   { transform: scale(0.7); opacity: 0.5; }
     45%  { transform: scale(1.32); text-shadow: 0 0 30px rgba(74,222,128,0.95); }
     100% { transform: scale(1); }
-  }
-  /* the ×multiplier that flies in beside the bounty at the climax */
-  .bp-mult { position: absolute; right: 14px; top: 50%; pointer-events: none;
-    font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.5rem; color: #fde047;
-    text-shadow: 0 0 16px rgba(251,191,36,0.85); animation: bpMultIn 2.2s cubic-bezier(0.2,0.9,0.3,1) forwards; }
-  @keyframes bpMultIn {
-    0%   { opacity: 0; transform: translate(28px, -50%) scale(2.2) rotate(12deg); }
-    14%  { opacity: 1; transform: translate(0, -50%) scale(1.15) rotate(0deg); }
-    24%  { transform: translate(0, -50%) scale(1); }
-    85%  { opacity: 1; transform: translate(0, -50%) scale(1); }
-    100% { opacity: 0; transform: translate(0, -50%) scale(0.85); }
   }
   /* floating -$X spend feedback by the green number */
   .spend-float { position: absolute; right: 16px; top: 8px; pointer-events: none;
