@@ -1898,6 +1898,9 @@
       {#if soloHero}
         <!-- Daily · Makeup · Cash Game: the number you keep if you solve now (bankroll is up top) -->
         <div class="bounty-panel" class:loss={soloHero.net < 0} class:count-pop={introCountPop}>
+          {#if $gameStore.gameMode === 'daily'}
+            <span class="bp-mult-badge" aria-label="Bounty multiplier">×{Number($gameStore.bountyMult ?? 1).toFixed(1)}</span>
+          {/if}
           <span class="bp-label">{soloHero.net >= 0 ? 'Solve to Earn' : '⚠️ You’re losing money'}</span>
           <span class="bp-amount">{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</span>
           {#each spendFloaters as f (f.id)}<span class="spend-float">{f.text}</span>{/each}
@@ -3183,6 +3186,13 @@
   .bp-amount { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 2.3rem; line-height: 1.05; color: #4ade80;
     text-shadow: 0 0 18px rgba(52,211,153,0.5); font-variant-numeric: tabular-nums; transition: color 0.2s; }
   .bounty-panel.loss .bp-amount { color: #fb7185; text-shadow: none; }
+  /* lit gold bounty multiplier badge (left of the bounty) — ×1.0 today, boostable later */
+  .bp-mult-badge { position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.05rem; line-height: 1;
+    padding: 5px 9px; border-radius: 9px; color: #3a2a00;
+    background: linear-gradient(135deg, #fff1a8, #f6cd4d 45%, #e0a312);
+    border: 1px solid rgba(180,130,15,0.95);
+    box-shadow: 0 0 14px rgba(251,191,36,0.65), inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -2px 3px rgba(120,80,0,0.35); }
   /* 🎰 Opening-reveal climax: bounty number pops + glows as it counts up */
   .bounty-panel.count-pop { animation: bountyGlow 1.1s ease-out; }
   .bounty-panel.count-pop .bp-amount { animation: bountyCount 1.1s cubic-bezier(0.34, 1.56, 0.64, 1); }
