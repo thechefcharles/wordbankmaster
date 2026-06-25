@@ -23,6 +23,29 @@
   let loading = $state(true);
   let error = $state('');
 
+  // Sortable daily columns (client-side). Default: today's score, high → low.
+  /** @type {'name'|'net_worth'|'score'|'play_streak'|'win_streak'} */
+  let sortKey = $state('score');
+  /** @type {'asc'|'desc'} */
+  let sortDir = $state('desc');
+  /** @param {typeof sortKey} k */
+  function setSort(k) {
+    if (sortKey === k) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    else { sortKey = k; sortDir = k === 'name' ? 'asc' : 'desc'; }
+  }
+  /** @param {typeof sortKey} k */
+  const arrow = (k) => sortKey === k ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '';
+  let sortedRows = $derived.by(() => {
+    if (board !== 'daily') return rows;
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...rows].sort((a, b) => {
+      if (sortKey === 'name') return dir * String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' });
+      const av = sortKey === 'score' ? (a.score ?? -Infinity) : Number(a[sortKey] ?? 0);
+      const bv = sortKey === 'score' ? (b.score ?? -Infinity) : Number(b[sortKey] ?? 0);
+      return dir * (av - bv) || String(a.name || '').localeCompare(String(b.name || ''));
+    });
+  });
+
   const fmt = (/** @type {any} */ n) => '$' + Math.round(Number(n ?? 0)).toLocaleString();
 
   async function load() {
@@ -85,20 +108,22 @@
     <table>
       <thead>
         <tr>
-          <th>#</th><th>Player</th>
-          {#if board === 'cash'}<th>{period === 'week' ? 'Gained' : 'Cash'}</th>
+          <th>#</th>
+          {#if board === 'cash'}<th>Player</th><th>{period === 'week' ? 'Gained' : 'Cash'}</th>
           {:else}
-            <th class="num" title="Cash on Hand">💰 Cash</th>
-            <th class="num" title="Today's Daily score">Score</th>
-            <th class="num" title="Play streak — days in a row played">🔥 Play</th>
-            <th class="num" title="Win streak — days in a row solved">🏆 Win</th>
+            <th><button class="sort" class:on={sortKey === 'name'} onclick={() => setSort('name')}>Player{arrow('name')}</button></th>
+            <th class="num"><button class="sort" class:on={sortKey === 'net_worth'} onclick={() => setSort('net_worth')}>💰 Cash{arrow('net_worth')}</button></th>
+            <th class="num"><button class="sort" class:on={sortKey === 'score'} onclick={() => setSort('score')}>Score{arrow('score')}</button></th>
+            <th class="num"><button class="sort" class:on={sortKey === 'play_streak'} onclick={() => setSort('play_streak')}>🔥{arrow('play_streak')}</button></th>
+            <th class="num"><button class="sort" class:on={sortKey === 'win_streak'} onclick={() => setSort('win_streak')}>🏆{arrow('win_streak')}</button></th>
           {/if}
         </tr>
       </thead>
       <tbody>
-        {#each rows as r}
-          <tr class={r.is_me ? 'me' : (r.rank <= 3 ? 'top' : '')}>
-            <td class="rank">{medal(r.rank)}</td>
+        {#each sortedRows as r, i}
+          {@const pos = board === 'daily' ? i + 1 : r.rank}
+          <tr class={r.is_me ? 'me' : (pos <= 3 ? 'top' : '')}>
+            <td class="rank">{medal(pos)}</td>
             <td class="name">
               {#if r.is_me}
                 <button class="name-link" onclick={() => goto('/profile')} style={r.color ? `color:${r.color}` : ''}>You</button>
@@ -157,6 +182,10 @@
   td.metric.neg { color: #fb7185; }
   th.num { text-align: right; }
   th:last-child { text-align: right; }
+  th button.sort { background: none; border: none; padding: 0; margin: 0; cursor: pointer; font: inherit;
+    color: inherit; text-transform: inherit; letter-spacing: inherit; white-space: nowrap; }
+  th button.sort:hover { color: var(--text-muted); }
+  th button.sort.on { color: var(--brand-2); }
   /* tighter cells when the Daily board shows 6 columns */
   th, td { padding: 0.6rem 0.45rem; }
   td.rank { width: 30px; padding-left: 0.5rem; }

@@ -2449,20 +2449,23 @@
     justify-content: center;
     gap: 10px;
     text-align: center;
-    padding: 18px 20px;
-    border-radius: 10px;
+    padding: 19px 20px;
+    border-radius: 13px;
     /* silver bullion by default → turns gold on hover */
     background: linear-gradient(177deg, #ffffff 0%, #eef2f6 14%, #c2cbd5 52%, #94a0ad 82%, #76828f 100%);
-    border: 1px solid #828e9c;
+    border: 1px solid #6f7c8a;
     color: #2a3138;
     cursor: pointer;
     overflow: hidden;
     box-shadow:
-      inset 0 2px 1px rgba(255, 255, 255, 0.9),
+      inset 0 2px 1px rgba(255, 255, 255, 0.95),   /* top edge catch-light (raised) */
       inset 0 1px 0 rgba(255, 255, 255, 0.6),
-      inset 0 -3px 6px rgba(70, 85, 100, 0.45),
-      0 5px 12px rgba(0, 0, 0, 0.55),
-      0 0 18px rgba(205, 222, 240, 0.28);
+      inset 0 0 0 1.5px rgba(255, 255, 255, 0.4),   /* bright inner rim */
+      inset 0 0 0 3px rgba(74, 88, 104, 0.22),      /* recessed groove under the rim → engraved panel */
+      inset 0 -4px 7px rgba(64, 78, 94, 0.5),       /* bottom inner shadow (depth) */
+      0 1px 0 rgba(255, 255, 255, 0.28),            /* bottom outer edge highlight */
+      0 6px 13px rgba(0, 0, 0, 0.55),               /* drop shadow */
+      0 0 18px rgba(205, 222, 240, 0.26);           /* soft glow */
     transition: transform 0.16s var(--ease-spring), box-shadow 0.2s, filter 0.2s, color 0.2s, border-color 0.2s;
   }
   /* static polished-metal sheen: glossy top highlight + soft crown glow */
@@ -2529,8 +2532,10 @@
   .menu-card.disabled { opacity: 0.5; cursor: not-allowed; }
   .mc-title {
     position: relative; z-index: 1;
-    font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; letter-spacing: 0.01em;
-    color: #4a3105; text-shadow: 0 1px 0 rgba(255, 248, 200, 0.5);
+    font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; letter-spacing: 0.04em;
+    /* engraved/debossed: dark face, light catch-light on the lower lip, dark inner top */
+    color: #3a4654;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.72), 0 -1px 1px rgba(12, 20, 30, 0.32);
   }
   .mc-stat { position: relative; z-index: 1; font-family: var(--font-display); font-weight: 800; font-size: 0.9rem; color: #6b4a08; }
   /* notification badge — top-right corner of the bar */
