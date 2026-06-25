@@ -346,7 +346,39 @@
   const tweenBank = tweened(0, { duration: 550, easing: cubicOut });
   const tweenNet = tweened(0, { duration: 650, easing: cubicOut });
   $: tweenBank.set(Math.round($gameStore.bankroll ?? 0));
-  $: tweenNet.set(soloHero ? Math.round(soloHero.net) : 0);
+  // While the opening reveal is landing boxes, hold the bounty at $0 so it can
+  // dramatically count up at the climax (introDone).
+  $: tweenNet.set(introBuilding ? 0 : (soloHero ? Math.round(soloHero.net) : 0));
+
+  // 🎰 Daily opening reveal coordination (boxes land → bounty counts up × multiplier).
+  // fetchDailyGame ARMS it (dailyIntro token); we only PLAY it once the board is
+  // actually on screen — i.e. the "How to win" card is dismissed — by bumping
+  // dailyIntroGo, which PhraseDisplay watches.
+  let introBuilding = false;
+  let _introFired = 0;
+  let introCountPop = false;
+  let showIntroMult = false;
+  // Play the armed opening reveal — but only when the board is truly on screen
+  // (no objective card up, not on the menu). Called from dismissObjective and,
+  // when the card is suppressed, right after the board renders.
+  function playDailyIntroIfArmed() {
+    const tok = get(gameStore).dailyIntro;
+    if (!browser || !tok || tok === _introFired) return;
+    if (objective || showMainMenu) return;
+    _introFired = tok;
+    introBuilding = true;
+    tweenNet.set(0, { duration: 0 });
+    gameStore.update((s) => ({ ...s, dailyIntroGo: (s.dailyIntroGo || 0) + 1 }));
+  }
+  function onDailyIntroDone() {
+    introBuilding = false; // releases the reactive above → bounty counts 0 → net
+    introCountPop = true;
+    setTimeout(() => { introCountPop = false; }, 800);
+    if (($gameStore.bountyMult ?? 1) > 1) {
+      showIntroMult = true;
+      setTimeout(() => { showIntroMult = false; }, 1500);
+    }
+  }
   let _prevBank = /** @type {number|null} */ (null);
   let _floatId = 0;
   /** @type {{id:number,text:string}[]} */
@@ -758,6 +790,7 @@
   function dismissObjective() {
     if (objective && browser && SOLO_MODES.includes(objective.mode)) localStorage.setItem('wb_obj_' + objective.mode, '1');
     objective = null;
+    tick().then(playDailyIntroIfArmed); // board is now visible → play the opening reveal
   }
 
   // Detect entering a game from the menu (latch flips once per entry).
@@ -820,6 +853,11 @@
     if (ok) {
       hasInitialized = true;
       showMainMenu = false;
+      // If the "How to win" card is suppressed (already seen), the board is now
+      // visible — play the opening reveal once reactives settle. If the card DOES
+      // show, this no-ops (objective set) and the reveal fires on its dismiss.
+      await tick();
+      playDailyIntroIfArmed();
     } else {
       initError = "Daily puzzle failed to load.";
     }
@@ -1828,7 +1866,7 @@
 
     <!-- 🔤 Phrase Display -->
     <section class="phrase-section">
-      <PhraseDisplay on:revealComplete={onPhraseRevealComplete} />
+      <PhraseDisplay on:revealComplete={onPhraseRevealComplete} on:introDone={onDailyIntroDone} />
     </section>
 
     <!-- 🏳️ Give up (Daily + Challenges + Free Play) · broke-timer is Daily/Challenge only -->
@@ -1846,9 +1884,10 @@
     <section class="stats-section">
       {#if soloHero}
         <!-- Daily · Makeup · Cash Game: the number you keep if you solve now (bankroll is up top) -->
-        <div class="bounty-panel" class:loss={soloHero.net < 0}>
+        <div class="bounty-panel" class:loss={soloHero.net < 0} class:count-pop={introCountPop}>
           <span class="bp-label">{soloHero.net >= 0 ? 'Solve to Earn' : '⚠️ You’re losing money'}</span>
           <span class="bp-amount">{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</span>
+          {#if showIntroMult}<span class="bp-mult">×{$gameStore.bountyMult}</span>{/if}
           {#each spendFloaters as f (f.id)}<span class="spend-float">{f.text}</span>{/each}
         </div>
       {:else if isFreeplay}
@@ -3113,6 +3152,29 @@
   .bp-amount { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 2.3rem; line-height: 1.05; color: #4ade80;
     text-shadow: 0 0 18px rgba(52,211,153,0.5); font-variant-numeric: tabular-nums; transition: color 0.2s; }
   .bounty-panel.loss .bp-amount { color: #fb7185; text-shadow: none; }
+  /* 🎰 Opening-reveal climax: bounty number pops + glows as it counts up */
+  .bounty-panel.count-pop { animation: bountyGlow 0.8s ease-out; }
+  .bounty-panel.count-pop .bp-amount { animation: bountyCount 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes bountyGlow {
+    0%   { box-shadow: 0 0 22px rgba(251,191,36,0.16); }
+    35%  { box-shadow: 0 0 16px 4px rgba(74,222,128,0.6), 0 0 40px rgba(74,222,128,0.4); border-color: rgba(74,222,128,0.7); }
+    100% { box-shadow: 0 0 22px rgba(251,191,36,0.16); }
+  }
+  @keyframes bountyCount {
+    0%   { transform: scale(0.7); opacity: 0.5; }
+    45%  { transform: scale(1.32); text-shadow: 0 0 30px rgba(74,222,128,0.95); }
+    100% { transform: scale(1); }
+  }
+  /* the ×multiplier that flies in beside the bounty at the climax */
+  .bp-mult { position: absolute; right: 14px; top: 50%; pointer-events: none;
+    font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.5rem; color: #fde047;
+    text-shadow: 0 0 16px rgba(251,191,36,0.85); animation: bpMultIn 1.5s cubic-bezier(0.2,0.9,0.3,1) forwards; }
+  @keyframes bpMultIn {
+    0%   { opacity: 0; transform: translate(28px, -50%) scale(2.2) rotate(12deg); }
+    20%  { opacity: 1; transform: translate(0, -50%) scale(1) rotate(0deg); }
+    78%  { opacity: 1; transform: translate(0, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(0, -50%) scale(0.85); }
+  }
   /* floating -$X spend feedback by the green number */
   .spend-float { position: absolute; right: 16px; top: 8px; pointer-events: none;
     font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.05rem; color: #fb7185;
