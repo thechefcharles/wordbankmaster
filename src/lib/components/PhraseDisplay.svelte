@@ -9,7 +9,7 @@
   // 🎰 Daily opening reveal: each empty space lands one-by-one (shake + money signs
   // + green plus + a landing thunk), then +page counts the bounty up in green. Driven
   // by gameStore.dailyIntro, which bumps once on a fresh daily open.
-  const INTRO_STEP = 0.12; // seconds between box landings
+  const INTRO_STEP = 0.34; // seconds between box landings (slow, dramatic)
   let introActive = false;
   let introToken = 0;
   /** @type {ReturnType<typeof setTimeout>[]} */
@@ -40,8 +40,8 @@
       introTimers.push(setTimeout(() => fx('land'), d * 1000 + 30));
     }
     // Climax: the spaces "add up × the multiplier" into the green bounty.
-    introTimers.push(setTimeout(() => { fx('multiplier'); dispatch('introDone'); }, lastDelay * 1000 + 160));
-    introTimers.push(setTimeout(() => { introActive = false; }, lastDelay * 1000 + 950));
+    introTimers.push(setTimeout(() => { fx('multiplier'); dispatch('introDone'); }, lastDelay * 1000 + 420));
+    introTimers.push(setTimeout(() => { introActive = false; }, lastDelay * 1000 + 1900));
   }
 
   // 📤 Reactive State Setup
@@ -200,15 +200,17 @@
 
   /* 🎰 Daily opening reveal: each empty space drops in, rattles, and lands hard */
   .letter-box.intro {
-    animation: introPop 0.62s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+    animation: introPop 0.92s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
     z-index: 1;
   }
   @keyframes introPop {
-    0%   { opacity: 0; transform: translateY(-34px) scale(0.35) rotate(-9deg); }
-    45%  { opacity: 1; transform: translateY(5px) scale(1.22) rotate(5deg);
-           border-color: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,0.5), 0 0 22px rgba(74,222,128,0.6); }
-    60%  { transform: translateY(0) scale(0.94) rotate(-3deg); }
-    74%  { transform: translateY(0) scale(1.06) rotate(2deg); }
+    0%   { opacity: 0; transform: translateY(-40px) scale(0.3) rotate(-10deg); }
+    24%  { opacity: 1; transform: translateY(6px) scale(1.24) rotate(6deg);
+           border-color: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,0.55), 0 0 24px rgba(74,222,128,0.65); }
+    40%  { transform: translateY(0) scale(0.92) rotate(-4deg); }
+    54%  { transform: translateY(0) scale(1.08) rotate(3deg); }
+    68%  { transform: translateY(0) scale(0.97) rotate(-1.5deg);
+           box-shadow: 0 0 0 2px rgba(74,222,128,0.4), 0 0 16px rgba(74,222,128,0.45); }
     100% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
   }
 
