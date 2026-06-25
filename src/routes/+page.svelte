@@ -3,6 +3,8 @@
   import { browser } from '$app/environment';
   import { supabase } from '$lib/supabaseClient';
   import { get } from 'svelte/store';
+  import { tweened } from 'svelte/motion';
+  import { cubicOut } from 'svelte/easing';
 
   import { gameStore, fetchDailyGame, useDailyTwist, fetchFreeplayGame, fetchFreeplayResume, freeplayContinue, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
   import { getMyChallenges, getPowerups, getMyMatches, getMyGroups, getMatch, getMatchDetail, declineMatch } from '$lib/stores/statsStore.js';
@@ -338,6 +340,30 @@
     ? { clean: ($gameStore.incorrectLetters?.length ?? 0) === 0 } : null;
   // Unified solo money hero (Daily · Makeup · Cash Game): net you keep if you solve now.
   $: soloHero = climbLive ? { net: climbLive.net } : (dLive ? { net: dLive.net } : null);
+
+  // 🎰 Slot-machine money feel: count up/down the bankroll + the green "Solve to Earn",
+  // and float a -$X by the number each time you spend.
+  const tweenBank = tweened(0, { duration: 550, easing: cubicOut });
+  const tweenNet = tweened(0, { duration: 650, easing: cubicOut });
+  $: tweenBank.set(Math.round($gameStore.bankroll ?? 0));
+  $: tweenNet.set(soloHero ? Math.round(soloHero.net) : 0);
+  let _prevBank = /** @type {number|null} */ (null);
+  let _floatId = 0;
+  /** @type {{id:number,text:string}[]} */
+  let spendFloaters = [];
+  $: trackSpend($gameStore.bankroll, $gameStore.gameMode, showMainMenu);
+  /** @param {number|null|undefined} b @param {string} mode @param {boolean} onMenu */
+  function trackSpend(b, mode, onMenu) {
+    if (browser && !onMenu && _prevBank != null && b != null && b < _prevBank && ['daily', 'makeup', 'climb'].includes(mode)) {
+      const amt = _prevBank - b;
+      if (amt > 0 && amt <= 300) {
+        const id = ++_floatId;
+        spendFloaters = [...spendFloaters, { id, text: '−$' + amt.toLocaleString() }];
+        setTimeout(() => { spendFloaters = spendFloaters.filter((f) => f.id !== id); }, 1100);
+      }
+    }
+    _prevBank = b;
+  }
 
 
   // ── Fold + broke-timer (Daily + Challenges) ──────────────────────────────
@@ -1631,7 +1657,7 @@
         </button>
       {:else if !matchBlitz}
         <div class="top-bank solo">
-          <span class="tb-solo">💰 ${Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span>
+          <span class="tb-solo">💰 ${Math.round($tweenBank).toLocaleString()}</span>
         </div>
       {/if}
     {/if}
@@ -1792,7 +1818,8 @@
         <!-- Daily · Makeup · Cash Game: the number you keep if you solve now (bankroll is up top) -->
         <div class="bounty-panel" class:loss={soloHero.net < 0}>
           <span class="bp-label">{soloHero.net >= 0 ? 'Solve to Earn' : '⚠️ You’re losing money'}</span>
-          <span class="bp-amount">{soloHero.net >= 0 ? '$' : '−$'}{Math.abs(soloHero.net).toLocaleString()}</span>
+          <span class="bp-amount">{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</span>
+          {#each spendFloaters as f (f.id)}<span class="spend-float">{f.text}</span>{/each}
         </div>
       {:else if isFreeplay}
         <!-- Free Play: credits are up top; here just the cash-out + your Cash + reward -->
@@ -3042,6 +3069,15 @@
   .bp-amount { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 2.3rem; line-height: 1.05; color: #4ade80;
     text-shadow: 0 0 18px rgba(52,211,153,0.5); font-variant-numeric: tabular-nums; transition: color 0.2s; }
   .bounty-panel.loss .bp-amount { color: #fb7185; text-shadow: none; }
+  /* floating -$X spend feedback by the green number */
+  .spend-float { position: absolute; right: 16px; top: 8px; pointer-events: none;
+    font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.05rem; color: #fb7185;
+    text-shadow: 0 0 8px rgba(248,113,133,0.55); animation: spendFloat 1.1s ease-out forwards; }
+  @keyframes spendFloat {
+    0% { opacity: 0; transform: translateY(8px) scale(0.9); }
+    16% { opacity: 1; transform: translateY(0) scale(1.06); }
+    100% { opacity: 0; transform: translateY(-28px) scale(1); }
+  }
   /* 💰 Top bankroll bar (very top, all modes) */
   .top-bank { width: 100%; max-width: 340px; margin: 0 auto 12px; padding: 9px 16px; border-radius: 14px;
     border: 1px solid rgba(253, 224, 71, 0.4); background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(251, 191, 36, 0.03)); }
