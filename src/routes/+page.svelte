@@ -2449,95 +2449,40 @@
     justify-content: center;
     gap: 10px;
     text-align: center;
-    padding: 19px 20px;
-    border-radius: 13px;
-    /* silver bullion by default → turns gold on hover */
-    background: linear-gradient(177deg, #ffffff 0%, #eef2f6 14%, #c2cbd5 52%, #94a0ad 82%, #76828f 100%);
-    border: 1px solid #6f7c8a;
-    color: #2a3138;
+    padding: 9px 28px;
+    /* real silver bullion plate (rendered) as a 9-slice border — corners stay crisp at any size */
+    border: 13px solid transparent;
+    border-image: url('/silver-button.png') 35 fill / 13px / 0 stretch;
+    color: #b8860b;
     cursor: pointer;
-    overflow: hidden;
-    box-shadow:
-      inset 0 2px 1px rgba(255, 255, 255, 0.95),   /* top edge catch-light (raised) */
-      inset 0 1px 0 rgba(255, 255, 255, 0.6),
-      inset 0 0 0 1.5px rgba(255, 255, 255, 0.4),   /* bright inner rim */
-      inset 0 0 0 3px rgba(74, 88, 104, 0.22),      /* recessed groove under the rim → engraved panel */
-      inset 0 -4px 7px rgba(64, 78, 94, 0.5),       /* bottom inner shadow (depth) */
-      0 1px 0 rgba(255, 255, 255, 0.28),            /* bottom outer edge highlight */
-      0 6px 13px rgba(0, 0, 0, 0.55),               /* drop shadow */
-      0 0 18px rgba(205, 222, 240, 0.26);           /* soft glow */
-    transition: transform 0.16s var(--ease-spring), box-shadow 0.2s, filter 0.2s, color 0.2s, border-color 0.2s;
+    filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.55));
+    transition: transform 0.16s var(--ease-spring), filter 0.2s;
   }
-  /* static polished-metal sheen: glossy top highlight + soft crown glow */
-  .menu-card::before {
-    content: '';
-    position: absolute; inset: 0; border-radius: inherit; z-index: 0; pointer-events: none;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.14) 16%, rgba(255,255,255,0) 40%, rgba(255,255,255,0.06) 100%),
-      radial-gradient(130% 64% at 50% -12%, rgba(255,255,255,0.5), rgba(255,255,255,0) 62%);
-    mix-blend-mode: screen;
-  }
-  /* moving shine streak — staggered per bar via --i */
-  .menu-card::after {
-    content: '';
-    position: absolute; top: 0; bottom: 0; left: 0; width: 55%;
-    background: linear-gradient(105deg, transparent 25%, rgba(255,255,255,0.2) 42%, rgba(255,255,255,0.9) 50%, rgba(255,255,255,0.2) 58%, transparent 75%);
-    transform: translateX(-180%) skewX(-12deg);
-    animation: barShine 5s ease-in-out infinite;
-    animation-delay: calc(var(--i, 0) * 0.45s);
-    pointer-events: none;
-  }
-  @keyframes barShine {
-    0%, 58% { transform: translateX(-180%) skewX(-12deg); }
-    78%, 100% { transform: translateX(330%) skewX(-12deg); }
-  }
-  /* Full gold fill only on a real mouse hover — never on touch (where :hover
-     "sticks" after a tap and makes cards look randomly lit up). */
   @media (hover: hover) and (pointer: fine) {
     .menu-card:hover:not(.disabled) {
       transform: translateY(-2px);
-      background: linear-gradient(177deg, #fff6cf 0%, #ffe071 14%, #f4bd35 52%, #d99a1a 82%, #b87d10 100%);
-      border-color: #b07c0d;
-      color: #4a3105;
-      box-shadow:
-        inset 0 2px 1px rgba(255, 255, 255, 0.75),
-        inset 0 -3px 5px rgba(120, 80, 0, 0.45),
-        0 6px 14px rgba(0, 0, 0, 0.5), 0 0 26px rgba(251, 191, 36, 0.55);
+      filter: drop-shadow(0 9px 17px rgba(0, 0, 0, 0.55)) brightness(1.06);
     }
   }
-  /* Press = a gold glow flash on a real click/tap (.gold-flash, set in +layout).
-     :focus-visible keeps the glow for keyboard nav. */
-  .menu-card.gold-flash:not(.disabled) {
-    transform: translateY(1px) scale(0.99);
-  }
+  /* Press = a soft glow flash on a real click/tap. */
+  .menu-card.gold-flash:not(.disabled) { transform: translateY(1px) scale(0.99); }
   .menu-card.gold-flash:not(.disabled),
   .menu-card:focus-visible:not(.disabled) {
     outline: none;
-    box-shadow:
-      inset 0 2px 1px rgba(255, 255, 255, 0.6),
-      0 0 0 2px #fff3c4, 0 0 22px rgba(255, 220, 90, 0.95), 0 0 50px rgba(251, 191, 36, 0.6);
+    filter: drop-shadow(0 5px 10px rgba(0,0,0,0.55)) drop-shadow(0 0 14px rgba(255, 220, 90, 0.9));
   }
-  .menu-card.primary {
-    background: linear-gradient(177deg, #ffffff 0%, #f6f9fc 14%, #d2dae3 52%, #a4b0bd 82%, #8390a0 100%);
-    box-shadow:
-      inset 0 2px 1px rgba(255, 255, 255, 0.95),
-      inset 0 -3px 5px rgba(70, 85, 100, 0.38),
-      0 6px 14px rgba(0, 0, 0, 0.5), 0 0 22px rgba(200, 215, 230, 0.35);
-  }
-  @media (hover: hover) and (pointer: fine) {
-    .menu-card.primary:hover:not(.disabled) {
-      background: linear-gradient(177deg, #fffbe0 0%, #ffe98a 14%, #fbc945 52%, #e2a31f 82%, #c2870f 100%);
-    }
-  }
+  .menu-card.primary { filter: drop-shadow(0 6px 13px rgba(0,0,0,0.55)) drop-shadow(0 0 16px rgba(255, 222, 120, 0.3)); }
   .menu-card.disabled { opacity: 0.5; cursor: not-allowed; }
   .mc-title {
     position: relative; z-index: 1;
-    font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; letter-spacing: 0.04em;
-    /* engraved/debossed: dark face, light catch-light on the lower lip, dark inner top */
-    color: #3a4654;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.72), 0 -1px 1px rgba(12, 20, 30, 0.32);
+    font-family: var(--font-display); font-weight: 800; font-size: 1.2rem; letter-spacing: 0.02em;
+    /* embossed gold to match the reference button */
+    background: linear-gradient(180deg, #fff1a8 0%, #f6cd4d 38%, #dd9c1b 66%, #b3760b 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+    text-shadow: 0 1px 1px rgba(70, 44, 0, 0.45), 0 0 1px rgba(120, 80, 0, 0.4);
   }
-  .mc-stat { position: relative; z-index: 1; font-family: var(--font-display); font-weight: 800; font-size: 0.9rem; color: #6b4a08; }
+  .mc-stat { position: relative; z-index: 1; font-family: var(--font-display); font-weight: 800; font-size: 0.9rem; color: #b8860b; }
   /* notification badge — top-right corner of the bar */
   .mc-badge {
     position: absolute; top: -7px; right: -6px; z-index: 3;
