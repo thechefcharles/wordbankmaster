@@ -110,6 +110,8 @@ team (this sets the provisioning automatically). Bundle id is `com.wordbank.app`
   appears in App Store Connect → TestFlight after processing; add Internal testers.
 
 ## Phase 2 — TestFlight (the goal)
+- [x] **Internal testing REACHED** (2026-06-24) — Build 1 v1.0 status "Testing" in
+      App Store Connect; 1 install / sessions logged. App name = "WordBank Daily".
 - [ ] **Internal testing** — add testers by Apple ID (up to 100); available right
       after the build processes, **no review**. ← first real test users land here.
 - [ ] **External testing** — up to 10,000; needs a lighter **Beta App Review**
@@ -163,6 +165,74 @@ policy + basics. Full list kept here for when we submit publicly.*
 - [ ] If sweepstakes in-build: Official Rules linked, Apple not the sponsor, no
       paid-IAP entry, 18+. [5.3]
 - [ ] No real-money purchase that improves leaderboard rank (see sweepstakes trap).
+
+---
+
+## 🚀 App Store Submission Pack (when ready to go public)
+*TestFlight build is live (Build 1 "Testing", internal + Friends & Family). This is
+the pack for the **public** Distribution submission. Approval risk is LOW — WordBank
+is a virtual-currency word game with **no real money** (see `wordbank-virtual-currency`
+memory) — but there are a few hard requirements Apple rejects without.*
+
+### ⛔ Hard blockers (fix BEFORE submitting — these cause automatic rejection)
+- [ ] **In-app account deletion** [5.1.1(v)] — **NOT built yet.** Apps with account
+      creation MUST let users delete their account *in-app* (not just "email us").
+      Needs: a "Delete account" button (Profile/Settings) → confirm → server RPC that
+      purges profile + auth user + their rows. Single biggest rejection risk for us.
+- [ ] **Demo account** in App Review Information — the app is login-gated, so review
+      WILL fail without working credentials (and a 2nd account or a video for
+      challenges, which need two players).
+- [ ] **Sign in with Apple** [4.8] — the app offers **Google** login, which *requires*
+      Sign in with Apple to also be offered (equivalent placement). Apple ID infra is
+      live (Services ID `app.wordbank.signin`) — **verify the button is actually wired
+      into the native Auth UI**, or remove Google from the native build.
+- [ ] **Real native build, not a remote-URL wrapper** [4.2] — the TestFlight build
+      points `server.url` at the live website. Apple often rejects thin web wrappers
+      for the public store. Convert to a **bundled** build (and ideally native auth)
+      before public submission, or be ready to argue native value (offline fallback,
+      push, etc.).
+
+### Required metadata / settings
+- [ ] Privacy policy URL entered (`/privacy`) **+ App Privacy "nutrition label"** filled
+      (we collect email, gameplay/analytics, social graph). [5.1.1]
+- [ ] Screenshots — 6.7" (required) + 6.5"; iPad set only if iPad-supported.
+- [ ] App name / subtitle / description / keywords / promo text; Category = Games ›
+      Word (or Puzzle); Support URL; copyright; contact.
+- [ ] **Age rating** questionnaire — answer honestly; virtual "buy-in/wager" framing
+      *may* trip the **Simulated Gambling** descriptor (→ 17+). Not a rejection, just
+      rate it correctly.
+- [ ] **Export compliance** — standard HTTPS only → answer "no" to non-exempt
+      encryption (set `ITSAppUsesNonExemptEncryption=false` to skip the prompt).
+- [ ] On submit, choose **"Manually release this version"** so approval doesn't
+      auto-publish — you press go when ready.
+
+### 📝 Reviewer note (paste into App Review Information → Notes)
+```
+WordBank is a word-puzzle game. A few clarifications to speed review:
+
+• ALL CURRENCY IS VIRTUAL. The "$", "Cash", "Bankroll", "buy-in", "pot", and
+  "cash out" are an in-game points economy shown in dollars for THEME ONLY.
+  There are NO real-money transactions, NO in-app purchases, NO deposits, and
+  NO payouts of any kind. New accounts simply start with a virtual balance.
+  Nothing in the app charges or pays real money.
+
+• Not gambling: "challenges" are friendly word-puzzle competitions scored in
+  virtual points. Nothing of real-world value is staked, won, or withdrawn.
+
+• Login is required. Demo account:
+      username: <DEMO_USER>   password: <DEMO_PASS>
+  (Sign in with Apple also works.)
+
+• A 1-on-1 / group challenge needs two players. Second test account:
+      username: <DEMO_USER_2>  password: <DEMO_PASS_2>
+  (Happy to provide a screen recording if helpful.)
+
+• Account deletion: Profile → Settings → Delete Account.
+
+Thank you!
+```
+*(Create two throwaway demo accounts and drop their creds in before submitting.
+Keep the note in sync if flows move. I can generate the demo accounts on request.)*
 
 ---
 
