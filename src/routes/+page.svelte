@@ -1424,15 +1424,8 @@
       </div>
       {#if menuView === 'home'}
         <div class="main-menu-buttons stagger">
-          <!-- 🎯 Act-now banner: pending challenge/friend request, else the Challenge A Friend CTA -->
-          {#if actNow.kind === 'empty'}
-            <div class="vs-cta-group">
-              <button class="vs-main" on:click={actNow.primary}>⚔️ Challenge A Friend</button>
-              <button class="vs-people" title="Friends &amp; Groups" aria-label="Friends and groups" on:click={() => { fx('tap'); openCommunity('people'); }}>
-                <span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span>
-              </button>
-            </div>
-          {:else}
+          <!-- 🎯 Act-now banner above Play: only a pending challenge / friend request -->
+          {#if actNow.kind !== 'empty'}
             <button class="ab-main" on:click={actNow.primary}>
               <span class="ab-icon">{actNow.icon}</span>
               <span class="ab-text">
@@ -1443,8 +1436,15 @@
             </button>
           {/if}
           <button class="menu-card primary" style="--i: 0" on:click={() => { menuView = 'play'; fx('tap'); }}>
-            <span class="mc-title">Play Now</span>
+            <span class="mc-title">Play Now!</span>
           </button>
+          <!-- 🤝 Challenge A Friend — sits right under Play Now -->
+          <div class="vs-cta-group">
+            <button class="vs-main" on:click={() => { fx('tap'); newChallenge(); }}>⚔️ Challenge A Friend</button>
+            <button class="vs-people" title="Friends &amp; Groups" aria-label="Friends and groups" on:click={() => { fx('tap'); openCommunity('people'); }}>
+              <span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span>
+            </button>
+          </div>
           <button class="menu-card" style="--i: 1" on:click={() => { fx('tap'); openCommunity('challenges'); }}>
             <span class="mc-title">Community</span>
           </button>
@@ -1483,12 +1483,6 @@
             <span class="mc-title">Blitz</span><span class="mc-stat">Soon</span>
           </button>
           {#if blitzSoon}<p class="pm-soon-note">⚡ Solo Blitz is coming soon!</p>{/if}
-          <div class="vs-cta-group">
-            <button class="vs-main" on:click={() => { fx('tap'); newChallenge(); }}>⚔️ Challenge A Friend</button>
-            <button class="vs-people" title="Friends &amp; Groups" aria-label="Friends and groups" on:click={() => { fx('tap'); openCommunity('people'); }}>
-              <span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span>
-            </button>
-          </div>
         </div>
 
       {:else if menuView === 'community'}
@@ -2439,24 +2433,24 @@
   .comm-body { width: 100%; }
   .comm-body.people { display: flex; flex-direction: column; gap: 0.6rem; }
   /* Subtle "play with friends" nudge under the solo modes */
-  /* Challenge A Friend — gold CTA attached to a blue "friends & groups" button */
-  .vs-cta-group { display: flex; width: 100%; margin-top: 8px; }
-  .vs-main { flex: 1; padding: 12px 14px; cursor: pointer; border: none;
-    font-family: var(--font-display); font-weight: 800; font-size: 0.94rem; letter-spacing: 0.01em; color: #3a2a00;
-    background: linear-gradient(135deg, #fde047, #f59e0b); border-radius: 12px 0 0 12px;
-    box-shadow: 0 3px 10px rgba(245,158,11,0.32), inset 0 1px 0 rgba(255,255,255,0.4); }
+  /* Challenge A Friend — one on-brand gold pill, split by a divider into CTA + friends */
+  .vs-cta-group { display: flex; width: 100%; margin-top: 8px;
+    border-radius: 12px; overflow: hidden;
+    box-shadow: 0 3px 10px rgba(245,158,11,0.3), inset 0 1px 0 rgba(255,255,255,0.4); }
+  .vs-main, .vs-people { border: none; cursor: pointer; color: #3a2a00;
+    background: linear-gradient(135deg, #fde047, #f59e0b); }
+  .vs-main { flex: 1; padding: 12px 14px;
+    font-family: var(--font-display); font-weight: 800; font-size: 0.94rem; letter-spacing: 0.01em; }
   .vs-main:hover { filter: brightness(1.05); }
   .vs-main:active { transform: scale(0.99); }
-  .vs-people { position: relative; width: 58px; flex: none; cursor: pointer; display: grid; place-items: center;
-    border: none; border-left: 1.5px solid rgba(0,0,0,0.28); border-radius: 0 12px 12px 0;
-    background: linear-gradient(135deg, #38bdf8, #2563eb);
-    box-shadow: 0 3px 10px rgba(37,99,235,0.32), inset 0 1px 0 rgba(255,255,255,0.25); }
-  .vs-people:hover { filter: brightness(1.08); }
+  .vs-people { position: relative; width: 58px; flex: none; display: grid; place-items: center;
+    border-left: 1.5px solid rgba(120,80,0,0.45); } /* just the vertical divider line */
+  .vs-people:hover { filter: brightness(1.06); }
   .vs-people:active { transform: scale(0.97); }
   .vs-ppl { font-size: 1.35rem; line-height: 1; }
   .vs-ppl-plus { position: absolute; top: 7px; right: 9px; width: 14px; height: 14px; border-radius: 50%;
-    background: #fff; color: #2563eb; font-weight: 900; font-size: 0.6rem; line-height: 1; display: grid; place-items: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.35); }
+    background: #3a2a00; color: #fde047; font-weight: 900; font-size: 0.6rem; line-height: 1; display: grid; place-items: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.4); }
   .ch-new-btn {
     width: 100%; margin-bottom: 12px; padding: 12px; border-radius: 14px; border: none; cursor: pointer;
     font-family: var(--font-display); font-weight: 800; font-size: 0.95rem; color: #3a2a00;
