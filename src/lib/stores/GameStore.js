@@ -215,7 +215,7 @@ function reconcileDailyBoard(board) {
   }));
   // Only celebrate a FRESH solve: a board carrying daily_result (set by the solve),
   // not when re-opening an already-completed daily (which comes back 'won' with no result).
-  if (board.state === 'won') { if (board.daily_result) { setTimeout(() => launchConfetti(), 300); fx('win'); } }
+  if (board.state === 'won') { if (board.daily_result) { fx('win'); } } // no confetti — the slot-machine reveal is the celebration
   else if (finished) fx('bust');
   else playMoveCue(prev, board);
   // analytics: fire once, only on the actual solve transition

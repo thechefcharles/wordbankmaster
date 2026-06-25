@@ -344,7 +344,7 @@
   // 🎰 Slot-machine money feel: count up/down the bankroll + the green "Solve to Earn",
   // and float a -$X by the number each time you spend.
   const tweenBank = tweened(0, { duration: 550, easing: cubicOut });
-  const tweenNet = tweened(0, { duration: 650, easing: cubicOut });
+  const tweenNet = tweened(0, { duration: 900, easing: cubicOut });
   $: tweenBank.set(Math.round($gameStore.bankroll ?? 0));
   // While the opening reveal is landing boxes, hold the bounty at $0 so it can
   // dramatically count up at the climax (introDone).
@@ -373,10 +373,10 @@
   function onDailyIntroDone() {
     introBuilding = false; // releases the reactive above → bounty counts 0 → net
     introCountPop = true;
-    setTimeout(() => { introCountPop = false; }, 800);
+    setTimeout(() => { introCountPop = false; }, 1200);
     if (($gameStore.bountyMult ?? 1) > 1) {
       showIntroMult = true;
-      setTimeout(() => { showIntroMult = false; }, 1500);
+      setTimeout(() => { showIntroMult = false; }, 2200);
     }
   }
   let _prevBank = /** @type {number|null} */ (null);
@@ -1928,11 +1928,8 @@
       <Keyboard />
     </section>
 
-    <!-- 🏆 Game Outcome Banner -->
-    {#if $gameStore.gameState === "won"}
-      <div class="win-burst" aria-hidden="true"></div>
-      <div class="banner win">Winner!</div>
-    {:else if $gameStore.gameState === "lost"}
+    <!-- 🏆 Game Outcome Banner (win celebration handled by the slot-machine reveal) -->
+    {#if $gameStore.gameState === "lost"}
       <div class="banner lose">Bankrupt!</div>
     {/if}
 
@@ -3153,8 +3150,8 @@
     text-shadow: 0 0 18px rgba(52,211,153,0.5); font-variant-numeric: tabular-nums; transition: color 0.2s; }
   .bounty-panel.loss .bp-amount { color: #fb7185; text-shadow: none; }
   /* 🎰 Opening-reveal climax: bounty number pops + glows as it counts up */
-  .bounty-panel.count-pop { animation: bountyGlow 0.8s ease-out; }
-  .bounty-panel.count-pop .bp-amount { animation: bountyCount 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .bounty-panel.count-pop { animation: bountyGlow 1.1s ease-out; }
+  .bounty-panel.count-pop .bp-amount { animation: bountyCount 1.1s cubic-bezier(0.34, 1.56, 0.64, 1); }
   @keyframes bountyGlow {
     0%   { box-shadow: 0 0 22px rgba(251,191,36,0.16); }
     35%  { box-shadow: 0 0 16px 4px rgba(74,222,128,0.6), 0 0 40px rgba(74,222,128,0.4); border-color: rgba(74,222,128,0.7); }
@@ -3168,11 +3165,12 @@
   /* the ×multiplier that flies in beside the bounty at the climax */
   .bp-mult { position: absolute; right: 14px; top: 50%; pointer-events: none;
     font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.5rem; color: #fde047;
-    text-shadow: 0 0 16px rgba(251,191,36,0.85); animation: bpMultIn 1.5s cubic-bezier(0.2,0.9,0.3,1) forwards; }
+    text-shadow: 0 0 16px rgba(251,191,36,0.85); animation: bpMultIn 2.2s cubic-bezier(0.2,0.9,0.3,1) forwards; }
   @keyframes bpMultIn {
     0%   { opacity: 0; transform: translate(28px, -50%) scale(2.2) rotate(12deg); }
-    20%  { opacity: 1; transform: translate(0, -50%) scale(1) rotate(0deg); }
-    78%  { opacity: 1; transform: translate(0, -50%) scale(1); }
+    14%  { opacity: 1; transform: translate(0, -50%) scale(1.15) rotate(0deg); }
+    24%  { transform: translate(0, -50%) scale(1); }
+    85%  { opacity: 1; transform: translate(0, -50%) scale(1); }
     100% { opacity: 0; transform: translate(0, -50%) scale(0.85); }
   }
   /* floating -$X spend feedback by the green number */
