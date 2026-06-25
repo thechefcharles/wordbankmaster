@@ -149,7 +149,9 @@
 
       // Into the menu immediately — the loading screen only gates on auth + profile.
       showMainMenu = true;
-      savedGameInfo = null;
+      // Load any in-progress game so the menu shows "Resume" (not "Missed") after
+      // returning from another route (e.g. the Store).
+      savedGameInfo = getSavedGameInfo(session.user.id);
       hasInitialized = true;
 
       // Secondary menu data: must NOT block the loading screen or each other.
@@ -1307,7 +1309,7 @@
           <button class="menu-card" class:done={dailyDone} style="--i: 0" on:click={handleMenuDaily}>
             <span class="mc-title">{dailyInProgress ? 'Resume Daily' : 'Daily'}</span>
             {#if dailyDone}
-              <span class="daily-chip {dailyStatus?.last_daily_won ? 'won' : 'lost'}">{dailyStatus?.last_daily_won ? `✅ Solved${dailyStatus?.today_score ? ' · +' + dailyStatus.today_score.toLocaleString() : ''}` : '❌ Missed'}</span>
+              <span class="daily-chip {dailyStatus?.last_daily_won ? 'won' : 'lost'}">{dailyStatus?.last_daily_won ? `✅ Solved${dailyStatus?.today_score ? ' · +' + dailyStatus.today_score.toLocaleString() : ''}` : '❌ Didn’t solve'}</span>
             {:else if dailyInProgress}
               <span class="daily-chip prog">⏳ Resume</span>
             {/if}
