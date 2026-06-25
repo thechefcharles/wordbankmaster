@@ -844,9 +844,6 @@
   $: trayPowerups = ($gameStore.gameMode === 'daily' && dailyMod && !$gameStore.twistUsed && gameActive)
     ? [{ id: 'twist', emoji: dailyMod.emoji, name: dailyMod.name, blurb: dailyMod.blurb, count: 1 }]
     : [];
-  $: trayHint = ($gameStore.gameMode === 'daily' && dailyMod && !$gameStore.twistUsed)
-    ? `${dailyMod.emoji} ${dailyMod.name} · tap to use, or keep it for <b>×1.5</b>`
-    : '';
   /** @param {CustomEvent<any>} e */
   function onUsePowerup(e) {
     const item = e.detail;
@@ -1236,13 +1233,17 @@
   };
 </script>
 <svelte:window on:keydown={handleEscape} />
-<!-- ← Back to main menu (every non-menu screen) -->
+<!-- ☰ Main menu (top-left) -->
 {#if loggedIn && hasInitialized && !showMainMenu}
-  <button class="menu-back-btn" title="Main menu" on:click={goToMainMenu}>← Menu</button>
+  <button class="menu-back-btn" title="Main menu" aria-label="Main menu" on:click={goToMainMenu}><span class="hamburger"></span></button>
 {/if}
-<!-- ❓ How to play THIS game type (top-right) -->
+<!-- ❓ How to play THIS game type (top-center) -->
 {#if loggedIn && hasInitialized && !showMainMenu && $gameStore.gameMode}
   <button class="help-btn" title="How to play" aria-label="How to play this game" on:click={() => showObjectiveFor($gameStore.gameMode, true)}>?</button>
+{/if}
+<!-- 🏳️ Give up (top-right) — Daily / Challenges / Free Play -->
+{#if loggedIn && hasInitialized && !showMainMenu && (foldMode || isFreeplay) && gameActive}
+  <button class="giveup-btn" title="Give up" aria-label="Give up" on:click={confirmFold}>↩</button>
 {/if}
 
 <!-- 💬 Match chat (1v1 + group challenges) — only inside a live match, never on the menu -->
@@ -1885,14 +1886,11 @@
       <PhraseDisplay on:revealComplete={onPhraseRevealComplete} on:introDone={onDailyIntroDone} />
     </section>
 
-    <!-- 🏳️ Give up (Daily + Challenges + Free Play) · broke-timer is Daily/Challenge only -->
-    {#if (foldMode || isFreeplay) && gameActive}
-      <div class="fold-bar" class:broke={isBroke}>
-        {#if isBroke}
-          <span class="fold-timer">⏱ 0:{String(brokeLeft).padStart(2, '0')}</span>
-          <span class="fold-warn">Out of Cash — guess in time or you {$gameStore.gameMode === 'match' ? 'give up this one' : 'lose the Daily'}</span>
-        {/if}
-        <button class="fold-btn" on:click={confirmFold}>🏳️ Give Up?</button>
+    <!-- ⏱ Out-of-Cash broke-timer (Daily/Challenge) — give up lives in the top-right arrow -->
+    {#if (foldMode || isFreeplay) && gameActive && isBroke}
+      <div class="fold-bar broke">
+        <span class="fold-timer">⏱ 0:{String(brokeLeft).padStart(2, '0')}</span>
+        <span class="fold-warn">Out of Cash — guess in time or you {$gameStore.gameMode === 'match' ? 'give up this one' : 'lose the Daily'}</span>
       </div>
     {/if}
 
@@ -1931,7 +1929,7 @@
 
     <!-- ⚡ Power-up hotbar: 2 slots each side of Solve, page through mode-eligible inventory -->
     {#if gameActive}
-      <PowerupHotbar items={trayPowerups} busy={dailyTwistBusy} hint={trayHint} on:use={onUsePowerup} />
+      <PowerupHotbar items={trayPowerups} busy={dailyTwistBusy} on:use={onUsePowerup} />
     {/if}
 
     <!-- ⌨️ Keyboard Section (keyboard disables itself via gameStore state) -->
@@ -2260,12 +2258,6 @@
   }
   .fold-timer { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.25rem; color: #f87171; }
   .fold-warn { font-size: 0.76rem; color: #fca5a5; flex: 1 1 140px; text-align: left; }
-  .fold-btn {
-    background: transparent; border: 1px solid var(--border); color: var(--text-faint);
-    border-radius: 10px; padding: 5px 12px; font-size: 0.8rem; font-weight: 700; cursor: pointer;
-  }
-  .fold-btn:hover { color: var(--text-muted); border-color: var(--border-strong); }
-  .fold-bar.broke .fold-btn { color: #f87171; border-color: rgba(248,113,113,0.5); }
   .puzzle-clue {
     max-width: 340px;
     margin: 8px auto 12px;
@@ -2710,21 +2702,37 @@
   }
   .menu-footer button:hover { color: var(--text-muted); }
   /* back-to-menu button on game/sub screens */
+  /* ☰ hamburger main-menu (top-left) */
   .menu-back-btn {
     position: fixed; top: 14px; left: 14px; z-index: 1000;
-    padding: 0.5rem 0.95rem; border-radius: 999px; cursor: pointer; font-weight: 700; font-size: 0.85rem;
-    background: var(--surface-strong, rgba(20,28,40,0.85)); color: var(--text);
-    border: 1px solid var(--border-strong, var(--border)); backdrop-filter: blur(10px);
+    width: 38px; height: 38px; border-radius: 999px; cursor: pointer;
+    display: grid; place-items: center; color: var(--text);
+    background: var(--surface-strong, rgba(20,28,40,0.85)); border: 1px solid var(--border-strong, var(--border)); backdrop-filter: blur(10px);
   }
-  .menu-back-btn:hover { border-color: var(--brand-2); }
-  /* how-to-play (top-right, mirrors the back button) */
+  .menu-back-btn:hover { border-color: var(--brand-2); color: var(--brand-2); }
+  .hamburger, .hamburger::before, .hamburger::after {
+    content: ''; display: block; width: 18px; height: 2px; border-radius: 2px; background: currentColor;
+  }
+  .hamburger { position: relative; }
+  .hamburger::before { position: absolute; top: -6px; left: 0; }
+  .hamburger::after { position: absolute; top: 6px; left: 0; }
+  /* how-to-play (top-center) */
   .help-btn {
-    position: fixed; top: 14px; right: 14px; z-index: 1000;
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 1000;
     width: 38px; height: 38px; border-radius: 999px; cursor: pointer; font-weight: 800; font-size: 1.1rem; line-height: 1;
     display: grid; place-items: center; color: var(--text);
     background: var(--surface-strong, rgba(20,28,40,0.85)); border: 1px solid var(--border-strong, var(--border)); backdrop-filter: blur(10px);
   }
   .help-btn:hover { border-color: var(--brand-2); color: var(--brand-2); }
+  /* 🏳️ give up (top-right) — red exit arrow */
+  .giveup-btn {
+    position: fixed; top: 14px; right: 14px; z-index: 1000;
+    width: 38px; height: 38px; border-radius: 999px; cursor: pointer; font-size: 1.25rem; line-height: 1; font-weight: 800;
+    display: grid; place-items: center; color: #f87171;
+    background: var(--surface-strong, rgba(20,28,40,0.85)); border: 1px solid rgba(248,113,113,0.5); backdrop-filter: blur(10px);
+  }
+  .giveup-btn:hover { border-color: #f87171; background: rgba(248,113,113,0.16); }
+  .giveup-btn:active { transform: scale(0.93); }
   /* match chat — sits just below the help button so they never overlap */
   .match-chat-btn {
     position: fixed; top: 60px; right: 14px; z-index: 1000;
