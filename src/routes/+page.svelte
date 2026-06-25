@@ -376,6 +376,24 @@
     setTimeout(() => { introCountPop = false; }, 1200);
   }
 
+  // 💰 In-game bank: a modal (not a route) so closing it returns to the game, not the menu.
+  let showBank = false;
+  /** @type {{ bank:number, net_worth:number, ledger:any[] }|null} */
+  let bankData = null;
+  async function openBankModal() {
+    fx('tap');
+    showBank = true;
+    try { bankData = await getBank(); } catch { bankData = null; }
+  }
+  const fmtCash = (/** @type {number} */ n) => '$' + Math.round(n ?? 0).toLocaleString();
+  /** @param {string} reason */
+  const bankReason = (reason) => (/** @type {Record<string,string>} */ ({
+    quest_reward: 'Daily quests reward', daily_win: 'Daily reward', daily_reward: 'Daily reward',
+    attendance: 'Daily attendance reward', arcade_cashout: 'Cash Game cash-out', climb_bounty: 'Climb bounty',
+    freeplay_reward: 'Free Play reward', cosmetic_buy: 'Shop purchase', powerup_buy: 'Power-up purchase',
+    wager_win: 'Won a wager', wager_stake: 'Wager staked', wager_refund: 'Wager refunded'
+  }))[reason] || reason;
+
   // ℹ️ Daily explainers: tap the ×N badge or the Solve-to-Earn number for a breakdown.
   /** @type {'mult'|'bounty'|null} */
   let dailyInfo = null;
@@ -1383,11 +1401,41 @@
   </div>
 {/if}
 
+<!-- 💰 In-game bank modal: same info as /bank, but closing returns to the game -->
+{#if showBank}
+  <div class="modal-overlay info-overlay" role="button" tabindex="0" aria-label="Close"
+    on:click={() => showBank = false} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') showBank = false; }}>
+    <div class="info-card bank-card" on:click|stopPropagation role="dialog" aria-modal="true">
+      <button class="modal-x" on:click={() => showBank = false} aria-label="Close">✕</button>
+      <p class="bm-label">Net Worth</p>
+      <div class="info-big">{fmtCash(bankData?.bank ?? netWorth ?? 0)}</div>
+      <p class="info-sub">Your Cash — this is your score</p>
+      {#if bankData}
+        <div class="bm-hist-h">Recent activity</div>
+        {#if (bankData.ledger ?? []).length === 0}
+          <p class="info-note" style="text-align:center">No transactions yet. Win the Daily, show up for attendance, or climb the Cash Game to grow your Cash.</p>
+        {:else}
+          <div class="bm-ledger">
+            {#each bankData.ledger.slice(0, 8) as e}
+              <div class="bm-row">
+                <span class="bm-reason">{bankReason(e.reason)}</span>
+                <span class="bm-delta" class:pos={e.delta > 0} class:neg={e.delta < 0}>{e.delta > 0 ? '+' : '−'}{fmtCash(Math.abs(e.delta))}</span>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      {/if}
+      <button class="info-close" on:click={() => showBank = false}>Back to game</button>
+    </div>
+  </div>
+{/if}
+
 <!-- ℹ️ Daily explainers: multiplier breakdown / Solve-to-Earn calculation -->
 {#if dailyInfo}
   <div class="modal-overlay info-overlay" role="button" tabindex="0" aria-label="Close"
     on:click={() => dailyInfo = null} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') dailyInfo = null; }}>
     <div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
+      <button class="modal-x" on:click={() => dailyInfo = null} aria-label="Close">✕</button>
       {#if dailyInfo === 'mult'}
         <div class="info-big">{fmtMult(dlMult)}</div>
         <h3 class="info-title">Bounty Multiplier</h3>
@@ -1831,7 +1879,7 @@
           <div class="tb-sub">tap to cash out at 40:1</div>
         </button>
       {:else if !matchBlitz}
-        <button class="top-bank solo" title="Your Cash" on:click={() => goto('/bank')}>
+        <button class="top-bank solo" title="Your Cash" on:click={openBankModal}>
           <span class="tb-solo">💰 ${Math.round($tweenBank).toLocaleString()}</span>
         </button>
       {/if}
@@ -3303,9 +3351,25 @@
   .bp-mult-badge:active { transform: translateY(-50%) scale(0.94); }
   /* ℹ️ Daily explainer modal (multiplier / Solve-to-Earn breakdown) */
   .info-overlay { border: none; cursor: pointer; }
-  .info-card { width: 100%; max-width: 330px; cursor: default; text-align: center;
+  .info-card { position: relative; width: 100%; max-width: 330px; cursor: default; text-align: center;
     background: var(--surface-strong, #141c28); border: 1px solid var(--border-strong, rgba(255,255,255,0.14));
     border-radius: 18px; padding: 22px 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+  /* reusable red close ✕ (top-right) — returns to the game */
+  .modal-x { position: absolute; top: 10px; right: 10px; z-index: 2; width: 30px; height: 30px; border-radius: 50%;
+    display: grid; place-items: center; cursor: pointer; font-size: 0.8rem; font-weight: 900; color: #fff;
+    background: linear-gradient(135deg, #fb5a5a, #c81e1e); border: 1px solid rgba(0,0,0,0.25); box-shadow: 0 2px 6px rgba(200,30,30,0.4); }
+  .modal-x:hover { filter: brightness(1.08); }
+  .modal-x:active { transform: scale(0.92); }
+  /* in-game bank modal */
+  .bm-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); margin: 0 0 2px; }
+  .bm-hist-h { font-family: var(--font-display); font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--brand-2); text-align: left; margin: 16px 0 6px; }
+  .bm-ledger { display: flex; flex-direction: column; gap: 1px; background: var(--border); border-radius: 12px; overflow: hidden;
+    max-height: 40vh; overflow-y: auto; margin-bottom: 14px; }
+  .bm-row { display: flex; justify-content: space-between; gap: 10px; padding: 9px 11px; background: var(--surface); }
+  .bm-reason { color: var(--text-muted); font-size: 0.84rem; text-align: left; }
+  .bm-delta { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 0.84rem; font-variant-numeric: tabular-nums; }
+  .bm-delta.pos { color: #4ade80; } .bm-delta.neg { color: #fb7185; }
   .info-big { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 2.6rem; line-height: 1; color: #fde047;
     text-shadow: 0 0 22px rgba(251,191,36,0.5); }
   .info-big.green { color: #4ade80; text-shadow: 0 0 22px rgba(74,222,128,0.45); }
