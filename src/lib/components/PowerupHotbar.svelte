@@ -3,7 +3,7 @@
   // Pages through your mode-eligible inventory with ◀ ▶ arrows; duplicates show
   // a count bubble. Filtering to "power-ups allowed in this game type" happens in
   // the parent — this component just renders whatever `items` it's given.
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
   const dispatch = createEventDispatcher();
 
   /** @type {{ id: string, emoji: string, name: string, blurb?: string, count?: number }[]} */
@@ -24,10 +24,29 @@
   $: leftCells = [pageItems[2] ?? null, pageItems[0] ?? null]; // [outer, inner]
   $: rightCells = [pageItems[1] ?? null, pageItems[3] ?? null]; // [inner, outer]
 
+  // Tap once → float the item name + "double tap to use" (2s); tap the same slot
+  // again within that window → actually use it. Prevents accidental one-tap use.
+  let armedId = /** @type {string|null} */ (null);
+  let floatMsg = '';
+  let floatKey = 0;
+  /** @type {ReturnType<typeof setTimeout>|undefined} */
+  let disarmTimer;
+  onDestroy(() => clearTimeout(disarmTimer));
+
   /** @param {any} cell */
   function use(cell) {
     if (!cell || busy) return;
-    dispatch('use', cell);
+    if (armedId === cell.id) {
+      clearTimeout(disarmTimer);
+      armedId = null; floatMsg = '';
+      dispatch('use', cell);
+      return;
+    }
+    armedId = cell.id;
+    floatMsg = cell.name + ' · double tap to use';
+    floatKey++; // restart the float animation on each fresh tap
+    clearTimeout(disarmTimer);
+    disarmTimer = setTimeout(() => { armedId = null; floatMsg = ''; }, 2000);
   }
   /** @param {number} d */
   function flip(d) {
@@ -48,7 +67,7 @@
       <div class="ph-group">
         {#each leftCells as cell}
           {#if cell}
-            <button class="ph-slot filled" disabled={busy} on:click={() => use(cell)} title={cell.name + (cell.blurb ? ' — ' + cell.blurb : '')} aria-label={cell.name}>
+            <button class="ph-slot filled" class:armed={armedId === cell.id} disabled={busy} on:click={() => use(cell)} title={cell.name + (cell.blurb ? ' — ' + cell.blurb : '')} aria-label={cell.name}>
               <span class="ph-emoji">{cell.emoji}</span>
               {#if (cell.count ?? 1) > 1}<span class="ph-count">{cell.count}</span>{/if}
             </button>
@@ -61,7 +80,7 @@
       <div class="ph-group">
         {#each rightCells as cell}
           {#if cell}
-            <button class="ph-slot filled" disabled={busy} on:click={() => use(cell)} title={cell.name + (cell.blurb ? ' — ' + cell.blurb : '')} aria-label={cell.name}>
+            <button class="ph-slot filled" class:armed={armedId === cell.id} disabled={busy} on:click={() => use(cell)} title={cell.name + (cell.blurb ? ' — ' + cell.blurb : '')} aria-label={cell.name}>
               <span class="ph-emoji">{cell.emoji}</span>
               {#if (cell.count ?? 1) > 1}<span class="ph-count">{cell.count}</span>{/if}
             </button>
@@ -72,6 +91,11 @@
       </div>
     </div>
   </div>
+  {#if floatMsg}
+    {#key floatKey}
+      <div class="ph-float" aria-live="polite">{floatMsg}</div>
+    {/key}
+  {/if}
   {#if hint}<div class="ph-hint">{@html hint}</div>{/if}
 {/if}
 
@@ -93,6 +117,7 @@
     border: 1px solid rgba(253, 224, 71, 0.6); background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(251, 191, 36, 0.05));
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2); animation: phPulse 1.8s ease-in-out infinite; }
   .ph-slot.filled:active { transform: scale(0.93); }
+  .ph-slot.filled.armed { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,0.55), 0 2px 8px rgba(0,0,0,0.4); animation: none; }
   .ph-slot.filled:disabled { opacity: 0.5; cursor: default; animation: none; }
   .ph-slot.empty { border: 1.5px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.05); box-shadow: inset 0 2px 7px rgba(0, 0, 0, 0.55); }
   @keyframes phPulse { 0%,100% { box-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 0 0 rgba(251,191,36,0.5); } 50% { box-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 0 5px rgba(251,191,36,0); } }
@@ -103,4 +128,16 @@
   .ph-hint { position: fixed; left: 50%; transform: translateX(-50%); z-index: 998; text-align: center; pointer-events: none;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 158px); font-size: 0.7rem; color: var(--text-muted); max-width: 320px; }
   .ph-hint :global(b) { color: #6ee7b7; }
+  /* tap-once floating cue: item name + "double tap to use", drifts up and fades (~2s) */
+  .ph-float { position: fixed; left: 50%; z-index: 1001; pointer-events: none; white-space: nowrap;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 246px);
+    color: #fff; font-weight: 700; font-size: 0.82rem; letter-spacing: 0.01em;
+    text-shadow: 0 1px 5px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.5);
+    animation: phFloat 2s ease-out forwards; }
+  @keyframes phFloat {
+    0%   { opacity: 0; transform: translate(-50%, 12px); }
+    15%  { opacity: 1; transform: translate(-50%, 0); }
+    80%  { opacity: 1; transform: translate(-50%, -10px); }
+    100% { opacity: 0; transform: translate(-50%, -22px); }
+  }
 </style>
