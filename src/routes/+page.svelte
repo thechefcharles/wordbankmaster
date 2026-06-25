@@ -1000,9 +1000,14 @@
     showChallenges = true;
   }
   /** Go to the Community hub. @param {'challenges'|'leaderboard'|'activity'|'people'} [tab] */
+  // When the People tab is opened straight from the home menu (👥+ button), its
+  // back button returns to the main menu; when opened from inside Community, back
+  // returns to Community.
+  let peopleBackToHome = false;
   async function openCommunity(tab) {
     if (!get(user)?.id) return;
     matchResults = null;
+    peopleBackToHome = tab === 'people';
     communityTab = tab ?? 'challenges';
     menuView = 'community';
     showMainMenu = true;
@@ -1440,7 +1445,7 @@
           </button>
           <!-- 🤝 Challenge A Friend — sits right under Play Now -->
           <div class="vs-cta-group">
-            <button class="vs-main" on:click={() => { fx('tap'); newChallenge(); }}>⚔️ Challenge A Friend</button>
+            <button class="vs-main" on:click={() => { fx('tap'); newChallenge(); }}>Challenge Friends</button>
             <button class="vs-people" title="Friends &amp; Groups" aria-label="Friends and groups" on:click={() => { fx('tap'); openCommunity('people'); }}>
               <span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span>
             </button>
@@ -1488,12 +1493,16 @@
       {:else if menuView === 'community'}
         <div class="sub-head">
           {#if communityTab === 'people'}
-            <button class="sub-back" on:click={() => { communityTab = 'challenges'; fx('tap'); }}>← Community</button>
+            {#if peopleBackToHome}
+              <button class="sub-back" on:click={() => { menuView = 'home'; fx('tap'); }}>← Back</button>
+            {:else}
+              <button class="sub-back" on:click={() => { communityTab = 'challenges'; fx('tap'); }}>← Community</button>
+            {/if}
             <h2 class="sub-title">People</h2>
           {:else}
             <button class="sub-back" on:click={() => { menuView = 'home'; fx('tap'); }}>← Back</button>
             <h2 class="sub-title">Community</h2>
-            <button class="sub-people" title="Friends & Groups" aria-label="Friends & Groups" on:click={() => { communityTab = 'people'; fx('tap'); }}>👥</button>
+            <button class="sub-people" title="Friends & Groups" aria-label="Friends & Groups" on:click={() => { communityTab = 'people'; peopleBackToHome = false; fx('tap'); }}>👥</button>
           {/if}
         </div>
         {#if communityTab === 'people'}
@@ -2439,7 +2448,7 @@
     box-shadow: 0 3px 10px rgba(245,158,11,0.3), inset 0 1px 0 rgba(255,255,255,0.4); }
   .vs-main, .vs-people { border: none; cursor: pointer; color: #3a2a00;
     background: linear-gradient(135deg, #fde047, #f59e0b); }
-  .vs-main { flex: 1; padding: 12px 14px;
+  .vs-main { flex: 1; padding: 12px 14px 12px 72px; text-align: center; /* left pad offsets the people button so the label centers over the whole group */
     font-family: var(--font-display); font-weight: 800; font-size: 0.94rem; letter-spacing: 0.01em; }
   .vs-main:hover { filter: brightness(1.05); }
   .vs-main:active { transform: scale(0.99); }
