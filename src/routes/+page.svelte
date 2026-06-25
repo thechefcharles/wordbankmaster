@@ -28,6 +28,7 @@
   import { goto } from '$app/navigation';
 
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
+  import PowerupHotbar from '$lib/components/PowerupHotbar.svelte';
   import Keyboard from '$lib/components/Keyboard.svelte';
   import GameButtons from '$lib/components/GameButtons.svelte';
   import FlipDigit from '$lib/components/FlipDigit.svelte';
@@ -836,6 +837,21 @@
     }
     // Today's Twist is auto-given on the board — no pre-game popup. Just play.
     await startDaily();
+  }
+
+  // ⚡ Power-up hotbar feed. Daily: today's Twist (mode allows only the Twist).
+  // Cash Game / Challenges will feed mode-eligible inventory power-ups here later.
+  $: trayPowerups = ($gameStore.gameMode === 'daily' && dailyMod && !$gameStore.twistUsed && gameActive)
+    ? [{ id: 'twist', emoji: dailyMod.emoji, name: dailyMod.name, blurb: dailyMod.blurb, count: 1 }]
+    : [];
+  $: trayHint = ($gameStore.gameMode === 'daily' && dailyMod && !$gameStore.twistUsed)
+    ? `${dailyMod.emoji} ${dailyMod.name} · tap to use, or keep it for <b>×1.5</b>`
+    : '';
+  /** @param {CustomEvent<any>} e */
+  function onUsePowerup(e) {
+    const item = e.detail;
+    if (item?.id === 'twist') { useTwist(); return; }
+    // (cross-mode inventory power-ups will route here per game mode)
   }
 
   // Use today's Daily Twist power-up (tap the tray slot).
@@ -1913,14 +1929,9 @@
       <GameButtons />
     </section>
 
-    <!-- ⚡ Power-up tray (Daily: today's Twist — tap to use, or keep it for ×1.5) -->
-    {#if $gameStore.gameMode === 'daily' && dailyMod && !$gameStore.twistUsed && gameActive}
-      <section class="pu-tray">
-        <button class="pu-slot" disabled={dailyTwistBusy} on:click={useTwist} title={dailyMod.name + ' — ' + dailyMod.blurb}>
-          <span class="pu-emoji">{dailyMod.emoji}</span>
-        </button>
-        <span class="pu-hint">{dailyMod.name} · tap to use, or keep it for <b>×1.5</b></span>
-      </section>
+    <!-- ⚡ Power-up hotbar: 2 slots each side of Solve, page through mode-eligible inventory -->
+    {#if gameActive}
+      <PowerupHotbar items={trayPowerups} busy={dailyTwistBusy} hint={trayHint} on:use={onUsePowerup} />
     {/if}
 
     <!-- ⌨️ Keyboard Section (keyboard disables itself via gameStore state) -->
@@ -2308,15 +2319,6 @@
     padding: 0;
   }
   /* ⚡ Power-up tray (above the keyboard) */
-  .pu-tray { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 8px auto 6px; max-width: 360px; }
-  .pu-slot { position: relative; width: 50px; height: 50px; border-radius: 12px; display: grid; place-items: center; cursor: pointer;
-    border: 1px solid rgba(253, 224, 71, 0.55); background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(251, 191, 36, 0.05));
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2); animation: puPulse 1.8s ease-in-out infinite; }
-  .pu-slot:disabled { opacity: 0.5; cursor: default; animation: none; }
-  @keyframes puPulse { 0%,100% { box-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 0 0 rgba(251,191,36,0.5); } 50% { box-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 0 5px rgba(251,191,36,0); } }
-  .pu-emoji { font-size: 1.5rem; line-height: 1; }
-  .pu-hint { font-size: 0.72rem; color: var(--text-muted); max-width: 200px; }
-  .pu-hint b { color: #6ee7b7; }
 
   .diagnostic-banner {
     background: #ffebee;
