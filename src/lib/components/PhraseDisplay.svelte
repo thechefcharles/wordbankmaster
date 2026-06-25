@@ -288,7 +288,7 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    border: 1px solid rgba(74, 222, 128, 0.32);
+    border: 1.5px solid rgba(74, 222, 128, 0.4);
     background: var(--surface);
     font-family: var(--font-display);
     font-size: 22px;
@@ -297,11 +297,19 @@
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.05),
       0 2px 8px rgba(0, 0, 0, 0.3),
-      0 0 9px rgba(74, 222, 128, 0.16);
+      0 0 10px rgba(74, 222, 128, 0.22);
+    animation: tileShimmer 2.2s ease-in-out infinite;
     color: var(--text);
     backdrop-filter: blur(8px);
     box-sizing: border-box;
     transition: transform 0.2s var(--ease-spring), border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  }
+  /* subtle synchronized green shimmer on the empty/filled tiles (all together, gentle) */
+  @keyframes tileShimmer {
+    0%, 100% { border-color: rgba(74, 222, 128, 0.34);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.3), 0 0 8px rgba(74,222,128,0.16); }
+    50% { border-color: rgba(110, 231, 183, 0.55);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 8px rgba(0,0,0,0.3), 0 0 13px rgba(74,222,128,0.32); }
   }
   .letter-box.locked {
     color: #3a2a00;

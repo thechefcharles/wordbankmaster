@@ -375,6 +375,19 @@
     introCountPop = true;
     setTimeout(() => { introCountPop = false; }, 1200);
   }
+
+  // ℹ️ Daily explainers: tap the ×N badge or the Solve-to-Earn number for a breakdown.
+  /** @type {'mult'|'bounty'|null} */
+  let dailyInfo = null;
+  $: dlReward = $gameStore.dailyLive?.reward ?? 0;        // base × multiplier (the full bounty)
+  $: dlSpent = $gameStore.dailyLive?.spent ?? 0;
+  $: dlMult = Number($gameStore.bountyMult ?? 1);
+  $: dlBase = dlMult > 0 ? Math.round(dlReward / dlMult) : dlReward;
+  $: dlNet = dlReward - dlSpent;
+  $: dlWinStreak = dailyStatus?.win_streak ?? 0;
+  $: dlStreakBonus = Math.min(0.1 * dlWinStreak, 0.5);
+  $: dlBoost = Math.max(0, Math.round((dlMult - 1 - dlStreakBonus) * 10) / 10);
+  const fmtMult = (/** @type {number} */ n) => '×' + n.toFixed(1);
   let _prevBank = /** @type {number|null} */ (null);
   let _floatId = 0;
   /** @type {{id:number,text:string}[]} */
@@ -1370,6 +1383,38 @@
   </div>
 {/if}
 
+<!-- ℹ️ Daily explainers: multiplier breakdown / Solve-to-Earn calculation -->
+{#if dailyInfo}
+  <div class="modal-overlay info-overlay" role="button" tabindex="0" aria-label="Close"
+    on:click={() => dailyInfo = null} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') dailyInfo = null; }}>
+    <div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
+      {#if dailyInfo === 'mult'}
+        <div class="info-big">{fmtMult(dlMult)}</div>
+        <h3 class="info-title">Bounty Multiplier</h3>
+        <p class="info-sub">Everything you can earn from this puzzle is multiplied by this.</p>
+        <div class="info-rows">
+          <div class="info-row"><span>Base</span><b>×1.0</b></div>
+          {#if dlStreakBonus > 0}<div class="info-row"><span>🏆 Win streak ({dlWinStreak} in a row)</span><b class="pos">+{dlStreakBonus.toFixed(1)}</b></div>{/if}
+          {#if dlBoost > 0}<div class="info-row"><span>💥 Boosts applied</span><b class="pos">+{dlBoost.toFixed(1)}</b></div>{/if}
+          <div class="info-row total"><span>Your multiplier</span><b>{fmtMult(dlMult)}</b></div>
+        </div>
+        <p class="info-note">Solve on consecutive days for <b>+0.1×</b> each (up to +0.5×). Buy <b>Bounty Boosts</b> in the Store to add more. Caps at ×3.0.</p>
+      {:else}
+        <div class="info-big green">${Math.max(0, dlNet).toLocaleString()}</div>
+        <h3 class="info-title">Solve to Earn</h3>
+        <p class="info-sub">What you pocket if you solve right now.</p>
+        <div class="info-rows">
+          <div class="info-row"><span>Bounty (base ${dlBase.toLocaleString()} × {fmtMult(dlMult)})</span><b class="pos">${dlReward.toLocaleString()}</b></div>
+          <div class="info-row"><span>− Spent on letters</span><b class="neg">−${dlSpent.toLocaleString()}</b></div>
+          <div class="info-row total"><span>You keep</span><b class="green">${dlNet.toLocaleString()}</b></div>
+        </div>
+        <p class="info-note">The base bounty comes from the letters' value. Spend less on letters to keep more — and grow the <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'mult'}>multiplier</button>.</p>
+      {/if}
+      <button class="info-close" on:click={() => dailyInfo = null}>Got it</button>
+    </div>
+  </div>
+{/if}
+
 <main>
   <!-- 👤 First-run: pick a username (required to play socially) -->
   {#if loggedIn && hasInitialized && needsUsername}
@@ -1786,9 +1831,9 @@
           <div class="tb-sub">tap to cash out at 40:1</div>
         </button>
       {:else if !matchBlitz}
-        <div class="top-bank solo">
+        <button class="top-bank solo" title="Your Cash" on:click={() => goto('/bank')}>
           <span class="tb-solo">💰 ${Math.round($tweenBank).toLocaleString()}</span>
-        </div>
+        </button>
       {/if}
     {/if}
 
@@ -1945,10 +1990,14 @@
         <!-- Daily · Makeup · Cash Game: the number you keep if you solve now (bankroll is up top) -->
         <div class="bounty-panel" class:loss={soloHero.net < 0} class:count-pop={introCountPop}>
           {#if $gameStore.gameMode === 'daily'}
-            <span class="bp-mult-badge" aria-label="Bounty multiplier">×{Number($gameStore.bountyMult ?? 1).toFixed(1)}</span>
+            <button class="bp-mult-badge" title="How your multiplier works" on:click={() => { fx('tap'); dailyInfo = 'mult'; }}>×{Number($gameStore.bountyMult ?? 1).toFixed(1)}</button>
           {/if}
           <span class="bp-label">{soloHero.net >= 0 ? 'Solve to Earn' : '⚠️ You’re losing money'}</span>
-          <span class="bp-amount">{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</span>
+          {#if $gameStore.gameMode === 'daily'}
+            <button class="bp-amount bp-amount-btn" title="How this is calculated" on:click={() => { fx('tap'); dailyInfo = 'bounty'; }}>{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</button>
+          {:else}
+            <span class="bp-amount">{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</span>
+          {/if}
           {#each spendFloaters as f (f.id)}<span class="spend-float">{f.text}</span>{/each}
         </div>
       {:else if isFreeplay}
@@ -3242,14 +3291,36 @@
   .bounty-panel.loss .bp-label { color: #fb7185; }
   .bp-amount { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 2.3rem; line-height: 1.05; color: #4ade80;
     text-shadow: 0 0 18px rgba(52,211,153,0.5); font-variant-numeric: tabular-nums; transition: color 0.2s; }
+  .bp-amount-btn { background: none; border: none; padding: 0; cursor: pointer; }
   .bounty-panel.loss .bp-amount { color: #fb7185; text-shadow: none; }
   /* lit gold bounty multiplier badge (left of the bounty) — ×1.0 today, boostable later */
   .bp-mult-badge { position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
     font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.05rem; line-height: 1;
     padding: 5px 9px; border-radius: 9px; color: #3a2a00;
     background: linear-gradient(135deg, #fff1a8, #f6cd4d 45%, #e0a312);
-    border: 1px solid rgba(180,130,15,0.95);
+    border: 1px solid rgba(180,130,15,0.95); cursor: pointer;
     box-shadow: 0 0 14px rgba(251,191,36,0.65), inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -2px 3px rgba(120,80,0,0.35); }
+  .bp-mult-badge:active { transform: translateY(-50%) scale(0.94); }
+  /* ℹ️ Daily explainer modal (multiplier / Solve-to-Earn breakdown) */
+  .info-overlay { border: none; cursor: pointer; }
+  .info-card { width: 100%; max-width: 330px; cursor: default; text-align: center;
+    background: var(--surface-strong, #141c28); border: 1px solid var(--border-strong, rgba(255,255,255,0.14));
+    border-radius: 18px; padding: 22px 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+  .info-big { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 2.6rem; line-height: 1; color: #fde047;
+    text-shadow: 0 0 22px rgba(251,191,36,0.5); }
+  .info-big.green { color: #4ade80; text-shadow: 0 0 22px rgba(74,222,128,0.45); }
+  .info-title { font-family: var(--font-display); font-size: 1.15rem; margin: 8px 0 2px; }
+  .info-sub { font-size: 0.84rem; color: var(--text-muted); margin: 0 0 14px; }
+  .info-rows { display: flex; flex-direction: column; gap: 7px; text-align: left; margin-bottom: 14px; }
+  .info-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 0.88rem; color: var(--text); }
+  .info-row b { font-family: 'Orbitron', var(--font-display); font-variant-numeric: tabular-nums; }
+  .info-row .pos { color: #4ade80; } .info-row .neg { color: #fb7185; } .info-row .green { color: #4ade80; }
+  .info-row.total { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 2px; font-weight: 700; }
+  .info-note { font-size: 0.76rem; color: var(--text-faint); line-height: 1.45; margin: 0 0 16px; }
+  .info-note b { color: var(--brand-2); }
+  .info-inline { background: none; border: none; padding: 0; color: var(--brand-2); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+  .info-close { width: 100%; padding: 11px; border-radius: 12px; border: none; cursor: pointer;
+    font-family: var(--font-display); font-weight: 800; color: #3a2a00; background: linear-gradient(135deg, #fde047, #f59e0b); }
   /* 🎰 Opening-reveal climax: bounty number pops + glows as it counts up */
   .bounty-panel.count-pop { animation: bountyGlow 1.1s ease-out; }
   .bounty-panel.count-pop .bp-amount { animation: bountyCount 1.1s cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -3275,8 +3346,9 @@
   /* 💰 Top bankroll bar (very top, all modes) */
   .top-bank { width: 100%; max-width: 340px; margin: 0 auto 12px; padding: 9px 16px; border-radius: 14px;
     border: 1px solid rgba(253, 224, 71, 0.4); background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(251, 191, 36, 0.03)); }
-  /* solo bankroll = a centered gold chip below WordBank (matches the menu) */
-  .top-bank.solo { width: fit-content; max-width: none; margin: 0 auto 12px; padding: 7px 18px; text-align: center; }
+  /* solo bankroll = a centered gold chip below WordBank (matches the menu) — tap → /bank */
+  .top-bank.solo { width: fit-content; max-width: none; margin: 0 auto 12px; padding: 7px 18px; text-align: center; cursor: pointer; }
+  .top-bank.solo:active { transform: scale(0.97); }
   .tb-solo { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.55rem; color: #fcd34d; font-variant-numeric: tabular-nums; }
   .top-bank.tap { cursor: pointer; display: block; text-align: left;
     border-color: rgba(167, 139, 250, 0.55); border-style: dashed;
