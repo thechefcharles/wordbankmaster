@@ -68,6 +68,7 @@
 
 <div class="obj-overlay" role="dialog" aria-modal="true" aria-label="How to win">
   <div class="obj-card">
+    <button class="obj-x" on:click={go} aria-label="Close">✕</button>
     {#if page === 0}
       <span class="obj-pill">🎯 How to win</span>
       <div class="obj-icon">{c.icon}</div>
@@ -109,6 +110,12 @@
   }
   @keyframes objFade { from { opacity: 0; } to { opacity: 1; } }
 
+  .obj-x { position: absolute; top: 10px; right: 10px; z-index: 2; width: 30px; height: 30px; border-radius: 50%;
+    display: grid; place-items: center; cursor: pointer; font-size: 0.8rem; font-weight: 900;
+    color: #fff; background: linear-gradient(135deg, #fb5a5a, #c81e1e); border: 1px solid rgba(0,0,0,0.25);
+    box-shadow: 0 2px 6px rgba(200,30,30,0.4); }
+  .obj-x:hover { filter: brightness(1.08); }
+  .obj-x:active { transform: scale(0.92); }
   .obj-card {
     position: relative; width: 100%; max-width: 380px;
     padding: 26px 24px 22px; border-radius: var(--r-lg, 20px);
