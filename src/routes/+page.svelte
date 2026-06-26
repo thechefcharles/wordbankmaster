@@ -1778,13 +1778,13 @@
       <button class="modal-x" on:click={() => showAnteInfo = false} aria-label="Close">✕</button>
       <div class="info-big green">${Math.max(0, matchLeft).toLocaleString()}</div>
       <h3 class="info-title">Left to Spend</h3>
-      <p class="info-sub">The Cash you staked to play — real money, but capped at your buy-in. Buying letters spends it; your wallet up top is the rest of your Cash and it's safe.</p>
+      <p class="info-sub">Your buy-in — real Cash, all of it at stake. Buying letters spends it; your wallet up top is the rest of your Cash and it's safe.</p>
       <div class="info-rows">
-        <div class="info-row"><span>Most Cash left at the end</span><b class="pos">wins the pot</b></div>
-        <div class="info-row"><span>Out of ante?</span><b>Keep guessing free</b></div>
+        <div class="info-row"><span>Most Cash left at the end</span><b class="pos">takes the whole pot</b></div>
+        <div class="info-row"><span>Lose</span><b class="neg">forfeit your buy-in</b></div>
         <div class="info-row"><span>Skip a puzzle</span><b class="neg">pays full price</b></div>
       </div>
-      <p class="info-note">Lowest spender takes the pot; a tie splits it evenly. You can never lose more than your buy-in.</p>
+      <p class="info-note">Winner-take-all — most Cash left wins everyone's buy-in. A tie splits the pot evenly. Out of ante? Keep guessing free.</p>
       <button class="info-close" on:click={() => showAnteInfo = false}>Got it</button>
     </div>
   </div>
@@ -2123,7 +2123,7 @@
                 <span class="ch-tog-box">{mbItemsAllowed ? '✓' : ''}</span>
                 ⚡ Allow power-ups — players can bring & use items they own
               </button>
-              <p class="ch-objective">Your buy-in (min $500) is your spending cap. Buy as few letters as you can — <strong>unspent cash comes back, the pot is everyone’s spend, and the most efficient solver takes it.</strong> You only ever lose what you spend. Guesses are free.</p>
+              <p class="ch-objective">Your buy-in (min $500) is your ante — and it's all at stake. Buy as few letters as you can: <strong>most Cash left at the end takes the whole pot, winner-take-all.</strong> Lose and you forfeit your buy-in; a tie splits the pot. Guesses are free.</p>
               <button class="ch-create" disabled={mbBusy} on:click={submitNewMatch} style="width:100%;">Send challenge ⚔️</button>
               {#if mbMsg}<p class="add-msg">{mbMsg}</p>{/if}
             </div>
@@ -2145,7 +2145,7 @@
             <div class="sm-row"><span>This challenge</span><b>${Number(shortMatch.wager).toLocaleString()} buy-in</b></div>
             <div class="sm-row"><span>You have</span><b>${Math.round(netWorth ?? 0).toLocaleString()}</b></div>
           </div>
-          <p class="sm-note">You only ever lose what you spend — play with a smaller budget, or decline.</p>
+          <p class="sm-note">Your whole buy-in is at stake — winner takes the pot. Play with a smaller buy-in, or decline.</p>
           <button class="sm-play" disabled={mbBusy} on:click={() => playReduced(shortMatch)}>Play with ${Math.round(netWorth ?? 0).toLocaleString()}</button>
           <button class="sm-decline" disabled={mbBusy} on:click={() => declineChallenge(shortMatch)}>Decline challenge</button>
         </div>
