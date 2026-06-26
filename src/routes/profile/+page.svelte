@@ -73,7 +73,7 @@
 
     {#if tab === 'stats'}
       <button class="prof-avatar" onclick={() => goto('/avatar')}>
-        <Avatar config={avatar} size={88} />
+        <Avatar config={avatar} mode="full" size={120} />
         <span class="prof-avatar-edit">🎨 Edit Avatar</span>
       </button>
       <div class="sec-title">📊 Overall</div>

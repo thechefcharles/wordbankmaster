@@ -1953,7 +1953,7 @@
             <span class="bc-coin">💰</span>{netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}
           </button>
           <button class="account-ic" class:has-av={myAvatar} on:click={() => goto($unreadCount > 0 ? '/profile?tab=alerts' : '/profile')} title="Profile">
-            {#if myAvatar}<Avatar config={myAvatar} size={36} />{:else}👤{/if}{#if $unreadCount > 0}<span class="account-count" title="{$unreadCount} new">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}
+            {#if myAvatar}<Avatar config={myAvatar} mode="head" size={50} />{:else}👤{/if}{#if $unreadCount > 0}<span class="account-count" title="{$unreadCount} new">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}
           </button>
         </div>
         <video class="menu-mark" src="/coin.mp4" poster="/coin-poster.jpg" autoplay loop muted playsinline disablepictureinpicture></video>

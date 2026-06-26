@@ -101,7 +101,7 @@ export function avataaarsOptions(config) {
   };
 }
 
-/** Render an avatar config to an SVG string. @param {any} config */
-export function renderAvatarSvg(config) {
-  return createAvatar(avataaars, avataaarsOptions(config)).toString();
+/** Render an avatar config to an SVG string. @param {any} config @param {any} [extra] extra DiceBear opts */
+export function renderAvatarSvg(config, extra = {}) {
+  return createAvatar(avataaars, { ...avataaarsOptions(config), ...extra }).toString();
 }

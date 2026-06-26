@@ -80,7 +80,7 @@
   {#if loading}
     <p class="loading">Loading…</p>
   {:else}
-    <div class="av-hero"><Avatar {config} size={160} /></div>
+    <div class="av-hero"><Avatar {config} mode="full" size={150} /></div>
 
     <div class="cat-row">
       {#each CATEGORIES as c}

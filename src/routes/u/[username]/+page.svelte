@@ -51,7 +51,7 @@
   {:else}
     <header class="u-head">
       {#if p.avatar}
-        <Avatar config={p.avatar} size={96} />
+        <Avatar config={p.avatar} mode="full" size={120} />
       {:else}
         <div class="u-coin" style={p.color ? `--c:${p.color}` : ''}>{(p.name || p.username || '?').slice(0, 1).toUpperCase()}</div>
       {/if}
