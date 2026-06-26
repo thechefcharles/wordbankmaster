@@ -1,0 +1,18 @@
+-- 🎯 Puzzle pool split — Phase 1 (migrations `puzzle_pool_split_phase1` + `_challenges`)
+--
+-- daily_puzzles.pool: 'daily' (exclusive, ~792) vs 'casual' (~408). Tagged ~34% of
+-- EACH category as casual so every category keeps both pools (Free Play/Challenges
+-- never run dry in a category). Scheduled + in-progress dailies kept as 'daily'.
+-- New rows default to pool='daily'; add casual content with pool='casual'.
+--
+-- Pickers now filter by pool so the Daily library is EXCLUSIVE (never served in
+-- another mode, and vice versa):
+--   _todays_puzzle_id        → pool='daily'
+--   _climb_puzzle_at         → pool='casual'   (Cash Game cycles the 408 casual)
+--   _arcade_ladder_size/_at  → pool='casual'   (legacy arcade)
+--   freeplay_start/_next     → pool='casual'
+--   create_challenge/_match  → pool='casual'
+-- makeup_start unchanged (replays a scheduled past daily → daily pool).
+--
+-- Phase 2 (next): user_seen_puzzles + unseen-first pickers for per-user no-repeat in
+-- the casual modes; intersection picker for challenges.
