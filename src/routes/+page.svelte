@@ -365,6 +365,9 @@
     const tok = get(gameStore).dailyIntro;
     if (!browser || !tok || tok === _introFired) return;
     if (objective || showMainMenu) return;
+    // Only on a FRESH board — if you've already revealed letters (resume / re-entry),
+    // the boxes are already there, so skip the opening reveal.
+    if ((get(gameStore).purchasedLetters || []).some(Boolean)) { _introFired = tok; return; }
     _introFired = tok;
     introBuilding = true;
     tweenNet.set(0, { duration: 0 });
@@ -424,13 +427,30 @@
     _prevBank = b;
   }
 
+  // 💥 Dramatic bank pop on a big swing (win payout / big change).
+  let bankFlash = '';
+  let _bankFxPrev = /** @type {number|null} */ (null);
+  /** @type {ReturnType<typeof setTimeout>|undefined} */
+  let _bankFxTimer;
+  $: bankFx($gameStore.bankroll, showMainMenu);
+  /** @param {number|null|undefined} b @param {boolean} onMenu */
+  function bankFx(b, onMenu) {
+    if (!browser || b == null) { _bankFxPrev = b ?? _bankFxPrev; return; }
+    if (!onMenu && _bankFxPrev != null && Math.abs(b - _bankFxPrev) >= 150) {
+      bankFlash = b > _bankFxPrev ? 'up' : 'down';
+      clearTimeout(_bankFxTimer);
+      _bankFxTimer = setTimeout(() => { bankFlash = ''; }, 1100);
+    }
+    _bankFxPrev = b;
+  }
+
   // 🎰 Clean-solve payoff: solved with NO wrong letters → fly in a "CLEAN!" burst.
   let showMultiplier = false;
   let _multiFired = false;
-  $: handleCleanSolve($gameStore.gameState, $gameStore.gameMode, ($gameStore.incorrectLetters?.length ?? 0));
-  /** @param {string} state @param {string} mode @param {number} wrong */
-  function handleCleanSolve(state, mode, wrong) {
-    if (!browser) return;
+  $: handleCleanSolve($gameStore.gameState, $gameStore.gameMode, ($gameStore.incorrectLetters?.length ?? 0), showMainMenu);
+  /** @param {string} state @param {string} mode @param {number} wrong @param {boolean} onMenu */
+  function handleCleanSolve(state, mode, wrong, onMenu) {
+    if (!browser || onMenu) return; // never replay the CLEAN stamp on the menu (e.g. back from leaderboard)
     if (state === 'won' && mode === 'daily' && wrong === 0 && !_multiFired) {
       _multiFired = true;
       const n = ($gameStore.currentPhrase || '').replace(/ /g, '').length;
@@ -921,6 +941,9 @@
       hasInitialized = true;
       showMainMenu = false;
       loadDailyBoosts(); // surface any owned Bounty Boosts in the hotbar
+      // refresh streaks so the 📅 attendance chip includes today's check-in
+      const uid = get(user)?.id;
+      if (uid) getDailyStatus(uid).then((s) => { dailyStatus = s; }).catch(() => {});
       // If the "How to win" card is suppressed (already seen), the board is now
       // visible — play the opening reveal once reactives settle. If the card DOES
       // show, this no-ops (objective set) and the reveal fires on its dismiss.
@@ -1296,6 +1319,10 @@
 <!-- ☰ Main menu (top-left) -->
 {#if loggedIn && hasInitialized && !showMainMenu}
   <button class="menu-back-btn" title="Main menu" aria-label="Main menu" on:click={goToMainMenu}><span class="hamburger"></span></button>
+{/if}
+<!-- 📅 Attendance streak (top-left, next to the menu) — Daily only -->
+{#if loggedIn && hasInitialized && !showMainMenu && $gameStore.gameMode === 'daily' && gameActive}
+  <div class="att-streak" title="Attendance streak — days in a row">📅 {dailyStatus?.current_streak ?? 0}</div>
 {/if}
 <!-- ❓ How to play THIS game type (top-center) -->
 {#if loggedIn && hasInitialized && !showMainMenu && $gameStore.gameMode}
@@ -1879,7 +1906,7 @@
           <div class="tb-sub">tap to cash out at 40:1</div>
         </button>
       {:else if !matchBlitz}
-        <button class="top-bank solo" title="Your Cash" on:click={openBankModal}>
+        <button class="top-bank solo" class:pop-up={bankFlash === 'up'} class:pop-down={bankFlash === 'down'} title="Your Cash" on:click={openBankModal}>
           <span class="tb-solo">💰 ${Math.round($tweenBank).toLocaleString()}</span>
         </button>
       {/if}
@@ -2039,6 +2066,7 @@
         <div class="bounty-panel" class:loss={soloHero.net < 0} class:count-pop={introCountPop}>
           {#if $gameStore.gameMode === 'daily'}
             <button class="bp-mult-badge" title="How your multiplier works" on:click={() => { fx('tap'); dailyInfo = 'mult'; }}>×{Number($gameStore.bountyMult ?? 1).toFixed(1)}</button>
+            <div class="bp-winstreak" title="Win streak — solves in a row">🔥 {dailyStatus?.win_streak ?? 0}</div>
           {/if}
           <span class="bp-label">{soloHero.net >= 0 ? 'Solve to Earn' : '⚠️ You’re losing money'}</span>
           {#if $gameStore.gameMode === 'daily'}
@@ -2911,6 +2939,10 @@
   }
   .giveup-btn:hover { border-color: #f87171; background: rgba(248,113,113,0.16); }
   .giveup-btn:active { transform: scale(0.93); }
+  /* 📅 attendance streak chip (top-left, beside the menu) */
+  .att-streak { position: fixed; top: 16px; left: 60px; z-index: 1000; height: 34px; display: flex; align-items: center; gap: 2px;
+    padding: 0 11px; border-radius: 999px; font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 0.92rem; color: #fde047;
+    background: var(--surface-strong, rgba(20,28,40,0.85)); border: 1px solid rgba(253,224,71,0.45); backdrop-filter: blur(10px); }
   /* match chat — sits just below the help button so they never overlap */
   .match-chat-btn {
     position: fixed; top: 60px; right: 14px; z-index: 1000;
@@ -3349,6 +3381,12 @@
     border: 1px solid rgba(180,130,15,0.95); cursor: pointer;
     box-shadow: 0 0 14px rgba(251,191,36,0.65), inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -2px 3px rgba(120,80,0,0.35); }
   .bp-mult-badge:active { transform: translateY(-50%) scale(0.94); }
+  /* 🔥 win streak — mirror of the multiplier badge, on the right of the bounty */
+  .bp-winstreak { position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 0.95rem; line-height: 1;
+    padding: 5px 9px; border-radius: 9px; color: #fff;
+    background: linear-gradient(135deg, #fb923c, #ea580c); border: 1px solid rgba(180,60,10,0.8);
+    box-shadow: 0 0 12px rgba(234,88,12,0.45), inset 0 1px 0 rgba(255,255,255,0.3); }
   /* ℹ️ Daily explainer modal (multiplier / Solve-to-Earn breakdown) */
   .info-overlay { border: none; cursor: pointer; }
   .info-card { position: relative; width: 100%; max-width: 330px; cursor: default; text-align: center;
@@ -3413,6 +3451,25 @@
   /* solo bankroll = a centered gold chip below WordBank (matches the menu) — tap → /bank */
   .top-bank.solo { width: fit-content; max-width: none; margin: 0 auto 12px; padding: 7px 18px; text-align: center; cursor: pointer; }
   .top-bank.solo:active { transform: scale(0.97); }
+  /* 💥 dramatic pop when the bankroll swings big (win payout / loss) */
+  .top-bank.solo.pop-up { animation: bankPopUp 1.1s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .top-bank.solo.pop-down { animation: bankPopDown 1.1s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes bankPopUp {
+    0% { transform: scale(1); border-color: rgba(253,224,71,0.4); }
+    22% { transform: scale(1.4); border-color: rgba(74,222,128,0.9); box-shadow: 0 0 30px rgba(74,222,128,0.7); }
+    55% { transform: scale(0.96); }
+    100% { transform: scale(1); }
+  }
+  @keyframes bankPopDown {
+    0% { transform: scale(1); }
+    18% { transform: scale(0.8) translateX(-3px); border-color: rgba(251,113,133,0.9); box-shadow: 0 0 22px rgba(251,113,133,0.6); }
+    36% { transform: scale(0.86) translateX(3px); }
+    100% { transform: scale(1); }
+  }
+  .top-bank.solo.pop-up .tb-solo { animation: bankColorUp 1.1s ease-out; }
+  .top-bank.solo.pop-down .tb-solo { animation: bankColorDown 1.1s ease-out; }
+  @keyframes bankColorUp { 0%,100% { color: #fcd34d; } 25% { color: #4ade80; text-shadow: 0 0 24px rgba(74,222,128,0.95); } }
+  @keyframes bankColorDown { 0%,100% { color: #fcd34d; } 25% { color: #fb7185; text-shadow: 0 0 20px rgba(251,113,133,0.9); } }
   .tb-solo { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.55rem; color: #fcd34d; font-variant-numeric: tabular-nums; }
   .top-bank.tap { cursor: pointer; display: block; text-align: left;
     border-color: rgba(167, 139, 250, 0.55); border-style: dashed;
