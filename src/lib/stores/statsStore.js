@@ -434,6 +434,13 @@ export async function dailyUseBoost(id) {
   return data;
 }
 
+/** Boosts available to use in today's Daily (snapshot at start) → { id: remaining }. */
+export async function getDailyAvailBoosts() {
+  const { data, error } = await supabase.rpc('get_daily_avail_boosts');
+  if (error) { console.error('❌ get_daily_avail_boosts:', error); return {}; }
+  return data ?? {};
+}
+
 /* ===== Make-up daily (play a past missed day in the current month) =====
    No streak repair, no Bank deposit — fills the calendar + earns week/month badges.
    Each returns a daily board with an extra { makeup: { date } } marker. */

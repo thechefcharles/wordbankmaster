@@ -7,7 +7,7 @@
   import { cubicOut } from 'svelte/easing';
 
   import { gameStore, fetchDailyGame, useDailyTwist, useDailyBoost, fetchFreeplayGame, fetchFreeplayResume, freeplayContinue, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
-  import { getMyChallenges, getPowerups, getMyMatches, getMyGroups, getMatch, getMatchDetail, declineMatch } from '$lib/stores/statsStore.js';
+  import { getMyChallenges, getPowerups, getDailyAvailBoosts, getMyMatches, getMyGroups, getMatch, getMatchDetail, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
   import { getDailyStatus, getDailyGhost, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout, getDailyModifier } from '$lib/stores/statsStore.js';
@@ -29,6 +29,7 @@
 
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
   import InventoryList from '$lib/components/InventoryList.svelte';
+  import VaultReveal from '$lib/components/VaultReveal.svelte';
   import Keyboard from '$lib/components/Keyboard.svelte';
   import GameButtons from '$lib/components/GameButtons.svelte';
   import FlipDigit from '$lib/components/FlipDigit.svelte';
@@ -397,27 +398,64 @@
     wager_win: 'Won a wager', wager_stake: 'Wager staked', wager_refund: 'Wager refunded'
   }))[reason] || reason;
 
-  // 🔐 My Vault — owned inventory + use power-ups in-game + a Store link.
+  // 🔐 My Vault — owned inventory; use power-ups in-game (mode-eligible only).
   let showBag = false;
   let vaultVideo = false;
-  function openBag() { fx('tap'); showBag = true; }
-  // From the main menu: require the device PIN (if set), then play the safe-opening
-  // animation, then reveal the contents.
+  /** @type {any[]} */ let vaultOwned = [];
+  /** @type {Record<string,number>} */ let dailyAvailBoosts = {};
+  let vaultMsg = '';
+  /** @type {ReturnType<typeof setTimeout>|undefined} */ let _vaultMsgTimer;
+  async function loadVault() {
+    try { vaultOwned = ((await getPowerups()).items ?? []).filter((/** @type {any} */ i) => (i.owned ?? 0) > 0); } catch { vaultOwned = []; }
+    if (!showMainMenu && $gameStore.gameMode === 'daily') {
+      try { dailyAvailBoosts = await getDailyAvailBoosts(); } catch { dailyAvailBoosts = {}; }
+    }
+  }
+  function openBag() { fx('tap'); showBag = true; loadVault(); }
+  // From the main menu: require the device PIN (if set), play the safe-open reveal, then open.
   async function openVaultFromMenu() {
     fx('tap');
     try { await requirePin('Open your Vault'); } catch { return; }
+    loadVault();
     vaultVideo = true;
   }
   function onVaultVideoEnd() { if (vaultVideo) { vaultVideo = false; showBag = true; } }
+
+  // In-game vault contents: every item, with the mode-eligible ones usable and the
+  // rest grayed out (with a reason on tap).
+  $: vaultItems = (!showBag || showMainMenu) ? [] : (() => {
+    const out = [];
+    if ($gameStore.gameMode === 'daily' && dailyMod && !$gameStore.twistUsed && gameActive) {
+      out.push({ id: 'twist', emoji: dailyMod.emoji, name: dailyMod.name, blurb: dailyMod.blurb, count: 1, usable: true, reason: '' });
+    }
+    for (const it of vaultOwned) {
+      if (it.kind === 'daily') {
+        const avail = ($gameStore.gameMode === 'daily') && (dailyAvailBoosts[it.id] ?? 0) > 0 && gameActive;
+        out.push({ id: it.id, emoji: BOOST_META[it.id]?.emoji ?? '💥', name: it.name, blurb: BOOST_META[it.id]?.blurb ?? '', count: it.owned,
+          usable: avail, reason: avail ? '' : 'Bought after you started — usable on your next puzzle.' });
+      } else {
+        out.push({ id: it.id, emoji: PUP_ICON[it.id] ?? '✨', name: it.name, blurb: '', count: it.owned, usable: false,
+          reason: it.kind === 'sabotage' ? 'For challenges — sabotage an opponent there, not the Daily.' : 'For the Cash Game or challenges — not the Daily.' });
+      }
+    }
+    return out;
+  })();
+  /** @param {any} item */
+  function tapVaultItem(item) {
+    if (item.usable) { useFromBag(item); return; }
+    vaultMsg = item.reason || "This item can't be used for this puzzle.";
+    clearTimeout(_vaultMsgTimer);
+    _vaultMsgTimer = setTimeout(() => { vaultMsg = ''; }, 2600);
+  }
   /** @param {any} item */
   function useFromBag(item) {
     if (item?.id === 'twist') useTwist();
-    else if (item?.id === 'bounty_boost' || item?.id === 'jackpot_boost') useBoost(item.id);
+    else if (item?.id === 'bounty_boost' || item?.id === 'jackpot_boost') { useBoost(item.id); loadVault(); }
     showBag = false;
   }
 
-  // ℹ️ Daily explainers: tap the ×N badge or the Solve-to-Earn number for a breakdown.
-  /** @type {'mult'|'bounty'|null} */
+  // ℹ️ Daily explainers: tap the ×N badge, the Solve-to-Earn number, or the 🏆 streak.
+  /** @type {'mult'|'bounty'|'streak'|null} */
   let dailyInfo = null;
   $: dlReward = $gameStore.dailyLive?.reward ?? 0;        // base × multiplier (the full bounty)
   $: dlSpent = $gameStore.dailyLive?.spent ?? 0;
@@ -1472,13 +1510,9 @@
   </div>
 {/if}
 
-<!-- 🔐 Vault-opening animation (from the main menu, after the PIN) -->
+<!-- 🔐 Vault door-open animation (from the main menu, after the PIN) → then items -->
 {#if vaultVideo}
-  <div class="vault-video" role="button" tabindex="0" on:click={onVaultVideoEnd}
-    on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') onVaultVideoEnd(); }}>
-    <video src="/vault-open.mp4" autoplay muted playsinline on:ended={onVaultVideoEnd} on:error={onVaultVideoEnd}></video>
-    <span class="vault-skip">tap to skip</span>
-  </div>
+  <VaultReveal on:done={onVaultVideoEnd} />
 {/if}
 
 <!-- 🔐 My Vault: use power-ups in-game + view inventory + Store link -->
@@ -1488,23 +1522,28 @@
     <div class="info-card bag-modal" on:click|stopPropagation role="dialog" aria-modal="true">
       <button class="modal-x" on:click={() => showBag = false} aria-label="Close">✕</button>
       <h3 class="info-title"><img src="/vault.png" alt="" class="vault-ic-xs" /> My Vault</h3>
-      {#if !showMainMenu && trayPowerups.length}
-        <div class="bag-use-h">Tap to use now</div>
-        <div class="bag-use-grid">
-          {#each trayPowerups as it}
-            <button class="bag-use" disabled={dailyTwistBusy || dailyBoostBusy} on:click={() => useFromBag(it)} title={it.blurb}>
-              <span class="bag-use-e">{it.emoji}</span>
-              {#if (it.count ?? 1) > 1}<span class="bag-use-n">×{it.count}</span>{/if}
-              <span class="bag-use-name">{it.name}</span>
-              <span class="bag-use-d">{it.blurb}</span>
-            </button>
-          {/each}
-        </div>
+      {#if showMainMenu}
+        <div class="bag-inv"><InventoryList /></div>
+        <button class="bag-store" on:click={() => goto('/shop')}>🛍️ Go to the Store →</button>
+      {:else}
+        <div class="bag-use-h">Your items</div>
+        {#if vaultItems.length}
+          <div class="bag-use-grid">
+            {#each vaultItems as it}
+              <button class="bag-use" class:locked={!it.usable} disabled={(dailyTwistBusy || dailyBoostBusy) && it.usable} on:click={() => tapVaultItem(it)} title={it.usable ? it.blurb : it.reason}>
+                <span class="bag-use-e">{it.emoji}</span>
+                {#if (it.count ?? 1) > 1}<span class="bag-use-n">×{it.count}</span>{/if}
+                <span class="bag-use-name">{it.name}</span>
+                <span class="bag-use-d">{it.usable ? it.blurb : '🔒 tap for why'}</span>
+              </button>
+            {/each}
+          </div>
+        {:else}
+          <p class="bag-note">Nothing usable here right now.</p>
+        {/if}
+        <p class="bag-note">🔒 No shopping mid‑puzzle — items you buy now can't be used until your next puzzle.</p>
       {/if}
-      <div class="bag-inv">
-        <InventoryList />
-      </div>
-      <button class="bag-store" on:click={() => goto('/shop')}>🛍️ Go to the Store →</button>
+      {#if vaultMsg}<div class="bag-msg">{vaultMsg}</div>{/if}
     </div>
   </div>
 {/if}
@@ -1526,6 +1565,15 @@
           <div class="info-row total"><span>Your multiplier</span><b>{fmtMult(dlMult)}</b></div>
         </div>
         <p class="info-note">Solve on consecutive days for <b>+0.1×</b> each (up to +0.5×). Buy <b>Bounty Boosts</b> in the Store to add more. Caps at ×3.0.</p>
+      {:else if dailyInfo === 'streak'}
+        <div class="info-big">🏆 {dlWinStreak}</div>
+        <h3 class="info-title">Win Streak</h3>
+        <p class="info-sub">Daily puzzles you've solved in a row.</p>
+        <div class="info-rows">
+          <div class="info-row"><span>Solve today's Daily</span><b class="pos">+1</b></div>
+          <div class="info-row"><span>Lose or give up</span><b class="neg">back to 0</b></div>
+        </div>
+        <p class="info-note">It also <b>boosts your bounty</b> — <b>+0.1×</b> per win (up to +0.5×; a 5-day streak = ×1.5). See the full <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'mult'}>multiplier</button> breakdown.</p>
       {:else}
         <div class="info-big green">${Math.max(0, dlNet).toLocaleString()}</div>
         <h3 class="info-title">Solve to Earn</h3>
@@ -2120,7 +2168,7 @@
         <div class="bounty-panel" class:loss={soloHero.net < 0} class:count-pop={introCountPop}>
           {#if $gameStore.gameMode === 'daily'}
             <button class="bp-mult-badge" title="How your multiplier works" on:click={() => { fx('tap'); dailyInfo = 'mult'; }}>×{Number($gameStore.bountyMult ?? 1).toFixed(1)}</button>
-            <button class="bp-winstreak" title="Win streak — boosts your multiplier" on:click={() => { fx('tap'); dailyInfo = 'mult'; }}>🏆 {dailyStatus?.win_streak ?? 0}</button>
+            <button class="bp-winstreak" title="Win streak" on:click={() => { fx('tap'); dailyInfo = 'streak'; }}>🏆 {dailyStatus?.win_streak ?? 0}</button>
           {/if}
           <span class="bp-label">{soloHero.net >= 0 ? 'Solve to Earn' : '⚠️ You’re losing money'}</span>
           {#if $gameStore.gameMode === 'daily'}
@@ -3473,6 +3521,11 @@
     background: linear-gradient(135deg, rgba(251,191,36,0.2), rgba(251,191,36,0.05)); border: 1px solid rgba(253,224,71,0.55); }
   .bag-use:active { transform: scale(0.96); }
   .bag-use:disabled { opacity: 0.5; cursor: default; }
+  .bag-use.locked { background: var(--surface); border: 1px solid var(--border); filter: grayscale(0.7); }
+  .bag-use.locked .bag-use-e { opacity: 0.55; }
+  .bag-use.locked .bag-use-d { color: var(--text-faint); }
+  .bag-msg { margin-top: 12px; padding: 10px 12px; border-radius: 11px; text-align: center; font-size: 0.82rem; line-height: 1.35;
+    color: var(--text); background: rgba(251,191,36,0.14); border: 1px solid rgba(253,224,71,0.45); }
   .bag-use-e { font-size: 1.7rem; line-height: 1; }
   .bag-use-n { position: absolute; top: 7px; right: 9px; font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 0.78rem; color: #fde047; }
   .bag-use-name { font-family: var(--font-display); font-weight: 700; font-size: 0.86rem; }
@@ -3480,12 +3533,6 @@
   .bag-inv { margin-bottom: 14px; }
   .bag-store { width: 100%; padding: 11px; border-radius: 12px; border: none; cursor: pointer;
     font-family: var(--font-display); font-weight: 800; color: #3a2a00; background: linear-gradient(135deg, #fde047, #f59e0b); }
-  /* 🔐 vault-opening animation overlay */
-  .vault-video { position: fixed; inset: 0; z-index: 6500; display: grid; place-items: center;
-    background: rgba(0,0,0,0.94); cursor: pointer; }
-  .vault-video video { width: 100%; max-width: 460px; height: auto; border-radius: 16px; box-shadow: 0 0 60px rgba(251,191,36,0.25); }
-  .vault-skip { position: absolute; bottom: 9%; left: 50%; transform: translateX(-50%); color: var(--text-faint, #8893a3);
-    font-size: 0.8rem; letter-spacing: 0.05em; text-transform: uppercase; pointer-events: none; }
   /* in-game bank modal */
   .bm-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); margin: 0 0 2px; }
   .bm-hist-h { font-family: var(--font-display); font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
