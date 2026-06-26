@@ -265,9 +265,12 @@
     if (turnMatches.length) {
       const m = turnMatches[0];
       const invited = m.my_state === 'invited';
+      // Title with who you're playing — group name, else the opponent (never your own name).
+      const who = m.group_name || m.opponent || (m.is_host ? 'Your challenge' : m.host);
       return { kind: 'match', icon: '⚔️',
-        title: m.host,
-        sub: invited ? 'Challenged you' : 'Your turn',
+        title: who,
+        // Challenges are simultaneous (lowest spend wins), not turn-based — don't say "your turn".
+        sub: invited ? 'Challenged you' : (m.group_name ? 'Group challenge — in progress' : 'In progress'),
         cta: (invited ? 'Play' : 'Resume') + ' →',
         more: turnMatches.length - 1, // other challenges waiting
         primary: () => respondToMatch(m), moreAction: () => openChallenges() };
