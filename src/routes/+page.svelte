@@ -1771,13 +1771,13 @@
       <button class="modal-x" on:click={() => showAnteInfo = false} aria-label="Close">✕</button>
       <div class="info-big green">${Math.max(0, matchLeft).toLocaleString()}</div>
       <h3 class="info-title">Left to Spend</h3>
-      <p class="info-sub">Your ante for the whole challenge — both players get the same. Buying letters spends it.</p>
+      <p class="info-sub">The Cash you staked to play — real money, but capped at your buy-in. Buying letters spends it; your wallet up top is the rest of your Cash and it's safe.</p>
       <div class="info-rows">
         <div class="info-row"><span>Most Cash left at the end</span><b class="pos">wins the pot</b></div>
         <div class="info-row"><span>Out of ante?</span><b>Keep guessing free</b></div>
         <div class="info-row"><span>Skip a puzzle</span><b class="neg">pays full price</b></div>
       </div>
-      <p class="info-note">Lowest spender takes it. A tie splits the pot evenly. You never dip into your real Cash.</p>
+      <p class="info-note">Lowest spender takes the pot; a tie splits it evenly. You can never lose more than your buy-in.</p>
       <button class="info-close" on:click={() => showAnteInfo = false}>Got it</button>
     </div>
   </div>
@@ -2233,7 +2233,8 @@
         </button>
       {:else if !matchBlitz}
         <button class="top-bank solo" class:pop-up={bankFlash === 'up'} class:pop-down={bankFlash === 'down'} title="Your Cash" on:click={openBankModal}>
-          <span class="tb-solo">💰 ${Math.round($tweenBank).toLocaleString()}</span>
+          {#if isMatch}<span class="tb-wallet-cap">💰 Wallet</span>{/if}
+          <span class="tb-solo">{#if !isMatch}💰 {/if}${Math.round($tweenBank).toLocaleString()}</span>
         </button>
       {/if}
     {/if}
@@ -3920,6 +3921,7 @@
   @keyframes bankColorUp { 0%,100% { color: #fcd34d; } 25% { color: #4ade80; text-shadow: 0 0 24px rgba(74,222,128,0.95); } }
   @keyframes bankColorDown { 0%,100% { color: #fcd34d; } 25% { color: #fb7185; text-shadow: 0 0 20px rgba(251,113,133,0.9); } }
   .tb-solo { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.55rem; color: #fcd34d; font-variant-numeric: tabular-nums; }
+  .tb-wallet-cap { display: block; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-faint); }
   .top-bank.tap { cursor: pointer; display: block; text-align: left;
     border-color: rgba(167, 139, 250, 0.55); border-style: dashed;
     background: linear-gradient(135deg, rgba(167, 139, 250, 0.13), rgba(167, 139, 250, 0.03)); }
