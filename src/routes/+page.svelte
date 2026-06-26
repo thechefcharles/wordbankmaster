@@ -2667,9 +2667,9 @@
     position: relative;
     justify-self: end;
     display: inline-grid; place-items: center;
-    width: 42px; height: 42px; border-radius: 50%;
+    width: 54px; height: 54px; border-radius: 50%;
     background: var(--surface, rgba(255,255,255,0.05)); border: 1px solid var(--border);
-    cursor: pointer; font-size: 1.25rem; transition: transform 0.15s, border-color 0.2s;
+    cursor: pointer; font-size: 1.7rem; transition: transform 0.15s, border-color 0.2s;
   }
   .account-ic:hover { transform: translateY(-1px); border-color: rgba(251,191,36,0.5); }
   .account-ic:active { transform: scale(0.94); }
@@ -3441,9 +3441,9 @@
   .bag-fab:active { transform: scale(0.93); }
   .bag-fab-badge { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px;
     background: #ea580c; color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 0.66rem; display: grid; place-items: center; }
-  .bag-chip { padding: 4px 12px; }
-  .vault-ic { width: 32px; height: 32px; object-fit: contain; }
-  .vault-ic-sm { width: 24px; height: 24px; object-fit: contain; display: block; }
+  .bag-chip { width: 54px; height: 54px; padding: 0; border-radius: 50%; display: grid; place-items: center; }
+  .vault-ic { width: 34px; height: 34px; object-fit: contain; }
+  .vault-ic-sm { width: 46px; height: 46px; object-fit: contain; display: block; }
   .vault-ic-xs { width: 22px; height: 22px; object-fit: contain; vertical-align: -5px; }
   /* 🎒 Bag modal */
   .bag-modal { max-width: 360px; max-height: 84vh; overflow-y: auto; }
