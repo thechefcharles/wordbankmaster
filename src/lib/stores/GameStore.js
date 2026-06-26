@@ -644,6 +644,16 @@ function maybeArmClimbIntro() {
   }
 }
 
+/** Arm the dramatic opening reveal for a FRESH challenge puzzle (per-puzzle progress is
+ *  empty). The no-progress gate means a mid-puzzle RESUME never replays the reveal. */
+function maybeArmMatchIntro() {
+  const s = get(gameStore);
+  const hasProgress = (s.purchasedLetters || []).some(Boolean) || (s.incorrectLetters || []).length > 0;
+  if (!hasProgress && s.gameState === 'default') {
+    gameStore.update(st => ({ ...st, dailyIntro: (st.dailyIntro || 0) + 1 }));
+  }
+}
+
 /** Start or resume the Climb. @returns {Promise<boolean>} */
 export async function fetchClimbGame() {
   try {
@@ -766,7 +776,10 @@ function reconcileMatchBoard(board) {
   }));
   if (done) { setTimeout(() => launchConfetti(), 250); fx('win'); }
   // Celebrate EACH solved puzzle in the pack (not just finishing the whole pack).
-  else if ((match.last_score ?? 0) > 0 && (match.position ?? 1) > (prev.matchInfo?.position ?? 0)) { setTimeout(() => launchConfetti(), 250); fx('win'); }
+  else if ((match.last_score ?? 0) > 0 && (match.position ?? 1) > (prev.matchInfo?.position ?? 0)) {
+    setTimeout(() => launchConfetti(), 250); fx('win');
+    maybeArmMatchIntro(); // next puzzle in the pack gets the dramatic opening reveal
+  }
   else playMoveCue(prev, board);
 }
 
@@ -778,7 +791,7 @@ export async function startMatch(opts) {
     const id = resp.match.id;
     activeMatchId = id;
     const board = await matchStart(id);
-    if (board) reconcileMatchBoard(board);
+    if (board) { reconcileMatchBoard(board); maybeArmMatchIntro(); }
   }
   return resp;
 }
@@ -814,7 +827,7 @@ export async function acceptAndPlayMatch(id, reduced = false) {
   track('match_accept');
   activeMatchId = id;
   const board = await matchStart(id);
-  if (board) reconcileMatchBoard(board);
+  if (board) { reconcileMatchBoard(board); maybeArmMatchIntro(); }
   return true;
 }
 
@@ -829,7 +842,7 @@ export async function matchTimeoutCheck() {
 export async function resumeMatch(id) {
   activeMatchId = id;
   const board = await matchStart(id);
-  if (board) { reconcileMatchBoard(board); return true; }
+  if (board) { reconcileMatchBoard(board); maybeArmMatchIntro(); return true; } // gate skips replay over progress
   return false;
 }
 

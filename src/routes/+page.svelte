@@ -372,14 +372,15 @@
     if (climb.don_armed) donArmedThisPuzzle = true;
     else if (climb.state === 'stuck' || (climb.state === 'active' && (climb.spent ?? 0) === 0)) donArmedThisPuzzle = false;
   }
-  // Challenge live: Spent of your wager budget — lowest spend wins (standard only).
+  // Challenge live: Spent of your ante budget — lowest spend wins (standard only).
   $: matchLive = (isMatch && matchInfo && !matchInfo.done && matchInfo.mode !== 'blitz')
     ? { spent: matchInfo.spent ?? 0, budget: matchInfo.budget ?? 0 } : null;
+  $: matchLeft = matchLive ? Math.max(0, (matchLive.budget ?? 0) - (matchLive.spent ?? 0)) : 0;
   // Free Play live: clean status + the trickle you'd earn.
   $: freeLive = ($gameStore.gameMode === 'freeplay' && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost')
     ? { clean: ($gameStore.incorrectLetters?.length ?? 0) === 0 } : null;
-  // Unified solo money hero (Daily · Makeup · Cash Game): net you keep if you solve now.
-  $: soloHero = climbLive ? { net: climbLive.net } : (dLive ? { net: dLive.net } : null);
+  // Unified money hero (Daily · Cash Game = net you keep; Challenge = ante left to spend).
+  $: soloHero = climbLive ? { net: climbLive.net } : (dLive ? { net: dLive.net } : (matchLive ? { net: matchLeft } : null));
 
   // 🎰 Slot-machine money feel: count up/down the bankroll + the green "Solve to Earn",
   // and float a -$X by the number each time you spend.
@@ -422,6 +423,14 @@
     introCountPop = true;
     setTimeout(() => { introCountPop = false; }, 1200);
   }
+  // 🎬 Challenges auto-advance through a pack, so play the armed opening reveal on each
+  // new puzzle (and on first entry). Resets between matches so a new pack re-triggers.
+  let _lastMatchPos = -1;
+  $: if (!isMatch) { _lastMatchPos = -1; }
+     else if (matchInfo && (matchInfo.position ?? 1) !== _lastMatchPos && !showMainMenu) {
+       _lastMatchPos = matchInfo.position ?? 1;
+       tick().then(playDailyIntroIfArmed);
+     }
 
   // 💰 In-game bank: a modal (not a route) so closing it returns to the game, not the menu.
   let showBank = false;
@@ -477,13 +486,20 @@
         out.push({ id: it.id, emoji: BOOST_META[it.id]?.emoji ?? '💥', name: it.name, blurb: BOOST_META[it.id]?.blurb ?? '', count: it.owned,
           usable: avail, reason: avail ? '' : 'Bought after you started — usable on your next puzzle.' });
       } else if (it.kind === 'climb') {
-        const used = (climb?.equipped ?? []).includes(it.id);
-        const avail = $gameStore.gameMode === 'climb' && gameActive && !used && (it.owned ?? 0) > 0;
+        // Self-buffs work in BOTH the Cash Game and Challenges.
+        const climbUsed = (climb?.equipped ?? []).includes(it.id);
+        const matchUsed = (matchInfo?.used_powerups ?? []).includes(it.id);
+        const climbAvail = $gameStore.gameMode === 'climb' && gameActive && !climbUsed && (it.owned ?? 0) > 0;
+        const matchAvail = isMatch && !!matchInfo?.items_allowed && gameActive && !matchUsed && (it.owned ?? 0) > 0;
+        const avail = climbAvail || matchAvail;
         out.push({ id: it.id, emoji: PUP_ICON[it.id] ?? '✨', name: it.name, blurb: avail ? 'Tap to use now' : '', count: it.owned, usable: avail,
-          reason: used ? 'Already used on this puzzle.' : ($gameStore.gameMode === 'climb' ? '' : 'For the Cash Game — not this mode.') });
+          reason: (climbUsed || matchUsed) ? 'Already used on this puzzle.' : (($gameStore.gameMode === 'climb' || isMatch) ? '' : 'For the Cash Game or Challenges — not this mode.') });
+      } else if (it.kind === 'sabotage') {
+        out.push({ id: it.id, emoji: PUP_ICON[it.id] ?? '✨', name: it.name, blurb: '', count: it.owned, usable: false,
+          reason: isMatch ? 'Sabotage from the 😈 row below — you pick who to hit.' : 'For Challenges — sabotage an opponent there, not here.' });
       } else {
         out.push({ id: it.id, emoji: PUP_ICON[it.id] ?? '✨', name: it.name, blurb: '', count: it.owned, usable: false,
-          reason: it.kind === 'sabotage' ? 'For challenges — sabotage an opponent there, not the Daily.' : 'For the Cash Game or challenges — not the Daily.' });
+          reason: 'For the Cash Game or Challenges — not this mode.' });
       }
     }
     return out;
@@ -500,6 +516,7 @@
     if (item?.id === 'twist') useTwist();
     else if (item?.id === 'bounty_boost' || item?.id === 'jackpot_boost') { useBoost(item.id); loadVault(); }
     else if ($gameStore.gameMode === 'climb') { climbPowerup(item.id).then(() => { refreshClimbPups(); loadVault(); }); }
+    else if (isMatch) { matchPowerup(item.id).then(() => { refreshClimbPups(); loadVault(); }); }
     showBag = false;
   }
 
@@ -677,7 +694,8 @@
   $: climbRunIsBest = climbRun != null && climbRun.profit > 0 && climbRun.profit >= climbRun.best;
   // Owned, not-yet-used climb buffs — drives the vault badge by the Solve button.
   $: usableClimbPups = isClimb ? selfPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0 && !((climb?.equipped ?? []).includes(i.id))).length : 0;
-  /** @type {'heat'|'earn'|null} ℹ️ Cash Game explainers (mirror of dailyInfo). */
+  $: usableMatchPups = (isMatch && matchInfo?.items_allowed) ? selfPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0 && !((matchInfo?.used_powerups ?? []).includes(i.id))).length : 0;
+  /** @type {'heat'|'earn'|'streak'|null} ℹ️ Cash Game explainers (mirror of dailyInfo). */
   let climbInfo = null;
   $: dr = $gameStore.dailyResult; // { score, clean, no_vowels, first_try, no_reveals }
   /** @type {{rank:number, total:number}|null} */
@@ -2152,17 +2170,9 @@
       </button>
     {/if}
 
-    <!-- 💰 Bankroll — top of every mode. Challenge/1v1 = one number (left to spend) + one depleting bar. -->
+    <!-- 💰 Bankroll — top of every mode. Challenge ante now lives in the bounty hero below. -->
     {#if $gameStore.currentPhrase && $gameStore.gameMode}
-      {#if isMatch && matchInfo && !matchBlitz && !matchInfo.done}
-        {@const buyin = matchInfo.budget ?? 0}
-        {@const left = Math.max(0, buyin - (matchInfo.spent ?? 0))}
-        <div class="top-bank">
-          <div class="tb-row"><span class="tb-cap">💰 Left to spend</span><span class="tb-amt">${left.toLocaleString()}</span></div>
-          <div class="tb-bar"><span class="tb-fill" style="width:{buyin > 0 ? Math.max(0, Math.min(100, (left / buyin) * 100)) : 100}%"></span></div>
-          <div class="tb-sub">of your ${buyin.toLocaleString()} buy-in</div>
-        </div>
-      {:else if isFreeplay}
+      {#if isFreeplay}
         <button class="top-bank tap" disabled={fpCashBusy} on:click={tapCredits}>
           <div class="tb-row"><span class="tb-cap">🎟️ Credits</span><span class="tb-amt cr">{Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span></div>
           <div class="tb-sub">tap to cash out at 40:1</div>
@@ -2237,21 +2247,8 @@
         <p class="debuff-banner">{(matchInfo.my_debuffs ?? []).map((/** @type {string} */ d) => DEBUFF_LABEL[d] ?? d).join(' · ')}</p>
       {/if}
       {#if matchInfo.items_allowed}
-        {@const ownedSelf = selfPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0)}
         {@const ownedSab = sabPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0)}
-        {#if ownedSelf.length}
-          <p class="cp-hint">Your power-ups · tap to use — the group is notified</p>
-          <div class="climb-pups">
-            {#each ownedSelf as item}
-              {@const used = (matchInfo.used_powerups ?? []).includes(item.id)}
-              <button class="cp" class:equipped={used} disabled={used}
-                on:click={() => handleMatchPup(item)} title={item.name}>
-                <span class="cp-ic">{PUP_ICON[item.id] ?? '✨'}</span>
-                <span class="cp-tag">{used ? '✓' : '×' + item.owned}</span>
-              </button>
-            {/each}
-          </div>
-        {/if}
+        <!-- Self-buffs now live in the 🔐 vault beside Solve; sabotage stays here (you pick a target). -->
         {#if ownedSab.length && (matchInfo.opponents ?? []).length}
           <p class="cp-hint sab">😈 Sabotage · tap an item, then pick who to hit</p>
           <div class="climb-pups">
@@ -2272,7 +2269,7 @@
             </div>
           {/if}
         {/if}
-        {#if !ownedSelf.length && !ownedSab.length}
+        {#if !selfPups.some((/** @type {any} */ i) => (i.owned ?? 0) > 0) && !ownedSab.length}
           <p class="cp-hint">⚡ Power-ups are on — you don't own any yet. Grab some in the Store to use them here.</p>
         {/if}
       {/if}
@@ -2315,8 +2312,8 @@
     <!-- 💰 Money hero -->
     <section class="stats-section">
       {#if soloHero}
-        <!-- Daily · Makeup · Cash Game: the number you keep if you solve now (bankroll is up top) -->
-        <div class="bounty-panel" class:loss={soloHero.net < 0} class:count-pop={introCountPop}>
+        <!-- Daily · Cash Game = the number you keep if you solve now. Challenge = ante left to spend (depletes). -->
+        <div class="bounty-panel" class:loss={!isMatch && soloHero.net < 0} class:ante-empty={isMatch && matchLeft <= 0} class:count-pop={introCountPop}>
           {#if $gameStore.gameMode === 'daily'}
             <button class="bp-mult-badge" title="How your multiplier works" on:click={() => { fx('tap'); dailyInfo = 'mult'; }}>×{Number($gameStore.bountyMult ?? 1).toFixed(1)}</button>
             <button class="bp-winstreak" title="Win streak" on:click={() => { fx('tap'); dailyInfo = 'streak'; }}>🏆 {dailyStatus?.win_streak ?? 0}</button>
@@ -2324,16 +2321,22 @@
             <button class="bp-mult-badge" title="Heat — your payout multiplier" on:click={() => { fx('tap'); climbInfo = 'heat'; }}>🔥 ×{climbHeat}</button>
             <button class="bp-winstreak" title="Win streak" on:click={() => { fx('tap'); climbInfo = 'streak'; }}>🏆 {climbStreak}</button>
           {/if}
-          <span class="bp-label">{soloHero.net >= 0 ? 'Solve to Earn' : '⚠️ You’re losing money'}</span>
+          <span class="bp-label">{isMatch ? (matchLeft > 0 ? '💰 Left to Spend' : '🪙 Out of ante') : (soloHero.net >= 0 ? 'Solve to Earn' : '⚠️ You’re losing money')}</span>
           {#if $gameStore.gameMode === 'daily'}
             <button class="bp-amount bp-amount-btn" title="How this is calculated" on:click={() => { fx('tap'); dailyInfo = 'bounty'; }}>{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</button>
           {:else if isClimb}
             <button class="bp-amount bp-amount-btn" title="How this is calculated" on:click={() => { fx('tap'); climbInfo = 'earn'; }}>{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</button>
+          {:else if isMatch}
+            <span class="bp-amount">${Math.max(0, Math.round($tweenNet)).toLocaleString()}</span>
           {:else}
             <span class="bp-amount">{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</span>
           {/if}
           {#each spendFloaters as f (f.id)}<span class="spend-float">{f.text}</span>{/each}
         </div>
+        {#if isMatch && matchLive}
+          <div class="ante-bar"><span class="ante-fill" style="width:{(matchLive.budget ?? 0) > 0 ? Math.max(0, Math.min(100, (matchLeft / matchLive.budget) * 100)) : 100}%"></span></div>
+          <p class="match-ante-sub">{matchLeft > 0 ? `of $${(matchLive.budget ?? 0).toLocaleString()} buy-in · spend the least to win` : 'Out of ante — solve it free to take the pot'}</p>
+        {/if}
         {#if isClimb && climbRun && climbRun.solves >= 2}
           <p class="climb-run-line" class:best={climbRunIsBest}>
             🔥 {climbRun.solves}-solve run · <b class="run-profit" class:neg={climbRun.profit < 0}>{climbRun.profit >= 0 ? '+' : '−'}${Math.abs(climbRun.profit).toLocaleString()}</b> this run{#if climbRunIsBest} · 🏆 personal best{/if}
@@ -2380,6 +2383,11 @@
             <button class="solve-vault" on:click={openBag} title="Your power-ups" aria-label="Open your vault">
               <img src="/vault.png" alt="" />
               {#if usableClimbPups > 0}<span class="solve-vault-badge">{usableClimbPups}</span>{/if}
+            </button>
+          {:else if isMatch && matchInfo?.items_allowed && !matchInfo?.done && gameActive}
+            <button class="solve-vault" on:click={openBag} title="Your power-ups" aria-label="Open your vault">
+              <img src="/vault.png" alt="" />
+              {#if usableMatchPups > 0}<span class="solve-vault-badge">{usableMatchPups}</span>{/if}
             </button>
           {/if}
         </svelte:fragment>
@@ -3699,6 +3707,12 @@
     text-shadow: 0 0 18px rgba(52,211,153,0.5); font-variant-numeric: tabular-nums; transition: color 0.2s; }
   .bp-amount-btn { background: none; border: none; padding: 0; cursor: pointer; }
   .bounty-panel.loss .bp-amount { color: #fb7185; text-shadow: none; }
+  /* 🪙 Challenge ante: the bounty hero depletes as you spend; empties to a calm "out of ante" look */
+  .bounty-panel.ante-empty { border-color: rgba(148,163,184,0.4); background: linear-gradient(135deg, rgba(148,163,184,0.12), rgba(148,163,184,0.03)); box-shadow: none; }
+  .bounty-panel.ante-empty .bp-label, .bounty-panel.ante-empty .bp-amount { color: #cbd5e1; text-shadow: none; }
+  .ante-bar { width: 100%; max-width: 240px; height: 7px; margin: 6px auto 0; border-radius: 999px; background: rgba(255,255,255,0.10); overflow: hidden; }
+  .ante-fill { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #fbbf24, #fde047); transition: width 0.35s ease; }
+  .match-ante-sub { margin: 4px auto 0; text-align: center; font-size: 0.72rem; color: var(--text-muted); }
   /* lit gold bounty multiplier badge (left of the bounty) — ×1.0 today, boostable later */
   .bp-mult-badge { position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
     font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.05rem; line-height: 1;
