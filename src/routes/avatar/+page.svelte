@@ -31,15 +31,30 @@
   /** @param {any} o */
   const locked = (o) => !!o.price && !owned.includes(o.cosmeticId);
   /** preview config with one category overridden @param {string} key @param {string} value */
-  const preview = (key, value) => ({ ...config, [key]: value });
+  // a shirt design only shows on the Graphic Tee, so equipping a design auto-wears it
+  const withDeps = (/** @type {string} */ key, /** @type {string} */ value) =>
+    key === 'clothingGraphic' ? { clothingGraphic: value, clothing: 'graphicShirt' } : { [key]: value };
+  const preview = (/** @type {string} */ key, /** @type {string} */ value) => ({ ...config, ...withDeps(key, value) });
 
   function flash(/** @type {string} */ m) { toast = m; setTimeout(() => { if (toast === m) toast = ''; }, 1800); }
+
+  // 🎲 Surprise look — only from free / already-owned options (never auto-buys).
+  function randomize() {
+    fx('select');
+    const next = { ...config };
+    for (const cat of CATEGORIES) {
+      const avail = cat.options.filter((/** @type {any} */ o) => !locked(o));
+      if (avail.length) Object.assign(next, withDeps(cat.key, avail[Math.floor(Math.random() * avail.length)].value));
+    }
+    config = next;
+    dirty = true;
+  }
 
   /** @param {string} key @param {any} o */
   function choose(key, o) {
     if (locked(o)) { buying = { key, o }; return; }
     fx('tap');
-    config = { ...config, [key]: o.value };
+    config = { ...config, ...withDeps(key, o.value) };
     dirty = true;
   }
 
@@ -54,7 +69,7 @@
     fx('win');
     owned = [...owned, o.cosmeticId];
     bank -= o.price;
-    config = { ...config, [key]: o.value };
+    config = { ...config, ...withDeps(key, o.value) };
     dirty = true;
     buying = null;
     flash('Unlocked!');
@@ -74,7 +89,10 @@
 <main class="av-page">
   <header class="av-head">
     <button class="back-btn" on:click={() => goto('/')}>← Menu</button>
-    <span class="av-cash">💰 {fmt(bank)}</span>
+    <div class="av-head-right">
+      <button class="av-rand" on:click={randomize} title="Surprise me">🎲</button>
+      <span class="av-cash">💰 {fmt(bank)}</span>
+    </div>
   </header>
 
   {#if loading}
@@ -128,6 +146,10 @@
   .av-page { max-width: 480px; margin: 0 auto; padding: 1rem 1rem 6rem; min-height: 100vh; }
   .av-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
   .back-btn { padding: 0.5rem 1rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+  .av-head-right { display: flex; align-items: center; gap: 10px; }
+  .av-rand { width: 38px; height: 38px; border-radius: 50%; cursor: pointer; font-size: 1.1rem; line-height: 1;
+    background: var(--surface); border: 1px solid var(--border); }
+  .av-rand:active { transform: scale(0.92) rotate(20deg); }
   .av-cash { font-family: var(--font-display); font-weight: 800; color: var(--brand-2); }
   .loading { text-align: center; color: var(--text-muted); padding: 3rem; }
   .av-hero { display: grid; place-items: center; margin: 0.5rem 0 1rem; }

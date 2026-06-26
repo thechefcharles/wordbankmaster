@@ -64,7 +64,7 @@ export const CATEGORIES = [
   { key: 'clothing', label: 'Clothes', type: 'style', options: [
     { value: 'shirtCrewNeck', label: 'Crew Tee' }, { value: 'shirtVNeck', label: 'V-Neck' }, { value: 'shirtScoopNeck', label: 'Scoop Tee' },
     { value: 'hoodie', label: 'Hoodie', cosmeticId: 'av_cloth_hoodie', price: 400 },
-    { value: 'graphicShirt', label: 'Graphic Tee', cosmeticId: 'av_cloth_graphic', price: 300 },
+    { value: 'graphicShirt', label: 'Graphic Tee' },
     { value: 'collarAndSweater', label: 'Collar & Sweater', cosmeticId: 'av_cloth_collar', price: 600 },
     { value: 'overall', label: 'Overalls', cosmeticId: 'av_cloth_overall', price: 500 },
     { value: 'blazerAndShirt', label: 'Blazer', cosmeticId: 'av_cloth_blazer', price: 800 },

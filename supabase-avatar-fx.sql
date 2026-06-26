@@ -20,3 +20,7 @@ INSERT INTO public.cosmetics (id, kind, label, value, price, sort) VALUES
   ('av_aura_neon',    'av_aura',     'Neon Glow','neon',               800, 630),
   ('av_aura_gold',    'av_aura',     'Gold Glow','gold',              1000, 631)
 ON CONFLICT (id) DO UPDATE SET label=EXCLUDED.label, value=EXCLUDED.value, price=EXCLUDED.price, kind=EXCLUDED.kind, sort=EXCLUDED.sort;
+
+-- graphicShirt made FREE: removed its paid catalog row so shirt designs (the paid
+-- items) are usable on the free Graphic Tee.
+DELETE FROM public.cosmetics WHERE id = 'av_cloth_graphic';
