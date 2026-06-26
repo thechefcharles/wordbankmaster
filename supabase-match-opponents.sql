@@ -14,6 +14,11 @@ AS $function$
 DECLARE v_uid uuid := auth.uid(); v jsonb;
 BEGIN
   IF v_uid IS NULL THEN RETURN '[]'::jsonb; END IF;
+  -- IDOR guard: only an actual participant of this match may enumerate its opponents.
+  IF NOT EXISTS (
+    SELECT 1 FROM public.challenge_participants
+    WHERE match_id = p_id AND user_id = v_uid AND state IN ('active','invited','done')
+  ) THEN RETURN '[]'::jsonb; END IF;
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
     'id', o.user_id,
     'name', public._display_name(o.user_id),
