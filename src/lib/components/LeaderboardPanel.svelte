@@ -3,13 +3,14 @@
   // Community ▸ Leaderboard tab. The page/hub provides its own title + back.
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { getWealthLeaderboard, getDailyBoard, getMyGroups } from '$lib/stores/statsStore.js';
+  import { getWealthLeaderboard, getDailyBoard, getClimbRunLeaderboard, getMyGroups } from '$lib/stores/statsStore.js';
 
-  /** @type {'cash'|'daily'} */
+  /** @type {'cash'|'daily'|'cash_game'} */
   let board = $state('cash');
   const TABS = [
     { k: 'cash', label: '💰 Cash' },
-    { k: 'daily', label: '📅 Daily' }
+    { k: 'daily', label: '📅 Daily' },
+    { k: 'cash_game', label: '🎰 Cash Game' }
   ];
   const PERIOD_BOARDS = ['cash'];
   /** scope: 'global' (Everyone) | 'friends' | a group id */
@@ -55,6 +56,7 @@
       const sc = isGroup ? 'group' : scope;
       const grp = isGroup ? scope : null;
       if (board === 'cash') rows = await getWealthLeaderboard(sc, period, grp);
+      else if (board === 'cash_game') rows = await getClimbRunLeaderboard(sc, grp);
       else rows = await getDailyBoard(sc, grp);
     } catch (e) {
       error = (e instanceof Error ? e.message : String(e)) || 'Failed to load';
@@ -94,6 +96,7 @@
 
 <p class="caption">
   {#if board === 'cash'}{period === 'week' ? 'Cash gained this week' : 'Richest players — total Cash'}
+  {:else if board === 'cash_game'}Biggest Cash Game run — most profit banked in one heat streak
   {:else}Ranked by today's Daily score · {scope === 'global' ? 'everyone' : scope === 'friends' ? 'your friends' : 'this group'}{/if}
 </p>
 
@@ -110,6 +113,7 @@
         <tr>
           <th>#</th>
           {#if board === 'cash'}<th>Player</th><th>{period === 'week' ? 'Gained' : 'Cash'}</th>
+          {:else if board === 'cash_game'}<th>Player</th><th class="num">Best run</th><th class="num">Streak</th>
           {:else}
             <th><button class="sort" class:on={sortKey === 'name'} onclick={() => setSort('name')}>Player{arrow('name')}</button></th>
             <th class="num"><button class="sort" class:on={sortKey === 'net_worth'} onclick={() => setSort('net_worth')}>💰 Cash{arrow('net_worth')}</button></th>
@@ -136,6 +140,9 @@
               <td class="metric" class:neg={period === 'week' && Number(r.metric) < 0}>
                 {period === 'week' ? (r.metric >= 0 ? '+' : '') + fmt(r.metric) : fmt(r.net_worth)}
               </td>
+            {:else if board === 'cash_game'}
+              <td class="metric gold">{fmt(r.best_run_profit)}</td>
+              <td class="metric small">{r.best_run_solves > 0 ? '🔥' + r.best_run_solves : '—'}</td>
             {:else}
               <td class="metric">{fmt(r.net_worth)}</td>
               <td class="metric gold">{r.played ? Number(r.score).toLocaleString() : '—'}</td>
@@ -151,6 +158,7 @@
 
 <p class="hint">
   {#if board === 'cash'}Your total Cash, earned across every mode. The weekly view resets Monday — fair for newcomers.
+  {:else if board === 'cash_game'}Your best single run — profit banked before your heat reset. Build a streak, push your luck with Double or Nothing.
   {:else}Same puzzle for everyone today. Spend less, score more.{/if}
 </p>
 

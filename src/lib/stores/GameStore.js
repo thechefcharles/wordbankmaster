@@ -8,7 +8,7 @@ import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNe
 import { freeplayStart, freeplayNext, freeplayResume, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
 import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
 import { makeupStart, makeupBuyLetter, makeupReveal, makeupSubmitGuess } from '$lib/stores/statsStore.js';
-import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, getPowerups, buyPowerup, climbUsePowerup, getClimbClue } from '$lib/stores/statsStore.js';
+import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, climbSkip, climbDoubleOrNothing, getPowerups, buyPowerup, climbUsePowerup, getClimbClue } from '$lib/stores/statsStore.js';
 import { createMatch, acceptMatch, matchStart, matchBuyLetter, matchReveal, matchSubmitGuess, matchFold as matchFoldRpc, matchCheck, matchUsePowerup, matchSabotage } from '$lib/stores/statsStore.js';
 import { track } from '$lib/analytics.js';
 
@@ -630,8 +630,18 @@ function reconcileClimbBoard(board) {
     modifier: null, arcadeRun: null,
     climbInfo: climb
   }));
-  if (solved) { setTimeout(() => launchConfetti(), 250); fx('win'); }
+  // No confetti — the slot-machine reveal (box-by-box win pop) is the celebration, like Daily.
+  if (solved) { fx('win'); }
   else playMoveCue(prev, board);
+}
+
+/** Arm the dramatic opening reveal for a FRESH (untouched) climb puzzle. */
+function maybeArmClimbIntro() {
+  const s = get(gameStore);
+  const hasProgress = (s.purchasedLetters || []).some(Boolean) || (s.climbInfo?.spent ?? 0) > 0;
+  if (!hasProgress && s.gameState === 'default') {
+    gameStore.update(st => ({ ...st, dailyIntro: (st.dailyIntro || 0) + 1 }));
+  }
 }
 
 /** Start or resume the Climb. @returns {Promise<boolean>} */
@@ -641,6 +651,7 @@ export async function fetchClimbGame() {
     const board = await climbStart();
     if (!board) return false;
     reconcileClimbBoard(board);
+    maybeArmClimbIntro();
     await refreshClimbClue();
     return true;
   } catch (err) {
@@ -687,7 +698,7 @@ export async function climbAdvance() {
   dailyInFlight = true;
   try {
     const board = await climbNext();
-    if (board) { reconcileClimbBoard(board); await refreshClimbClue(); }
+    if (board) { reconcileClimbBoard(board); maybeArmClimbIntro(); await refreshClimbClue(); }
   } finally {
     dailyInFlight = false;
   }
@@ -696,6 +707,31 @@ export async function climbAdvance() {
 /** Leave the Cash Game (clears heat; position + Cash persist). */
 export async function climbLeaveGame() {
   try { await climbLeave(); } catch { /* non-fatal */ }
+}
+
+/** Skip the current Cash Game puzzle for a fresh one (resets heat to ×1.0). */
+export async function climbSkipPuzzle() {
+  if (dailyInFlight) return;
+  dailyInFlight = true;
+  try {
+    const board = await climbSkip();
+    if (board) { reconcileClimbBoard(board); maybeArmClimbIntro(); await refreshClimbClue(); }
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
+/** Arm Double-or-Nothing on the current Cash Game puzzle (heat ≥ ×1.5).
+ *  Solve → payout doubles; get stuck → $0 and you forfeit your spend. You can't skip once armed. */
+export async function climbArmDoubleOrNothing() {
+  if (dailyInFlight) return;
+  dailyInFlight = true;
+  try {
+    const board = await climbDoubleOrNothing();
+    if (board) reconcileClimbBoard(board);
+  } finally {
+    dailyInFlight = false;
+  }
 }
 
 /** Equip a power-up in the Climb (v3: charges Cash on use, counts as spend). @param {string} id */

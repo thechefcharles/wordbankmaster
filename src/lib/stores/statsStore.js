@@ -44,7 +44,7 @@ export async function getDailyStatus(userId) {
   });
   if (error) {
     console.error('❌ Error fetching daily status:', error);
-    return { has_played_today: false, last_daily_won: null, daily_bankroll: 0, arcade_bankroll: 1000, current_streak: 0, streak_freezes: 0, today_score: 0, win_streak: 0 };
+    return { has_played_today: false, last_daily_won: null, daily_bankroll: 0, arcade_bankroll: 1000, current_streak: 0, streak_freezes: 0, today_score: 0, win_streak: 0, daily_in_progress: false };
   }
   const row = Array.isArray(data) ? data[0] : data;
   return {
@@ -55,7 +55,8 @@ export async function getDailyStatus(userId) {
     current_streak: row?.current_streak ?? 0, // PLAY streak (attendance / showing up)
     streak_freezes: row?.streak_freezes ?? 0,
     today_score: row?.today_score ?? 0,
-    win_streak: row?.win_streak ?? 0 // WIN streak (consecutive solves)
+    win_streak: row?.win_streak ?? 0, // WIN streak (consecutive solves)
+    daily_in_progress: !!row?.daily_in_progress // SERVER truth: today's session still active → resume, don't mark lost
   };
 }
 
@@ -501,10 +502,48 @@ export async function climbLeave() {
   if (error) { console.error('❌ climb_leave:', error); return null; }
   return data;
 }
+/** Skip the current Cash Game puzzle for a fresh one (resets heat to ×1.0). @returns {Promise<any>} */
+export async function climbSkip() {
+  const { data, error } = await supabase.rpc('climb_skip');
+  if (error) { console.error('❌ climb_skip:', error); return null; }
+  return data;
+}
+/** Arm Double-or-Nothing on the current Cash Game puzzle (heat ≥ ×1.5). @returns {Promise<any>} */
+export async function climbDoubleOrNothing() {
+  const { data, error } = await supabase.rpc('climb_double_or_nothing');
+  if (error) { console.error('❌ climb_double_or_nothing:', error); return null; }
+  return data;
+}
 /** @param {string} scope @param {string|null} [group] @returns {Promise<any[]>} */
 export async function getClimbLeaderboard(scope = 'friends', group = null) {
   const { data, error } = await supabase.rpc('get_climb_leaderboard', { p_scope: scope, p_group: group });
   if (error) { console.error('❌ get_climb_leaderboard:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
+
+/** Finalize the caller's unfinished Daily puzzles from prior days as losses (no broke
+ *  timer anymore — an unsolved Daily expires at day's end, forfeiting the spend, and
+ *  shows in History). Lazy "midnight" finalization; call on app open. @returns {Promise<number>} */
+export async function expireStaleDailies() {
+  const { data, error } = await supabase.rpc('expire_stale_dailies');
+  if (error) { console.error('❌ expire_stale_dailies:', error); return 0; }
+  return data ?? 0;
+}
+
+/** The caller's currently-resumable solo games (daily/climb/freeplay), newest first.
+ *  Server truth for menu resume labels + the top-level Resume shortcut.
+ *  @returns {Promise<{mode:string, updated_at:string}[]>} */
+export async function getOpenGames() {
+  const { data, error } = await supabase.rpc('get_open_games');
+  if (error) { console.error('❌ get_open_games:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
+
+/** Cash Game run leaderboard — ranks by best run profit (skill, not longevity).
+ *  @param {string} scope @param {string|null} [group] @returns {Promise<any[]>} */
+export async function getClimbRunLeaderboard(scope = 'friends', group = null) {
+  const { data, error } = await supabase.rpc('get_climb_run_leaderboard', { p_scope: scope, p_group: group });
+  if (error) { console.error('❌ get_climb_run_leaderboard:', error); return []; }
   return Array.isArray(data) ? data : [];
 }
 
