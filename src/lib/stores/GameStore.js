@@ -106,18 +106,11 @@ export const gameStore = writable(/** @type {GameState} */ ({
 =================================== */
 
 /**
- * launchConfetti
- * Triggers a celebratory confetti animation.
+ * launchConfetti — disabled. Confetti wins were removed across all modes; the
+ * slot-machine reveal + win banners are the celebration. Kept as a no-op so the
+ * existing call sites stay harmless.
  */
-function launchConfetti() {
-  const colors = ['#fbbf24', '#fde047', '#fcd34d', '#ffffff'];
-  /** @param {number} particleCount @param {object} opts */
-  const fire = (particleCount, opts) => confetti({ particleCount, colors, disableForReducedMotion: true, ...opts });
-  fire(90, { spread: 75, startVelocity: 55, origin: { y: 0.62 } });
-  fire(55, { spread: 110, decay: 0.92, scalar: 1.25, origin: { y: 0.6 } });
-  setTimeout(() => fire(65, { spread: 120, startVelocity: 48, angle: 60, origin: { x: 0.15, y: 0.65 } }), 160);
-  setTimeout(() => fire(65, { spread: 120, startVelocity: 48, angle: 120, origin: { x: 0.85, y: 0.65 } }), 300);
-}
+function launchConfetti() {}
 
 /* ================================
    Server-authoritative DAILY adapter
