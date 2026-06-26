@@ -434,6 +434,13 @@ export async function dailyUseBoost(id) {
   return data;
 }
 
+/** Your rank on today's global Daily leaderboard → { rank, total, score }. */
+export async function getMyDailyRank() {
+  const { data, error } = await supabase.rpc('get_my_daily_rank');
+  if (error) { console.error('❌ get_my_daily_rank:', error); return null; }
+  return data;
+}
+
 /** Boosts available to use in today's Daily (snapshot at start) → { id: remaining }. */
 export async function getDailyAvailBoosts() {
   const { data, error } = await supabase.rpc('get_daily_avail_boosts');

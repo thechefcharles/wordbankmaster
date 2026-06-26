@@ -10,7 +10,7 @@
   import { getMyChallenges, getPowerups, getDailyAvailBoosts, getMyMatches, getMyGroups, getMatch, getMatchDetail, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getDailyGhost, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout, getDailyModifier } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout, getDailyModifier } from '$lib/stores/statsStore.js';
   import { unreadCount, refreshNotifications, inboxRequest, inboxTarget, markChallengeNotifRead, markFriendNotifRead } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
@@ -347,6 +347,11 @@
   // and float a -$X by the number each time you spend.
   const tweenBank = tweened(0, { duration: 550, easing: cubicOut });
   const tweenNet = tweened(0, { duration: 900, easing: cubicOut });
+  // 🏆 Win-banner animations: profit counts up, then Cash scrolls to the new total.
+  const resultProfit = tweened(0, { duration: 1100, easing: cubicOut });
+  const resultBankAnim = tweened(0, { duration: 1300, easing: cubicOut });
+  /** @type {{rank:number,total:number,score:number}|null} */
+  let resultRank = null;
   $: tweenBank.set(Math.round($gameStore.bankroll ?? 0));
   // While the opening reveal is landing boxes, hold the bounty at $0 so it can
   // dramatically count up at the climax (introDone).
@@ -499,26 +504,6 @@
       _bankFxTimer = setTimeout(() => { bankFlash = ''; }, 1100);
     }
     _bankFxPrev = b;
-  }
-
-  // 🎰 Clean-solve payoff: solved with NO wrong letters → fly in a "CLEAN!" burst.
-  let showMultiplier = false;
-  let _multiFired = false;
-  $: handleCleanSolve($gameStore.gameState, $gameStore.gameMode, ($gameStore.incorrectLetters?.length ?? 0), showMainMenu);
-  /** @param {string} state @param {string} mode @param {number} wrong @param {boolean} onMenu */
-  function handleCleanSolve(state, mode, wrong, onMenu) {
-    if (!browser || onMenu) return; // never replay the CLEAN stamp on the menu (e.g. back from leaderboard)
-    if (state === 'won' && mode === 'daily' && wrong === 0 && !_multiFired) {
-      _multiFired = true;
-      const n = ($gameStore.currentPhrase || '').replace(/ /g, '').length;
-      setTimeout(() => {
-        showMultiplier = true;
-        fx('win');
-        setTimeout(() => { showMultiplier = false; }, 1700);
-      }, Math.min(n, 14) * 95 + 250);
-    } else if (state !== 'won') {
-      _multiFired = false;
-    }
   }
 
 
@@ -1361,13 +1346,24 @@
   const onPhraseRevealComplete = () => {
     if (!hasTriggeredModal && ['won', 'lost'].includes($gameStore.gameState)) {
       hasTriggeredModal = true;
-      // Daily only: fetch the "ghost of yesterday" comparison for the result modal.
-      if ($gameStore.gameMode === 'daily') {
-        ghost = null;
-        getDailyGhost().then((g) => { ghost = g; }).catch(() => {});
+      const won = $gameStore.gameState === 'won';
+      if ($gameStore.gameMode === 'daily' && won) {
+        resultRank = null;
+        getMyDailyRank().then((r) => { resultRank = r; }).catch(() => {});
+        const uid = get(user)?.id;
+        if (uid) getDailyStatus(uid).then((s) => { dailyStatus = s; }).catch(() => {});
       }
       setTimeout(() => {
         showResultModal = true;
+        // 🏆 Win banner: count the profit up, then scroll Cash to the new total.
+        if ($gameStore.gameMode === 'daily' && won) {
+          const profit = $gameStore.dailyResult?.net ?? 0;
+          const newBank = Math.round($gameStore.bankroll ?? 0);
+          resultProfit.set(0, { duration: 0 });
+          resultBankAnim.set(newBank - profit, { duration: 0 });
+          setTimeout(() => { resultProfit.set(profit); fx('win'); }, 350);
+          setTimeout(() => { resultBankAnim.set(newBank); }, 1100);
+        }
       }, 1000);
     }
   };
@@ -1472,15 +1468,6 @@
 {/if}
 
 <!-- 🎰 Pure-solve ×1.5 multiplier fly-in -->
-{#if showMultiplier}
-  <div class="mult-overlay" aria-hidden="true">
-    <div class="mult-burst">
-      <span class="mult-x">✨ CLEAN!</span>
-      <span class="mult-sub">Solved with no wrong letters</span>
-    </div>
-  </div>
-{/if}
-
 <!-- 💰 In-game bank modal: same info as /bank, but closing returns to the game -->
 {#if showBank}
   <div class="modal-overlay info-overlay" role="button" tabindex="0" aria-label="Close"
@@ -2232,46 +2219,43 @@
     {#if showResultModal && ['won', 'lost'].includes($gameStore.gameState)}
       <div class="modal-overlay">
         <div class="modal-content result-modal">
-          {#if isDailyResult}
-            <div class="result-medal {resultMedal.tier}">{resultMedal.emoji}</div>
-            <h2>{resultWon ? 'Solved!' : 'Busted'}</h2>
-            <p class="result-sub">Daily #{puzzleNumber}{#if resultWon} · {resultMedal.name}{/if}</p>
-            {#if resultWon && dr}
-              <div class="daily-score">
-                <span class="ds-label">Profit</span>
-                <span class="ds-amount" class:lose={(dr.net ?? 0) < 0}>{(dr.net ?? 0) >= 0 ? '+' : '−'}${Math.abs(dr.net ?? 0).toLocaleString()}</span>
-                <span class="ds-cash">Puzzle worth ${(dr.reward ?? 0).toLocaleString()} · you spent ${(dr.spent ?? 0).toLocaleString()}</span>
-              </div>
-              {#if dailyPlacement && dailyPlacement.rank > 0 && dailyPlacement.total > 1}
-                <p class="daily-placement">{dailyPlacement.rank === 1 ? '🥇' : dailyPlacement.rank === 2 ? '🥈' : dailyPlacement.rank === 3 ? '🥉' : '🏅'} #{dailyPlacement.rank} of {dailyPlacement.total} among friends today</p>
-              {/if}
-              {#if !$gameStore.twistUsed && dailyMod}
-                <p class="twist-kept">🎟️ You kept your <b>{dailyMod.name}</b> Twist — it's now a power-up for Cash Game &amp; Challenges</p>
-              {/if}
-            {:else}
-              <div class="result-bankroll">
-                <span class="rb-label">Banked</span>
-                <span class="rb-amount">${resultBankroll.toLocaleString()}</span>
-              </div>
+          {#if isDailyResult && resultWon && dr}
+            {@const mult = Number(dr.mult ?? $gameStore.bountyMult ?? 1)}
+            {@const base = dr.base ?? (mult > 0 ? Math.round((dr.reward ?? 0) / mult) : (dr.reward ?? 0))}
+            <h2 class="win-h">🎉 Solved!</h2>
+            <p class="result-sub">Daily #{puzzleNumber}</p>
+            <!-- 3-line math -->
+            <div class="win-math">
+              <div class="wm-row"><span>Bounty {#if mult > 1}<small>(${base.toLocaleString()} × {fmtMult(mult)})</small>{/if}</span><b>${(dr.reward ?? 0).toLocaleString()}</b></div>
+              <div class="wm-row"><span>− Spent on letters</span><b class="neg">−${(dr.spent ?? 0).toLocaleString()}</b></div>
+              <div class="wm-row total"><span>Profit</span><b class="profit">{$resultProfit >= 0 ? '+' : '−'}${Math.abs(Math.round($resultProfit)).toLocaleString()}</b></div>
+            </div>
+            {#if dailyMod}
+              <p class="win-twist">{dailyMod.emoji} <b>{dailyMod.name}</b> — applied for everyone</p>
             {/if}
-            {#if ghost}
-              <div class="ghost-compare">
-                {#if ghost.yesterday_played}
-                  {@const delta = resultBankroll - (ghost.yesterday_banked ?? 0)}
-                  <p class="ghost-line">👻 Yesterday you banked <b>${(ghost.yesterday_banked ?? 0).toLocaleString()}</b></p>
-                  <p class="ghost-delta {delta > 0 ? 'up' : delta < 0 ? 'down' : 'even'}">
-                    {#if delta > 0}▲ ${delta.toLocaleString()} ahead of your ghost
-                    {:else if delta < 0}▼ ${Math.abs(delta).toLocaleString()} behind your ghost
-                    {:else}= dead even with your ghost{/if}
-                  </p>
-                {:else}
-                  <p class="ghost-line">👻 Your first daily — you just set the ghost for tomorrow.</p>
-                {/if}
-                {#if ghost.today_percentile != null && (ghost.today_players ?? 0) >= 5}
-                  <p class="ghost-field">Ahead of {ghost.today_percentile}% of today’s players</p>
-                {/if}
-              </div>
-            {/if}
+            <!-- bankroll scrolls to the new total -->
+            <div class="win-bank">
+              <span class="wb-label">💰 Your Cash</span>
+              <span class="wb-amount">${Math.round($resultBankAnim).toLocaleString()}</span>
+            </div>
+            <p class="win-rank">
+              {#if resultRank && resultRank.total > 0}<b>🏆 #{resultRank.rank}</b> of {resultRank.total.toLocaleString()} today{/if}
+              {#if (dailyStatus?.win_streak ?? 0) > 0} · 🔥 {dailyStatus?.win_streak} win streak{/if}
+            </p>
+            <div class="result-actions">
+              <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
+              <button class="next-puzzle-button" on:click={goToDailyLeaderboard}>Leaderboard</button>
+            </div>
+            <button class="win-menu" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Back to menu</button>
+          {:else if isDailyResult}
+            <div class="result-medal lose">😖</div>
+            <h2>Busted</h2>
+            <p class="result-sub">Daily #{puzzleNumber}</p>
+            <div class="result-bankroll">
+              <span class="rb-label">Your Cash</span>
+              <span class="rb-amount">${resultBankroll.toLocaleString()}</span>
+            </div>
+            <p class="win-rank">No profit this time — your win streak resets. Come back tomorrow.</p>
             <div class="result-actions">
               <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
               <button class="next-puzzle-button" on:click={goToDailyLeaderboard}>Leaderboard</button>
@@ -2367,19 +2351,6 @@
   }
   .attendance-toast strong { font-family: var(--font-display); }
   /* 🎰 Pure-solve ×1.5 multiplier fly-in */
-  .mult-overlay { position: fixed; inset: 0; z-index: 6000; display: grid; place-items: center; pointer-events: none; }
-  .mult-burst { text-align: center; animation: multIn 1.7s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; }
-  .mult-x { display: block; font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 3.4rem; line-height: 1; color: #4ade80;
-    text-shadow: 0 0 36px rgba(74,222,128,0.85), 0 5px 0 rgba(0,0,0,0.35); }
-  .mult-sub { display: block; margin-top: 8px; font-family: var(--font-display); font-weight: 800; color: #fde047;
-    font-size: 1rem; letter-spacing: 0.07em; text-transform: uppercase; text-shadow: 0 0 14px rgba(251,191,36,0.6); }
-  @keyframes multIn {
-    0%   { opacity: 0; transform: scale(2.6) rotate(-14deg); filter: blur(7px); }
-    16%  { opacity: 1; transform: scale(1) rotate(0deg); filter: blur(0); }
-    28%  { transform: scale(1.14); }
-    72%  { opacity: 1; transform: scale(1); }
-    100% { opacity: 0; transform: scale(0.92); }
-  }
   @keyframes attDrop { from { transform: translate(-50%, -60px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
@@ -3717,19 +3688,6 @@
     100% { opacity: 1; }
   }
 
-  .win-burst {
-    position: fixed;
-    inset: 0;
-    z-index: 998;
-    pointer-events: none;
-    background: radial-gradient(circle at 50% 45%, rgba(253, 224, 71, 0.35), rgba(251, 191, 36, 0.18) 35%, transparent 60%);
-    animation: winBurst 1s var(--ease-out) forwards;
-  }
-  @keyframes winBurst {
-    0% { opacity: 0; transform: scale(0.4); }
-    30% { opacity: 1; }
-    100% { opacity: 0; transform: scale(1.6); }
-  }
 
   .banner.win {
     font-family: var(--font-display);
@@ -3921,52 +3879,28 @@
     color: #fcd34d;
     text-shadow: 0 0 18px rgba(251, 191, 36, 0.4);
   }
-  .daily-score {
-    display: flex; flex-direction: column; align-items: center; gap: 2px;
-    padding: 14px; margin: 0 0 10px; border-radius: var(--r-lg);
-    background: linear-gradient(135deg, rgba(251, 191, 36,0.12), rgba(253, 224, 71,0.05));
-    border: 1px solid rgba(253, 224, 71,0.4);
-  }
-  .ds-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
-  .ds-amount { font-family: var(--font-display); font-weight: 800; font-size: 2.4rem; color: var(--brand-2); line-height: 1; text-shadow: 0 0 18px rgba(253, 224, 71,0.35); margin: 0 0 8px; }
-  .ds-amount.lose { color: #fb7185; text-shadow: 0 0 18px rgba(251,113,133,0.35); }
-  .ds-cash { font-size: 0.8rem; color: var(--text-muted); }
-  .daily-placement { font-family: var(--font-display); font-weight: 700; font-size: 0.9rem; color: #fcd34d; margin: 0 0 14px; }
-  .twist-kept { font-size: 0.82rem; line-height: 1.35; color: #6ee7b7; margin: 0 0 14px; padding: 8px 12px;
-    background: rgba(110,231,183,0.1); border: 1px solid rgba(110,231,183,0.32); border-radius: 12px; }
-  .twist-kept b { color: #a7f3d0; }
-  .ghost-compare {
-    margin: 2px auto 16px;
-    padding: 10px 14px;
-    max-width: 300px;
-    border-radius: 14px;
-    background: var(--surface-2, rgba(255, 255, 255, 0.05));
-    border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
-  }
-  .ghost-line {
-    font-family: var(--font-ui);
-    font-size: 0.86rem;
-    color: var(--text-muted, #c2cbd8);
-    margin: 0 0 4px;
-  }
-  .ghost-line b { color: var(--text, #fff); }
-  .ghost-delta {
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 0.95rem;
-    margin: 0;
-  }
-  .ghost-delta.up { color: #fbbf24; }
-  .ghost-delta.down { color: #fb7185; }
-  .ghost-delta.even { color: var(--text-muted, #c2cbd8); }
-  .ghost-field {
-    font-family: var(--font-ui);
-    font-size: 0.76rem;
-    color: var(--text-faint, #8a94a6);
-    margin: 8px 0 0;
-    padding-top: 8px;
-    border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
-  }
+  /* 🏆 Win banner */
+  .win-h { font-family: var(--font-display); font-weight: 800; font-size: 1.7rem; margin: 0 0 2px;
+    animation: winPunch 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+  @keyframes winPunch { 0% { opacity: 0; transform: scale(0.6); } 60% { transform: scale(1.12); } 100% { opacity: 1; transform: scale(1); } }
+  .win-math { display: flex; flex-direction: column; gap: 7px; text-align: left; margin: 14px auto 12px; max-width: 300px;
+    padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(253,224,71,0.4);
+    background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(251,191,36,0.04)); }
+  .wm-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 0.92rem; color: var(--text); }
+  .wm-row small { color: var(--text-faint); font-size: 0.72rem; }
+  .wm-row b { font-family: 'Orbitron', var(--font-display); font-variant-numeric: tabular-nums; }
+  .wm-row .neg { color: #fb7185; }
+  .wm-row.total { border-top: 1px solid rgba(253,224,71,0.3); padding-top: 9px; margin-top: 2px; font-weight: 700; font-size: 1rem; }
+  .wm-row .profit { font-size: 1.8rem; color: #4ade80; text-shadow: 0 0 18px rgba(74,222,128,0.5); }
+  .win-twist { font-size: 0.82rem; color: var(--text-muted); margin: 0 0 12px; }
+  .win-twist b { color: var(--brand-2); }
+  .win-bank { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 0 0 10px; }
+  .wb-label { font-size: 0.66rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint); }
+  .wb-amount { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.9rem; color: #fde047;
+    text-shadow: 0 0 18px rgba(251,191,36,0.45); font-variant-numeric: tabular-nums; }
+  .win-rank { font-size: 0.86rem; color: var(--text-muted); margin: 0 0 14px; }
+  .win-rank b { color: #fde047; font-family: var(--font-display); }
+  .win-menu { margin-top: 10px; background: none; border: none; color: var(--text-faint); font-size: 0.84rem; text-decoration: underline; cursor: pointer; }
   .result-actions {
     display: flex;
     gap: 10px;
