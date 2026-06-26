@@ -67,9 +67,10 @@
 
   <h2>Your choices &amp; deleting your account</h2>
   <p>
-    You can request deletion of your account and all associated data at any time by
-    emailing <a href={`mailto:${CONTACT}`}>{CONTACT}</a>. We will delete your account
-    and game data promptly. (In-app account deletion is on the way.)
+    You can permanently delete your account and all associated data at any time from
+    inside the app: <strong>My Account → Delete Account</strong>. This erases your
+    account immediately and can't be undone. You can also email
+    <a href={`mailto:${CONTACT}`}>{CONTACT}</a> and we'll delete it for you.
   </p>
 
   <h2>Children</h2>

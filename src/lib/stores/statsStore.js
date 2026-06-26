@@ -92,6 +92,13 @@ export async function setUsername(name) {
   return data;
 }
 
+/** Permanently delete my account + all my data. @returns {Promise<{ok:boolean}>} */
+export async function deleteMyAccount() {
+  const { error } = await supabase.rpc('delete_my_account');
+  if (error) { console.error('❌ delete_my_account:', error); return { ok: false }; }
+  return { ok: true };
+}
+
 /** Username typeahead search. @param {string} query @returns {Promise<{username:string,is_friend:boolean}[]>} */
 export async function searchUsers(query) {
   const { data, error } = await supabase.rpc('search_users', { p_query: query });

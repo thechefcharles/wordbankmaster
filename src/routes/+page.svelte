@@ -10,7 +10,7 @@
   import { getMyChallenges, getPowerups, getDailyAvailBoosts, getMyMatches, getMyGroups, getMatch, getMatchDetail, getMatchDebuffs, getMatchOpponents, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getOpenGames, expireStaleDailies, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout, getDailyModifier } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getOpenGames, expireStaleDailies, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout, getDailyModifier, deleteMyAccount } from '$lib/stores/statsStore.js';
   import { unreadCount, refreshNotifications, inboxRequest, inboxTarget, markChallengeNotifRead, markFriendNotifRead } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
@@ -1007,6 +1007,26 @@
     user.set(null);
     location.reload();
   };
+
+  // 🗑️ Permanent account deletion (App Store 5.1.1(v)) — requires typing DELETE.
+  const APP_VERSION = '1.0.0';
+  const SUPPORT_EMAIL = 'charlieforeman77@gmail.com';
+  let showDeleteConfirm = false;
+  let deleteBusy = false;
+  let deleteInput = '';
+  $: deleteArmed = deleteInput.trim().toUpperCase() === 'DELETE';
+  async function confirmDeleteAccount() {
+    if (!deleteArmed || deleteBusy) return;
+    deleteBusy = true;
+    const { ok } = await deleteMyAccount();
+    if (!ok) { deleteBusy = false; maMsg = 'Could not delete your account — try again.'; return; }
+    clearSavedGame();
+    clearPin();
+    gameWasRestored.set(false);
+    await supabase.auth.signOut().catch(() => {});
+    user.set(null);
+    location.reload();
+  }
 
   /** Start daily: resume if in progress, else show "already played" or fetch new daily.
    *  Daily has no personal power-ups — everyone shares the same Daily Modifier. */
@@ -2287,7 +2307,36 @@
           {/if}
           <button class="main-menu-btn ghost-btn" on:click={() => { showMyAccount = false; showTutorial = true; }}>❓ How to Play</button>
 
+          <div class="ma-section-label">About</div>
+          <div class="ma-links">
+            <a class="ma-link" href="/privacy" target="_blank" rel="noopener noreferrer">Privacy</a>
+            <span class="ma-dot">·</span>
+            <a class="ma-link" href="/terms" target="_blank" rel="noopener noreferrer">Terms</a>
+            <span class="ma-dot">·</span>
+            <a class="ma-link" href={`mailto:${SUPPORT_EMAIL}`}>Support</a>
+          </div>
+
           <button class="main-menu-btn" on:click={() => { showMyAccount = false; handleLogout(); }}>Log Out</button>
+          <button class="main-menu-btn ma-danger" on:click={() => { deleteInput = ''; maMsg = ''; showDeleteConfirm = true; }}>Delete Account</button>
+          <p class="ma-version">WordBank v{APP_VERSION}</p>
+        </div>
+      </div>
+    {/if}
+
+    <!-- 🗑️ Delete-account confirmation — permanent, requires typing DELETE -->
+    {#if showDeleteConfirm}
+      <div class="modal-overlay danger-overlay" role="dialog" aria-modal="true" aria-label="Delete account">
+        <button type="button" class="modal-backdrop" aria-label="Cancel" on:click={() => { if (!deleteBusy) showDeleteConfirm = false; }}></button>
+        <div class="info-card del-card" role="document">
+          <div class="info-big">🗑️</div>
+          <h3 class="info-title">Delete your account?</h3>
+          <p class="del-body">This permanently erases your account, Cash, stats, streaks, badges and history. <b>It can't be undone.</b></p>
+          <input class="ma-input del-input" placeholder="Type DELETE to confirm" bind:value={deleteInput}
+            autocomplete="off" autocapitalize="characters" spellcheck="false" />
+          <button class="main-menu-btn ma-danger" disabled={!deleteArmed || deleteBusy} on:click={confirmDeleteAccount}>
+            {deleteBusy ? 'Deleting…' : 'Delete forever'}
+          </button>
+          <button class="main-menu-btn ghost-btn" disabled={deleteBusy} on:click={() => showDeleteConfirm = false}>Cancel</button>
         </div>
       </div>
     {/if}
@@ -3713,6 +3762,19 @@
   }
   .ma-people-row { display: flex; gap: 8px; }
   .ma-people-row .main-menu-btn { flex: 1; }
+  /* About: legal links + version + delete */
+  .ma-links { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 2px 0 4px; }
+  .ma-link { color: var(--brand-2); font-size: 0.85rem; font-weight: 600; text-decoration: none; }
+  .ma-link:hover { text-decoration: underline; }
+  .ma-dot { color: var(--text-faint); }
+  .ma-version { text-align: center; font-size: 0.72rem; color: var(--text-faint); margin: 8px 0 0; }
+  .main-menu-btn.ma-danger { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.5); }
+  .main-menu-btn.ma-danger:hover { background: rgba(248,113,113,0.2); }
+  .main-menu-btn.ma-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+  .del-card { text-align: center; max-width: 360px; }
+  .del-body { font-size: 0.9rem; line-height: 1.5; color: var(--text-muted); margin: 6px 0 14px; }
+  .del-input { width: 100%; text-align: center; margin-bottom: 12px; }
+  .danger-overlay { z-index: 4000; }
   .ma-toggle { display: flex; align-items: center; gap: 0.5rem; }
   .ma-toggle-state {
     margin-left: auto; font-size: 0.72rem; font-weight: 800; color: var(--brand-2);
