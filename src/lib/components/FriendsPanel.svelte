@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { searchUsers, addFriend, respondFriendRequest, removeFriend, listFriends, listFriendRequests } from '$lib/stores/statsStore.js';
+  import { requireConfirm } from '$lib/confirm.js';
   import { fx } from '$lib/sound.js';
 
   /** Optional: called to start a challenge with a friend (username). */
@@ -71,7 +72,7 @@
   /** @param {any} u */
   async function unfriend(u) {
     if (busy) return;
-    if (!confirm(`Remove @${u.username || u.name} from your friends?`)) return;
+    if (!(await requireConfirm({ title: 'Remove friend?', message: `Remove @${u.username || u.name} from your friends?`, confirmText: 'Remove', danger: true }))) return;
     busy = u.id;
     await removeFriend(u.id);
     busy = '';

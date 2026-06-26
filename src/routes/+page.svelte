@@ -26,6 +26,7 @@
   import PinGate from '$lib/components/PinGate.svelte';
   import { pinLocked, hasPinFor, clearPin, markUnlocked, sessionIsUnlocked, markPinSkipped, pinSkipped, clearPinSkipped } from '$lib/pin.js';
   import { requirePin } from '$lib/pinConfirm.js';
+  import { requireConfirm } from '$lib/confirm.js';
   import { goto } from '$app/navigation';
 
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
@@ -1023,8 +1024,8 @@
     clearPin(); clearPinSkipped(); pinNotSet = true; // → the create-new-PIN screen
   }
   // 🔓 Forgot PIN (from Settings) — verify by email + password, then set a new PIN.
-  function forgotPin() {
-    if (!confirm('Reset your PIN? You’ll sign back in with your email & password, then set a new PIN.')) return;
+  async function forgotPin() {
+    if (!(await requireConfirm({ title: 'Reset PIN?', message: 'You’ll sign back in with your email & password, then set a new PIN.', confirmText: 'Reset PIN', danger: true }))) return;
     showMyAccount = false;
     clearPin(); clearPinSkipped();
     handleLogout();

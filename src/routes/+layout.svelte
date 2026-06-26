@@ -6,6 +6,7 @@
   import { fx } from '$lib/sound.js';
   import Toaster from '$lib/components/Toaster.svelte';
   import PinConfirm from '$lib/components/PinConfirm.svelte';
+  import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 
   let { children } = $props();
 
@@ -54,3 +55,4 @@
 {@render children()}
 <Toaster />
 <PinConfirm />
+<ConfirmModal />
