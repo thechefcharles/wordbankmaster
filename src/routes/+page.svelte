@@ -7,7 +7,7 @@
   import { cubicOut } from 'svelte/easing';
 
   import { gameStore, fetchDailyGame, useDailyTwist, useDailyBoost, fetchFreeplayGame, fetchFreeplayResume, freeplayContinue, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbSkipPuzzle, climbArmDoubleOrNothing, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
-  import { getMyChallenges, getPowerups, getDailyAvailBoosts, getMyMatches, getMyGroups, getMatch, getMatchDetail, declineMatch } from '$lib/stores/statsStore.js';
+  import { getMyChallenges, getPowerups, getDailyAvailBoosts, getMyMatches, getMyGroups, getMatch, getMatchDetail, getMatchDebuffs, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
   import { getDailyStatus, getOpenGames, expireStaleDailies, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout, getDailyModifier } from '$lib/stores/statsStore.js';
@@ -719,6 +719,22 @@
     tax: '💸 Taxed (letters +50%)', fog: '🌫️ Fogged (clue hidden)',
     toll: '🚧 Tolled (next letter 3×)', vowel_block: '🚫 Vowel-blocked (vowels 3×)'
   });
+  const DEBUFF_DESC = /** @type {Record<string,string>} */ ({
+    tax: 'Every letter you buy costs +50% while this is active.',
+    fog: 'Your clue is hidden — you have to solve it blind.',
+    toll: 'Your next letter purchase costs 3×, then it clears.',
+    vowel_block: 'Vowels cost 3× while this is active.'
+  });
+  // 💥 Tappable debuff banner → what each sabotage does + who hit you.
+  /** @type {{effect:string, by:string|null}[]|null} */
+  let debuffModal = null;
+  async function openDebuffInfo() {
+    fx('tap');
+    const id = matchInfo?.id; if (!id) return;
+    debuffModal = await getMatchDebuffs(id);
+  }
+  // ℹ️ Tappable "Left to Spend" hero → explains the challenge ante.
+  let showAnteInfo = false;
   let pendingSabotage = /** @type {string|null} */ (null); // sabotage powerup id awaiting a target
   async function refreshClimbPups() {
     try { const r = await getPowerups(); climbPups = r.items ?? []; } catch { /* non-fatal */ }
@@ -1312,13 +1328,6 @@
     showMainMenu = false;
     refreshClimbPups(); // load owned power-ups for the match tray
   }
-  /** @param {any} item */
-  async function handleMatchPup(item) {
-    const used = (matchInfo?.used_powerups ?? []).includes(item.id);
-    if ((item.owned ?? 0) <= 0 || used) return;
-    await matchPowerup(item.id);
-    await refreshClimbPups();
-  }
 
   // After solving / going broke in Free Play, load the next puzzle in the category.
   async function handleFreeplayContinue() {
@@ -1750,6 +1759,51 @@
         <p class="info-note">Spend less on letters to keep more — and grow your <button class="info-inline" on:click|stopPropagation={() => climbInfo = 'heat'}>heat</button>.</p>
       {/if}
       <button class="info-close" on:click={() => climbInfo = null}>Got it</button>
+    </div>
+  </div>
+{/if}
+
+<!-- ℹ️ Challenge "Left to Spend" explainer -->
+{#if showAnteInfo}
+  <div class="modal-overlay info-overlay" role="button" tabindex="0" aria-label="Close"
+    on:click={() => showAnteInfo = false} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') showAnteInfo = false; }}>
+    <div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
+      <button class="modal-x" on:click={() => showAnteInfo = false} aria-label="Close">✕</button>
+      <div class="info-big green">${Math.max(0, matchLeft).toLocaleString()}</div>
+      <h3 class="info-title">Left to Spend</h3>
+      <p class="info-sub">Your ante for the whole challenge — both players get the same. Buying letters spends it.</p>
+      <div class="info-rows">
+        <div class="info-row"><span>Most Cash left at the end</span><b class="pos">wins the pot</b></div>
+        <div class="info-row"><span>Out of ante?</span><b>Keep guessing free</b></div>
+        <div class="info-row"><span>Skip a puzzle</span><b class="neg">pays full price</b></div>
+      </div>
+      <p class="info-note">Lowest spender takes it. A tie splits the pot evenly. You never dip into your real Cash.</p>
+      <button class="info-close" on:click={() => showAnteInfo = false}>Got it</button>
+    </div>
+  </div>
+{/if}
+
+<!-- 💥 Sabotage debuff explainer: what it does + who hit you -->
+{#if debuffModal}
+  <div class="modal-overlay info-overlay" role="button" tabindex="0" aria-label="Close"
+    on:click={() => debuffModal = null} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') debuffModal = null; }}>
+    <div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
+      <button class="modal-x" on:click={() => debuffModal = null} aria-label="Close">✕</button>
+      <div class="info-big">💥</div>
+      <h3 class="info-title">You got hit</h3>
+      {#if debuffModal.length}
+        <div class="info-rows">
+          {#each debuffModal as d}
+            <div class="info-row debuff-row">
+              <span>{DEBUFF_LABEL[d.effect] ?? d.effect}<small class="db-desc">{DEBUFF_DESC[d.effect] ?? ''}</small></span>
+              <b>{d.by ? 'by ' + d.by : ''}</b>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <p class="info-sub">No active sabotage right now.</p>
+      {/if}
+      <button class="info-close" on:click={() => debuffModal = null}>Got it</button>
     </div>
   </div>
 {/if}
@@ -2244,7 +2298,9 @@
         <StandingStrip standing={matchInfo.standing ?? null} />
       {/if}
       {#if (matchInfo.my_debuffs ?? []).length}
-        <p class="debuff-banner">{(matchInfo.my_debuffs ?? []).map((/** @type {string} */ d) => DEBUFF_LABEL[d] ?? d).join(' · ')}</p>
+        <button type="button" class="debuff-banner" on:click={openDebuffInfo} title="Who hit you & what it does">
+          {(matchInfo.my_debuffs ?? []).map((/** @type {string} */ d) => DEBUFF_LABEL[d] ?? d).join(' · ')} <span class="db-info">ⓘ</span>
+        </button>
       {/if}
       {#if matchInfo.items_allowed}
         {@const ownedSab = sabPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0)}
@@ -2268,9 +2324,6 @@
               {/each}
             </div>
           {/if}
-        {/if}
-        {#if !selfPups.some((/** @type {any} */ i) => (i.owned ?? 0) > 0) && !ownedSab.length}
-          <p class="cp-hint">⚡ Power-ups are on — you don't own any yet. Grab some in the Store to use them here.</p>
         {/if}
       {/if}
     {/if}
@@ -2327,7 +2380,7 @@
           {:else if isClimb}
             <button class="bp-amount bp-amount-btn" title="How this is calculated" on:click={() => { fx('tap'); climbInfo = 'earn'; }}>{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</button>
           {:else if isMatch}
-            <span class="bp-amount">${Math.max(0, Math.round($tweenNet)).toLocaleString()}</span>
+            <button class="bp-amount bp-amount-btn" title="What is this?" on:click={() => { fx('tap'); showAnteInfo = true; }}>${Math.max(0, Math.round($tweenNet)).toLocaleString()}</button>
           {:else}
             <span class="bp-amount">{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</span>
           {/if}
@@ -2335,7 +2388,6 @@
         </div>
         {#if isMatch && matchLive}
           <div class="ante-bar"><span class="ante-fill" style="width:{(matchLive.budget ?? 0) > 0 ? Math.max(0, Math.min(100, (matchLeft / matchLive.budget) * 100)) : 100}%"></span></div>
-          <p class="match-ante-sub">{matchLeft > 0 ? `of $${(matchLive.budget ?? 0).toLocaleString()} buy-in · spend the least to win` : 'Out of ante — solve it free to take the pot'}</p>
         {/if}
         {#if isClimb && climbRun && climbRun.solves >= 2}
           <p class="climb-run-line" class:best={climbRunIsBest}>
@@ -2661,10 +2713,14 @@
   .cp.sab.arming { border-color: #f472b6; box-shadow: 0 0 12px rgba(244,114,182,0.4); }
   .cp-hint.sab { color: #f472b6; }
   .debuff-banner {
-    text-align: center; font-size: 0.76rem; font-weight: 700; color: #fb7185; margin: 0 auto 8px;
-    max-width: 340px; padding: 5px 10px; border-radius: 999px;
+    display: block; text-align: center; font-size: 0.76rem; font-weight: 700; color: #fb7185; margin: 0 auto 8px;
+    max-width: 340px; padding: 5px 10px; border-radius: 999px; cursor: pointer;
     background: rgba(251,113,133,0.1); border: 1px solid rgba(251,113,133,0.3);
   }
+  .debuff-banner:active { transform: scale(0.97); }
+  .db-info { opacity: 0.7; font-size: 0.7rem; }
+  .debuff-row { align-items: flex-start; }
+  .db-desc { display: block; font-size: 0.72rem; font-weight: 500; color: var(--text-muted); margin-top: 2px; }
   .sab-targets { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; margin: 2px auto 10px; max-width: 340px; }
   .sab-pick { font-size: 0.74rem; color: #f472b6; font-weight: 700; }
   .sab-target {

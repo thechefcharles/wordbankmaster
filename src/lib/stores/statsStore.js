@@ -615,6 +615,13 @@ export async function getMatchDetail(matchId) {
   if (error) { console.error('❌ get_match_detail:', error); return null; }
   return data;
 }
+/** The caller's active sabotage debuffs in a match, each with who applied it.
+ *  @param {string} matchId @returns {Promise<{effect:string, by:string|null}[]>} */
+export async function getMatchDebuffs(matchId) {
+  const { data, error } = await supabase.rpc('get_match_debuffs', { p_id: matchId });
+  if (error) { console.error('❌ get_match_debuffs:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
 /** Public profile by username + viewer's head-to-head + relationship flags.
  * @param {string} username @returns {Promise<any|null>} */
 export async function getPublicProfile(username) {
