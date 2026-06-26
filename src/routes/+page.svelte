@@ -20,7 +20,7 @@
     getSavedGameInfo
   } from '$lib/stores/localGameUtils.js';
   import { gameWasRestored } from '$lib/stores/GameStateFlags.js';
-  import { soundEnabled, toggleSound, fx } from '$lib/sound.js';
+  import { soundEnabled, toggleSound, hapticsEnabled, toggleHaptics, fx } from '$lib/sound.js';
   import { startMusic, stopMusic, musicEnabled, musicVolume, setMusicVolume, toggleMusic, TRACKS, currentTrackId, selectTrack } from '$lib/music.js';
   import PinGate from '$lib/components/PinGate.svelte';
   import { pinLocked, hasPinFor, clearPin, markUnlocked, sessionIsUnlocked, markPinSkipped, pinSkipped, clearPinSkipped } from '$lib/pin.js';
@@ -284,8 +284,9 @@
   function onPinSet() { markUnlocked(); clearPinSkipped(); pinNotSet = false; }
   function onPinSkip() { markUnlocked(); markPinSkipped(sessionUid); pinNotSet = false; } // remember the skip so it doesn't nag every open
   function onPinLogout() { clearPin(); clearPinSkipped(); pinLocked.set(false); pinNotSet = false; handleLogout(); }
-  // Lobby music: play in the menu only — not while locked, setting a PIN, or in-game.
-  $: if (browser) { (loggedIn && hasInitialized && showMainMenu && !showPinUnlock && !showPinSetup) ? startMusic() : stopMusic(); }
+  // Background music: play continuously through the whole session — menu AND in-game
+  // (it loops seamlessly across screens) — pausing only while locked / setting a PIN.
+  $: if (browser) { (loggedIn && hasInitialized && !showPinUnlock && !showPinSetup) ? startMusic() : stopMusic(); }
   $: bankroll = $gameStore.bankroll || 0;
   $: digits = String(bankroll).split('');
 
@@ -1364,6 +1365,7 @@
   }
 
   let showMyAccount = false;
+  let showAudio = false; // in-game quick audio panel (sound / haptics / music / track)
   let showStreakMessage = false;
   let accountStreak = 0;
   let accountFreezes = 0;
@@ -1483,6 +1485,10 @@
 <!-- ❓ How to play THIS game type (top-center) -->
 {#if loggedIn && hasInitialized && !showMainMenu && $gameStore.gameMode}
   <button class="help-btn" title="How to play" aria-label="How to play this game" on:click={() => showObjectiveFor($gameStore.gameMode, true)}>?</button>
+{/if}
+<!-- 🔊 In-game audio controls (sound / haptics / music) -->
+{#if loggedIn && hasInitialized && !showMainMenu}
+  <button class="audio-btn" title="Sound & music" aria-label="Sound and music settings" on:click={() => { fx('tap'); showAudio = true; }}>{$soundEnabled || $musicEnabled ? '🔊' : '🔇'}</button>
 {/if}
 <!-- 🏳️ Give up (top-right) — Daily / Challenges / Free Play -->
 {#if loggedIn && hasInitialized && !showMainMenu && (foldMode || isFreeplay) && gameActive}
@@ -1834,6 +1840,40 @@
           </button>
         {/each}
       </div>
+    </div>
+  </div>
+{/if}
+
+<!-- 🔊 In-game audio panel — sound / haptics / music + track, adjustable mid-puzzle -->
+{#if showAudio}
+  <div class="modal-overlay info-overlay" role="button" tabindex="0" aria-label="Close"
+    on:click={() => showAudio = false} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') showAudio = false; }}>
+    <div class="info-card audio-panel" on:click|stopPropagation role="dialog" aria-modal="true">
+      <button class="modal-x" on:click={() => showAudio = false} aria-label="Close">✕</button>
+      <h3 class="info-title">Sound &amp; Music</h3>
+      <div class="ap-rows">
+        <button class="ap-toggle" on:click={() => { toggleSound(); if ($soundEnabled) fx('select'); }}>
+          <span>{$soundEnabled ? '🔊' : '🔇'} Sound</span><span class="ap-state" class:on={$soundEnabled}>{$soundEnabled ? 'On' : 'Off'}</span>
+        </button>
+        <button class="ap-toggle" on:click={() => { toggleHaptics(); if ($hapticsEnabled) fx('tap'); }}>
+          <span>{$hapticsEnabled ? '📳' : '📴'} Haptics</span><span class="ap-state" class:on={$hapticsEnabled}>{$hapticsEnabled ? 'On' : 'Off'}</span>
+        </button>
+        <button class="ap-toggle" on:click={toggleMusic}>
+          <span>{$musicEnabled ? '🎵' : '🔕'} Music</span><span class="ap-state" class:on={$musicEnabled}>{$musicEnabled ? 'On' : 'Off'}</span>
+        </button>
+      </div>
+      {#if $musicEnabled}
+        <div class="ma-music-ctl">
+          <span class="mmc-ic">🔈</span>
+          <input class="mmc-slider" type="range" min="0" max="100" step="1" value={Math.round($musicVolume * 100)} on:input={(e) => setMusicVolume(Number(e.currentTarget.value) / 100)} />
+          <span class="mmc-pct">{Math.round($musicVolume * 100)}%</span>
+        </div>
+        <div class="ma-tracks">
+          {#each TRACKS as t, i}
+            <button class="ma-track" class:on={$currentTrackId === t.id} on:click={() => selectTrack(t.id)}>Track {i + 1}</button>
+          {/each}
+        </div>
+      {/if}
     </div>
   </div>
 {/if}
@@ -2215,12 +2255,15 @@
 
           <div class="ma-section-label">Settings</div>
           <button class="main-menu-btn ghost-btn ma-toggle" on:click={() => { toggleSound(); if ($soundEnabled) fx('select'); }}>
-            <span>{$soundEnabled ? '🔊' : '🔇'} Sound &amp; Haptics</span>
+            <span>{$soundEnabled ? '🔊' : '🔇'} Sound</span>
             <span class="ma-toggle-state">{$soundEnabled ? 'On' : 'Off'}</span>
           </button>
-
+          <button class="main-menu-btn ghost-btn ma-toggle" on:click={() => { toggleHaptics(); if ($hapticsEnabled) fx('tap'); }}>
+            <span>{$hapticsEnabled ? '📳' : '📴'} Haptics</span>
+            <span class="ma-toggle-state">{$hapticsEnabled ? 'On' : 'Off'}</span>
+          </button>
           <button class="main-menu-btn ghost-btn ma-toggle" on:click={toggleMusic}>
-            <span>{$musicEnabled ? '🎵' : '🔕'} Lobby Music</span>
+            <span>{$musicEnabled ? '🎵' : '🔕'} Music</span>
             <span class="ma-toggle-state">{$musicEnabled ? 'On' : 'Off'}</span>
           </button>
           {#if $musicEnabled}
@@ -2232,9 +2275,11 @@
               <span class="mmc-pct">{Math.round($musicVolume * 100)}%</span>
             </div>
             {#if TRACKS.length > 1}
-              <select class="ma-track-select" value={$currentTrackId} on:change={(e) => selectTrack(e.currentTarget.value)}>
-                {#each TRACKS as t}<option value={t.id}>{t.title}</option>{/each}
-              </select>
+              <div class="ma-tracks">
+                {#each TRACKS as t, i}
+                  <button class="ma-track" class:on={$currentTrackId === t.id} on:click={() => selectTrack(t.id)}>Track {i + 1}</button>
+                {/each}
+              </div>
             {/if}
           {/if}
           <button class="main-menu-btn ghost-btn" on:click={() => { showMyAccount = false; showTutorial = true; }}>❓ How to Play</button>
@@ -3323,6 +3368,32 @@
     background: var(--surface-strong, rgba(20,28,40,0.85)); border: 1px solid var(--border-strong, var(--border)); backdrop-filter: blur(10px);
   }
   .help-btn:hover { border-color: var(--brand-2); color: var(--brand-2); }
+  /* 🔊 in-game audio button — sits just right of the help button */
+  .audio-btn {
+    position: fixed; top: 14px; left: calc(50% + 46px); transform: translateX(-50%); z-index: 1000;
+    width: 38px; height: 38px; border-radius: 999px; cursor: pointer; font-size: 1.05rem; line-height: 1;
+    display: grid; place-items: center; color: var(--text);
+    background: var(--surface-strong, rgba(20,28,40,0.85)); border: 1px solid var(--border-strong, var(--border)); backdrop-filter: blur(10px);
+  }
+  .audio-btn:hover { border-color: var(--brand-2); }
+  .audio-btn:active { transform: translateX(-50%) scale(0.92); }
+  /* audio panel */
+  .audio-panel { text-align: left; }
+  .ap-rows { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+  .ap-toggle {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding: 11px 14px; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 0.95rem; color: var(--text);
+    background: var(--surface-2, rgba(255,255,255,0.05)); border: 1px solid var(--border);
+  }
+  .ap-toggle:active { transform: scale(0.98); }
+  .ap-state { font-size: 0.8rem; font-weight: 800; color: var(--text-faint); }
+  .ap-state.on { color: #4ade80; }
+  .ma-tracks { display: flex; gap: 6px; margin-top: 8px; }
+  .ma-track {
+    flex: 1; padding: 8px 4px; border-radius: 10px; cursor: pointer; font-weight: 800; font-size: 0.8rem;
+    color: var(--text-muted); background: var(--surface-2, rgba(255,255,255,0.05)); border: 1px solid var(--border);
+  }
+  .ma-track.on { color: #3a2a00; background: var(--brand-grad, linear-gradient(135deg,#fbbf24,#fde047)); border-color: transparent; }
   /* 🏳️ give up (top-right) — red exit arrow */
   .giveup-btn {
     position: fixed; top: 14px; right: 14px; z-index: 1000;
