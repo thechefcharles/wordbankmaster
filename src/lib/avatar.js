@@ -8,13 +8,16 @@ import { avataaars } from '@dicebear/collection';
 export const DEFAULT_AVATAR = {
   skinColor: 'edb98a', top: 'shortFlat', hairColor: '4a312c',
   eyes: 'default', eyebrows: 'default', mouth: 'smile',
-  clothing: 'shirtCrewNeck', clothesColor: '5199e4',
-  accessories: 'none', facialHair: 'none'
+  clothing: 'shirtCrewNeck', clothesColor: '5199e4', clothingGraphic: 'bear',
+  accessories: 'none', accessoriesColor: '262e33', facialHair: 'none', hatColor: '262e33',
+  // premium FX — rendered by Avatar.svelte, not avataaars
+  fxShirt: 'none', frame: 'none', overlay: 'none', aura: 'none'
 };
 
 const SKIN = ['ffdbb4', 'edb98a', 'fd9841', 'f8d25c', 'd08b5b', 'ae5d29', '614335'];
 const HAIR = ['2c1b18', '4a312c', '724133', 'a55728', 'b58143', 'c93305', 'd6b370', 'e8e1e1', 'ecdcbf', 'f59797'];
 const OUTFIT = ['262e33', '3c4f5c', '5199e4', '25557c', '65c9ff', '929598', 'a7ffc4', 'ff488e', 'ff5c5c', 'ffffb1', 'ffffff'];
+const NEON = ['262e33', '5199e4', 'ff488e', '7cff6b', 'ffe45c', 'c4b5fd', 'ff5c5c', 'ffffff'];
 const col = (/** @type {string[]} */ a) => a.map((value) => ({ value, label: '#' + value }));
 
 /** Ordered builder categories. `type:'color'` = swatches, `type:'style'` = thumbnails.
@@ -37,6 +40,7 @@ export const CATEGORIES = [
     { value: 'winterHat03', label: 'Bobble Hat', cosmeticId: 'av_top_bobble', price: 500 }
   ] },
   { key: 'hairColor', label: 'Hair Color', type: 'color', options: col(HAIR) },
+  { key: 'hatColor', label: 'Hat Color', type: 'color', options: col(OUTFIT) },
   { key: 'eyes', label: 'Eyes', type: 'style', options: [
     { value: 'default', label: 'Default' }, { value: 'happy', label: 'Happy' }, { value: 'wink', label: 'Wink' },
     { value: 'squint', label: 'Squint' }, { value: 'side', label: 'Side' }, { value: 'surprised', label: 'Surprised' }, { value: 'hearts', label: 'Hearts' }
@@ -67,6 +71,17 @@ export const CATEGORIES = [
     { value: 'blazerAndSweater', label: 'Blazer & Sweater', cosmeticId: 'av_cloth_blazersw', price: 900 }
   ] },
   { key: 'clothesColor', label: 'Outfit Color', type: 'color', options: col(OUTFIT) },
+  { key: 'clothingGraphic', label: 'Shirt Design', type: 'style', hint: 'On the Graphic Tee', options: [
+    { value: 'bear', label: 'Bear' }, { value: 'diamond', label: 'Diamond' },
+    { value: 'skull', label: 'Skull', cosmeticId: 'av_gfx_skull', price: 200 },
+    { value: 'skullOutline', label: 'Skull 2', cosmeticId: 'av_gfx_skullo', price: 200 },
+    { value: 'bat', label: 'Bat', cosmeticId: 'av_gfx_bat', price: 200 },
+    { value: 'deer', label: 'Deer', cosmeticId: 'av_gfx_deer', price: 200 },
+    { value: 'pizza', label: 'Pizza', cosmeticId: 'av_gfx_pizza', price: 300 },
+    { value: 'hola', label: 'Hola', cosmeticId: 'av_gfx_hola', price: 200 },
+    { value: 'cumbia', label: 'Cumbia', cosmeticId: 'av_gfx_cumbia', price: 200 },
+    { value: 'resist', label: 'Resist', cosmeticId: 'av_gfx_resist', price: 300 }
+  ] },
   { key: 'accessories', label: 'Glasses', type: 'style', options: [
     { value: 'none', label: 'None' },
     { value: 'round', label: 'Round', cosmeticId: 'av_acc_round', price: 300 },
@@ -75,6 +90,29 @@ export const CATEGORIES = [
     { value: 'prescription01', label: 'Specs', cosmeticId: 'av_acc_specs', price: 300 },
     { value: 'kurt', label: 'Kurt', cosmeticId: 'av_acc_kurt', price: 400 },
     { value: 'eyepatch', label: 'Eyepatch', cosmeticId: 'av_acc_eyepatch', price: 700 }
+  ] },
+  { key: 'accessoriesColor', label: 'Glasses Color', type: 'color', options: col(NEON) },
+  // ── ✨ Premium FX (rendered by Avatar.svelte) ──
+  { key: 'fxShirt', label: '✨ Shirt FX', type: 'fx', options: [
+    { value: 'none', label: 'None' },
+    { value: 'holo', label: 'Holographic', cosmeticId: 'av_fxshirt_holo', price: 1500 }
+  ] },
+  { key: 'frame', label: '🖼️ Frame', type: 'fx', options: [
+    { value: 'none', label: 'None' },
+    { value: 'neon', label: 'Neon', cosmeticId: 'av_frame_neon', price: 1000 },
+    { value: 'gold', label: 'Gold', cosmeticId: 'av_frame_gold', price: 1200 },
+    { value: 'gem', label: 'Gem', cosmeticId: 'av_frame_gem', price: 2000 }
+  ] },
+  { key: 'overlay', label: '👑 Headpiece', type: 'fx', options: [
+    { value: 'none', label: 'None' },
+    { value: 'crown', label: 'Crown', cosmeticId: 'av_overlay_crown', price: 1500 },
+    { value: 'halo', label: 'Halo', cosmeticId: 'av_overlay_halo', price: 1000 },
+    { value: 'horns', label: 'Horns', cosmeticId: 'av_overlay_horns', price: 800 }
+  ] },
+  { key: 'aura', label: '🔆 Aura', type: 'fx', options: [
+    { value: 'none', label: 'None' },
+    { value: 'neon', label: 'Neon Glow', cosmeticId: 'av_aura_neon', price: 800 },
+    { value: 'gold', label: 'Gold Glow', cosmeticId: 'av_aura_gold', price: 1000 }
   ] }
 ];
 
@@ -88,7 +126,7 @@ export function avataaarsOptions(config) {
     top: c.top === 'none' ? [] : [c.top],
     topProbability: c.top === 'none' ? 0 : 100,
     hairColor: [c.hairColor],
-    hatColor: [c.clothesColor],
+    hatColor: [c.hatColor],
     eyes: [c.eyes],
     eyebrows: [c.eyebrows],
     mouth: [c.mouth],
@@ -96,9 +134,18 @@ export function avataaarsOptions(config) {
     facialHairProbability: c.facialHair === 'none' ? 0 : 100,
     clothing: [c.clothing],
     clothesColor: [c.clothesColor],
+    clothingGraphic: [c.clothingGraphic],
     accessories: c.accessories === 'none' ? [] : [c.accessories],
+    accessoriesColor: [c.accessoriesColor],
     accessoriesProbability: c.accessories === 'none' ? 0 : 100
   };
+}
+
+/** Whether a config has any premium FX equipped. @param {any} config */
+export function hasFx(config) {
+  const c = config || {};
+  return (c.fxShirt && c.fxShirt !== 'none') || (c.frame && c.frame !== 'none') ||
+         (c.overlay && c.overlay !== 'none') || (c.aura && c.aura !== 'none');
 }
 
 /** Render an avatar config to an SVG string. @param {any} config @param {any} [extra] extra DiceBear opts */

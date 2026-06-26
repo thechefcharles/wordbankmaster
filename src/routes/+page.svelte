@@ -1953,7 +1953,7 @@
             <span class="bc-coin">💰</span>{netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}
           </button>
           <button class="account-ic has-av" on:click={() => goto($unreadCount > 0 ? '/profile?tab=alerts' : '/profile')} title="Profile">
-            <Avatar config={myAvatar} mode="head" size={50} />{#if $unreadCount > 0}<span class="account-count" title="{$unreadCount} new">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}
+            <Avatar config={myAvatar} mode="head" fx size={50} />{#if $unreadCount > 0}<span class="account-count" title="{$unreadCount} new">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}
           </button>
         </div>
         <video class="menu-mark" src="/coin.mp4" poster="/coin-poster.jpg" autoplay loop muted playsinline disablepictureinpicture></video>
@@ -2257,7 +2257,7 @@
           {/if}
 
           <button class="ma-avatar-btn" on:click={() => { showMyAccount = false; goto('/avatar'); }}>
-            <Avatar config={myAvatar} size={84} />
+            <Avatar config={myAvatar} fx size={84} />
             <span class="ma-avatar-edit">🎨 Edit Avatar</span>
           </button>
 

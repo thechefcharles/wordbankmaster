@@ -80,7 +80,7 @@
   {#if loading}
     <p class="loading">Loading…</p>
   {:else}
-    <div class="av-hero"><Avatar {config} size={150} /></div>
+    <div class="av-hero"><Avatar {config} fx size={150} /></div>
 
     <div class="cat-row">
       {#each CATEGORIES as c}
@@ -95,7 +95,7 @@
           {#if cat.type === 'color'}
             <span class="sw" style="background:#{o.value}"></span>
           {:else}
-            <Avatar config={preview(cat.key, o.value)} size={62} />
+            <Avatar config={preview(cat.key, o.value)} fx={cat.type === 'fx'} size={62} />
           {/if}
           <span class="opt-label">{o.label}</span>
           {#if locked(o)}<span class="opt-price">🔒 {fmt(o.price)}</span>{/if}
@@ -113,7 +113,7 @@
   <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Unlock item">
     <button type="button" class="modal-backdrop" aria-label="Cancel" on:click={() => buying = null}></button>
     <div class="buy-card">
-      <Avatar config={preview(buying.key, buying.o.value)} size={120} />
+      <Avatar config={preview(buying.key, buying.o.value)} fx size={120} />
       <h3>{buying.o.label}</h3>
       <p class="buy-price">{fmt(buying.o.price)}</p>
       <button class="buy-go" disabled={saving || bank < buying.o.price} on:click={confirmBuy}>
