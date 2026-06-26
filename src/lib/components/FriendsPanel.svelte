@@ -51,7 +51,8 @@
     if (res?.ok) {
       fx('select');
       msg = res.status === 'friends' ? `You're now friends with ${res.friend_name ?? username}!` : `Request sent to ${res.friend_name ?? username}.`;
-      results = results.map((u) => u.username === username ? { ...u, status: res.status === 'friends' ? 'friends' : 'pending_out', is_friend: res.status === 'friends' } : u);
+      query = '';     // clear the search box so the results list collapses
+      results = [];
       await load();
     } else {
       msg = res?.reason === 'already_friends' ? 'Already friends.' : res?.reason === 'not_found' ? 'No player with that name.' : 'Could not send request.';
