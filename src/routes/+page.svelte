@@ -41,7 +41,6 @@
   import StandingStrip from '$lib/components/StandingStrip.svelte';
   import MatchDetailModal from '$lib/components/MatchDetailModal.svelte';
   import LeaderboardPanel from '$lib/components/LeaderboardPanel.svelte';
-  import ActivityPanel from '$lib/components/ActivityPanel.svelte';
   import FriendsPanel from '$lib/components/FriendsPanel.svelte';
   import GroupsPanel from '$lib/components/GroupsPanel.svelte';
 
@@ -1990,13 +1989,6 @@
               {#if resumables.length > 1}<span class="resume-count">{resumables.length}</span>{/if}
             </button>
           {/if}
-          <!-- ⚔️ Challenge invites — a notification that opens the challenges screen. -->
-          {#if challengeInvites.length}
-            <button class="menu-card invite-card" style="--i: 0" on:click={() => { fx('tap'); openCommunity('challenges'); }}>
-              <span class="mc-title">⚔️ {challengeInvites.length === 1 ? `${challengeInvites[0].host} challenged you` : 'Challenges'}</span>
-              {#if challengeInvites.length > 1}<span class="invite-count">{challengeInvites.length}</span>{/if}
-            </button>
-          {/if}
           {#if friendRequests.length}
             <button class="menu-card invite-card friend" style="--i: 0" on:click={() => { fx('tap'); goto('/friends'); }}>
               <span class="mc-title">👋 Friend request{friendRequests.length > 1 ? 's' : ''}</span>
@@ -2006,15 +1998,17 @@
           <button class="menu-card primary" style="--i: 0" on:click={() => { menuView = 'play'; fx('tap'); }}>
             <span class="mc-title">Play Now!</span>
           </button>
-          <!-- 🤝 Challenge A Friend — sits right under Play Now -->
+          <!-- ⚔️ Challenges hub (list + New) — carries the pending-invite badge; 👥+ = friends/groups -->
           <div class="vs-cta-group">
-            <button class="vs-main" on:click={() => { fx('tap'); newChallenge(); }}>Challenge Friends</button>
+            <button class="vs-main" on:click={() => { fx('tap'); openCommunity('challenges'); }}>
+              ⚔️ Challenges{#if challengeInvites.length}<span class="vs-badge">{challengeInvites.length}</span>{/if}
+            </button>
             <button class="vs-people" title="Friends &amp; Groups" aria-label="Friends and groups" on:click={() => { fx('tap'); openCommunity('people'); }}>
               <span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span>
             </button>
           </div>
-          <button class="menu-card" style="--i: 1" on:click={() => { fx('tap'); openCommunity('challenges'); }}>
-            <span class="mc-title">Community</span>
+          <button class="menu-card" style="--i: 1" on:click={() => { fx('tap'); openCommunity('leaderboard'); }}>
+            <span class="mc-title">🏆 Leaderboard</span>
           </button>
           <button class="menu-card" style="--i: 2" on:click={() => goto('/shop')}>
             <span class="mc-title">Store</span>
@@ -2066,7 +2060,7 @@
             <h2 class="sub-title">People</h2>
           {:else}
             <button class="sub-back" on:click={() => { menuView = 'home'; fx('tap'); }}>← Back</button>
-            <h2 class="sub-title">Community</h2>
+            <h2 class="sub-title">{communityTab === 'leaderboard' ? '🏆 Leaderboard' : '⚔️ Challenges'}</h2>
             <button class="sub-people" title="Friends & Groups" aria-label="Friends & Groups" on:click={() => { communityTab = 'people'; peopleBackToHome = false; fx('tap'); }}><span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span></button>
           {/if}
         </div>
@@ -2079,7 +2073,6 @@
           <div class="comm-tabs">
             <button class="comm-tab" class:active={communityTab === 'challenges'} on:click={() => { communityTab = 'challenges'; fx('tap'); }}>Challenges</button>
             <button class="comm-tab" class:active={communityTab === 'leaderboard'} on:click={() => { communityTab = 'leaderboard'; fx('tap'); }}>Leaderboard</button>
-            <button class="comm-tab" class:active={communityTab === 'activity'} on:click={() => { communityTab = 'activity'; fx('tap'); }}>Activity</button>
           </div>
         {/if}
 
@@ -2110,8 +2103,6 @@
           </div>
         {:else if communityTab === 'leaderboard'}
           <div class="comm-body"><LeaderboardPanel /></div>
-        {:else if communityTab === 'activity'}
-          <div class="comm-body"><ActivityPanel /></div>
         {:else}
           <div class="comm-body">
             {#if peopleTab === 'friends'}
@@ -3064,6 +3055,8 @@
     font-family: var(--font-display); font-weight: 800; font-size: 0.94rem; letter-spacing: 0.01em; }
   .vs-main:hover { filter: brightness(1.05); }
   .vs-main:active { transform: scale(0.99); }
+  .vs-badge { display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-left: 7px; padding: 0 5px; vertical-align: middle;
+    border-radius: 999px; background: #dc2626; color: #fff; font-size: 0.72rem; font-weight: 800; }
   .vs-people { position: relative; width: 58px; flex: none; display: grid; place-items: center;
     border-left: 1.5px solid rgba(120,80,0,0.45); } /* just the vertical divider line */
   .vs-people:hover { filter: brightness(1.06); }
