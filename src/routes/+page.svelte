@@ -7,7 +7,7 @@
   import { cubicOut } from 'svelte/easing';
 
   import { gameStore, fetchDailyGame, useDailyTwist, useDailyBoost, fetchFreeplayGame, fetchFreeplayResume, freeplayContinue, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbSkipPuzzle, climbArmDoubleOrNothing, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
-  import { getMyChallenges, getPowerups, getDailyAvailBoosts, getMyMatches, getMyGroups, getMatch, getMatchDetail, getMatchDebuffs, declineMatch } from '$lib/stores/statsStore.js';
+  import { getMyChallenges, getPowerups, getDailyAvailBoosts, getMyMatches, getMyGroups, getMatch, getMatchDetail, getMatchDebuffs, getMatchOpponents, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
   import { getDailyStatus, getOpenGames, expireStaleDailies, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout, getDailyModifier } from '$lib/stores/statsStore.js';
@@ -495,8 +495,9 @@
         out.push({ id: it.id, emoji: PUP_ICON[it.id] ?? '✨', name: it.name, blurb: avail ? 'Tap to use now' : '', count: it.owned, usable: avail,
           reason: (climbUsed || matchUsed) ? 'Already used on this puzzle.' : (($gameStore.gameMode === 'climb' || isMatch) ? '' : 'For the Cash Game or Challenges — not this mode.') });
       } else if (it.kind === 'sabotage') {
-        out.push({ id: it.id, emoji: PUP_ICON[it.id] ?? '✨', name: it.name, blurb: '', count: it.owned, usable: false,
-          reason: isMatch ? 'Sabotage from the 😈 row below — you pick who to hit.' : 'For Challenges — sabotage an opponent there, not here.' });
+        const sabAvail = isMatch && !!matchInfo?.items_allowed && gameActive && (it.owned ?? 0) > 0;
+        out.push({ id: it.id, emoji: PUP_ICON[it.id] ?? '😈', name: it.name, blurb: sabAvail ? '😈 Tap to aim at an opponent' : '', count: it.owned, usable: sabAvail, kind: 'sabotage',
+          reason: sabAvail ? '' : 'For Challenges — use it during a challenge.' });
       } else {
         out.push({ id: it.id, emoji: PUP_ICON[it.id] ?? '✨', name: it.name, blurb: '', count: it.owned, usable: false,
           reason: 'For the Cash Game or Challenges — not this mode.' });
@@ -516,8 +517,28 @@
     if (item?.id === 'twist') useTwist();
     else if (item?.id === 'bounty_boost' || item?.id === 'jackpot_boost') { useBoost(item.id); loadVault(); }
     else if ($gameStore.gameMode === 'climb') { climbPowerup(item.id).then(() => { refreshClimbPups(); loadVault(); }); }
+    else if (isMatch && item?.kind === 'sabotage') { openSabotagePicker(item); return; } // keeps flow for the target step
     else if (isMatch) { matchPowerup(item.id).then(() => { refreshClimbPups(); loadVault(); }); }
     showBag = false;
+  }
+  // 😈 Sabotage from the bag → pick a target (auto-applies vs a single opponent).
+  /** @type {{ item:any, opponents:any[] }|null} */
+  let sabPicker = null;
+  /** @param {any} item */
+  async function openSabotagePicker(item) {
+    showBag = false;
+    const id = matchInfo?.id; if (!id) return;
+    const opps = (await getMatchOpponents(id)).filter((/** @type {any} */ o) => !o.done);
+    if (opps.length === 0) { vaultMsg = 'No opponents left to hit.'; return; }
+    if (opps.length === 1) { await matchSabotageOpponent(opps[0].id, item.id); await refreshClimbPups(); return; }
+    sabPicker = { item, opponents: opps };
+  }
+  /** @param {string} targetId */
+  async function applySabotage(targetId) {
+    if (!sabPicker) return;
+    const item = sabPicker.item; sabPicker = null;
+    await matchSabotageOpponent(targetId, item.id);
+    await refreshClimbPups();
   }
 
   // ℹ️ Daily explainers: ×N badge, Solve-to-Earn, 🏆 streak, or today's Twist.
@@ -735,25 +756,11 @@
   }
   // ℹ️ Tappable "Left to Spend" hero → explains the challenge ante.
   let showAnteInfo = false;
-  let pendingSabotage = /** @type {string|null} */ (null); // sabotage powerup id awaiting a target
   async function refreshClimbPups() {
     try { const r = await getPowerups(); climbPups = r.items ?? []; } catch { /* non-fatal */ }
   }
   $: selfPups = climbPups.filter((/** @type {any} */ i) => i.kind === 'climb');   // buffs (use on yourself)
   $: sabPups = climbPups.filter((/** @type {any} */ i) => i.kind === 'sabotage'); // sabotage (target an opponent)
-  /** @param {any} item */
-  async function tapSabotage(item) {
-    const opps = matchInfo?.opponents ?? [];
-    if ((item.owned ?? 0) <= 0 || opps.length === 0) return;
-    if (opps.length === 1) { await matchSabotageOpponent(opps[0].id, item.id); await refreshClimbPups(); }
-    else { pendingSabotage = pendingSabotage === item.id ? null : item.id; }
-  }
-  /** @param {string} oppId */
-  async function pickSabTarget(oppId) {
-    if (!pendingSabotage) return;
-    const pid = pendingSabotage; pendingSabotage = null;
-    await matchSabotageOpponent(oppId, pid); await refreshClimbPups();
-  }
 
   // --- per-match chat (1v1 + group challenges) ---
   let matchChatOpen = false;
@@ -1808,6 +1815,27 @@
   </div>
 {/if}
 
+<!-- 😈 Sabotage target picker (group play): each opponent's puzzle + ante left -->
+{#if sabPicker}
+  <div class="modal-overlay info-overlay" role="button" tabindex="0" aria-label="Cancel"
+    on:click={() => sabPicker = null} on:keydown={(e) => { if (e.key === 'Escape') sabPicker = null; }}>
+    <div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
+      <button class="modal-x" on:click={() => sabPicker = null} aria-label="Cancel">✕</button>
+      <div class="info-big">{PUP_ICON[sabPicker.item.id] ?? '😈'}</div>
+      <h3 class="info-title">{sabPicker.item.name} — hit who?</h3>
+      <div class="sab-target-list">
+        {#each sabPicker.opponents as o}
+          <button class="sab-target-row" on:click={() => applySabotage(o.id)}>
+            <span class="st-name">{o.name}</span>
+            <span class="st-stat">🧩 Puzzle {o.position} · ${Number(o.ante_left ?? 0).toLocaleString()}</span>
+          </button>
+        {/each}
+      </div>
+      <button class="info-close" on:click={() => sabPicker = null}>Cancel</button>
+    </div>
+  </div>
+{/if}
+
 <main>
   <!-- 👤 First-run: pick a username (required to play socially) -->
   {#if loggedIn && hasInitialized && needsUsername}
@@ -2303,30 +2331,7 @@
           {(matchInfo.my_debuffs ?? []).map((/** @type {string} */ d) => DEBUFF_LABEL[d] ?? d).join(' · ')} <span class="db-info">ⓘ</span>
         </button>
       {/if}
-      {#if matchInfo.items_allowed}
-        {@const ownedSab = sabPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0)}
-        <!-- Self-buffs now live in the 🔐 vault beside Solve; sabotage stays here (you pick a target). -->
-        {#if ownedSab.length && (matchInfo.opponents ?? []).length}
-          <p class="cp-hint sab">😈 Sabotage · tap an item, then pick who to hit</p>
-          <div class="climb-pups">
-            {#each ownedSab as item}
-              <button class="cp sab" class:arming={pendingSabotage === item.id}
-                on:click={() => tapSabotage(item)} title={item.name}>
-                <span class="cp-ic">{PUP_ICON[item.id] ?? '✨'}</span>
-                <span class="cp-tag">×{item.owned}</span>
-              </button>
-            {/each}
-          </div>
-          {#if pendingSabotage}
-            <div class="sab-targets">
-              <span class="sab-pick">Hit who?</span>
-              {#each matchInfo.opponents ?? [] as opp}
-                <button class="sab-target" on:click={() => pickSabTarget(opp.id)}>{opp.name}</button>
-              {/each}
-            </div>
-          {/if}
-        {/if}
-      {/if}
+      <!-- Power-ups & sabotage all live in the 🔐 vault beside Solve now. -->
     {/if}
 
     <!-- 🌍 Category + today's auto-applied Twist chip + witty clue -->
@@ -2709,10 +2714,6 @@
   .cp.equipped { border-color: var(--brand-2); background: rgba(253, 224, 71,0.12); opacity: 1; }
   .cp.equipped .cp-tag { color: var(--brand-2); }
   .cp.empty { opacity: 0.35; }
-  .cp.sab { border-color: rgba(244,114,182,0.3); }
-  .cp.sab:hover:not(:disabled) { border-color: rgba(244,114,182,0.6); }
-  .cp.sab.arming { border-color: #f472b6; box-shadow: 0 0 12px rgba(244,114,182,0.4); }
-  .cp-hint.sab { color: #f472b6; }
   .debuff-banner {
     display: block; text-align: center; font-size: 0.76rem; font-weight: 700; color: #fb7185; margin: 0 auto 8px;
     max-width: 340px; padding: 5px 10px; border-radius: 999px; cursor: pointer;
@@ -2722,12 +2723,16 @@
   .db-info { opacity: 0.7; font-size: 0.7rem; }
   .debuff-row { align-items: flex-start; }
   .db-desc { display: block; font-size: 0.72rem; font-weight: 500; color: var(--text-muted); margin-top: 2px; }
-  .sab-targets { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; margin: 2px auto 10px; max-width: 340px; }
-  .sab-pick { font-size: 0.74rem; color: #f472b6; font-weight: 700; }
-  .sab-target {
-    padding: 4px 11px; border-radius: 999px; cursor: pointer; font-weight: 700; font-size: 0.8rem;
-    color: #fff; border: none; background: linear-gradient(135deg, #f472b6, #db2777);
+  /* 😈 Sabotage target picker (in the bag flow) */
+  .sab-target-list { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 12px; }
+  .sab-target-row {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding: 11px 14px; border-radius: 12px; cursor: pointer;
+    background: rgba(244,114,182,0.1); border: 1px solid rgba(244,114,182,0.4); color: var(--text);
   }
+  .sab-target-row:active { transform: scale(0.98); }
+  .st-name { font-weight: 800; font-size: 0.95rem; }
+  .st-stat { font-size: 0.82rem; color: #f9a8d4; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .cp-ic { font-size: 1.1rem; line-height: 1; }
   .cp-tag { font-size: 0.6rem; font-weight: 700; color: var(--text-faint); }
   .climb-stuck {

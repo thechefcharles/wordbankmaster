@@ -775,8 +775,9 @@ function reconcileMatchBoard(board) {
     matchInfo: { ...match, id: activeMatchId, standing: board.standing ?? null }
   }));
   if (done) { setTimeout(() => launchConfetti(), 250); fx('win'); }
-  // Celebrate EACH solved puzzle in the pack (not just finishing the whole pack).
-  else if ((match.last_score ?? 0) > 0 && (match.position ?? 1) > (prev.matchInfo?.position ?? 0)) {
+  // Celebrate EACH solved puzzle — but only on an in-session advance (prev.matchInfo
+  // exists), so opening/resuming a match never fires the winner fireworks.
+  else if (prev.matchInfo && (match.last_score ?? 0) > 0 && (match.position ?? 1) > (prev.matchInfo.position ?? 0)) {
     setTimeout(() => launchConfetti(), 250); fx('win');
     maybeArmMatchIntro(); // next puzzle in the pack gets the dramatic opening reveal
   }
@@ -842,7 +843,7 @@ export async function matchTimeoutCheck() {
 export async function resumeMatch(id) {
   activeMatchId = id;
   const board = await matchStart(id);
-  if (board) { reconcileMatchBoard(board); maybeArmMatchIntro(); return true; } // gate skips replay over progress
+  if (board) { reconcileMatchBoard(board); return true; } // resume = no dramatic reveal (you've seen this puzzle)
   return false;
 }
 

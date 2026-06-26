@@ -622,6 +622,13 @@ export async function getMatchDebuffs(matchId) {
   if (error) { console.error('❌ get_match_debuffs:', error); return []; }
   return Array.isArray(data) ? data : [];
 }
+/** Opponents in a match with their puzzle position + ante left — feeds the sabotage
+ *  target picker. @param {string} matchId @returns {Promise<{id:string,name:string,position:number,ante_left:number,done:boolean}[]>} */
+export async function getMatchOpponents(matchId) {
+  const { data, error } = await supabase.rpc('get_match_opponents', { p_id: matchId });
+  if (error) { console.error('❌ get_match_opponents:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
 /** Public profile by username + viewer's head-to-head + relationship flags.
  * @param {string} username @returns {Promise<any|null>} */
 export async function getPublicProfile(username) {
