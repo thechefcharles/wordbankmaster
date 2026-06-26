@@ -297,9 +297,9 @@
   }
 
 
-  // ---- Daily result: medal + shareable card ----
-  const PUZZLE_EPOCH = Date.UTC(2026, 5, 1); // 2026-06-01
-  $: puzzleNumber = Math.max(1, Math.floor((Date.now() - PUZZLE_EPOCH) / 86400000) + 1);
+  // ---- Daily result: shareable card ----
+  // Each day is its own puzzle (one per date), so show the date — not a counter.
+  $: todayLabel = browser ? new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : '';
 
   /** @param {number} br @param {boolean} won */
   function medalFor(br, won) {
@@ -763,9 +763,9 @@
     const link = typeof window !== 'undefined' ? window.location.origin : '';
     if (isDailyResult) {
       if (resultWon && dr) {
-        return `🧠 WordBank Daily #${puzzleNumber}\nProfit ${(dr.net ?? 0) >= 0 ? '+' : '−'}$${Math.abs(dr.net ?? 0).toLocaleString()} — beat that 👀\n${link}`;
+        return `🧠 WordBank Daily · ${todayLabel}\nProfit ${(dr.net ?? 0) >= 0 ? '+' : '−'}$${Math.abs(dr.net ?? 0).toLocaleString()} — beat that 👀\n${link}`;
       }
-      return `🧠 WordBank Daily #${puzzleNumber}\nDidn't crack it today 😬\n${link}`;
+      return `🧠 WordBank Daily · ${todayLabel}\nDidn't crack it today 😬\n${link}`;
     }
     return `🏦 WordBank Arcade\n${resultMedal.emoji} ${br} banked\n${link}`;
   }
@@ -2223,7 +2223,7 @@
             {@const mult = Number(dr.mult ?? $gameStore.bountyMult ?? 1)}
             {@const base = dr.base ?? (mult > 0 ? Math.round((dr.reward ?? 0) / mult) : (dr.reward ?? 0))}
             <h2 class="win-h">🎉 Solved!</h2>
-            <p class="result-sub">Daily #{puzzleNumber}</p>
+            <p class="result-sub">{todayLabel}</p>
             <!-- 3-line math -->
             <div class="win-math">
               <div class="wm-row"><span>Bounty {#if mult > 1}<small>(${base.toLocaleString()} × {fmtMult(mult)})</small>{/if}</span><b>${(dr.reward ?? 0).toLocaleString()}</b></div>
@@ -2250,7 +2250,7 @@
           {:else if isDailyResult}
             <div class="result-medal lose">😖</div>
             <h2>Busted</h2>
-            <p class="result-sub">Daily #{puzzleNumber}</p>
+            <p class="result-sub">{todayLabel}</p>
             <div class="result-bankroll">
               <span class="rb-label">Your Cash</span>
               <span class="rb-amount">${resultBankroll.toLocaleString()}</span>
