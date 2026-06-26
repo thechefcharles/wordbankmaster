@@ -1,12 +1,13 @@
 <script>
   import { goto } from '$app/navigation';
+  import PageNav from "$lib/components/PageNav.svelte";
   import HistoryList from '$lib/components/HistoryList.svelte';
 </script>
 
 <svelte:head><title>WordBank — History</title></svelte:head>
 
 <main class="h-page">
-  <button class="back-btn" onclick={() => goto('/profile')}>← Profile</button>
+  <PageNav />
   <h1>📜 History</h1>
   <HistoryList />
 </main>

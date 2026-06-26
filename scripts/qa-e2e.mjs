@@ -110,9 +110,11 @@ try {
     for (const ch of DAILY) { await page.keyboard.press(ch); await wait(70); }
     await wait(500); await shot('03-daily-filled');
     await page.getByRole('button', { name: /^submit$/i }).first().click().catch(() => {});
-    await wait(2600); await shot('04-daily-result');
-    const won = await page.getByText(/solved!/i).count();
-    won > 0 ? ok('daily-solve', 'win modal shown') : bad('daily-solve', 'no win modal after submit');
+    // the redesigned Daily plays a slot-machine reveal before the SOLVED! banner — wait it out
+    await page.getByText(/solved!|profit/i).first().waitFor({ timeout: 9000 }).catch(() => {});
+    await shot('04-daily-result');
+    const won = await page.getByText(/solved!|profit/i).count();
+    won > 0 ? ok('daily-solve', 'win banner shown') : bad('daily-solve', 'no win banner after submit');
   }
 
   // ---------- 6. Verify it landed in History ----------

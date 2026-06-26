@@ -54,7 +54,10 @@
 	},
 	"dependencies": {
 		"@capacitor/core": "^8.4.1",
+		"@capacitor/haptics": "^8.0.2",
 		"@capacitor/ios": "^8.4.1",
+		"@dicebear/collection": "^9.4.2",
+		"@dicebear/core": "^9.4.2",
 		"@supabase/ssr": "^0.6.1",
 		"@supabase/supabase-js": "^2.48.1",
 		"bufferutil": "^4.0.8",

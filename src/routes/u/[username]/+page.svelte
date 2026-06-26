@@ -1,8 +1,10 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import PageNav from "$lib/components/PageNav.svelte";
   import { page } from '$app/stores';
   import { getPublicProfile, addFriend } from '$lib/stores/statsStore.js';
+  import Avatar from '$lib/components/Avatar.svelte';
   import { track } from '$lib/analytics.js';
 
   /** @type {any} */
@@ -41,7 +43,7 @@
 <svelte:head><title>WordBank — @{username}</title></svelte:head>
 
 <main class="u-page">
-  <button class="back-btn" onclick={() => history.length > 1 ? history.back() : goto('/leaderboard')}>← Back</button>
+  <PageNav />
 
   {#if loading}
     <p class="msg">Loading…</p>
@@ -49,7 +51,11 @@
     <p class="msg">No player named <b>@{username}</b>.</p>
   {:else}
     <header class="u-head">
-      <div class="u-coin" style={p.color ? `--c:${p.color}` : ''}>{(p.name || p.username || '?').slice(0, 1).toUpperCase()}</div>
+      {#if p.avatar}
+        <Avatar config={p.avatar} fx size={110} />
+      {:else}
+        <div class="u-coin" style={p.color ? `--c:${p.color}` : ''}>{(p.name || p.username || '?').slice(0, 1).toUpperCase()}</div>
+      {/if}
       <h1>@{p.username}</h1>
       {#if p.title}<span class="u-title">{p.title}</span>{/if}
       <div class="u-net" class:neg={Number(p.net_worth) < 0}>{money(p.net_worth)}</div>

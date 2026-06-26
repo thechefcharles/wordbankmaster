@@ -1,13 +1,16 @@
 // Lightweight WebAudio sound + haptics engine. No asset files — every cue is
 // synthesised from oscillators, so there's nothing to download or bundle.
-// One toggle (persisted) controls both audio and vibration ("feedback").
+// Sound and haptics are now INDEPENDENT toggles (both persisted).
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 
 const STORAGE_KEY = 'wb_sound_on';
+const HAPTICS_KEY = 'wb_haptics_on';
 const initial = browser ? localStorage.getItem(STORAGE_KEY) !== 'false' : true;
+const initHaptics = browser ? localStorage.getItem(HAPTICS_KEY) !== 'false' : true;
 
-/** Whether sound + haptics are enabled (persisted to localStorage). */
+/** Whether sound effects are enabled (persisted to localStorage). */
 export const soundEnabled = writable(initial);
 let enabled = initial;
 soundEnabled.subscribe((v) => {
@@ -15,8 +18,19 @@ soundEnabled.subscribe((v) => {
   if (browser) localStorage.setItem(STORAGE_KEY, String(v));
 });
 
+/** Whether vibration/haptics are enabled (persisted, separate from sound). */
+export const hapticsEnabled = writable(initHaptics);
+let hapticsOn = initHaptics;
+hapticsEnabled.subscribe((v) => {
+  hapticsOn = v;
+  if (browser) localStorage.setItem(HAPTICS_KEY, String(v));
+});
+
 export function toggleSound() {
   soundEnabled.update((v) => !v);
+}
+export function toggleHaptics() {
+  hapticsEnabled.update((v) => !v);
 }
 
 /** @type {AudioContext | null} */
@@ -140,16 +154,31 @@ export function playSound(name) {
   }
 }
 
-/** Fire a haptic pattern by name (no-op when disabled / unsupported). @param {string} name */
+// Map each cue to a Capacitor Haptics call (real haptics on iOS; falls back to
+// navigator.vibrate on web). Tunes intensity per event.
+/** @param {string} name @returns {Promise<any>} */
+function nativeHaptic(name) {
+  switch (name) {
+    case 'win':  return Haptics.notification({ type: NotificationType.Success });
+    case 'wrong': return Haptics.notification({ type: NotificationType.Warning });
+    case 'bust': return Haptics.notification({ type: NotificationType.Error });
+    case 'vault': return Haptics.impact({ style: ImpactStyle.Heavy });
+    case 'multiplier': case 'lead': return Haptics.impact({ style: ImpactStyle.Medium });
+    default: return Haptics.impact({ style: ImpactStyle.Light });
+  }
+}
+
+/** Fire a haptic by name (no-op when haptics are off / unsupported). @param {string} name */
 export function vibrate(name) {
-  if (!enabled || !browser || !navigator.vibrate) return;
-  const p = HAPTICS[name];
-  if (p) {
-    try {
-      navigator.vibrate(p);
-    } catch {
-      /* haptics are best-effort */
-    }
+  if (!hapticsOn || !browser) return;
+  if (!(name in HAPTICS)) return;
+  try {
+    nativeHaptic(name).catch(() => {
+      // last-resort web fallback if the plugin couldn't run
+      if (navigator.vibrate) navigator.vibrate(HAPTICS[name]);
+    });
+  } catch {
+    if (navigator.vibrate) try { navigator.vibrate(HAPTICS[name]); } catch { /* best-effort */ }
   }
 }
 

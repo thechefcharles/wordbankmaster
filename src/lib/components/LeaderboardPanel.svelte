@@ -79,20 +79,23 @@
   {/each}
 </div>
 
-<!-- Scope + period -->
-<div class="filters">
-  <select class="filter-select" bind:value={scope}>
-    <option value="global">🌍 Everyone</option>
-    <option value="friends">👋 Friends</option>
-    {#each groups as g}<option value={g.id}>👥 {g.name}</option>{/each}
-  </select>
-  {#if PERIOD_BOARDS.includes(board)}
+<!-- Scope: Everyone · Friends · each of your groups -->
+<div class="scope-row">
+  <button class="scope-pill" class:on={scope === 'global'} onclick={() => scope = 'global'}>🌍 Everyone</button>
+  <button class="scope-pill" class:on={scope === 'friends'} onclick={() => scope = 'friends'}>👋 Friends</button>
+  {#each groups as g}
+    <button class="scope-pill" class:on={scope === g.id} onclick={() => scope = g.id}>👥 {g.name}</button>
+  {/each}
+</div>
+
+{#if PERIOD_BOARDS.includes(board)}
+  <div class="filters">
     <div class="seg">
       <button class="seg-btn" class:on={period === 'week'} onclick={() => period = 'week'}>This Week</button>
       <button class="seg-btn" class:on={period === 'all'} onclick={() => period = 'all'}>All-Time</button>
     </div>
-  {/if}
-</div>
+  </div>
+{/if}
 
 <p class="caption">
   {#if board === 'cash'}{period === 'week' ? 'Cash gained this week' : 'Richest players — total Cash'}
@@ -168,7 +171,11 @@
   .tab { flex: 0 0 auto; padding: 0.5rem 0.8rem; border-radius: 999px; cursor: pointer; font-weight: 700; font-size: 0.82rem; white-space: nowrap; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); }
   .tab.active { color: #3a2a00; background: var(--brand-grad, linear-gradient(135deg,#fbbf24,#fde047)); border-color: transparent; }
   .filters { display: flex; gap: 0.5rem; justify-content: center; align-items: center; flex-wrap: wrap; margin-bottom: 0.5rem; }
-  .filter-select { padding: 0.5rem 0.8rem; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 0.9rem; }
+  .scope-row { display: flex; gap: 0.4rem; margin-bottom: 0.6rem; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  .scope-row::-webkit-scrollbar { display: none; }
+  .scope-pill { flex: 0 0 auto; padding: 0.42rem 0.8rem; border-radius: 999px; cursor: pointer; font-weight: 700; font-size: 0.8rem; white-space: nowrap;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); }
+  .scope-pill.on { color: var(--text); background: var(--surface-2, rgba(56,189,248,0.16)); border-color: var(--brand-2); box-shadow: inset 0 0 0 1px var(--brand-2); }
   .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
   .seg-btn { padding: 0.45rem 0.9rem; cursor: pointer; font-size: 0.82rem; font-weight: 600; background: transparent; color: var(--text-muted); border: none; }
   .seg-btn.on { background: var(--brand-grad, linear-gradient(135deg,#fbbf24,#fde047)); color: #3a2a00; }

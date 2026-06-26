@@ -1,20 +1,23 @@
-// Looping lobby music. A single module-level <audio> element (a singleton, so it
-// survives route changes) plays whenever the player is in the menu lobby and
-// pauses during gameplay. Volume + on/off + the chosen track persist to
-// localStorage. To add a beat: drop the file in static/music/ and add an entry
-// to TRACKS — the settings picker and switching come for free.
+// Looping background music. A single module-level <audio> element (a singleton, so
+// it survives route changes) plays continuously the whole session — menu AND during
+// gameplay/puzzles — so it never stutters when screens change or sfx fire. Volume +
+// on/off + the chosen track persist to localStorage. To add a beat: drop the file in
+// static/music/ and add an entry to TRACKS — the picker + switching come for free.
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
-/** Track manifest. id is stable + persisted; src is under static/. */
+/** Track manifest. id is stable + persisted; src is under static/. The UI labels them
+ *  "Track 1/2/3" by position, so the order here is what the player sees. */
 export const TRACKS = [
+  { id: 'native-jazz', title: 'Native Jazz', src: '/music/native-jazz.mp3' },
+  { id: 'young-love', title: 'Young Love', src: '/music/young-love.mp3' },
   { id: 'stu-ball-recipes', title: 'Stu Ball Recipes', src: '/music/stu-ball-recipes.mp3' }
 ];
 
 const VOL_KEY = 'wb_music_vol';
 const ON_KEY = 'wb_music_on';
 const TRACK_KEY = 'wb_music_track';
-const DEFAULT_VOL = 0.22; // quiet by default
+const DEFAULT_VOL = 0.20; // quiet by default (~20%)
 
 /** @param {any} v @param {number} d */
 function clamp01(v, d) {

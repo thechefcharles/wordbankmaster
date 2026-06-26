@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import PageNav from "$lib/components/PageNav.svelte";
   import FriendsPanel from '$lib/components/FriendsPanel.svelte';
   import { track } from '$lib/analytics.js';
   onMount(() => track('friends_view'));
@@ -9,7 +10,7 @@
 <svelte:head><title>WordBank — Friends</title></svelte:head>
 
 <main class="friends-page">
-  <button class="back-btn" onclick={() => goto('/')}>← Menu</button>
+  <PageNav />
   <h1>👥 Friends</h1>
   <FriendsPanel onChallenge={(/** @type {string} */ u) => goto('/?challenge=' + encodeURIComponent(u))} />
 </main>

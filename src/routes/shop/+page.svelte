@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import PageNav from "$lib/components/PageNav.svelte";
   import { getShop, buyCosmetic, equipCosmetic, unequipCosmetic, getPowerups, buyPowerup, getFreeplayCashoutStatus, freeplayCashout } from '$lib/stores/statsStore.js';
   import { requirePin } from '$lib/pinConfirm.js';
   import { track } from '$lib/analytics.js';
@@ -109,7 +110,7 @@
 <svelte:head><title>WordBank — Store</title></svelte:head>
 
 <main class="shop-page">
-  <button class="back-btn" onclick={() => goto('/')}>← Menu</button>
+  <PageNav />
 
   <div class="head">
     <h1>🛍️ Store</h1>
@@ -136,7 +137,7 @@
     </div>
   {/if}
 
-  <p class="sub">Stock up on power-ups to bring into the Cash Game &amp; challenges, and spend on flair. Cosmetics are pure show — no pay-to-win.</p>
+  <p class="sub">Power-ups for the Cash Game &amp; challenges, plus cosmetics.</p>
 
   {#if loading}
     <p class="loading">Loading…</p>

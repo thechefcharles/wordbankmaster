@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import PageNav from "$lib/components/PageNav.svelte";
   import { getBank } from '$lib/stores/statsStore.js';
   import { track } from '$lib/analytics.js';
 
@@ -36,7 +37,7 @@
 <svelte:head><title>WordBank — Cash & Net Worth</title></svelte:head>
 
 <main class="bank-page">
-  <button class="back-btn" on:click={() => goto('/')}>← Menu</button>
+  <PageNav />
 
   {#if loading}
     <p class="loading">Loading…</p>
@@ -59,7 +60,7 @@
       </div>
     {/if}
 
-    <p class="hint">Cash is in-game money — earn it by playing, risk it in the Cash Game, wager friends, and spend it on power-ups &amp; cosmetics. It can't be bought with real money or cashed out.</p>
+    <p class="hint">In-game Cash — can't be bought or cashed out.</p>
   {/if}
 </main>
 

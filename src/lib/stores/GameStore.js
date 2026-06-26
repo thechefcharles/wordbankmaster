@@ -106,18 +106,11 @@ export const gameStore = writable(/** @type {GameState} */ ({
 =================================== */
 
 /**
- * launchConfetti
- * Triggers a celebratory confetti animation.
+ * launchConfetti — disabled. Confetti wins were removed across all modes; the
+ * slot-machine reveal + win banners are the celebration. Kept as a no-op so the
+ * existing call sites stay harmless.
  */
-function launchConfetti() {
-  const colors = ['#fbbf24', '#fde047', '#fcd34d', '#ffffff'];
-  /** @param {number} particleCount @param {object} opts */
-  const fire = (particleCount, opts) => confetti({ particleCount, colors, disableForReducedMotion: true, ...opts });
-  fire(90, { spread: 75, startVelocity: 55, origin: { y: 0.62 } });
-  fire(55, { spread: 110, decay: 0.92, scalar: 1.25, origin: { y: 0.6 } });
-  setTimeout(() => fire(65, { spread: 120, startVelocity: 48, angle: 60, origin: { x: 0.15, y: 0.65 } }), 160);
-  setTimeout(() => fire(65, { spread: 120, startVelocity: 48, angle: 120, origin: { x: 0.85, y: 0.65 } }), 300);
-}
+function launchConfetti() {}
 
 /* ================================
    Server-authoritative DAILY adapter
@@ -644,6 +637,16 @@ function maybeArmClimbIntro() {
   }
 }
 
+/** Arm the dramatic opening reveal for a FRESH challenge puzzle (per-puzzle progress is
+ *  empty). The no-progress gate means a mid-puzzle RESUME never replays the reveal. */
+function maybeArmMatchIntro() {
+  const s = get(gameStore);
+  const hasProgress = (s.purchasedLetters || []).some(Boolean) || (s.incorrectLetters || []).length > 0;
+  if (!hasProgress && s.gameState === 'default') {
+    gameStore.update(st => ({ ...st, dailyIntro: (st.dailyIntro || 0) + 1 }));
+  }
+}
+
 /** Start or resume the Climb. @returns {Promise<boolean>} */
 export async function fetchClimbGame() {
   try {
@@ -765,8 +768,12 @@ function reconcileMatchBoard(board) {
     matchInfo: { ...match, id: activeMatchId, standing: board.standing ?? null }
   }));
   if (done) { setTimeout(() => launchConfetti(), 250); fx('win'); }
-  // Celebrate EACH solved puzzle in the pack (not just finishing the whole pack).
-  else if ((match.last_score ?? 0) > 0 && (match.position ?? 1) > (prev.matchInfo?.position ?? 0)) { setTimeout(() => launchConfetti(), 250); fx('win'); }
+  // Celebrate EACH solved puzzle — but only on an in-session advance (prev.matchInfo
+  // exists), so opening/resuming a match never fires the winner fireworks.
+  else if (prev.matchInfo && (match.last_score ?? 0) > 0 && (match.position ?? 1) > (prev.matchInfo.position ?? 0)) {
+    setTimeout(() => launchConfetti(), 250); fx('win');
+    maybeArmMatchIntro(); // next puzzle in the pack gets the dramatic opening reveal
+  }
   else playMoveCue(prev, board);
 }
 
@@ -778,7 +785,7 @@ export async function startMatch(opts) {
     const id = resp.match.id;
     activeMatchId = id;
     const board = await matchStart(id);
-    if (board) reconcileMatchBoard(board);
+    if (board) { reconcileMatchBoard(board); maybeArmMatchIntro(); }
   }
   return resp;
 }
@@ -814,7 +821,7 @@ export async function acceptAndPlayMatch(id, reduced = false) {
   track('match_accept');
   activeMatchId = id;
   const board = await matchStart(id);
-  if (board) reconcileMatchBoard(board);
+  if (board) { reconcileMatchBoard(board); maybeArmMatchIntro(); }
   return true;
 }
 
@@ -829,7 +836,7 @@ export async function matchTimeoutCheck() {
 export async function resumeMatch(id) {
   activeMatchId = id;
   const board = await matchStart(id);
-  if (board) { reconcileMatchBoard(board); return true; }
+  if (board) { reconcileMatchBoard(board); return true; } // resume = no dramatic reveal (you've seen this puzzle)
   return false;
 }
 

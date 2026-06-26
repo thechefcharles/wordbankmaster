@@ -92,6 +92,13 @@ export async function setUsername(name) {
   return data;
 }
 
+/** Permanently delete my account + all my data. @returns {Promise<{ok:boolean}>} */
+export async function deleteMyAccount() {
+  const { error } = await supabase.rpc('delete_my_account');
+  if (error) { console.error('❌ delete_my_account:', error); return { ok: false }; }
+  return { ok: true };
+}
+
 /** Username typeahead search. @param {string} query @returns {Promise<{username:string,is_friend:boolean}[]>} */
 export async function searchUsers(query) {
   const { data, error } = await supabase.rpc('search_users', { p_query: query });
@@ -242,6 +249,18 @@ export async function getShop() {
 export async function buyCosmetic(id) {
   const { data, error } = await supabase.rpc('buy_cosmetic', { p_id: id });
   if (error || !data) { if (error) console.error('❌ buy_cosmetic:', error); return { ok: false }; }
+  return data;
+}
+/** My avatar config + owned avatar cosmetic ids. @returns {Promise<{config:any, owned:string[]}>} */
+export async function getMyAvatar() {
+  const { data, error } = await supabase.rpc('get_my_avatar');
+  if (error) { console.error('❌ get_my_avatar:', error); return { config: null, owned: [] }; }
+  return { config: data?.config ?? null, owned: data?.owned ?? [] };
+}
+/** Save my equipped avatar look. @param {any} config @returns {Promise<{ok:boolean, reason?:string}>} */
+export async function setAvatar(config) {
+  const { data, error } = await supabase.rpc('set_avatar', { p_config: config });
+  if (error || !data) { if (error) console.error('❌ set_avatar:', error); return { ok: false }; }
   return data;
 }
 /** Equip an owned cosmetic. @param {string} id @returns {Promise<{ok:boolean, reason?:string}>} */
@@ -614,6 +633,20 @@ export async function getMatchDetail(matchId) {
   const { data, error } = await supabase.rpc('get_match_detail', { p_match_id: matchId });
   if (error) { console.error('❌ get_match_detail:', error); return null; }
   return data;
+}
+/** The caller's active sabotage debuffs in a match, each with who applied it.
+ *  @param {string} matchId @returns {Promise<{effect:string, by:string|null}[]>} */
+export async function getMatchDebuffs(matchId) {
+  const { data, error } = await supabase.rpc('get_match_debuffs', { p_id: matchId });
+  if (error) { console.error('❌ get_match_debuffs:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
+/** Opponents in a match with their puzzle position + ante left — feeds the sabotage
+ *  target picker. @param {string} matchId @returns {Promise<{id:string,name:string,position:number,ante_left:number,done:boolean}[]>} */
+export async function getMatchOpponents(matchId) {
+  const { data, error } = await supabase.rpc('get_match_opponents', { p_id: matchId });
+  if (error) { console.error('❌ get_match_opponents:', error); return []; }
+  return Array.isArray(data) ? data : [];
 }
 /** Public profile by username + viewer's head-to-head + relationship flags.
  * @param {string} username @returns {Promise<any|null>} */

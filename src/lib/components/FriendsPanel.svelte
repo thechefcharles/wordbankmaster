@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { searchUsers, addFriend, respondFriendRequest, removeFriend, listFriends, listFriendRequests } from '$lib/stores/statsStore.js';
+  import { requireConfirm } from '$lib/confirm.js';
   import { fx } from '$lib/sound.js';
 
   /** Optional: called to start a challenge with a friend (username). */
@@ -51,7 +52,8 @@
     if (res?.ok) {
       fx('select');
       msg = res.status === 'friends' ? `You're now friends with ${res.friend_name ?? username}!` : `Request sent to ${res.friend_name ?? username}.`;
-      results = results.map((u) => u.username === username ? { ...u, status: res.status === 'friends' ? 'friends' : 'pending_out', is_friend: res.status === 'friends' } : u);
+      query = '';     // clear the search box so the results list collapses
+      results = [];
       await load();
     } else {
       msg = res?.reason === 'already_friends' ? 'Already friends.' : res?.reason === 'not_found' ? 'No player with that name.' : 'Could not send request.';
@@ -70,6 +72,7 @@
   /** @param {any} u */
   async function unfriend(u) {
     if (busy) return;
+    if (!(await requireConfirm({ title: 'Remove friend?', message: `Remove @${u.username || u.name} from your friends?`, confirmText: 'Remove', danger: true }))) return;
     busy = u.id;
     await removeFriend(u.id);
     busy = '';

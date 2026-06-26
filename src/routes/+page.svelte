@@ -7,10 +7,11 @@
   import { cubicOut } from 'svelte/easing';
 
   import { gameStore, fetchDailyGame, useDailyTwist, useDailyBoost, fetchFreeplayGame, fetchFreeplayResume, freeplayContinue, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbSkipPuzzle, climbArmDoubleOrNothing, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
-  import { getMyChallenges, getPowerups, getDailyAvailBoosts, getMyMatches, getMyGroups, getMatch, getMatchDetail, declineMatch } from '$lib/stores/statsStore.js';
+  import { getMyChallenges, getPowerups, getDailyAvailBoosts, getMyMatches, getMyGroups, getMatch, getMatchDetail, getMatchDebuffs, getMatchOpponents, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getOpenGames, expireStaleDailies, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout, getDailyModifier } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getOpenGames, expireStaleDailies, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout, getDailyModifier, deleteMyAccount, getMyAvatar } from '$lib/stores/statsStore.js';
+  import Avatar from '$lib/components/Avatar.svelte';
   import { unreadCount, refreshNotifications, inboxRequest, inboxTarget, markChallengeNotifRead, markFriendNotifRead } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
@@ -20,11 +21,12 @@
     getSavedGameInfo
   } from '$lib/stores/localGameUtils.js';
   import { gameWasRestored } from '$lib/stores/GameStateFlags.js';
-  import { soundEnabled, toggleSound, fx } from '$lib/sound.js';
+  import { soundEnabled, toggleSound, hapticsEnabled, toggleHaptics, fx } from '$lib/sound.js';
   import { startMusic, stopMusic, musicEnabled, musicVolume, setMusicVolume, toggleMusic, TRACKS, currentTrackId, selectTrack } from '$lib/music.js';
   import PinGate from '$lib/components/PinGate.svelte';
   import { pinLocked, hasPinFor, clearPin, markUnlocked, sessionIsUnlocked, markPinSkipped, pinSkipped, clearPinSkipped } from '$lib/pin.js';
   import { requirePin } from '$lib/pinConfirm.js';
+  import { requireConfirm } from '$lib/confirm.js';
   import { goto } from '$app/navigation';
 
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
@@ -39,7 +41,6 @@
   import StandingStrip from '$lib/components/StandingStrip.svelte';
   import MatchDetailModal from '$lib/components/MatchDetailModal.svelte';
   import LeaderboardPanel from '$lib/components/LeaderboardPanel.svelte';
-  import ActivityPanel from '$lib/components/ActivityPanel.svelte';
   import FriendsPanel from '$lib/components/FriendsPanel.svelte';
   import GroupsPanel from '$lib/components/GroupsPanel.svelte';
 
@@ -78,9 +79,26 @@
   $: dailyInProgress = openGames.some((g) => g.mode === 'daily') || (dailyStatus?.daily_in_progress ?? false);
   $: dailyDone = menuDailyPlayed && !dailyInProgress;
   $: climbInProgress = openGames.some((g) => g.mode === 'climb');
-  // 🔁 Resume shortcut: jump back to your most-recently-played live game.
+  // 🔁 Resume: every in-progress game — solo modes AND challenges you've started.
   const RESUME_LABEL = /** @type {Record<string,string>} */ ({ daily: 'Daily', climb: 'Cash Game', freeplay: 'Free Play' });
-  $: resumeGame = openGames[0] ?? null;
+  $: resumables = [
+    ...openGames.map((/** @type {any} */ g) => ({ key: 'solo-' + g.mode, label: RESUME_LABEL[g.mode] ?? 'Game', icon: (/** @type {Record<string,string>} */ ({daily:'📅',climb:'🎰',freeplay:'🎯'}))[g.mode] ?? '▶', go: () => resumeSolo(g.mode) })),
+    ...((myMatches ?? []).filter((/** @type {any} */ m) => m.status === 'open' && m.my_state === 'active')
+        .map((/** @type {any} */ m) => ({ key: 'match-' + m.id, label: m.group_name || (m.opponent ? '@' + m.opponent : 'Challenge'), icon: '⚔️', go: () => respondToMatch(m) })))
+  ];
+  // ⚔️ Pending challenge invites (not yet accepted) → the Challenges notification.
+  $: challengeInvites = (myMatches ?? []).filter((/** @type {any} */ m) => m.status === 'open' && m.my_state === 'invited');
+  let showResumeMenu = false;
+  function resumeSolo(/** @type {string} */ mode) {
+    if (mode === 'daily') handleMenuDaily();
+    else if (mode === 'climb') handleMenuClimb();
+    else if (mode === 'freeplay') handleMenuFreeplay();
+  }
+  function onResume() {
+    fx('tap');
+    if (resumables.length === 1) resumables[0].go();
+    else showResumeMenu = true;
+  }
   /** Net Worth for the menu chip. */
   let netWorth = /** @type {number|null} */ (null);
   async function refreshBank() {
@@ -254,34 +272,8 @@
     if (browser && loggedIn && hasInitialized && n > _prevUnread) refreshChallengeCount();
     _prevUnread = n;
   }
-  // Challenges where it's my turn, soonest-to-expire first.
-  $: turnMatches = (myMatches ?? [])
-    .filter((m) => m.status === 'open' && m.my_state !== 'done')
-    .slice()
-    .sort((a, b) => new Date(a.settles_at || 0).getTime() - new Date(b.settles_at || 0).getTime());
-  // Priority: your-turn challenge → friend request → "challenge a friend" CTA.
-  $: actNow = (() => {
-    // Name is the bold title (short, never cuts a word); the verb is the muted sub.
-    if (turnMatches.length) {
-      const m = turnMatches[0];
-      const invited = m.my_state === 'invited';
-      return { kind: 'match', icon: '⚔️',
-        title: m.host,
-        sub: invited ? 'Challenged you' : 'Your turn',
-        cta: (invited ? 'Play' : 'Resume') + ' →',
-        more: turnMatches.length - 1, // other challenges waiting
-        primary: () => respondToMatch(m), moreAction: () => openChallenges() };
-    }
-    if (friendRequests.length) {
-      const r = friendRequests[0];
-      return { kind: 'friend', icon: '👋',
-        title: r.name || '@' + r.username, sub: 'Wants to be friends',
-        cta: 'Accept →', more: friendRequests.length - 1,
-        primary: () => acceptFriend(r), moreAction: () => goto('/friends') };
-    }
-    return { kind: 'empty', icon: '⚔️', title: 'Challenge a friend', sub: '', cta: '→',
-      more: 0, primary: () => openChallenges('new'), moreAction: null };
-  })();
+  // (Resume + challenge-invite + friend-request notifications now live as their own
+  //  top-of-menu buttons — see resumables / challengeInvites / friendRequests.)
   /** @param {any} r */
   async function acceptFriend(r) {
     fx('tap');
@@ -293,8 +285,9 @@
   function onPinSet() { markUnlocked(); clearPinSkipped(); pinNotSet = false; }
   function onPinSkip() { markUnlocked(); markPinSkipped(sessionUid); pinNotSet = false; } // remember the skip so it doesn't nag every open
   function onPinLogout() { clearPin(); clearPinSkipped(); pinLocked.set(false); pinNotSet = false; handleLogout(); }
-  // Lobby music: play in the menu only — not while locked, setting a PIN, or in-game.
-  $: if (browser) { (loggedIn && hasInitialized && showMainMenu && !showPinUnlock && !showPinSetup) ? startMusic() : stopMusic(); }
+  // Background music: play continuously through the whole session — menu AND in-game
+  // (it loops seamlessly across screens) — pausing only while locked / setting a PIN.
+  $: if (browser) { (loggedIn && hasInitialized && !showPinUnlock && !showPinSetup) ? startMusic() : stopMusic(); }
   $: bankroll = $gameStore.bankroll || 0;
   $: digits = String(bankroll).split('');
 
@@ -317,7 +310,9 @@
 
   // ---- Daily result: shareable card ----
   // Each day is its own puzzle (one per date), so show the date — not a counter.
-  $: todayLabel = browser ? new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : '';
+  // Pinned to UTC — the server schedules the Daily/Twist by UTC CURRENT_DATE, so the
+  // label must match it (otherwise it disagrees near local midnight).
+  $: todayLabel = browser ? new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }) : '';
 
   /** @param {number} br @param {boolean} won */
   function medalFor(br, won) {
@@ -372,14 +367,15 @@
     if (climb.don_armed) donArmedThisPuzzle = true;
     else if (climb.state === 'stuck' || (climb.state === 'active' && (climb.spent ?? 0) === 0)) donArmedThisPuzzle = false;
   }
-  // Challenge live: Spent of your wager budget — lowest spend wins (standard only).
+  // Challenge live: Spent of your ante budget — lowest spend wins (standard only).
   $: matchLive = (isMatch && matchInfo && !matchInfo.done && matchInfo.mode !== 'blitz')
     ? { spent: matchInfo.spent ?? 0, budget: matchInfo.budget ?? 0 } : null;
+  $: matchLeft = matchLive ? Math.max(0, (matchLive.budget ?? 0) - (matchLive.spent ?? 0)) : 0;
   // Free Play live: clean status + the trickle you'd earn.
   $: freeLive = ($gameStore.gameMode === 'freeplay' && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost')
     ? { clean: ($gameStore.incorrectLetters?.length ?? 0) === 0 } : null;
-  // Unified solo money hero (Daily · Makeup · Cash Game): net you keep if you solve now.
-  $: soloHero = climbLive ? { net: climbLive.net } : (dLive ? { net: dLive.net } : null);
+  // Unified money hero (Daily · Cash Game = net you keep; Challenge = ante left to spend).
+  $: soloHero = climbLive ? { net: climbLive.net } : (dLive ? { net: dLive.net } : (matchLive ? { net: matchLeft } : null));
 
   // 🎰 Slot-machine money feel: count up/down the bankroll + the green "Solve to Earn",
   // and float a -$X by the number each time you spend.
@@ -422,6 +418,14 @@
     introCountPop = true;
     setTimeout(() => { introCountPop = false; }, 1200);
   }
+  // 🎬 Challenges auto-advance through a pack, so play the armed opening reveal on each
+  // new puzzle (and on first entry). Resets between matches so a new pack re-triggers.
+  let _lastMatchPos = -1;
+  $: if (!isMatch) { _lastMatchPos = -1; }
+     else if (matchInfo && (matchInfo.position ?? 1) !== _lastMatchPos && !showMainMenu) {
+       _lastMatchPos = matchInfo.position ?? 1;
+       tick().then(playDailyIntroIfArmed);
+     }
 
   // 💰 In-game bank: a modal (not a route) so closing it returns to the game, not the menu.
   let showBank = false;
@@ -477,13 +481,21 @@
         out.push({ id: it.id, emoji: BOOST_META[it.id]?.emoji ?? '💥', name: it.name, blurb: BOOST_META[it.id]?.blurb ?? '', count: it.owned,
           usable: avail, reason: avail ? '' : 'Bought after you started — usable on your next puzzle.' });
       } else if (it.kind === 'climb') {
-        const used = (climb?.equipped ?? []).includes(it.id);
-        const avail = $gameStore.gameMode === 'climb' && gameActive && !used && (it.owned ?? 0) > 0;
+        // Self-buffs work in BOTH the Cash Game and Challenges.
+        const climbUsed = (climb?.equipped ?? []).includes(it.id);
+        const matchUsed = (matchInfo?.used_powerups ?? []).includes(it.id);
+        const climbAvail = $gameStore.gameMode === 'climb' && gameActive && !climbUsed && (it.owned ?? 0) > 0;
+        const matchAvail = isMatch && !!matchInfo?.items_allowed && gameActive && !matchUsed && (it.owned ?? 0) > 0;
+        const avail = climbAvail || matchAvail;
         out.push({ id: it.id, emoji: PUP_ICON[it.id] ?? '✨', name: it.name, blurb: avail ? 'Tap to use now' : '', count: it.owned, usable: avail,
-          reason: used ? 'Already used on this puzzle.' : ($gameStore.gameMode === 'climb' ? '' : 'For the Cash Game — not this mode.') });
+          reason: (climbUsed || matchUsed) ? 'Already used on this puzzle.' : (($gameStore.gameMode === 'climb' || isMatch) ? '' : 'For the Cash Game or Challenges — not this mode.') });
+      } else if (it.kind === 'sabotage') {
+        const sabAvail = isMatch && !!matchInfo?.items_allowed && gameActive && (it.owned ?? 0) > 0;
+        out.push({ id: it.id, emoji: PUP_ICON[it.id] ?? '😈', name: it.name, blurb: sabAvail ? '😈 Tap to aim at an opponent' : '', count: it.owned, usable: sabAvail, kind: 'sabotage',
+          reason: sabAvail ? '' : 'For Challenges — use it during a challenge.' });
       } else {
         out.push({ id: it.id, emoji: PUP_ICON[it.id] ?? '✨', name: it.name, blurb: '', count: it.owned, usable: false,
-          reason: it.kind === 'sabotage' ? 'For challenges — sabotage an opponent there, not the Daily.' : 'For the Cash Game or challenges — not the Daily.' });
+          reason: 'For the Cash Game or Challenges — not this mode.' });
       }
     }
     return out;
@@ -500,7 +512,28 @@
     if (item?.id === 'twist') useTwist();
     else if (item?.id === 'bounty_boost' || item?.id === 'jackpot_boost') { useBoost(item.id); loadVault(); }
     else if ($gameStore.gameMode === 'climb') { climbPowerup(item.id).then(() => { refreshClimbPups(); loadVault(); }); }
+    else if (isMatch && item?.kind === 'sabotage') { openSabotagePicker(item); return; } // keeps flow for the target step
+    else if (isMatch) { matchPowerup(item.id).then(() => { refreshClimbPups(); loadVault(); }); }
     showBag = false;
+  }
+  // 😈 Sabotage from the bag → pick a target (auto-applies vs a single opponent).
+  /** @type {{ item:any, opponents:any[] }|null} */
+  let sabPicker = null;
+  /** @param {any} item */
+  async function openSabotagePicker(item) {
+    showBag = false;
+    const id = matchInfo?.id; if (!id) return;
+    const opps = (await getMatchOpponents(id)).filter((/** @type {any} */ o) => !o.done);
+    if (opps.length === 0) { vaultMsg = 'No opponents left to hit.'; return; }
+    if (opps.length === 1) { await matchSabotageOpponent(opps[0].id, item.id); await refreshClimbPups(); return; }
+    sabPicker = { item, opponents: opps };
+  }
+  /** @param {string} targetId */
+  async function applySabotage(targetId) {
+    if (!sabPicker) return;
+    const item = sabPicker.item; sabPicker = null;
+    await matchSabotageOpponent(targetId, item.id);
+    await refreshClimbPups();
   }
 
   // ℹ️ Daily explainers: ×N badge, Solve-to-Earn, 🏆 streak, or today's Twist.
@@ -677,7 +710,8 @@
   $: climbRunIsBest = climbRun != null && climbRun.profit > 0 && climbRun.profit >= climbRun.best;
   // Owned, not-yet-used climb buffs — drives the vault badge by the Solve button.
   $: usableClimbPups = isClimb ? selfPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0 && !((climb?.equipped ?? []).includes(i.id))).length : 0;
-  /** @type {'heat'|'earn'|null} ℹ️ Cash Game explainers (mirror of dailyInfo). */
+  $: usableMatchPups = (isMatch && matchInfo?.items_allowed) ? selfPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0 && !((matchInfo?.used_powerups ?? []).includes(i.id))).length : 0;
+  /** @type {'heat'|'earn'|'streak'|null} ℹ️ Cash Game explainers (mirror of dailyInfo). */
   let climbInfo = null;
   $: dr = $gameStore.dailyResult; // { score, clean, no_vowels, first_try, no_reveals }
   /** @type {{rank:number, total:number}|null} */
@@ -701,25 +735,27 @@
     tax: '💸 Taxed (letters +50%)', fog: '🌫️ Fogged (clue hidden)',
     toll: '🚧 Tolled (next letter 3×)', vowel_block: '🚫 Vowel-blocked (vowels 3×)'
   });
-  let pendingSabotage = /** @type {string|null} */ (null); // sabotage powerup id awaiting a target
+  const DEBUFF_DESC = /** @type {Record<string,string>} */ ({
+    tax: 'Every letter you buy costs +50% while this is active.',
+    fog: 'Your clue is hidden — you have to solve it blind.',
+    toll: 'Your next letter purchase costs 3×, then it clears.',
+    vowel_block: 'Vowels cost 3× while this is active.'
+  });
+  // 💥 Tappable debuff banner → what each sabotage does + who hit you.
+  /** @type {{effect:string, by:string|null}[]|null} */
+  let debuffModal = null;
+  async function openDebuffInfo() {
+    fx('tap');
+    const id = matchInfo?.id; if (!id) return;
+    debuffModal = await getMatchDebuffs(id);
+  }
+  // ℹ️ Tappable "Left to Spend" hero → explains the challenge ante.
+  let showAnteInfo = false;
   async function refreshClimbPups() {
     try { const r = await getPowerups(); climbPups = r.items ?? []; } catch { /* non-fatal */ }
   }
   $: selfPups = climbPups.filter((/** @type {any} */ i) => i.kind === 'climb');   // buffs (use on yourself)
   $: sabPups = climbPups.filter((/** @type {any} */ i) => i.kind === 'sabotage'); // sabotage (target an opponent)
-  /** @param {any} item */
-  async function tapSabotage(item) {
-    const opps = matchInfo?.opponents ?? [];
-    if ((item.owned ?? 0) <= 0 || opps.length === 0) return;
-    if (opps.length === 1) { await matchSabotageOpponent(opps[0].id, item.id); await refreshClimbPups(); }
-    else { pendingSabotage = pendingSabotage === item.id ? null : item.id; }
-  }
-  /** @param {string} oppId */
-  async function pickSabTarget(oppId) {
-    if (!pendingSabotage) return;
-    const pid = pendingSabotage; pendingSabotage = null;
-    await matchSabotageOpponent(oppId, pid); await refreshClimbPups();
-  }
 
   // --- per-match chat (1v1 + group challenges) ---
   let matchChatOpen = false;
@@ -903,6 +939,11 @@
         handleMenuMyAccount();
         params.delete('account');
       }
+      // Friends & Groups deep link (Profile 👥+ button → /?people=1)
+      if (params.get('people')) {
+        openCommunity('people');
+        params.delete('people');
+      }
       const qs = params.toString();
       window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
     } catch { /* non-fatal */ }
@@ -972,6 +1013,42 @@
     user.set(null);
     location.reload();
   };
+
+  // 🔑 PIN: show "Change PIN" only when one is set; require the CURRENT PIN first.
+  $: hasPin = browser && $user?.id ? hasPinFor($user.id) : false;
+  async function changePin() {
+    fx('tap');
+    try { await requirePin('Enter your current PIN to set a new one'); } catch { return; }
+    showMyAccount = false;
+    clearPin(); clearPinSkipped(); pinNotSet = true; // → the create-new-PIN screen
+  }
+  // 🔓 Forgot PIN (from Settings) — verify by email + password, then set a new PIN.
+  async function forgotPin() {
+    if (!(await requireConfirm({ title: 'Reset PIN?', message: 'You’ll sign back in with your email & password, then set a new PIN.', confirmText: 'Reset PIN', danger: true }))) return;
+    showMyAccount = false;
+    clearPin(); clearPinSkipped();
+    handleLogout();
+  }
+
+  // 🗑️ Permanent account deletion (App Store 5.1.1(v)) — requires typing DELETE.
+  const APP_VERSION = '1.0.0';
+  const SUPPORT_EMAIL = 'charlieforeman77@gmail.com';
+  let showDeleteConfirm = false;
+  let deleteBusy = false;
+  let deleteInput = '';
+  $: deleteArmed = deleteInput.trim().toUpperCase() === 'DELETE';
+  async function confirmDeleteAccount() {
+    if (!deleteArmed || deleteBusy) return;
+    deleteBusy = true;
+    const { ok } = await deleteMyAccount();
+    if (!ok) { deleteBusy = false; maMsg = 'Could not delete your account — try again.'; return; }
+    clearSavedGame();
+    clearPin();
+    gameWasRestored.set(false);
+    await supabase.auth.signOut().catch(() => {});
+    user.set(null);
+    location.reload();
+  }
 
   /** Start daily: resume if in progress, else show "already played" or fetch new daily.
    *  Daily has no personal power-ups — everyone shares the same Daily Modifier. */
@@ -1097,14 +1174,6 @@
       if (ok) { hasInitialized = true; showMainMenu = false; return; }
     }
     showCategorySelect = true;
-  }
-  /** ▶ Resume the most-recently-played live game (the top-level menu shortcut). */
-  function resumeOpen() {
-    if (!resumeGame) return;
-    fx('tap');
-    if (resumeGame.mode === 'daily') handleMenuDaily();
-    else if (resumeGame.mode === 'climb') handleMenuClimb();
-    else if (resumeGame.mode === 'freeplay') handleMenuFreeplay();
   }
   /** @param {string} category */
   async function startFreeplay(category) {
@@ -1294,13 +1363,6 @@
     showMainMenu = false;
     refreshClimbPups(); // load owned power-ups for the match tray
   }
-  /** @param {any} item */
-  async function handleMatchPup(item) {
-    const used = (matchInfo?.used_powerups ?? []).includes(item.id);
-    if ((item.owned ?? 0) <= 0 || used) return;
-    await matchPowerup(item.id);
-    await refreshClimbPups();
-  }
 
   // After solving / going broke in Free Play, load the next puzzle in the category.
   async function handleFreeplayContinue() {
@@ -1345,10 +1407,14 @@
   }
 
   let showMyAccount = false;
+  let showAudio = false; // in-game quick audio panel (sound / haptics / music / track)
   let showStreakMessage = false;
   let accountStreak = 0;
   let accountFreezes = 0;
   let maUsername = '';
+  /** @type {any} */ let myAvatar = null;
+  let _avatarLoaded = false;
+  $: if (browser && loggedIn && hasInitialized && !_avatarLoaded) { _avatarLoaded = true; getMyAvatar().then((a) => { myAvatar = a.config; }); }
   let maInput = '';
   let maEditing = false;
   let maMsg = '';
@@ -1465,6 +1531,10 @@
 {#if loggedIn && hasInitialized && !showMainMenu && $gameStore.gameMode}
   <button class="help-btn" title="How to play" aria-label="How to play this game" on:click={() => showObjectiveFor($gameStore.gameMode, true)}>?</button>
 {/if}
+<!-- 🔊 In-game audio controls (sound / haptics / music) -->
+{#if loggedIn && hasInitialized && !showMainMenu}
+  <button class="audio-btn" title="Sound & music" aria-label="Sound and music settings" on:click={() => { fx('tap'); showAudio = true; }}>{$soundEnabled || $musicEnabled ? '🔊' : '🔇'}</button>
+{/if}
 <!-- 🏳️ Give up (top-right) — Daily / Challenges / Free Play -->
 {#if loggedIn && hasInitialized && !showMainMenu && (foldMode || isFreeplay) && gameActive}
   <button class="giveup-btn" title="Give up" aria-label="Give up" on:click={confirmFold}>↪</button>
@@ -1516,7 +1586,7 @@
       <p class="gu-text">{isClimb
         ? `Your heat resets to ×1.0${(climb?.spent ?? 0) > 0 ? ` and you forfeit the $${(climb?.spent ?? 0).toLocaleString()} spent on this one` : ''} — then a fresh puzzle.`
         : $gameStore.gameMode === 'match'
-        ? 'You lose this puzzle and move on — your unspent budget is refunded to your Cash.'
+        ? 'Skip this puzzle — you pay its full price and move on.'
         : $gameStore.gameMode === 'freeplay'
         ? 'You’ll skip to a fresh puzzle — you keep your credits (you only lose what you spent on this one).'
         : 'It counts as a loss and reveals the answer.'}</p>
@@ -1640,7 +1710,6 @@
         {:else}
           <p class="bag-note">Nothing usable here right now.</p>
         {/if}
-        <p class="bag-note">🔒 No shopping mid‑puzzle — items you buy now can't be used until your next puzzle.</p>
       {/if}
       {#if vaultMsg}<div class="bag-msg">{vaultMsg}</div>{/if}
     </div>
@@ -1662,13 +1731,13 @@
           {#if dlStreakBonus > 0}<div class="info-row"><span>🏆 Win streak ({dlWinStreak} in a row)</span><b class="pos">+{dlStreakBonus.toFixed(1)}</b></div>{/if}
           <div class="info-row total"><span>Your multiplier</span><b>{fmtMult(dlMult)}</b></div>
         </div>
-        <p class="info-note">It grows with your <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'streak'}>win streak</button> — <b>+0.1×</b> per consecutive solve, up to <b>×1.5</b>. Pure skill, same for everyone.</p>
+        <p class="info-note">Grows with your <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'streak'}>win streak</button> — <b>+0.1×</b> per solve, up to <b>×1.5</b>.</p>
       {:else if dailyInfo === 'twist'}
         <div class="info-big">{dailyMod?.emoji ?? '🎁'}</div>
         <h3 class="info-title">{dailyMod?.name ?? "Today's Twist"}</h3>
         <p class="info-sub">Today's special — applied automatically. ✓</p>
         <p class="info-twist-do">{dailyMod?.blurb ?? ''}</p>
-        <p class="info-note">A different special every weekday. Everyone gets the <b>same</b> one — free and auto‑applied — so the Daily stays a fair, same‑for‑all puzzle.</p>
+        <p class="info-note">A different special each weekday — same for everyone.</p>
       {:else if dailyInfo === 'streak'}
         <div class="info-big">🏆 {dlWinStreak}</div>
         <h3 class="info-title">Win Streak</h3>
@@ -1677,7 +1746,7 @@
           <div class="info-row"><span>Solve today's Daily</span><b class="pos">+1</b></div>
           <div class="info-row"><span>Lose or give up</span><b class="neg">back to 0</b></div>
         </div>
-        <p class="info-note">It also <b>boosts your bounty</b> — <b>+0.1×</b> per win (up to +0.5×; a 5-day streak = ×1.5). See the full <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'mult'}>multiplier</button> breakdown.</p>
+        <p class="info-note">Also boosts your <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'mult'}>multiplier</button> — <b>+0.1×</b> per win.</p>
       {:else}
         <div class="info-big green">${Math.max(0, dlNet).toLocaleString()}</div>
         <h3 class="info-title">Solve to Earn</h3>
@@ -1687,7 +1756,7 @@
           <div class="info-row"><span>− Spent on letters</span><b class="neg">−${dlSpent.toLocaleString()}</b></div>
           <div class="info-row total"><span>You keep</span><b class="green">${dlNet.toLocaleString()}</b></div>
         </div>
-        <p class="info-note">The base bounty comes from the letters' value. Spend less on letters to keep more — and grow the <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'mult'}>multiplier</button>.</p>
+        <p class="info-note">Spend less to keep more — and grow the <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'mult'}>multiplier</button>.</p>
       {/if}
       <button class="info-close" on:click={() => dailyInfo = null}>Got it</button>
     </div>
@@ -1719,7 +1788,7 @@
           <div class="info-row"><span>Solve a puzzle</span><b class="pos">+1</b></div>
           <div class="info-row"><span>Get stuck or skip</span><b class="neg">back to 0</b></div>
         </div>
-        <p class="info-note">Your streak powers your <button class="info-inline" on:click|stopPropagation={() => climbInfo = 'heat'}>heat</button> — every win adds <b>+0.1×</b> to your payout (up to ×2.0).</p>
+        <p class="info-note">Powers your <button class="info-inline" on:click|stopPropagation={() => climbInfo = 'heat'}>heat</button> — <b>+0.1×</b> per win.</p>
       {:else}
         <div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
         <h3 class="info-title">Solve to Earn</h3>
@@ -1732,6 +1801,124 @@
         <p class="info-note">Spend less on letters to keep more — and grow your <button class="info-inline" on:click|stopPropagation={() => climbInfo = 'heat'}>heat</button>.</p>
       {/if}
       <button class="info-close" on:click={() => climbInfo = null}>Got it</button>
+    </div>
+  </div>
+{/if}
+
+<!-- ℹ️ Challenge "Left to Spend" explainer -->
+{#if showAnteInfo}
+  <div class="modal-overlay info-overlay" role="button" tabindex="0" aria-label="Close"
+    on:click={() => showAnteInfo = false} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') showAnteInfo = false; }}>
+    <div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
+      <button class="modal-x" on:click={() => showAnteInfo = false} aria-label="Close">✕</button>
+      <div class="info-big green">${Math.max(0, matchLeft).toLocaleString()}</div>
+      <h3 class="info-title">Left to Spend</h3>
+      <p class="info-sub">Your buy-in — real Cash, all of it at stake. Buying letters spends it; your wallet up top is the rest of your Cash and it's safe.</p>
+      <div class="info-rows">
+        <div class="info-row"><span>Most Cash left at the end</span><b class="pos">takes the whole pot</b></div>
+        <div class="info-row"><span>Lose</span><b class="neg">forfeit your buy-in</b></div>
+        <div class="info-row"><span>Skip a puzzle</span><b class="neg">pays full price</b></div>
+      </div>
+      <p class="info-note">Winner-take-all — most Cash left wins everyone's buy-in. A tie splits the pot evenly. Out of ante? Keep guessing free.</p>
+      <button class="info-close" on:click={() => showAnteInfo = false}>Got it</button>
+    </div>
+  </div>
+{/if}
+
+<!-- 💥 Sabotage debuff explainer: what it does + who hit you -->
+{#if debuffModal}
+  <div class="modal-overlay info-overlay" role="button" tabindex="0" aria-label="Close"
+    on:click={() => debuffModal = null} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') debuffModal = null; }}>
+    <div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
+      <button class="modal-x" on:click={() => debuffModal = null} aria-label="Close">✕</button>
+      <div class="info-big">💥</div>
+      <h3 class="info-title">You got hit</h3>
+      {#if debuffModal.length}
+        <div class="info-rows">
+          {#each debuffModal as d}
+            <div class="info-row debuff-row">
+              <span>{DEBUFF_LABEL[d.effect] ?? d.effect}<small class="db-desc">{DEBUFF_DESC[d.effect] ?? ''}</small></span>
+              <b>{d.by ? 'by ' + d.by : ''}</b>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <p class="info-sub">No active sabotage right now.</p>
+      {/if}
+      <button class="info-close" on:click={() => debuffModal = null}>Got it</button>
+    </div>
+  </div>
+{/if}
+
+<!-- 😈 Sabotage target picker (group play): each opponent's puzzle + ante left -->
+{#if sabPicker}
+  <div class="modal-overlay info-overlay" role="button" tabindex="0" aria-label="Cancel"
+    on:click={() => sabPicker = null} on:keydown={(e) => { if (e.key === 'Escape') sabPicker = null; }}>
+    <div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
+      <button class="modal-x" on:click={() => sabPicker = null} aria-label="Cancel">✕</button>
+      <div class="info-big">{PUP_ICON[sabPicker.item.id] ?? '😈'}</div>
+      <h3 class="info-title">{sabPicker.item.name} — hit who?</h3>
+      <div class="sab-target-list">
+        {#each sabPicker.opponents as o}
+          <button class="sab-target-row" on:click={() => applySabotage(o.id)}>
+            <span class="st-name">{o.name}</span>
+            <span class="st-stat">🧩 Puzzle {o.position} · ${Number(o.ante_left ?? 0).toLocaleString()}</span>
+          </button>
+        {/each}
+      </div>
+      <button class="info-close" on:click={() => sabPicker = null}>Cancel</button>
+    </div>
+  </div>
+{/if}
+
+<!-- ▶ Resume menu — pick which in-progress game to jump back into -->
+{#if showResumeMenu}
+  <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Resume a game">
+    <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showResumeMenu = false}></button>
+    <div class="info-card resume-menu" role="document">
+      <button class="modal-x" on:click={() => showResumeMenu = false} aria-label="Close">✕</button>
+      <h3 class="info-title">Resume a game</h3>
+      <div class="rm-list">
+        {#each resumables as r (r.key)}
+          <button class="rm-row" on:click={() => { showResumeMenu = false; r.go(); }}>
+            <span class="rm-ic">{r.icon}</span><span class="rm-label">{r.label}</span><span class="rm-arrow">▶</span>
+          </button>
+        {/each}
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- 🔊 In-game audio panel — sound / haptics / music + track, adjustable mid-puzzle -->
+{#if showAudio}
+  <div class="modal-overlay info-overlay" role="button" tabindex="0" aria-label="Close"
+    on:click={() => showAudio = false} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') showAudio = false; }}>
+    <div class="info-card audio-panel" on:click|stopPropagation role="dialog" aria-modal="true">
+      <button class="modal-x" on:click={() => showAudio = false} aria-label="Close">✕</button>
+      <h3 class="info-title">Sound &amp; Music</h3>
+      <div class="ap-rows">
+        <button class="ap-toggle" on:click={() => { toggleSound(); if ($soundEnabled) fx('select'); }}>
+          <span>{$soundEnabled ? '🔊' : '🔇'} Sound</span><span class="ap-state" class:on={$soundEnabled}>{$soundEnabled ? 'On' : 'Off'}</span>
+        </button>
+        <button class="ap-toggle" on:click={() => { toggleHaptics(); if ($hapticsEnabled) fx('tap'); }}>
+          <span>{$hapticsEnabled ? '📳' : '📴'} Haptics</span><span class="ap-state" class:on={$hapticsEnabled}>{$hapticsEnabled ? 'On' : 'Off'}</span>
+        </button>
+        <button class="ap-toggle" on:click={toggleMusic}>
+          <span>{$musicEnabled ? '🎵' : '🔕'} Music</span><span class="ap-state" class:on={$musicEnabled}>{$musicEnabled ? 'On' : 'Off'}</span>
+        </button>
+      </div>
+      {#if $musicEnabled}
+        <div class="ma-music-ctl">
+          <span class="mmc-ic">🔈</span>
+          <input class="mmc-slider" type="range" min="0" max="100" step="1" value={Math.round($musicVolume * 100)} on:input={(e) => setMusicVolume(Number(e.currentTarget.value) / 100)} />
+          <span class="mmc-pct">{Math.round($musicVolume * 100)}%</span>
+        </div>
+        <div class="ma-tracks">
+          {#each TRACKS as t, i}
+            <button class="ma-track" class:on={$currentTrackId === t.id} on:click={() => selectTrack(t.id)}>Track {i + 1}</button>
+          {/each}
+        </div>
+      {/if}
     </div>
   </div>
 {/if}
@@ -1786,8 +1973,8 @@
           <button class="bank-chip" on:click={() => goto('/bank')} title="Your Cash">
             <span class="bc-coin">💰</span>{netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}
           </button>
-          <button class="account-ic" on:click={() => goto($unreadCount > 0 ? '/profile?tab=alerts' : '/profile')} title="Profile">
-            👤{#if $unreadCount > 0}<span class="account-count" title="{$unreadCount} new">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}
+          <button class="account-ic has-av" on:click={() => goto($unreadCount > 0 ? '/profile?tab=alerts' : '/profile')} title="Profile">
+            <Avatar config={myAvatar} mode="head" fx size={50} />{#if $unreadCount > 0}<span class="account-count" title="{$unreadCount} new">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}
           </button>
         </div>
         <video class="menu-mark" src="/coin.mp4" poster="/coin-poster.jpg" autoplay loop muted playsinline disablepictureinpicture></video>
@@ -1795,36 +1982,33 @@
       </div>
       {#if menuView === 'home'}
         <div class="main-menu-buttons stagger">
-          <!-- 🎯 Act-now banner above Play: only a pending challenge / friend request -->
-          {#if actNow.kind !== 'empty'}
-            <button class="ab-main" on:click={actNow.primary}>
-              <span class="ab-icon">{actNow.icon}</span>
-              <span class="ab-text">
-                <strong>{actNow.title}</strong>
-                {#if actNow.sub}<small>{actNow.sub}</small>{/if}
-              </span>
-              <span class="ab-cta">{actNow.cta}</span>
+          <!-- ▶ Resume — any in-progress game (solo + started challenges). One → straight in; many → the Resume menu. -->
+          {#if resumables.length}
+            <button class="menu-card resume-card" style="--i: 0" on:click={onResume}>
+              <span class="mc-title">▶ Resume{resumables.length === 1 ? ' ' + resumables[0].label : ''}</span>
+              {#if resumables.length > 1}<span class="resume-count">{resumables.length}</span>{/if}
             </button>
           {/if}
-          <!-- ▶ Resume your most-recent live game (multiple games can be open at once) -->
-          {#if resumeGame}
-            <button class="menu-card resume-card" style="--i: 0" on:click={resumeOpen}>
-              <span class="mc-title">▶ Resume {RESUME_LABEL[resumeGame.mode] ?? 'game'}</span>
-              {#if openGames.length > 1}<span class="resume-more">+{openGames.length - 1} more in progress</span>{/if}
+          {#if friendRequests.length}
+            <button class="menu-card invite-card friend" style="--i: 0" on:click={() => { fx('tap'); goto('/friends'); }}>
+              <span class="mc-title">👋 Friend request{friendRequests.length > 1 ? 's' : ''}</span>
+              {#if friendRequests.length > 1}<span class="invite-count">{friendRequests.length}</span>{/if}
             </button>
           {/if}
           <button class="menu-card primary" style="--i: 0" on:click={() => { menuView = 'play'; fx('tap'); }}>
             <span class="mc-title">Play Now!</span>
           </button>
-          <!-- 🤝 Challenge A Friend — sits right under Play Now -->
+          <!-- ⚔️ Challenges hub (list + New) — carries the pending-invite badge; 👥+ = friends/groups -->
           <div class="vs-cta-group">
-            <button class="vs-main" on:click={() => { fx('tap'); newChallenge(); }}>Challenge Friends</button>
+            <button class="vs-main" on:click={() => { fx('tap'); openCommunity('challenges'); }}>
+              ⚔️ Challenges{#if challengeInvites.length}<span class="vs-badge">{challengeInvites.length}</span>{/if}
+            </button>
             <button class="vs-people" title="Friends &amp; Groups" aria-label="Friends and groups" on:click={() => { fx('tap'); openCommunity('people'); }}>
               <span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span>
             </button>
           </div>
-          <button class="menu-card" style="--i: 1" on:click={() => { fx('tap'); openCommunity('challenges'); }}>
-            <span class="mc-title">Community</span>
+          <button class="menu-card" style="--i: 1" on:click={() => { fx('tap'); openCommunity('leaderboard'); }}>
+            <span class="mc-title">🏆 Leaderboard</span>
           </button>
           <button class="menu-card" style="--i: 2" on:click={() => goto('/shop')}>
             <span class="mc-title">Store</span>
@@ -1876,8 +2060,8 @@
             <h2 class="sub-title">People</h2>
           {:else}
             <button class="sub-back" on:click={() => { menuView = 'home'; fx('tap'); }}>← Back</button>
-            <h2 class="sub-title">Community</h2>
-            <button class="sub-people" title="Friends & Groups" aria-label="Friends & Groups" on:click={() => { communityTab = 'people'; peopleBackToHome = false; fx('tap'); }}>👥</button>
+            <h2 class="sub-title">{communityTab === 'leaderboard' ? '🏆 Leaderboard' : '⚔️ Challenges'}</h2>
+            <button class="sub-people" title="Friends & Groups" aria-label="Friends & Groups" on:click={() => { communityTab = 'people'; peopleBackToHome = false; fx('tap'); }}><span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span></button>
           {/if}
         </div>
         {#if communityTab === 'people'}
@@ -1889,7 +2073,6 @@
           <div class="comm-tabs">
             <button class="comm-tab" class:active={communityTab === 'challenges'} on:click={() => { communityTab = 'challenges'; fx('tap'); }}>Challenges</button>
             <button class="comm-tab" class:active={communityTab === 'leaderboard'} on:click={() => { communityTab = 'leaderboard'; fx('tap'); }}>Leaderboard</button>
-            <button class="comm-tab" class:active={communityTab === 'activity'} on:click={() => { communityTab = 'activity'; fx('tap'); }}>Activity</button>
           </div>
         {/if}
 
@@ -1920,8 +2103,6 @@
           </div>
         {:else if communityTab === 'leaderboard'}
           <div class="comm-body"><LeaderboardPanel /></div>
-        {:else if communityTab === 'activity'}
-          <div class="comm-body"><ActivityPanel /></div>
         {:else}
           <div class="comm-body">
             {#if peopleTab === 'friends'}
@@ -2021,9 +2202,9 @@
               </div>
               <button class="ch-toggle" class:on={mbItemsAllowed} on:click={() => { mbItemsAllowed = !mbItemsAllowed; fx('tap'); }}>
                 <span class="ch-tog-box">{mbItemsAllowed ? '✓' : ''}</span>
-                ⚡ Allow power-ups — players can bring & use items they own
+                ⚡ Allow power-ups
               </button>
-              <p class="ch-objective">Your buy-in (min $500) is your spending cap. Buy as few letters as you can — <strong>unspent cash comes back, the pot is everyone’s spend, and the most efficient solver takes it.</strong> You only ever lose what you spend. Guesses are free.</p>
+              <p class="ch-objective"><strong>Spend the least — winner takes the pot.</strong></p>
               <button class="ch-create" disabled={mbBusy} on:click={submitNewMatch} style="width:100%;">Send challenge ⚔️</button>
               {#if mbMsg}<p class="add-msg">{mbMsg}</p>{/if}
             </div>
@@ -2045,7 +2226,7 @@
             <div class="sm-row"><span>This challenge</span><b>${Number(shortMatch.wager).toLocaleString()} buy-in</b></div>
             <div class="sm-row"><span>You have</span><b>${Math.round(netWorth ?? 0).toLocaleString()}</b></div>
           </div>
-          <p class="sm-note">You only ever lose what you spend — play with a smaller budget, or decline.</p>
+          <p class="sm-note">Your whole buy-in is at stake — winner takes the pot. Play with a smaller buy-in, or decline.</p>
           <button class="sm-play" disabled={mbBusy} on:click={() => playReduced(shortMatch)}>Play with ${Math.round(netWorth ?? 0).toLocaleString()}</button>
           <button class="sm-decline" disabled={mbBusy} on:click={() => declineChallenge(shortMatch)}>Decline challenge</button>
         </div>
@@ -2081,61 +2262,107 @@
     {#if showMyAccount}
       <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="My Account">
         <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showMyAccount = false}></button>
-        <div class="modal-content main-menu-modal">
+        <div class="modal-content main-menu-modal settings-modal">
           <button class="close-btn" on:click={() => showMyAccount = false}>❌</button>
-          <h2>My Account</h2>
-          {#if $user?.email}
-            <p class="account-email">{$user.email}</p>
-          {/if}
+          <h2>Settings</h2>
 
-          <div class="ma-username">
-            {#if maUsername && !maEditing}
-              <span class="ma-uname">@{maUsername}</span>
-              <button class="ma-edit" on:click={() => { maEditing = true; maInput = maUsername; maMsg = ''; }}>edit</button>
-            {:else}
-              <input class="ma-input" placeholder="pick a username" bind:value={maInput} maxlength="15"
-                on:keydown={(e) => { if (e.key === 'Enter') saveMaUsername(); }} />
-              <button class="ma-save" on:click={saveMaUsername}>Save</button>
-            {/if}
+          <!-- Profile -->
+          <div class="set-profile">
+            <button class="set-av" on:click={() => { showMyAccount = false; goto('/avatar'); }} aria-label="Edit avatar">
+              <Avatar config={myAvatar} fx size={68} />
+              <span class="set-av-edit">Edit</span>
+            </button>
+            <div class="set-id">
+              {#if maUsername && !maEditing}
+                <div class="set-uname">@{maUsername}<button class="ma-edit" on:click={() => { maEditing = true; maInput = maUsername; maMsg = ''; }}>edit</button></div>
+              {:else}
+                <div class="set-uname-edit">
+                  <input class="ma-input" placeholder="pick a username" bind:value={maInput} maxlength="15" on:keydown={(e) => { if (e.key === 'Enter') saveMaUsername(); }} />
+                  <button class="ma-save" on:click={saveMaUsername}>Save</button>
+                </div>
+              {/if}
+              {#if $user?.email}<div class="set-email">{$user.email}</div>{/if}
+            </div>
           </div>
           {#if maMsg}<p class="ma-msg">{maMsg}</p>{/if}
 
-          <div class="account-stats">
-            <div class="stat-chip"><span class="stat-emoji">🔥</span> {accountStreak}<span class="stat-cap">day streak</span></div>
-            <div class="stat-chip" title="Auto-protects your streak across one missed day. Earn one every 7-day streak.">
-              <span class="stat-emoji">🧊</span> {accountFreezes}<span class="stat-cap">freeze{accountFreezes === 1 ? '' : 's'}</span>
-            </div>
+          <!-- Preferences -->
+          <div class="set-label">Preferences</div>
+          <div class="set-group">
+            <button class="set-row" on:click={() => { toggleSound(); if ($soundEnabled) fx('select'); }}>
+              <span>🔊 Sound</span><span class="set-state" class:on={$soundEnabled}>{$soundEnabled ? 'On' : 'Off'}</span>
+            </button>
+            <button class="set-row" on:click={() => { toggleHaptics(); if ($hapticsEnabled) fx('tap'); }}>
+              <span>📳 Haptics</span><span class="set-state" class:on={$hapticsEnabled}>{$hapticsEnabled ? 'On' : 'Off'}</span>
+            </button>
+            <button class="set-row" on:click={toggleMusic}>
+              <span>🎵 Music</span><span class="set-state" class:on={$musicEnabled}>{$musicEnabled ? 'On' : 'Off'}</span>
+            </button>
+            {#if $musicEnabled}
+              <div class="set-row sub">
+                <span class="mmc-ic">🔈</span>
+                <input class="mmc-slider" type="range" min="0" max="100" step="1" value={Math.round($musicVolume * 100)} on:input={(e) => setMusicVolume(Number(e.currentTarget.value) / 100)} />
+                <span class="mmc-pct">{Math.round($musicVolume * 100)}%</span>
+              </div>
+              {#if TRACKS.length > 1}
+                <div class="set-row sub tracks">
+                  {#each TRACKS as t, i}<button class="ma-track" class:on={$currentTrackId === t.id} on:click={() => selectTrack(t.id)}>Track {i + 1}</button>{/each}
+                </div>
+              {/if}
+            {/if}
           </div>
 
-          <button class="main-menu-btn ghost-btn" on:click={() => goto('/groups')}>👥 Groups</button>
+          <!-- Social -->
+          <div class="set-label">Social</div>
+          <div class="set-group">
+            <button class="set-row nav" on:click={() => { showMyAccount = false; peopleTab = 'friends'; openCommunity('people'); }}><span>👋 Friends</span><span class="chev">›</span></button>
+            <button class="set-row nav" on:click={() => { showMyAccount = false; peopleTab = 'groups'; openCommunity('people'); }}><span>👥 Groups</span><span class="chev">›</span></button>
+          </div>
 
-          <div class="ma-section-label">Settings</div>
-          <button class="main-menu-btn ghost-btn ma-toggle" on:click={() => { toggleSound(); if ($soundEnabled) fx('select'); }}>
-            <span>{$soundEnabled ? '🔊' : '🔇'} Sound &amp; Haptics</span>
-            <span class="ma-toggle-state">{$soundEnabled ? 'On' : 'Off'}</span>
-          </button>
-
-          <button class="main-menu-btn ghost-btn ma-toggle" on:click={toggleMusic}>
-            <span>{$musicEnabled ? '🎵' : '🔕'} Lobby Music</span>
-            <span class="ma-toggle-state">{$musicEnabled ? 'On' : 'Off'}</span>
-          </button>
-          {#if $musicEnabled}
-            <div class="ma-music-ctl">
-              <span class="mmc-ic">🔈</span>
-              <input class="mmc-slider" type="range" min="0" max="100" step="1"
-                value={Math.round($musicVolume * 100)}
-                on:input={(e) => setMusicVolume(Number(e.currentTarget.value) / 100)} />
-              <span class="mmc-pct">{Math.round($musicVolume * 100)}%</span>
+          <!-- Security -->
+          {#if hasPin}
+            <div class="set-label">Security</div>
+            <div class="set-group">
+              <button class="set-row nav" on:click={changePin}><span>🔑 Change PIN</span><span class="chev">›</span></button>
+              <button class="set-row nav" on:click={forgotPin}><span>🔓 Forgot PIN?</span><span class="chev">›</span></button>
             </div>
-            {#if TRACKS.length > 1}
-              <select class="ma-track-select" value={$currentTrackId} on:change={(e) => selectTrack(e.currentTarget.value)}>
-                {#each TRACKS as t}<option value={t.id}>{t.title}</option>{/each}
-              </select>
-            {/if}
           {/if}
-          <button class="main-menu-btn ghost-btn" on:click={() => { showMyAccount = false; showTutorial = true; }}>❓ How to Play</button>
 
-          <button class="main-menu-btn" on:click={() => { showMyAccount = false; handleLogout(); }}>Log Out</button>
+          <!-- Help & Legal -->
+          <div class="set-label">Help &amp; Legal</div>
+          <div class="set-group">
+            <button class="set-row nav" on:click={() => { showMyAccount = false; showTutorial = true; }}><span>❓ How to Play</span><span class="chev">›</span></button>
+            <a class="set-row nav" href="/privacy" target="_blank" rel="noopener noreferrer"><span>🔒 Privacy Policy</span><span class="chev">↗</span></a>
+            <a class="set-row nav" href="/terms" target="_blank" rel="noopener noreferrer"><span>📄 Terms of Service</span><span class="chev">↗</span></a>
+            <a class="set-row nav" href={`mailto:${SUPPORT_EMAIL}`}><span>✉️ Contact Support</span><span class="chev">↗</span></a>
+          </div>
+
+          <!-- Account -->
+          <div class="set-label">Account</div>
+          <div class="set-group">
+            <button class="set-row nav" on:click={() => { showMyAccount = false; handleLogout(); }}><span>🚪 Log Out</span><span class="chev">›</span></button>
+            <button class="set-row nav danger" on:click={() => { deleteInput = ''; maMsg = ''; showDeleteConfirm = true; }}><span>🗑️ Delete Account</span><span class="chev">›</span></button>
+          </div>
+
+          <p class="ma-version">WordBank v{APP_VERSION}</p>
+        </div>
+      </div>
+    {/if}
+
+    <!-- 🗑️ Delete-account confirmation — permanent, requires typing DELETE -->
+    {#if showDeleteConfirm}
+      <div class="modal-overlay danger-overlay" role="dialog" aria-modal="true" aria-label="Delete account">
+        <button type="button" class="modal-backdrop" aria-label="Cancel" on:click={() => { if (!deleteBusy) showDeleteConfirm = false; }}></button>
+        <div class="info-card del-card" role="document">
+          <div class="info-big">🗑️</div>
+          <h3 class="info-title">Delete your account?</h3>
+          <p class="del-body">This permanently erases your account, Cash, stats, streaks, badges and history. <b>It can't be undone.</b></p>
+          <input class="ma-input del-input" placeholder="Type DELETE to confirm" bind:value={deleteInput}
+            autocomplete="off" autocapitalize="characters" spellcheck="false" />
+          <button class="main-menu-btn ma-danger" disabled={!deleteArmed || deleteBusy} on:click={confirmDeleteAccount}>
+            {deleteBusy ? 'Deleting…' : 'Delete forever'}
+          </button>
+          <button class="main-menu-btn ghost-btn" disabled={deleteBusy} on:click={() => showDeleteConfirm = false}>Cancel</button>
         </div>
       </div>
     {/if}
@@ -2152,24 +2379,16 @@
       </button>
     {/if}
 
-    <!-- 💰 Bankroll — top of every mode. Challenge/1v1 = one number (left to spend) + one depleting bar. -->
+    <!-- 💰 Bankroll — top of every mode. Challenge ante now lives in the bounty hero below. -->
     {#if $gameStore.currentPhrase && $gameStore.gameMode}
-      {#if isMatch && matchInfo && !matchBlitz && !matchInfo.done}
-        {@const buyin = matchInfo.budget ?? 0}
-        {@const left = Math.max(0, buyin - (matchInfo.spent ?? 0))}
-        <div class="top-bank">
-          <div class="tb-row"><span class="tb-cap">💰 Left to spend</span><span class="tb-amt">${left.toLocaleString()}</span></div>
-          <div class="tb-bar"><span class="tb-fill" style="width:{buyin > 0 ? Math.max(0, Math.min(100, (left / buyin) * 100)) : 100}%"></span></div>
-          <div class="tb-sub">of your ${buyin.toLocaleString()} buy-in</div>
-        </div>
-      {:else if isFreeplay}
+      {#if isFreeplay}
         <button class="top-bank tap" disabled={fpCashBusy} on:click={tapCredits}>
           <div class="tb-row"><span class="tb-cap">🎟️ Credits</span><span class="tb-amt cr">{Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span></div>
-          <div class="tb-sub">tap to cash out at 40:1</div>
         </button>
       {:else if !matchBlitz}
         <button class="top-bank solo" class:pop-up={bankFlash === 'up'} class:pop-down={bankFlash === 'down'} title="Your Cash" on:click={openBankModal}>
-          <span class="tb-solo">💰 ${Math.round($tweenBank).toLocaleString()}</span>
+          {#if isMatch}<span class="tb-wallet-cap">💰 Wallet</span>{/if}
+          <span class="tb-solo">{#if !isMatch}💰 {/if}${Math.round($tweenBank).toLocaleString()}</span>
         </button>
       {/if}
     {/if}
@@ -2203,7 +2422,7 @@
     {#if isMakeup}
       <div class="makeup-banner">
         <span class="mb-tag">🗓️ Make-up</span>
-        <span class="mb-text">Playing {makeupLabel} · fills your calendar · earns the puzzle's Cash (no streak)</span>
+        <span class="mb-text">{makeupLabel}</span>
       </div>
     {/if}
 
@@ -2212,7 +2431,7 @@
     {#if isClimb && climb}
       {#if climb.stuck && $gameStore.gameState !== 'won'}
         <div class="climb-stuck">
-          <span class="cs-text">Out of Cash for this one — leave and earn in the Daily, then come back to finish it.</span>
+          <span class="cs-text">Out of Cash</span>
           <div class="cs-actions">
             <button class="cs-leave" on:click={goToMainMenu}>Leave &amp; earn</button>
           </div>
@@ -2234,48 +2453,11 @@
         <StandingStrip standing={matchInfo.standing ?? null} />
       {/if}
       {#if (matchInfo.my_debuffs ?? []).length}
-        <p class="debuff-banner">{(matchInfo.my_debuffs ?? []).map((/** @type {string} */ d) => DEBUFF_LABEL[d] ?? d).join(' · ')}</p>
+        <button type="button" class="debuff-banner" on:click={openDebuffInfo} title="Who hit you & what it does">
+          {(matchInfo.my_debuffs ?? []).map((/** @type {string} */ d) => DEBUFF_LABEL[d] ?? d).join(' · ')} <span class="db-info">ⓘ</span>
+        </button>
       {/if}
-      {#if matchInfo.items_allowed}
-        {@const ownedSelf = selfPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0)}
-        {@const ownedSab = sabPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0)}
-        {#if ownedSelf.length}
-          <p class="cp-hint">Your power-ups · tap to use — the group is notified</p>
-          <div class="climb-pups">
-            {#each ownedSelf as item}
-              {@const used = (matchInfo.used_powerups ?? []).includes(item.id)}
-              <button class="cp" class:equipped={used} disabled={used}
-                on:click={() => handleMatchPup(item)} title={item.name}>
-                <span class="cp-ic">{PUP_ICON[item.id] ?? '✨'}</span>
-                <span class="cp-tag">{used ? '✓' : '×' + item.owned}</span>
-              </button>
-            {/each}
-          </div>
-        {/if}
-        {#if ownedSab.length && (matchInfo.opponents ?? []).length}
-          <p class="cp-hint sab">😈 Sabotage · tap an item, then pick who to hit</p>
-          <div class="climb-pups">
-            {#each ownedSab as item}
-              <button class="cp sab" class:arming={pendingSabotage === item.id}
-                on:click={() => tapSabotage(item)} title={item.name}>
-                <span class="cp-ic">{PUP_ICON[item.id] ?? '✨'}</span>
-                <span class="cp-tag">×{item.owned}</span>
-              </button>
-            {/each}
-          </div>
-          {#if pendingSabotage}
-            <div class="sab-targets">
-              <span class="sab-pick">Hit who?</span>
-              {#each matchInfo.opponents ?? [] as opp}
-                <button class="sab-target" on:click={() => pickSabTarget(opp.id)}>{opp.name}</button>
-              {/each}
-            </div>
-          {/if}
-        {/if}
-        {#if !ownedSelf.length && !ownedSab.length}
-          <p class="cp-hint">⚡ Power-ups are on — you don't own any yet. Grab some in the Store to use them here.</p>
-        {/if}
-      {/if}
+      <!-- Power-ups & sabotage all live in the 🔐 vault beside Solve now. -->
     {/if}
 
     <!-- 🌍 Category + today's auto-applied Twist chip + witty clue -->
@@ -2315,8 +2497,8 @@
     <!-- 💰 Money hero -->
     <section class="stats-section">
       {#if soloHero}
-        <!-- Daily · Makeup · Cash Game: the number you keep if you solve now (bankroll is up top) -->
-        <div class="bounty-panel" class:loss={soloHero.net < 0} class:count-pop={introCountPop}>
+        <!-- Daily · Cash Game = the number you keep if you solve now. Challenge = ante left to spend (depletes). -->
+        <div class="bounty-panel" class:loss={!isMatch && soloHero.net < 0} class:ante-empty={isMatch && matchLeft <= 0} class:count-pop={introCountPop}>
           {#if $gameStore.gameMode === 'daily'}
             <button class="bp-mult-badge" title="How your multiplier works" on:click={() => { fx('tap'); dailyInfo = 'mult'; }}>×{Number($gameStore.bountyMult ?? 1).toFixed(1)}</button>
             <button class="bp-winstreak" title="Win streak" on:click={() => { fx('tap'); dailyInfo = 'streak'; }}>🏆 {dailyStatus?.win_streak ?? 0}</button>
@@ -2324,16 +2506,21 @@
             <button class="bp-mult-badge" title="Heat — your payout multiplier" on:click={() => { fx('tap'); climbInfo = 'heat'; }}>🔥 ×{climbHeat}</button>
             <button class="bp-winstreak" title="Win streak" on:click={() => { fx('tap'); climbInfo = 'streak'; }}>🏆 {climbStreak}</button>
           {/if}
-          <span class="bp-label">{soloHero.net >= 0 ? 'Solve to Earn' : '⚠️ You’re losing money'}</span>
+          <span class="bp-label">{isMatch ? (matchLeft > 0 ? '💰 Left to Spend' : '🪙 Out of ante') : (soloHero.net >= 0 ? 'Solve to Earn' : '⚠️ You’re losing money')}</span>
           {#if $gameStore.gameMode === 'daily'}
             <button class="bp-amount bp-amount-btn" title="How this is calculated" on:click={() => { fx('tap'); dailyInfo = 'bounty'; }}>{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</button>
           {:else if isClimb}
             <button class="bp-amount bp-amount-btn" title="How this is calculated" on:click={() => { fx('tap'); climbInfo = 'earn'; }}>{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</button>
+          {:else if isMatch}
+            <button class="bp-amount bp-amount-btn" title="What is this?" on:click={() => { fx('tap'); showAnteInfo = true; }}>${Math.max(0, Math.round($tweenNet)).toLocaleString()}</button>
           {:else}
             <span class="bp-amount">{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</span>
           {/if}
           {#each spendFloaters as f (f.id)}<span class="spend-float">{f.text}</span>{/each}
         </div>
+        {#if isMatch && matchLive}
+          <div class="ante-bar"><span class="ante-fill" style="width:{(matchLive.budget ?? 0) > 0 ? Math.max(0, Math.min(100, (matchLeft / matchLive.budget) * 100)) : 100}%"></span></div>
+        {/if}
         {#if isClimb && climbRun && climbRun.solves >= 2}
           <p class="climb-run-line" class:best={climbRunIsBest}>
             🔥 {climbRun.solves}-solve run · <b class="run-profit" class:neg={climbRun.profit < 0}>{climbRun.profit >= 0 ? '+' : '−'}${Math.abs(climbRun.profit).toLocaleString()}</b> this run{#if climbRunIsBest} · 🏆 personal best{/if}
@@ -2362,12 +2549,12 @@
       {#if donAvailable}
         <button class="don-cta" on:click={openDon}>
           <span class="don-cta-title">💥 Double or Nothing</span>
-          <span class="don-cta-sub">Solve for <b>${donTarget.toLocaleString()}</b> — but get stuck and you forfeit it all</span>
+          <span class="don-cta-sub">Solve for <b>${donTarget.toLocaleString()}</b> · all-in</span>
         </button>
       {:else if donArmed}
         <div class="don-armed" role="status">
           <span class="don-armed-title">💥 Doubled — all in</span>
-          <span class="don-armed-sub">Solve for <b>${donTarget.toLocaleString()}</b> · no skip, no backing out</span>
+          <span class="don-armed-sub">Solve for <b>${donTarget.toLocaleString()}</b></span>
         </div>
       {/if}
     {/if}
@@ -2380,6 +2567,11 @@
             <button class="solve-vault" on:click={openBag} title="Your power-ups" aria-label="Open your vault">
               <img src="/vault.png" alt="" />
               {#if usableClimbPups > 0}<span class="solve-vault-badge">{usableClimbPups}</span>{/if}
+            </button>
+          {:else if isMatch && matchInfo?.items_allowed && !matchInfo?.done && gameActive}
+            <button class="solve-vault" on:click={openBag} title="Your power-ups" aria-label="Open your vault">
+              <img src="/vault.png" alt="" />
+              {#if usableMatchPups > 0}<span class="solve-vault-badge">{usableMatchPups}</span>{/if}
             </button>
           {/if}
         </svelte:fragment>
@@ -2468,7 +2660,7 @@
             <div class="result-medal">⚔️</div>
             <h2>Challenge complete!</h2>
             <p class="result-sub">{#if matchInfo?.mode === 'blitz'}You scored {(matchInfo?.total_score ?? 0).toLocaleString()} across {matchInfo?.pack_size} puzzle{matchInfo?.pack_size === 1 ? '' : 's'}{:else}You solved {matchInfo?.solved ?? 0}/{matchInfo?.pack_size} spending ${(matchInfo?.spent ?? 0).toLocaleString()}{/if}</p>
-            <p class="arcade-gain">{matchInfo?.status === 'settled' ? 'Settled — check the results.' : "Lowest spend wins — we'll settle once everyone plays."}</p>
+            <p class="arcade-gain">{matchInfo?.status === 'settled' ? 'Settled — check the results.' : "Most Cash left wins — we'll settle once everyone plays."}</p>
             <div class="result-actions">
               {#if matchInfo?.status === 'settled'}
                 <button class="share-btn" on:click={async () => { const id = matchInfo?.id; showResultModal = false; hasTriggeredModal = false; goToMainMenu(); matchResults = { loading: true }; matchResults = await getMatchDetail(id); }}>View Results</button>
@@ -2648,21 +2840,25 @@
   .cp.equipped { border-color: var(--brand-2); background: rgba(253, 224, 71,0.12); opacity: 1; }
   .cp.equipped .cp-tag { color: var(--brand-2); }
   .cp.empty { opacity: 0.35; }
-  .cp.sab { border-color: rgba(244,114,182,0.3); }
-  .cp.sab:hover:not(:disabled) { border-color: rgba(244,114,182,0.6); }
-  .cp.sab.arming { border-color: #f472b6; box-shadow: 0 0 12px rgba(244,114,182,0.4); }
-  .cp-hint.sab { color: #f472b6; }
   .debuff-banner {
-    text-align: center; font-size: 0.76rem; font-weight: 700; color: #fb7185; margin: 0 auto 8px;
-    max-width: 340px; padding: 5px 10px; border-radius: 999px;
+    display: block; text-align: center; font-size: 0.76rem; font-weight: 700; color: #fb7185; margin: 0 auto 8px;
+    max-width: 340px; padding: 5px 10px; border-radius: 999px; cursor: pointer;
     background: rgba(251,113,133,0.1); border: 1px solid rgba(251,113,133,0.3);
   }
-  .sab-targets { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; margin: 2px auto 10px; max-width: 340px; }
-  .sab-pick { font-size: 0.74rem; color: #f472b6; font-weight: 700; }
-  .sab-target {
-    padding: 4px 11px; border-radius: 999px; cursor: pointer; font-weight: 700; font-size: 0.8rem;
-    color: #fff; border: none; background: linear-gradient(135deg, #f472b6, #db2777);
+  .debuff-banner:active { transform: scale(0.97); }
+  .db-info { opacity: 0.7; font-size: 0.7rem; }
+  .debuff-row { align-items: flex-start; }
+  .db-desc { display: block; font-size: 0.72rem; font-weight: 500; color: var(--text-muted); margin-top: 2px; }
+  /* 😈 Sabotage target picker (in the bag flow) */
+  .sab-target-list { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 12px; }
+  .sab-target-row {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding: 11px 14px; border-radius: 12px; cursor: pointer;
+    background: rgba(244,114,182,0.1); border: 1px solid rgba(244,114,182,0.4); color: var(--text);
   }
+  .sab-target-row:active { transform: scale(0.98); }
+  .st-name { font-weight: 800; font-size: 0.95rem; }
+  .st-stat { font-size: 0.82rem; color: #f9a8d4; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .cp-ic { font-size: 1.1rem; line-height: 1; }
   .cp-tag { font-size: 0.6rem; font-weight: 700; color: var(--text-faint); }
   .climb-stuck {
@@ -2828,7 +3024,7 @@
   .sub-back:hover { transform: translateX(-2px); border-color: var(--border-strong); background: var(--surface-2); }
   .sub-title { font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; }
   .sub-people {
-    margin-left: auto; width: 40px; height: 40px; display: grid; place-items: center; font-size: 1.1rem;
+    position: relative; margin-left: auto; width: 40px; height: 40px; display: grid; place-items: center; font-size: 1.1rem;
     background: var(--surface); border: 1px solid var(--border); border-radius: 12px; cursor: pointer;
   }
   .sub-people:hover { border-color: var(--brand-2); }
@@ -2859,6 +3055,8 @@
     font-family: var(--font-display); font-weight: 800; font-size: 0.94rem; letter-spacing: 0.01em; }
   .vs-main:hover { filter: brightness(1.05); }
   .vs-main:active { transform: scale(0.99); }
+  .vs-badge { display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-left: 7px; padding: 0 5px; vertical-align: middle;
+    border-radius: 999px; background: #dc2626; color: #fff; font-size: 0.72rem; font-weight: 800; }
   .vs-people { position: relative; width: 58px; flex: none; display: grid; place-items: center;
     border-left: 1.5px solid rgba(120,80,0,0.45); } /* just the vertical divider line */
   .vs-people:hover { filter: brightness(1.06); }
@@ -2916,6 +3114,12 @@
     cursor: pointer; font-size: 1.7rem; transition: transform 0.15s, border-color 0.2s;
   }
   .account-ic:hover { transform: translateY(-1px); border-color: rgba(251,191,36,0.5); }
+  .account-ic.has-av { overflow: hidden; padding: 0; }
+  .account-ic.has-av :global(.wb-avatar) { width: 100%; height: 100%; border: none; }
+  /* My Account → avatar / edit-avatar entry */
+  .ma-avatar-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 6px auto 10px; background: none; border: none; cursor: pointer; }
+  .ma-avatar-btn :global(.wb-avatar) { box-shadow: 0 6px 18px rgba(0,0,0,0.4); }
+  .ma-avatar-edit { font-size: 0.82rem; font-weight: 700; color: var(--brand-2); }
   .account-ic:active { transform: scale(0.94); }
   /* unread notification count, off the top-right of the avatar */
   .account-count {
@@ -3150,7 +3354,6 @@
   }
   /* ▶ Resume shortcut card (home menu) — green, mirrors the in-progress accent */
   .menu-card.resume-card {
-    flex-direction: column; gap: 2px;
     background: linear-gradient(180deg, #16352b 0%, #0f2a22 100%);
     border-color: rgba(16,185,129,0.6);
     box-shadow: inset 0 1px 0 rgba(110,231,183,0.2), inset 0 0 0 1px rgba(16,185,129,0.3), 0 4px 14px rgba(0,0,0,0.5), 0 0 20px rgba(16,185,129,0.25);
@@ -3160,7 +3363,33 @@
     background: linear-gradient(180deg, #d1fae5, #6ee7b7); -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent; color: transparent; text-shadow: none;
   }
-  .resume-more { position: relative; z-index: 1; font-size: 0.72rem; color: rgba(167,243,208,0.82); font-weight: 600; }
+  /* ⚔️ Challenge-invite / friend-request notification cards */
+  .menu-card.invite-card {
+    background: linear-gradient(180deg, #2a2140 0%, #1c1730 100%); border-color: rgba(167,139,250,0.55);
+    box-shadow: inset 0 0 0 1px rgba(167,139,250,0.25), 0 4px 12px rgba(0,0,0,0.5), 0 0 16px rgba(167,139,250,0.18);
+  }
+  .menu-card.invite-card::before, .menu-card.invite-card::after { display: none; }
+  .menu-card.invite-card .mc-title { background: linear-gradient(180deg, #e9d5ff, #c4b5fd); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; text-shadow: none; }
+  .menu-card.invite-card.friend { border-color: rgba(96,165,250,0.5); }
+  .menu-card.invite-card.friend .mc-title { background: linear-gradient(180deg, #dbeafe, #93c5fd); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  /* count chips on the notification cards */
+  .resume-count, .invite-count {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%); z-index: 1;
+    min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-weight: 800; font-size: 0.8rem; color: #0f2a22; background: #6ee7b7;
+  }
+  .invite-count { color: #1c1730; background: #c4b5fd; }
+  /* ▶ Resume menu modal */
+  .resume-menu { text-align: left; }
+  .rm-list { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 4px; }
+  .rm-row {
+    display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; cursor: pointer;
+    background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.4); color: var(--text);
+  }
+  .rm-row:active { transform: scale(0.98); }
+  .rm-ic { font-size: 1.2rem; }
+  .rm-label { flex: 1; font-weight: 800; font-size: 0.98rem; }
+  .rm-arrow { color: #6ee7b7; font-size: 0.85rem; }
   .progress-modes { border-left-color: rgba(251,191,36,0.3); }
   .mc-arrow { color: var(--text-faint); font-size: 1.1rem; transition: transform 0.2s, color 0.2s; }
   .mc-count {
@@ -3225,6 +3454,32 @@
     background: var(--surface-strong, rgba(20,28,40,0.85)); border: 1px solid var(--border-strong, var(--border)); backdrop-filter: blur(10px);
   }
   .help-btn:hover { border-color: var(--brand-2); color: var(--brand-2); }
+  /* 🔊 in-game audio button — sits just right of the help button */
+  .audio-btn {
+    position: fixed; top: 14px; left: calc(50% + 46px); transform: translateX(-50%); z-index: 1000;
+    width: 38px; height: 38px; border-radius: 999px; cursor: pointer; font-size: 1.05rem; line-height: 1;
+    display: grid; place-items: center; color: var(--text);
+    background: var(--surface-strong, rgba(20,28,40,0.85)); border: 1px solid var(--border-strong, var(--border)); backdrop-filter: blur(10px);
+  }
+  .audio-btn:hover { border-color: var(--brand-2); }
+  .audio-btn:active { transform: translateX(-50%) scale(0.92); }
+  /* audio panel */
+  .audio-panel { text-align: left; }
+  .ap-rows { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+  .ap-toggle {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding: 11px 14px; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 0.95rem; color: var(--text);
+    background: var(--surface-2, rgba(255,255,255,0.05)); border: 1px solid var(--border);
+  }
+  .ap-toggle:active { transform: scale(0.98); }
+  .ap-state { font-size: 0.8rem; font-weight: 800; color: var(--text-faint); }
+  .ap-state.on { color: #4ade80; }
+  .ma-tracks { display: flex; gap: 6px; margin-top: 8px; }
+  .ma-track {
+    flex: 1; padding: 8px 4px; border-radius: 10px; cursor: pointer; font-weight: 800; font-size: 0.8rem;
+    color: var(--text-muted); background: var(--surface-2, rgba(255,255,255,0.05)); border: 1px solid var(--border);
+  }
+  .ma-track.on { color: #3a2a00; background: var(--brand-grad, linear-gradient(135deg,#fbbf24,#fde047)); border-color: transparent; }
   /* 🏳️ give up (top-right) — red exit arrow */
   .giveup-btn {
     position: fixed; top: 14px; right: 14px; z-index: 1000;
@@ -3539,6 +3794,47 @@
     text-align: left; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--text-faint); margin: 1rem 0 0.1rem; padding-left: 0.2rem;
   }
+  .ma-people-row { display: flex; gap: 8px; }
+  .ma-people-row .main-menu-btn { flex: 1; }
+  /* About: legal links + version + delete */
+  .ma-links { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 2px 0 4px; }
+  .ma-link { color: var(--brand-2); font-size: 0.85rem; font-weight: 600; text-decoration: none; }
+  .ma-link:hover { text-decoration: underline; }
+  .ma-dot { color: var(--text-faint); }
+  .ma-version { text-align: center; font-size: 0.72rem; color: var(--text-faint); margin: 14px 0 2px; }
+  /* ── Sectioned settings layout ── */
+  .settings-modal { text-align: left; }
+  .set-profile { display: flex; align-items: center; gap: 13px; margin: 6px 0 4px; }
+  .set-av { position: relative; background: none; border: none; cursor: pointer; padding: 0; flex: none; }
+  .set-av-edit { position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); font-size: 0.62rem; font-weight: 800;
+    color: #3a2a00; background: var(--brand-2, #fde047); padding: 1px 7px; border-radius: 999px; }
+  .set-id { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+  .set-uname { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; color: var(--text); }
+  .set-uname-edit { display: flex; gap: 6px; }
+  .set-email { font-size: 0.78rem; color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .set-label { text-align: left; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--text-faint); margin: 16px 0 7px; padding-left: 0.3rem; }
+  .set-group { display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); background: var(--surface); }
+  .set-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
+    padding: 13px 15px; background: none; border: none; border-bottom: 1px solid var(--border); cursor: pointer;
+    color: var(--text); font-weight: 600; font-size: 0.95rem; text-align: left; text-decoration: none; }
+  .set-group > :last-child { border-bottom: none; }
+  .set-row:hover { background: rgba(255,255,255,0.04); }
+  .set-row.sub { cursor: default; padding: 11px 15px; }
+  .set-row.sub:hover { background: none; }
+  .set-row.sub.tracks { gap: 6px; }
+  .set-row.sub .mmc-slider { flex: 1; }
+  .set-row.danger { color: #f87171; }
+  .set-state { font-size: 0.82rem; font-weight: 800; color: var(--text-faint); }
+  .set-state.on { color: #4ade80; }
+  .chev { color: var(--text-faint); font-weight: 700; }
+  .main-menu-btn.ma-danger { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.5); }
+  .main-menu-btn.ma-danger:hover { background: rgba(248,113,113,0.2); }
+  .main-menu-btn.ma-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+  .del-card { text-align: center; max-width: 360px; }
+  .del-body { font-size: 0.9rem; line-height: 1.5; color: var(--text-muted); margin: 6px 0 14px; }
+  .del-input { width: 100%; text-align: center; margin-bottom: 12px; }
+  .danger-overlay { z-index: 4000; }
   .ma-toggle { display: flex; align-items: center; gap: 0.5rem; }
   .ma-toggle-state {
     margin-left: auto; font-size: 0.72rem; font-weight: 800; color: var(--brand-2);
@@ -3699,6 +3995,12 @@
     text-shadow: 0 0 18px rgba(52,211,153,0.5); font-variant-numeric: tabular-nums; transition: color 0.2s; }
   .bp-amount-btn { background: none; border: none; padding: 0; cursor: pointer; }
   .bounty-panel.loss .bp-amount { color: #fb7185; text-shadow: none; }
+  /* 🪙 Challenge ante: the bounty hero depletes as you spend; empties to a calm "out of ante" look */
+  .bounty-panel.ante-empty { border-color: rgba(148,163,184,0.4); background: linear-gradient(135deg, rgba(148,163,184,0.12), rgba(148,163,184,0.03)); box-shadow: none; }
+  .bounty-panel.ante-empty .bp-label, .bounty-panel.ante-empty .bp-amount { color: #cbd5e1; text-shadow: none; }
+  .ante-bar { width: 100%; max-width: 240px; height: 7px; margin: 6px auto 0; border-radius: 999px; background: rgba(255,255,255,0.10); overflow: hidden; }
+  .ante-fill { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #fbbf24, #fde047); transition: width 0.35s ease; }
+  .match-ante-sub { margin: 4px auto 0; text-align: center; font-size: 0.72rem; color: var(--text-muted); }
   /* lit gold bounty multiplier badge (left of the bounty) — ×1.0 today, boostable later */
   .bp-mult-badge { position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
     font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.05rem; line-height: 1;
@@ -3850,6 +4152,7 @@
   @keyframes bankColorUp { 0%,100% { color: #fcd34d; } 25% { color: #4ade80; text-shadow: 0 0 24px rgba(74,222,128,0.95); } }
   @keyframes bankColorDown { 0%,100% { color: #fcd34d; } 25% { color: #fb7185; text-shadow: 0 0 20px rgba(251,113,133,0.9); } }
   .tb-solo { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.55rem; color: #fcd34d; font-variant-numeric: tabular-nums; }
+  .tb-wallet-cap { display: block; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-faint); }
   .top-bank.tap { cursor: pointer; display: block; text-align: left;
     border-color: rgba(167, 139, 250, 0.55); border-style: dashed;
     background: linear-gradient(135deg, rgba(167, 139, 250, 0.13), rgba(167, 139, 250, 0.03)); }

@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import PageNav from "$lib/components/PageNav.svelte";
   import { getStreakOverview } from '$lib/stores/statsStore.js';
   import { enterMakeup } from '$lib/stores/GameStore.js';
   import { track } from '$lib/analytics.js';
@@ -8,6 +9,7 @@
   /** @type {{ current_streak:number, highest_streak:number, freezes:number, days:{d:string,won:boolean}[] }|null} */
   let ov = null;
   let loading = true;
+  let showFreezeInfo = false;
 
   onMount(async () => {
     track('streak_view');
@@ -77,7 +79,7 @@
 <svelte:head><title>WordBank — Streak</title></svelte:head>
 
 <main class="streak-page">
-  <button class="back-btn" on:click={() => goto('/')}>← Menu</button>
+  <PageNav />
 
   {#if loading}
     <p class="loading">Loading…</p>
@@ -92,9 +94,14 @@
 
     <div class="stat-row">
       <div class="stat"><span class="sv">{ov?.highest_streak ?? 0}</span><span class="sc">Longest</span></div>
-      <div class="stat"><span class="sv">❄️ {ov?.freezes ?? 0}</span><span class="sc">Freezes</span></div>
+      <button class="stat stat-tap" on:click={() => showFreezeInfo = !showFreezeInfo}><span class="sv">❄️ {ov?.freezes ?? 0}</span><span class="sc">Freezes ›</span></button>
       <div class="stat"><span class="sv">{dayMap.size}</span><span class="sc">Days played</span></div>
     </div>
+    {#if showFreezeInfo}
+      <div class="freeze-info">
+        <b>❄️ Streak freezes</b> protect your play streak. Miss a single day and a freeze is spent automatically — your streak keeps going. You earn one every 7 days you show up (max 3). Miss two days in a row and the streak resets.
+      </div>
+    {/if}
 
     <div class="cal">
       <h2 class="cal-title">{MONTHS[month]} {year}</h2>
@@ -152,6 +159,12 @@
     flex: 1; max-width: 120px; display: flex; flex-direction: column; align-items: center; gap: 3px;
     padding: 0.7rem 0.4rem; background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
   }
+  .stat-tap { cursor: pointer; color: var(--text); font: inherit; }
+  .stat-tap:hover { border-color: var(--brand-2); }
+  .stat-tap .sc { color: var(--brand-2); }
+  .freeze-info { margin: 0.4rem auto 0; max-width: 340px; padding: 0.7rem 0.9rem; border-radius: 12px; font-size: 0.82rem; line-height: 1.5;
+    color: var(--text-muted); background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.3); }
+  .freeze-info b { color: #93c5fd; }
   .sv { font-family: var(--font-display); font-weight: 700; font-size: 1.2rem; color: var(--text); }
   .sc { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint); }
 

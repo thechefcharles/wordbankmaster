@@ -8,36 +8,36 @@
     {
       icon: '💰',
       title: 'Spend less, think more',
-      body: 'Figure out the hidden phrase by buying as few letters as you can. The less you spend to solve it, the better.'
+      body: 'Crack the hidden phrase buying as few letters as you can.'
     },
     {
       icon: '🔤',
       title: 'Buy letters',
-      body: 'Tap a letter to buy it — every copy appears. A letter that isn’t in the phrase still costs you. Guessing the whole phrase is free, and you get unlimited tries.'
+      body: 'Tap a letter to buy every copy. Wrong letters still cost you. Guessing the phrase is free — unlimited tries.'
     },
     {
       icon: '💵',
       title: 'Cash is your score',
       isNew: true,
-      body: 'You start with $2,000. It’s your one balance and your Net Worth — the number you climb the leaderboard with. No loans: just spend smart.'
+      body: 'Start with $2,000 — your balance and your leaderboard rank. Spend it smart.'
     },
     {
       icon: '📅',
       title: 'Daily paycheck',
       isNew: true,
-      body: 'One shared puzzle a day. Just showing up pays an attendance reward that grows with your streak — your steady income.'
+      body: 'One puzzle a day for everyone. Just showing up pays — more for a streak.'
     },
     {
       icon: '🧗',
       title: 'Cash Game & Challenges',
       isNew: true,
-      body: 'Take on an endless ladder of puzzles for Cash bounties, or wager friends: your wager is your budget, and whoever solves spending the least takes the pot.'
+      body: 'Endless puzzles for Cash, or wager friends — spend the least to take the pot.'
     },
     {
       icon: '🎲',
       title: 'Broke? Free Play',
       isNew: true,
-      body: 'Free Play never costs Cash and pays a little for every solve. Grind back anytime, then get back in the game.'
+      body: 'Free Play costs nothing and pays per solve. Grind back anytime.'
     }
   ];
 

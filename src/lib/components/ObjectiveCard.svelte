@@ -48,14 +48,14 @@
       case 'match': {
         if ((c.fieldSize ?? 2) > 2) return { icon: '👥', title: 'Group Challenge',
           goal: `Solve ${pk} spending as little as possible.`,
-          win: 'Least spent to solve ranks 1st — the pot is everyone’s spend.',
-          bar: w ? `Your ${w} buy-in is your cap. Unspent Cash comes back.`
-                 : 'Unspent Cash comes back — you only lose what you spend.' };
+          win: 'Most Cash left takes the whole pot.',
+          bar: w ? `Your ${w} buy-in is all at stake — winner takes it, a tie splits.`
+                 : 'Winner takes the pot; a tie splits it.' };
         return { icon: '⚔️', title: c.opponent ? `Duel vs @${c.opponent}` : 'Challenge',
-          goal: `Solve ${pk} — then it comes down to who spent less.`,
-          win: 'Whoever solves spending the LEAST wins the pot.',
-          bar: w ? `Your ${w} buy-in is your cap. Unspent Cash comes back — you only lose what you spend.`
-                 : 'Unspent Cash comes back — you only lose what you spend.' };
+          goal: `Solve ${pk} — spend less than your rival.`,
+          win: 'Most Cash left takes the pot; lose and you forfeit your buy-in.',
+          bar: w ? `Your ${w} is all at stake. Skip a puzzle and you pay its full price.`
+                 : 'Skip a puzzle and you pay its full price.' };
       }
       default: return { icon: '🎯', title: 'WordBank',
         goal: 'Solve the hidden phrase.', win: 'Spend as little as you can.', bar: '' };

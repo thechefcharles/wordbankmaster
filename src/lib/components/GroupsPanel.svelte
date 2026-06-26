@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { getMyGroups, getGroup, createGroup, leaveGroup, addGroupMember, removeGroupMember, renameGroup, listFriends, getGroupMessages, sendGroupMessage, getGroupStandings } from '$lib/stores/statsStore.js';
+  import { requireConfirm } from '$lib/confirm.js';
   import { supabase } from '$lib/supabaseClient.js';
 
   /** Optional: list-view back button (e.g. the route's "← Menu"). Hidden if absent.
@@ -104,6 +105,7 @@
 
   async function leave() {
     if (!open || busy) return;
+    if (!(await requireConfirm({ title: 'Leave group?', message: `Leave "${open.name}"? You can be re-added by a member.`, confirmText: 'Leave', danger: true }))) return;
     busy = true;
     await leaveGroup(open.id);
     busy = false;
@@ -132,6 +134,7 @@
   /** @param {string} username */
   async function removeMember(username) {
     if (busy) return;
+    if (!(await requireConfirm({ title: 'Remove member?', message: `Remove @${username} from "${open.name}"?`, confirmText: 'Remove', danger: true }))) return;
     busy = true;
     const res = await removeGroupMember(open.id, username);
     busy = false;
