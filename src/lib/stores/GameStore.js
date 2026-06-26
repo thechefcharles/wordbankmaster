@@ -97,7 +97,8 @@ export const gameStore = writable(/** @type {GameState} */ ({
   cashToast: null, // { amount, label } — transient Cash-earned toast (attendance / free-play reward)
   dailyLive: null, // { spent, clean, no_vowels, first_try, reward, net } — live Daily HUD metrics
   dailyIntro: 0, // bumps on a FRESH daily open → ARMS the opening reveal (pending)
-  dailyIntroGo: 0 // bumps once the board is actually visible → PLAYS the opening reveal
+  dailyIntroGo: 0, // bumps once the board is actually visible → PLAYS the opening reveal
+  dailyIntroPlayed: 0 // the dailyIntro token that has already played (persists across remounts)
 }));
 
 /* ================================
