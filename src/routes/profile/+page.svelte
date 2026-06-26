@@ -37,6 +37,12 @@
     if (n?.type === 'challenge_incoming' || n?.data?.match_id || n?.data?.challenge_id) goto('/');
   }
 
+  // Back: from a detail tab → Overview; from Overview → the menu.
+  function back() {
+    if (tab !== 'overview') tab = 'overview';
+    else goto('/');
+  }
+
   const fmt = (/** @type {any} */ n) => '$' + Math.round(Number(n ?? 0)).toLocaleString();
   const mult = (/** @type {any} */ x) => x ? (Number(x) / 100).toFixed(1) + '×' : '—';
   const time = (/** @type {any} */ ms) => !ms ? '—' : Number(ms) < 60000 ? Math.round(Number(ms) / 1000) + 's' : (Number(ms) / 60000).toFixed(1) + 'm';
@@ -54,7 +60,7 @@
 
 <main class="you-page">
   <div class="topbar">
-    <button class="back-btn" onclick={() => goto('/')}>← Menu</button>
+    <button class="back-btn" onclick={back}>← {tab === 'overview' ? 'Menu' : 'Back'}</button>
     <h1 class="page-title">Profile</h1>
     <button class="gear" onclick={() => goto('/?account=1')} title="Settings" aria-label="Settings">⚙️</button>
   </div>
@@ -79,7 +85,7 @@
         <div class="ov-id">
           <div class="uname">{d.username ? '@' + d.username : 'You'}</div>
           <div class="nw">{fmt(d.net_worth)}<span class="nw-sub"> Cash</span></div>
-          <button class="ov-people" onclick={() => goto('/friends')} aria-label="Friends & groups">
+          <button class="ov-people" onclick={() => goto('/?people=1')} aria-label="Friends & groups">
             <span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span><span class="ov-people-lbl">Friends</span>
           </button>
         </div>
@@ -105,7 +111,6 @@
         <button class="ov-link" onclick={() => tab = 'stats'}>📊 Full stats <span class="arrow">›</span></button>
         <button class="ov-link" onclick={() => tab = 'history'}>📜 Play history <span class="arrow">›</span></button>
         <button class="ov-link" onclick={() => goto('/streak')}>🔥 Streak &amp; calendar <span class="arrow">›</span></button>
-        <button class="ov-link" onclick={() => goto('/groups')}>👥 Groups <span class="arrow">›</span></button>
       </div>
     {:else if tab === 'stats'}
       <div class="sec-title">📊 Overall</div>

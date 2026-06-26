@@ -939,6 +939,11 @@
         handleMenuMyAccount();
         params.delete('account');
       }
+      // Friends & Groups deep link (Profile 👥+ button → /?people=1)
+      if (params.get('people')) {
+        openCommunity('people');
+        params.delete('people');
+      }
       const qs = params.toString();
       window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
     } catch { /* non-fatal */ }
