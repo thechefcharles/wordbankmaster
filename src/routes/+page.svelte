@@ -2251,7 +2251,10 @@
             </div>
           </div>
 
-          <button class="main-menu-btn ghost-btn" on:click={() => goto('/groups')}>👥 Groups</button>
+          <div class="ma-people-row">
+            <button class="main-menu-btn ghost-btn" on:click={() => goto('/friends')}>👋 Friends</button>
+            <button class="main-menu-btn ghost-btn" on:click={() => goto('/groups')}>👥 Groups</button>
+          </div>
 
           <div class="ma-section-label">Settings</div>
           <button class="main-menu-btn ghost-btn ma-toggle" on:click={() => { toggleSound(); if ($soundEnabled) fx('select'); }}>
@@ -3708,6 +3711,8 @@
     text-align: left; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--text-faint); margin: 1rem 0 0.1rem; padding-left: 0.2rem;
   }
+  .ma-people-row { display: flex; gap: 8px; }
+  .ma-people-row .main-menu-btn { flex: 1; }
   .ma-toggle { display: flex; align-items: center; gap: 0.5rem; }
   .ma-toggle-state {
     margin-left: auto; font-size: 0.72rem; font-weight: 800; color: var(--brand-2);

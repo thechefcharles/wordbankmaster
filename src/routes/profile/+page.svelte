@@ -40,6 +40,9 @@
 {#snippet chip(value, label)}
   <div class="stat"><span class="sv">{value}</span><span class="sc">{label}</span></div>
 {/snippet}
+{#snippet chipLink(/** @type {any} */ value, /** @type {string} */ label, /** @type {string} */ href)}
+  <button class="stat stat-link" onclick={() => goto(href)}><span class="sv">{value}</span><span class="sc">{label} ›</span></button>
+{/snippet}
 
 <main class="you-page">
   <div class="topbar">
@@ -79,9 +82,9 @@
 
       <div class="sec-title">📅 Daily</div>
       <div class="grid">
-        {@render chip('🔥 ' + (d.daily.current_streak ?? 0), 'Play streak')}
+        {@render chipLink('🔥 ' + (d.daily.current_streak ?? 0), 'Play streak', '/streak')}
         {@render chip(d.daily.best_streak ?? 0, 'Best play')}
-        {@render chip('🏆 ' + (d.daily.win_streak ?? 0), 'Win streak')}
+        {@render chipLink('🏆 ' + (d.daily.win_streak ?? 0), 'Win streak', '/streak')}
         {@render chip(d.daily.best_win_streak ?? 0, 'Best win')}
         {@render chip(pct(d.daily.won ?? 0, d.daily.played ?? 0), 'Win rate')}
         {@render chip(d.daily.won ?? 0, 'Dailies won')}
@@ -177,6 +180,10 @@
     text-transform: uppercase; color: var(--gold); text-align: left; margin: 18px 2px 8px; }
   .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
   .stat { display: flex; flex-direction: column; gap: 3px; padding: 0.85rem 0.4rem; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; text-align: center; }
+  .stat-link { cursor: pointer; color: var(--text); font: inherit; }
+  .stat-link:hover { border-color: var(--brand-2); }
+  .stat-link:active { transform: scale(0.97); }
+  .stat-link .sc { color: var(--brand-2); }
   .sv { font-family: var(--font-display); font-weight: 800; font-size: 1.02rem; color: var(--text); }
   .sc { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); }
   .spent-line { text-align: center; color: var(--text-muted); font-size: 0.82rem; margin: 10px 0 0; }
