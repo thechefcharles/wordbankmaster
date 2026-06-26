@@ -1677,7 +1677,6 @@
         {:else}
           <p class="bag-note">Nothing usable here right now.</p>
         {/if}
-        <p class="bag-note">🔒 No shopping mid‑puzzle — items you buy now can't be used until your next puzzle.</p>
       {/if}
       {#if vaultMsg}<div class="bag-msg">{vaultMsg}</div>{/if}
     </div>
@@ -1699,13 +1698,13 @@
           {#if dlStreakBonus > 0}<div class="info-row"><span>🏆 Win streak ({dlWinStreak} in a row)</span><b class="pos">+{dlStreakBonus.toFixed(1)}</b></div>{/if}
           <div class="info-row total"><span>Your multiplier</span><b>{fmtMult(dlMult)}</b></div>
         </div>
-        <p class="info-note">It grows with your <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'streak'}>win streak</button> — <b>+0.1×</b> per consecutive solve, up to <b>×1.5</b>. Pure skill, same for everyone.</p>
+        <p class="info-note">Grows with your <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'streak'}>win streak</button> — <b>+0.1×</b> per solve, up to <b>×1.5</b>.</p>
       {:else if dailyInfo === 'twist'}
         <div class="info-big">{dailyMod?.emoji ?? '🎁'}</div>
         <h3 class="info-title">{dailyMod?.name ?? "Today's Twist"}</h3>
         <p class="info-sub">Today's special — applied automatically. ✓</p>
         <p class="info-twist-do">{dailyMod?.blurb ?? ''}</p>
-        <p class="info-note">A different special every weekday. Everyone gets the <b>same</b> one — free and auto‑applied — so the Daily stays a fair, same‑for‑all puzzle.</p>
+        <p class="info-note">A different special each weekday — same for everyone.</p>
       {:else if dailyInfo === 'streak'}
         <div class="info-big">🏆 {dlWinStreak}</div>
         <h3 class="info-title">Win Streak</h3>
@@ -1714,7 +1713,7 @@
           <div class="info-row"><span>Solve today's Daily</span><b class="pos">+1</b></div>
           <div class="info-row"><span>Lose or give up</span><b class="neg">back to 0</b></div>
         </div>
-        <p class="info-note">It also <b>boosts your bounty</b> — <b>+0.1×</b> per win (up to +0.5×; a 5-day streak = ×1.5). See the full <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'mult'}>multiplier</button> breakdown.</p>
+        <p class="info-note">Also boosts your <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'mult'}>multiplier</button> — <b>+0.1×</b> per win.</p>
       {:else}
         <div class="info-big green">${Math.max(0, dlNet).toLocaleString()}</div>
         <h3 class="info-title">Solve to Earn</h3>
@@ -1724,7 +1723,7 @@
           <div class="info-row"><span>− Spent on letters</span><b class="neg">−${dlSpent.toLocaleString()}</b></div>
           <div class="info-row total"><span>You keep</span><b class="green">${dlNet.toLocaleString()}</b></div>
         </div>
-        <p class="info-note">The base bounty comes from the letters' value. Spend less on letters to keep more — and grow the <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'mult'}>multiplier</button>.</p>
+        <p class="info-note">Spend less to keep more — and grow the <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'mult'}>multiplier</button>.</p>
       {/if}
       <button class="info-close" on:click={() => dailyInfo = null}>Got it</button>
     </div>
@@ -1756,7 +1755,7 @@
           <div class="info-row"><span>Solve a puzzle</span><b class="pos">+1</b></div>
           <div class="info-row"><span>Get stuck or skip</span><b class="neg">back to 0</b></div>
         </div>
-        <p class="info-note">Your streak powers your <button class="info-inline" on:click|stopPropagation={() => climbInfo = 'heat'}>heat</button> — every win adds <b>+0.1×</b> to your payout (up to ×2.0).</p>
+        <p class="info-note">Powers your <button class="info-inline" on:click|stopPropagation={() => climbInfo = 'heat'}>heat</button> — <b>+0.1×</b> per win.</p>
       {:else}
         <div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
         <h3 class="info-title">Solve to Earn</h3>
@@ -2124,9 +2123,9 @@
               </div>
               <button class="ch-toggle" class:on={mbItemsAllowed} on:click={() => { mbItemsAllowed = !mbItemsAllowed; fx('tap'); }}>
                 <span class="ch-tog-box">{mbItemsAllowed ? '✓' : ''}</span>
-                ⚡ Allow power-ups — players can bring & use items they own
+                ⚡ Allow power-ups
               </button>
-              <p class="ch-objective">Your buy-in (min $500) is your ante — and it's all at stake. Buy as few letters as you can: <strong>most Cash left at the end takes the whole pot, winner-take-all.</strong> Lose and you forfeit your buy-in; a tie splits the pot. Guesses are free.</p>
+              <p class="ch-objective"><strong>Spend the least — winner takes the pot.</strong></p>
               <button class="ch-create" disabled={mbBusy} on:click={submitNewMatch} style="width:100%;">Send challenge ⚔️</button>
               {#if mbMsg}<p class="add-msg">{mbMsg}</p>{/if}
             </div>
@@ -2260,7 +2259,6 @@
       {#if isFreeplay}
         <button class="top-bank tap" disabled={fpCashBusy} on:click={tapCredits}>
           <div class="tb-row"><span class="tb-cap">🎟️ Credits</span><span class="tb-amt cr">{Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span></div>
-          <div class="tb-sub">tap to cash out at 40:1</div>
         </button>
       {:else if !matchBlitz}
         <button class="top-bank solo" class:pop-up={bankFlash === 'up'} class:pop-down={bankFlash === 'down'} title="Your Cash" on:click={openBankModal}>
@@ -2299,7 +2297,7 @@
     {#if isMakeup}
       <div class="makeup-banner">
         <span class="mb-tag">🗓️ Make-up</span>
-        <span class="mb-text">Playing {makeupLabel} · fills your calendar · earns the puzzle's Cash (no streak)</span>
+        <span class="mb-text">{makeupLabel}</span>
       </div>
     {/if}
 
@@ -2308,7 +2306,7 @@
     {#if isClimb && climb}
       {#if climb.stuck && $gameStore.gameState !== 'won'}
         <div class="climb-stuck">
-          <span class="cs-text">Out of Cash for this one — leave and earn in the Daily, then come back to finish it.</span>
+          <span class="cs-text">Out of Cash</span>
           <div class="cs-actions">
             <button class="cs-leave" on:click={goToMainMenu}>Leave &amp; earn</button>
           </div>
@@ -2426,12 +2424,12 @@
       {#if donAvailable}
         <button class="don-cta" on:click={openDon}>
           <span class="don-cta-title">💥 Double or Nothing</span>
-          <span class="don-cta-sub">Solve for <b>${donTarget.toLocaleString()}</b> — but get stuck and you forfeit it all</span>
+          <span class="don-cta-sub">Solve for <b>${donTarget.toLocaleString()}</b> · all-in</span>
         </button>
       {:else if donArmed}
         <div class="don-armed" role="status">
           <span class="don-armed-title">💥 Doubled — all in</span>
-          <span class="don-armed-sub">Solve for <b>${donTarget.toLocaleString()}</b> · no skip, no backing out</span>
+          <span class="don-armed-sub">Solve for <b>${donTarget.toLocaleString()}</b></span>
         </div>
       {/if}
     {/if}

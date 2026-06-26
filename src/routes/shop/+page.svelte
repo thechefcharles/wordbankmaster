@@ -136,7 +136,7 @@
     </div>
   {/if}
 
-  <p class="sub">Stock up on power-ups to bring into the Cash Game &amp; challenges, and spend on flair. Cosmetics are pure show — no pay-to-win.</p>
+  <p class="sub">Power-ups for the Cash Game &amp; challenges, plus cosmetics.</p>
 
   {#if loading}
     <p class="loading">Loading…</p>

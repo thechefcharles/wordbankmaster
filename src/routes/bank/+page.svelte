@@ -59,7 +59,7 @@
       </div>
     {/if}
 
-    <p class="hint">Cash is in-game money — earn it by playing, risk it in the Cash Game, wager friends, and spend it on power-ups &amp; cosmetics. It can't be bought with real money or cashed out.</p>
+    <p class="hint">In-game Cash — can't be bought or cashed out.</p>
   {/if}
 </main>
 
