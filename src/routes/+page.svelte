@@ -2045,7 +2045,7 @@
           {:else}
             <button class="sub-back" on:click={() => { menuView = 'home'; fx('tap'); }}>← Back</button>
             <h2 class="sub-title">Community</h2>
-            <button class="sub-people" title="Friends & Groups" aria-label="Friends & Groups" on:click={() => { communityTab = 'people'; peopleBackToHome = false; fx('tap'); }}>👥</button>
+            <button class="sub-people" title="Friends & Groups" aria-label="Friends & Groups" on:click={() => { communityTab = 'people'; peopleBackToHome = false; fx('tap'); }}><span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span></button>
           {/if}
         </div>
         {#if communityTab === 'people'}
@@ -3007,7 +3007,7 @@
   .sub-back:hover { transform: translateX(-2px); border-color: var(--border-strong); background: var(--surface-2); }
   .sub-title { font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; }
   .sub-people {
-    margin-left: auto; width: 40px; height: 40px; display: grid; place-items: center; font-size: 1.1rem;
+    position: relative; margin-left: auto; width: 40px; height: 40px; display: grid; place-items: center; font-size: 1.1rem;
     background: var(--surface); border: 1px solid var(--border); border-radius: 12px; cursor: pointer;
   }
   .sub-people:hover { border-color: var(--brand-2); }
