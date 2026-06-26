@@ -78,9 +78,26 @@
   $: dailyInProgress = openGames.some((g) => g.mode === 'daily') || (dailyStatus?.daily_in_progress ?? false);
   $: dailyDone = menuDailyPlayed && !dailyInProgress;
   $: climbInProgress = openGames.some((g) => g.mode === 'climb');
-  // 🔁 Resume shortcut: jump back to your most-recently-played live game.
+  // 🔁 Resume: every in-progress game — solo modes AND challenges you've started.
   const RESUME_LABEL = /** @type {Record<string,string>} */ ({ daily: 'Daily', climb: 'Cash Game', freeplay: 'Free Play' });
-  $: resumeGame = openGames[0] ?? null;
+  $: resumables = [
+    ...openGames.map((/** @type {any} */ g) => ({ key: 'solo-' + g.mode, label: RESUME_LABEL[g.mode] ?? 'Game', icon: (/** @type {Record<string,string>} */ ({daily:'📅',climb:'🎰',freeplay:'🎯'}))[g.mode] ?? '▶', go: () => resumeSolo(g.mode) })),
+    ...((myMatches ?? []).filter((/** @type {any} */ m) => m.status === 'open' && m.my_state === 'active')
+        .map((/** @type {any} */ m) => ({ key: 'match-' + m.id, label: m.group_name || (m.opponent ? '@' + m.opponent : 'Challenge'), icon: '⚔️', go: () => respondToMatch(m) })))
+  ];
+  // ⚔️ Pending challenge invites (not yet accepted) → the Challenges notification.
+  $: challengeInvites = (myMatches ?? []).filter((/** @type {any} */ m) => m.status === 'open' && m.my_state === 'invited');
+  let showResumeMenu = false;
+  function resumeSolo(/** @type {string} */ mode) {
+    if (mode === 'daily') handleMenuDaily();
+    else if (mode === 'climb') handleMenuClimb();
+    else if (mode === 'freeplay') handleMenuFreeplay();
+  }
+  function onResume() {
+    fx('tap');
+    if (resumables.length === 1) resumables[0].go();
+    else showResumeMenu = true;
+  }
   /** Net Worth for the menu chip. */
   let netWorth = /** @type {number|null} */ (null);
   async function refreshBank() {
@@ -254,37 +271,8 @@
     if (browser && loggedIn && hasInitialized && n > _prevUnread) refreshChallengeCount();
     _prevUnread = n;
   }
-  // Challenges where it's my turn, soonest-to-expire first.
-  $: turnMatches = (myMatches ?? [])
-    .filter((m) => m.status === 'open' && m.my_state !== 'done')
-    .slice()
-    .sort((a, b) => new Date(a.settles_at || 0).getTime() - new Date(b.settles_at || 0).getTime());
-  // Priority: your-turn challenge → friend request → "challenge a friend" CTA.
-  $: actNow = (() => {
-    // Name is the bold title (short, never cuts a word); the verb is the muted sub.
-    if (turnMatches.length) {
-      const m = turnMatches[0];
-      const invited = m.my_state === 'invited';
-      // Title with who you're playing — group name, else the opponent (never your own name).
-      const who = m.group_name || m.opponent || (m.is_host ? 'Your challenge' : m.host);
-      return { kind: 'match', icon: '⚔️',
-        title: who,
-        // Challenges are simultaneous (lowest spend wins), not turn-based — don't say "your turn".
-        sub: invited ? 'Challenged you' : (m.group_name ? 'Group challenge — in progress' : 'In progress'),
-        cta: (invited ? 'Play' : 'Resume') + ' →',
-        more: turnMatches.length - 1, // other challenges waiting
-        primary: () => respondToMatch(m), moreAction: () => openChallenges() };
-    }
-    if (friendRequests.length) {
-      const r = friendRequests[0];
-      return { kind: 'friend', icon: '👋',
-        title: r.name || '@' + r.username, sub: 'Wants to be friends',
-        cta: 'Accept →', more: friendRequests.length - 1,
-        primary: () => acceptFriend(r), moreAction: () => goto('/friends') };
-    }
-    return { kind: 'empty', icon: '⚔️', title: 'Challenge a friend', sub: '', cta: '→',
-      more: 0, primary: () => openChallenges('new'), moreAction: null };
-  })();
+  // (Resume + challenge-invite + friend-request notifications now live as their own
+  //  top-of-menu buttons — see resumables / challengeInvites / friendRequests.)
   /** @param {any} r */
   async function acceptFriend(r) {
     fx('tap');
@@ -1144,14 +1132,6 @@
     }
     showCategorySelect = true;
   }
-  /** ▶ Resume the most-recently-played live game (the top-level menu shortcut). */
-  function resumeOpen() {
-    if (!resumeGame) return;
-    fx('tap');
-    if (resumeGame.mode === 'daily') handleMenuDaily();
-    else if (resumeGame.mode === 'climb') handleMenuClimb();
-    else if (resumeGame.mode === 'freeplay') handleMenuFreeplay();
-  }
   /** @param {string} category */
   async function startFreeplay(category) {
     showCategorySelect = false;
@@ -1840,6 +1820,24 @@
   </div>
 {/if}
 
+<!-- ▶ Resume menu — pick which in-progress game to jump back into -->
+{#if showResumeMenu}
+  <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Resume a game">
+    <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showResumeMenu = false}></button>
+    <div class="info-card resume-menu" role="document">
+      <button class="modal-x" on:click={() => showResumeMenu = false} aria-label="Close">✕</button>
+      <h3 class="info-title">Resume a game</h3>
+      <div class="rm-list">
+        {#each resumables as r (r.key)}
+          <button class="rm-row" on:click={() => { showResumeMenu = false; r.go(); }}>
+            <span class="rm-ic">{r.icon}</span><span class="rm-label">{r.label}</span><span class="rm-arrow">▶</span>
+          </button>
+        {/each}
+      </div>
+    </div>
+  </div>
+{/if}
+
 <main>
   <!-- 👤 First-run: pick a username (required to play socially) -->
   {#if loggedIn && hasInitialized && needsUsername}
@@ -1899,22 +1897,24 @@
       </div>
       {#if menuView === 'home'}
         <div class="main-menu-buttons stagger">
-          <!-- 🎯 Act-now banner above Play: only a pending challenge / friend request -->
-          {#if actNow.kind !== 'empty'}
-            <button class="ab-main" on:click={actNow.primary}>
-              <span class="ab-icon">{actNow.icon}</span>
-              <span class="ab-text">
-                <strong>{actNow.title}</strong>
-                {#if actNow.sub}<small>{actNow.sub}</small>{/if}
-              </span>
-              <span class="ab-cta">{actNow.cta}</span>
+          <!-- ▶ Resume — any in-progress game (solo + started challenges). One → straight in; many → the Resume menu. -->
+          {#if resumables.length}
+            <button class="menu-card resume-card" style="--i: 0" on:click={onResume}>
+              <span class="mc-title">▶ Resume{resumables.length === 1 ? ' ' + resumables[0].label : ''}</span>
+              {#if resumables.length > 1}<span class="resume-count">{resumables.length}</span>{/if}
             </button>
           {/if}
-          <!-- ▶ Resume your most-recent live game (multiple games can be open at once) -->
-          {#if resumeGame}
-            <button class="menu-card resume-card" style="--i: 0" on:click={resumeOpen}>
-              <span class="mc-title">▶ Resume {RESUME_LABEL[resumeGame.mode] ?? 'game'}</span>
-              {#if openGames.length > 1}<span class="resume-more">+{openGames.length - 1} more in progress</span>{/if}
+          <!-- ⚔️ Challenge invites — a notification that opens the challenges screen. -->
+          {#if challengeInvites.length}
+            <button class="menu-card invite-card" style="--i: 0" on:click={() => { fx('tap'); openCommunity('challenges'); }}>
+              <span class="mc-title">⚔️ {challengeInvites.length === 1 ? `${challengeInvites[0].host} challenged you` : 'Challenges'}</span>
+              {#if challengeInvites.length > 1}<span class="invite-count">{challengeInvites.length}</span>{/if}
+            </button>
+          {/if}
+          {#if friendRequests.length}
+            <button class="menu-card invite-card friend" style="--i: 0" on:click={() => { fx('tap'); goto('/friends'); }}>
+              <span class="mc-title">👋 Friend request{friendRequests.length > 1 ? 's' : ''}</span>
+              {#if friendRequests.length > 1}<span class="invite-count">{friendRequests.length}</span>{/if}
             </button>
           {/if}
           <button class="menu-card primary" style="--i: 0" on:click={() => { menuView = 'play'; fx('tap'); }}>
@@ -3223,7 +3223,6 @@
   }
   /* ▶ Resume shortcut card (home menu) — green, mirrors the in-progress accent */
   .menu-card.resume-card {
-    flex-direction: column; gap: 2px;
     background: linear-gradient(180deg, #16352b 0%, #0f2a22 100%);
     border-color: rgba(16,185,129,0.6);
     box-shadow: inset 0 1px 0 rgba(110,231,183,0.2), inset 0 0 0 1px rgba(16,185,129,0.3), 0 4px 14px rgba(0,0,0,0.5), 0 0 20px rgba(16,185,129,0.25);
@@ -3233,7 +3232,33 @@
     background: linear-gradient(180deg, #d1fae5, #6ee7b7); -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent; color: transparent; text-shadow: none;
   }
-  .resume-more { position: relative; z-index: 1; font-size: 0.72rem; color: rgba(167,243,208,0.82); font-weight: 600; }
+  /* ⚔️ Challenge-invite / friend-request notification cards */
+  .menu-card.invite-card {
+    background: linear-gradient(180deg, #2a2140 0%, #1c1730 100%); border-color: rgba(167,139,250,0.55);
+    box-shadow: inset 0 0 0 1px rgba(167,139,250,0.25), 0 4px 12px rgba(0,0,0,0.5), 0 0 16px rgba(167,139,250,0.18);
+  }
+  .menu-card.invite-card::before, .menu-card.invite-card::after { display: none; }
+  .menu-card.invite-card .mc-title { background: linear-gradient(180deg, #e9d5ff, #c4b5fd); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; text-shadow: none; }
+  .menu-card.invite-card.friend { border-color: rgba(96,165,250,0.5); }
+  .menu-card.invite-card.friend .mc-title { background: linear-gradient(180deg, #dbeafe, #93c5fd); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  /* count chips on the notification cards */
+  .resume-count, .invite-count {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%); z-index: 1;
+    min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-weight: 800; font-size: 0.8rem; color: #0f2a22; background: #6ee7b7;
+  }
+  .invite-count { color: #1c1730; background: #c4b5fd; }
+  /* ▶ Resume menu modal */
+  .resume-menu { text-align: left; }
+  .rm-list { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 4px; }
+  .rm-row {
+    display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; cursor: pointer;
+    background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.4); color: var(--text);
+  }
+  .rm-row:active { transform: scale(0.98); }
+  .rm-ic { font-size: 1.2rem; }
+  .rm-label { flex: 1; font-weight: 800; font-size: 0.98rem; }
+  .rm-arrow { color: #6ee7b7; font-size: 0.85rem; }
   .progress-modes { border-left-color: rgba(251,191,36,0.3); }
   .mc-arrow { color: var(--text-faint); font-size: 1.1rem; transition: transform 0.2s, color 0.2s; }
   .mc-count {
