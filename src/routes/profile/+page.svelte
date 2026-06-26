@@ -141,7 +141,7 @@
         </div>
       {/if}
     {:else if tab === 'items'}
-      <div class="sec-title">🎒 Your Bag</div>
+      <div class="sec-title">🎒 My Bag</div>
       <InventoryList />
     {:else if tab === 'history'}
       <HistoryList />

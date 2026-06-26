@@ -1,12 +1,12 @@
 <script>
-  // 🎒 Your owned power-ups, grouped by where you use them. Self-fetching so it can
-  // drop into the Store, Profile, or anywhere. Power-ups are spent in-game (the
-  // Daily hotbar / Cash Game / challenges) — this is the "what do I have" view.
+  // 🎒 My Bag — everything you currently own that you bought/earned, grouped by type:
+  // Power-ups (incl. Bounty Boosts), Sabotage, and Extras (titles + name colors).
+  // Power-ups are spent in-game; cosmetics are equipped from the Store/Profile.
   import { onMount } from 'svelte';
-  import { getPowerups } from '$lib/stores/statsStore.js';
+  import { getPowerups, getShop } from '$lib/stores/statsStore.js';
 
-  /** @type {any[]} */
-  let items = [];
+  /** @type {any[]} */ let pups = [];
+  /** @type {any[]} */ let cosmetics = [];
   let loading = true;
 
   /** @type {Record<string,{icon:string,desc:string}>} */
@@ -27,40 +27,54 @@
     sabotage_lock: { icon: '🔒', desc: 'Wipe a letter an opponent revealed' }
   };
   const GROUPS = [
-    { kind: 'daily', title: '💥 Bounty Boosts', note: 'Tap in the Daily to grow your bounty multiplier.' },
-    { kind: 'climb', title: '⚡ Power-ups', note: 'Use in the Cash Game or a challenge.' },
-    { kind: 'sabotage', title: '😈 Sabotage', note: 'Hit an opponent in a challenge.' }
+    { key: 'powerups', title: '⚡ Power-ups', note: 'Use in the Daily, Cash Game, or a challenge.' },
+    { key: 'sabotage', title: '😈 Sabotage', note: 'Hit an opponent in a challenge.' },
+    { key: 'extras',   title: '✨ Extras',   note: 'Titles & name colors for your profile.' }
   ];
 
   onMount(async () => {
-    try { items = (await getPowerups()).items ?? []; } finally { loading = false; }
+    try { pups = (await getPowerups()).items ?? []; } catch { /* non-fatal */ }
+    try { cosmetics = (await getShop()).items ?? []; } catch { /* non-fatal */ }
+    loading = false;
   });
 
-  $: owned = items.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0);
-  $: totalCount = owned.reduce((/** @type {number} */ s, /** @type {any} */ i) => s + (i.owned ?? 0), 0);
-  /** @param {string} kind */
-  const inGroup = (kind) => owned.filter((/** @type {any} */ i) => i.kind === kind);
+  $: ownedPups = pups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0);
+  $: ownedCos = cosmetics.filter((/** @type {any} */ i) => i.owned && (i.kind === 'title' || i.kind === 'color'));
+  $: totalCount = ownedPups.reduce((/** @type {number} */ s, /** @type {any} */ i) => s + (i.owned ?? 0), 0) + ownedCos.length;
+  /** @param {string} key */
+  function itemsFor(key) {
+    if (key === 'powerups') return ownedPups.filter((/** @type {any} */ i) => i.kind === 'climb' || i.kind === 'daily');
+    if (key === 'sabotage') return ownedPups.filter((/** @type {any} */ i) => i.kind === 'sabotage');
+    return ownedCos;
+  }
 </script>
 
 <div class="inv">
   {#if loading}
     <p class="inv-msg">Loading…</p>
-  {:else if owned.length === 0}
-    <p class="inv-msg">No items yet. Skip the Daily Twist to bank Bounty Boosts, or buy power-ups in the Store.</p>
+  {:else if totalCount === 0}
+    <p class="inv-msg">Nothing yet. Skip the Daily Twist to bank Bounty Boosts, or buy power-ups &amp; extras in the Store.</p>
   {:else}
     <p class="inv-total">{totalCount} item{totalCount === 1 ? '' : 's'} in your bag</p>
     {#each GROUPS as g}
-      {@const list = inGroup(g.kind)}
+      {@const list = itemsFor(g.key)}
       {#if list.length}
         <div class="inv-h">{g.title}</div>
         <p class="inv-note">{g.note}</p>
         <div class="inv-grid">
           {#each list as it}
             <div class="inv-card">
-              <span class="inv-ic">{META[it.id]?.icon ?? '✨'}</span>
-              <span class="inv-count">×{it.owned}</span>
-              <span class="inv-name">{it.name}</span>
-              <span class="inv-desc">{META[it.id]?.desc ?? ''}</span>
+              {#if it.kind === 'title' || it.kind === 'color'}
+                <span class="inv-ic">{it.kind === 'color' ? '🎨' : '👑'}</span>
+                {#if it.equipped}<span class="inv-badge">✓</span>{/if}
+                <span class="inv-name" style={it.kind === 'color' && it.value ? `color:${it.value}` : ''}>{it.label}</span>
+                <span class="inv-desc">{it.equipped ? 'Equipped' : (it.kind === 'color' ? 'Name color' : 'Profile title')}</span>
+              {:else}
+                <span class="inv-ic">{META[it.id]?.icon ?? '✨'}</span>
+                <span class="inv-badge">×{it.owned}</span>
+                <span class="inv-name">{it.name}</span>
+                <span class="inv-desc">{META[it.id]?.desc ?? ''}</span>
+              {/if}
             </div>
           {/each}
         </div>
@@ -79,7 +93,7 @@
   .inv-card { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 3px;
     padding: 0.9rem 0.5rem; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
   .inv-ic { font-size: 1.7rem; line-height: 1; }
-  .inv-count { position: absolute; top: 7px; right: 9px; font-family: 'Orbitron', var(--font-display); font-weight: 800;
+  .inv-badge { position: absolute; top: 7px; right: 9px; font-family: 'Orbitron', var(--font-display); font-weight: 800;
     font-size: 0.78rem; color: #fde047; }
   .inv-name { font-family: var(--font-display); font-weight: 700; font-size: 0.86rem; color: var(--text); }
   .inv-desc { font-size: 0.72rem; line-height: 1.3; color: var(--text-muted); }
