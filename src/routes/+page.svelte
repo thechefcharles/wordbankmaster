@@ -1014,6 +1014,10 @@
     location.reload();
   };
 
+  // 🔑 PIN: show "Change PIN" only when one is set; changing clears + re-prompts setup.
+  $: hasPin = browser && $user?.id ? hasPinFor($user.id) : false;
+  function changePin() { fx('tap'); showMyAccount = false; clearPin(); clearPinSkipped(); pinNotSet = true; }
+
   // 🗑️ Permanent account deletion (App Store 5.1.1(v)) — requires typing DELETE.
   const APP_VERSION = '1.0.0';
   const SUPPORT_EMAIL = 'charlieforeman77@gmail.com';
@@ -2254,84 +2258,87 @@
     {#if showMyAccount}
       <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="My Account">
         <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showMyAccount = false}></button>
-        <div class="modal-content main-menu-modal">
+        <div class="modal-content main-menu-modal settings-modal">
           <button class="close-btn" on:click={() => showMyAccount = false}>❌</button>
-          <h2>My Account</h2>
-          {#if $user?.email}
-            <p class="account-email">{$user.email}</p>
-          {/if}
+          <h2>Settings</h2>
 
-          <button class="ma-avatar-btn" on:click={() => { showMyAccount = false; goto('/avatar'); }}>
-            <Avatar config={myAvatar} fx size={84} />
-            <span class="ma-avatar-edit">🎨 Edit Avatar</span>
-          </button>
-
-          <div class="ma-username">
-            {#if maUsername && !maEditing}
-              <span class="ma-uname">@{maUsername}</span>
-              <button class="ma-edit" on:click={() => { maEditing = true; maInput = maUsername; maMsg = ''; }}>edit</button>
-            {:else}
-              <input class="ma-input" placeholder="pick a username" bind:value={maInput} maxlength="15"
-                on:keydown={(e) => { if (e.key === 'Enter') saveMaUsername(); }} />
-              <button class="ma-save" on:click={saveMaUsername}>Save</button>
-            {/if}
+          <!-- Profile -->
+          <div class="set-profile">
+            <button class="set-av" on:click={() => { showMyAccount = false; goto('/avatar'); }} aria-label="Edit avatar">
+              <Avatar config={myAvatar} fx size={68} />
+              <span class="set-av-edit">Edit</span>
+            </button>
+            <div class="set-id">
+              {#if maUsername && !maEditing}
+                <div class="set-uname">@{maUsername}<button class="ma-edit" on:click={() => { maEditing = true; maInput = maUsername; maMsg = ''; }}>edit</button></div>
+              {:else}
+                <div class="set-uname-edit">
+                  <input class="ma-input" placeholder="pick a username" bind:value={maInput} maxlength="15" on:keydown={(e) => { if (e.key === 'Enter') saveMaUsername(); }} />
+                  <button class="ma-save" on:click={saveMaUsername}>Save</button>
+                </div>
+              {/if}
+              {#if $user?.email}<div class="set-email">{$user.email}</div>{/if}
+            </div>
           </div>
           {#if maMsg}<p class="ma-msg">{maMsg}</p>{/if}
 
-          <div class="account-stats">
-            <div class="stat-chip"><span class="stat-emoji">🔥</span> {accountStreak}<span class="stat-cap">day streak</span></div>
-            <div class="stat-chip" title="Auto-protects your streak across one missed day. Earn one every 7-day streak.">
-              <span class="stat-emoji">🧊</span> {accountFreezes}<span class="stat-cap">freeze{accountFreezes === 1 ? '' : 's'}</span>
-            </div>
-          </div>
-
-          <div class="ma-people-row">
-            <button class="main-menu-btn ghost-btn" on:click={() => goto('/friends')}>👋 Friends</button>
-            <button class="main-menu-btn ghost-btn" on:click={() => goto('/groups')}>👥 Groups</button>
-          </div>
-
-          <div class="ma-section-label">Settings</div>
-          <button class="main-menu-btn ghost-btn ma-toggle" on:click={() => { toggleSound(); if ($soundEnabled) fx('select'); }}>
-            <span>{$soundEnabled ? '🔊' : '🔇'} Sound</span>
-            <span class="ma-toggle-state">{$soundEnabled ? 'On' : 'Off'}</span>
-          </button>
-          <button class="main-menu-btn ghost-btn ma-toggle" on:click={() => { toggleHaptics(); if ($hapticsEnabled) fx('tap'); }}>
-            <span>{$hapticsEnabled ? '📳' : '📴'} Haptics</span>
-            <span class="ma-toggle-state">{$hapticsEnabled ? 'On' : 'Off'}</span>
-          </button>
-          <button class="main-menu-btn ghost-btn ma-toggle" on:click={toggleMusic}>
-            <span>{$musicEnabled ? '🎵' : '🔕'} Music</span>
-            <span class="ma-toggle-state">{$musicEnabled ? 'On' : 'Off'}</span>
-          </button>
-          {#if $musicEnabled}
-            <div class="ma-music-ctl">
-              <span class="mmc-ic">🔈</span>
-              <input class="mmc-slider" type="range" min="0" max="100" step="1"
-                value={Math.round($musicVolume * 100)}
-                on:input={(e) => setMusicVolume(Number(e.currentTarget.value) / 100)} />
-              <span class="mmc-pct">{Math.round($musicVolume * 100)}%</span>
-            </div>
-            {#if TRACKS.length > 1}
-              <div class="ma-tracks">
-                {#each TRACKS as t, i}
-                  <button class="ma-track" class:on={$currentTrackId === t.id} on:click={() => selectTrack(t.id)}>Track {i + 1}</button>
-                {/each}
+          <!-- Preferences -->
+          <div class="set-label">Preferences</div>
+          <div class="set-group">
+            <button class="set-row" on:click={() => { toggleSound(); if ($soundEnabled) fx('select'); }}>
+              <span>🔊 Sound</span><span class="set-state" class:on={$soundEnabled}>{$soundEnabled ? 'On' : 'Off'}</span>
+            </button>
+            <button class="set-row" on:click={() => { toggleHaptics(); if ($hapticsEnabled) fx('tap'); }}>
+              <span>📳 Haptics</span><span class="set-state" class:on={$hapticsEnabled}>{$hapticsEnabled ? 'On' : 'Off'}</span>
+            </button>
+            <button class="set-row" on:click={toggleMusic}>
+              <span>🎵 Music</span><span class="set-state" class:on={$musicEnabled}>{$musicEnabled ? 'On' : 'Off'}</span>
+            </button>
+            {#if $musicEnabled}
+              <div class="set-row sub">
+                <span class="mmc-ic">🔈</span>
+                <input class="mmc-slider" type="range" min="0" max="100" step="1" value={Math.round($musicVolume * 100)} on:input={(e) => setMusicVolume(Number(e.currentTarget.value) / 100)} />
+                <span class="mmc-pct">{Math.round($musicVolume * 100)}%</span>
               </div>
+              {#if TRACKS.length > 1}
+                <div class="set-row sub tracks">
+                  {#each TRACKS as t, i}<button class="ma-track" class:on={$currentTrackId === t.id} on:click={() => selectTrack(t.id)}>Track {i + 1}</button>{/each}
+                </div>
+              {/if}
             {/if}
-          {/if}
-          <button class="main-menu-btn ghost-btn" on:click={() => { showMyAccount = false; showTutorial = true; }}>❓ How to Play</button>
-
-          <div class="ma-section-label">About</div>
-          <div class="ma-links">
-            <a class="ma-link" href="/privacy" target="_blank" rel="noopener noreferrer">Privacy</a>
-            <span class="ma-dot">·</span>
-            <a class="ma-link" href="/terms" target="_blank" rel="noopener noreferrer">Terms</a>
-            <span class="ma-dot">·</span>
-            <a class="ma-link" href={`mailto:${SUPPORT_EMAIL}`}>Support</a>
           </div>
 
-          <button class="main-menu-btn" on:click={() => { showMyAccount = false; handleLogout(); }}>Log Out</button>
-          <button class="main-menu-btn ma-danger" on:click={() => { deleteInput = ''; maMsg = ''; showDeleteConfirm = true; }}>Delete Account</button>
+          <!-- Social -->
+          <div class="set-label">Social</div>
+          <div class="set-group">
+            <button class="set-row nav" on:click={() => { showMyAccount = false; goto('/?people=1'); }}><span>👋 Friends</span><span class="chev">›</span></button>
+            <button class="set-row nav" on:click={() => { showMyAccount = false; goto('/groups'); }}><span>👥 Groups</span><span class="chev">›</span></button>
+          </div>
+
+          <!-- Security -->
+          {#if hasPin}
+            <div class="set-label">Security</div>
+            <div class="set-group">
+              <button class="set-row nav" on:click={changePin}><span>🔑 Change PIN</span><span class="chev">›</span></button>
+            </div>
+          {/if}
+
+          <!-- Help & Legal -->
+          <div class="set-label">Help &amp; Legal</div>
+          <div class="set-group">
+            <button class="set-row nav" on:click={() => { showMyAccount = false; showTutorial = true; }}><span>❓ How to Play</span><span class="chev">›</span></button>
+            <a class="set-row nav" href="/privacy" target="_blank" rel="noopener noreferrer"><span>🔒 Privacy Policy</span><span class="chev">↗</span></a>
+            <a class="set-row nav" href="/terms" target="_blank" rel="noopener noreferrer"><span>📄 Terms of Service</span><span class="chev">↗</span></a>
+            <a class="set-row nav" href={`mailto:${SUPPORT_EMAIL}`}><span>✉️ Contact Support</span><span class="chev">↗</span></a>
+          </div>
+
+          <!-- Account -->
+          <div class="set-label">Account</div>
+          <div class="set-group">
+            <button class="set-row nav" on:click={() => { showMyAccount = false; handleLogout(); }}><span>🚪 Log Out</span><span class="chev">›</span></button>
+            <button class="set-row nav danger" on:click={() => { deleteInput = ''; maMsg = ''; showDeleteConfirm = true; }}><span>🗑️ Delete Account</span><span class="chev">›</span></button>
+          </div>
+
           <p class="ma-version">WordBank v{APP_VERSION}</p>
         </div>
       </div>
@@ -3787,7 +3794,33 @@
   .ma-link { color: var(--brand-2); font-size: 0.85rem; font-weight: 600; text-decoration: none; }
   .ma-link:hover { text-decoration: underline; }
   .ma-dot { color: var(--text-faint); }
-  .ma-version { text-align: center; font-size: 0.72rem; color: var(--text-faint); margin: 8px 0 0; }
+  .ma-version { text-align: center; font-size: 0.72rem; color: var(--text-faint); margin: 14px 0 2px; }
+  /* ── Sectioned settings layout ── */
+  .settings-modal { text-align: left; }
+  .set-profile { display: flex; align-items: center; gap: 13px; margin: 6px 0 4px; }
+  .set-av { position: relative; background: none; border: none; cursor: pointer; padding: 0; flex: none; }
+  .set-av-edit { position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); font-size: 0.62rem; font-weight: 800;
+    color: #3a2a00; background: var(--brand-2, #fde047); padding: 1px 7px; border-radius: 999px; }
+  .set-id { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+  .set-uname { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; color: var(--text); }
+  .set-uname-edit { display: flex; gap: 6px; }
+  .set-email { font-size: 0.78rem; color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .set-label { text-align: left; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--text-faint); margin: 16px 0 7px; padding-left: 0.3rem; }
+  .set-group { display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); background: var(--surface); }
+  .set-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
+    padding: 13px 15px; background: none; border: none; border-bottom: 1px solid var(--border); cursor: pointer;
+    color: var(--text); font-weight: 600; font-size: 0.95rem; text-align: left; text-decoration: none; }
+  .set-group > :last-child { border-bottom: none; }
+  .set-row:hover { background: rgba(255,255,255,0.04); }
+  .set-row.sub { cursor: default; padding: 11px 15px; }
+  .set-row.sub:hover { background: none; }
+  .set-row.sub.tracks { gap: 6px; }
+  .set-row.sub .mmc-slider { flex: 1; }
+  .set-row.danger { color: #f87171; }
+  .set-state { font-size: 0.82rem; font-weight: 800; color: var(--text-faint); }
+  .set-state.on { color: #4ade80; }
+  .chev { color: var(--text-faint); font-weight: 700; }
   .main-menu-btn.ma-danger { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.5); }
   .main-menu-btn.ma-danger:hover { background: rgba(248,113,113,0.2); }
   .main-menu-btn.ma-danger:disabled { opacity: 0.5; cursor: not-allowed; }
