@@ -1553,7 +1553,7 @@
       <p class="gu-text">{isClimb
         ? `Your heat resets to ×1.0${(climb?.spent ?? 0) > 0 ? ` and you forfeit the $${(climb?.spent ?? 0).toLocaleString()} spent on this one` : ''} — then a fresh puzzle.`
         : $gameStore.gameMode === 'match'
-        ? 'You lose this puzzle and move on — your unspent budget is refunded to your Cash.'
+        ? 'Skip this puzzle — you pay its full price and move on.'
         : $gameStore.gameMode === 'freeplay'
         ? 'You’ll skip to a fresh puzzle — you keep your credits (you only lose what you spent on this one).'
         : 'It counts as a loss and reveals the answer.'}</p>
@@ -2535,7 +2535,7 @@
             <div class="result-medal">⚔️</div>
             <h2>Challenge complete!</h2>
             <p class="result-sub">{#if matchInfo?.mode === 'blitz'}You scored {(matchInfo?.total_score ?? 0).toLocaleString()} across {matchInfo?.pack_size} puzzle{matchInfo?.pack_size === 1 ? '' : 's'}{:else}You solved {matchInfo?.solved ?? 0}/{matchInfo?.pack_size} spending ${(matchInfo?.spent ?? 0).toLocaleString()}{/if}</p>
-            <p class="arcade-gain">{matchInfo?.status === 'settled' ? 'Settled — check the results.' : "Lowest spend wins — we'll settle once everyone plays."}</p>
+            <p class="arcade-gain">{matchInfo?.status === 'settled' ? 'Settled — check the results.' : "Most Cash left wins — we'll settle once everyone plays."}</p>
             <div class="result-actions">
               {#if matchInfo?.status === 'settled'}
                 <button class="share-btn" on:click={async () => { const id = matchInfo?.id; showResultModal = false; hasTriggeredModal = false; goToMainMenu(); matchResults = { loading: true }; matchResults = await getMatchDetail(id); }}>View Results</button>
