@@ -1,0 +1,6 @@
+-- 🎁 Auto-applied Daily Twist (migration `daily_auto_apply_twist`)
+-- daily_start now creates the session with twist_used=true and, for the reveal-type
+-- Twists (free_vowel / head_start), reveals their letters immediately. The weekday
+-- special is automatic — no manual use, no carry-over. Bounty Boosts deactivated
+-- (powerups.active=false) — no manual power-ups in the Daily, so the leaderboard
+-- stays a fair same-for-all skill board (multiplier = win streak only).

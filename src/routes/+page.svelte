@@ -363,16 +363,16 @@
   // (no objective card up, not on the menu). Called from dismissObjective and,
   // when the card is suppressed, right after the board renders.
   function playDailyIntroIfArmed() {
-    const tok = get(gameStore).dailyIntro;
-    if (!browser || !tok || tok === _introFired) return;
+    const st = get(gameStore);
+    const tok = st.dailyIntro;
+    // Play once per FRESH open (token). dailyIntroPlayed lives in the store so it
+    // survives remounts (e.g. back from the leaderboard); the auto-applied Twist
+    // revealing letters no longer wrongly suppresses the reveal.
+    if (!browser || !tok || tok === st.dailyIntroPlayed) return;
     if (objective || showMainMenu) return;
-    // Only on a FRESH board — if you've already revealed letters (resume / re-entry),
-    // the boxes are already there, so skip the opening reveal.
-    if ((get(gameStore).purchasedLetters || []).some(Boolean)) { _introFired = tok; return; }
-    _introFired = tok;
+    gameStore.update((s) => ({ ...s, dailyIntroPlayed: tok, dailyIntroGo: (s.dailyIntroGo || 0) + 1 }));
     introBuilding = true;
     tweenNet.set(0, { duration: 0 });
-    gameStore.update((s) => ({ ...s, dailyIntroGo: (s.dailyIntroGo || 0) + 1 }));
   }
   function onDailyIntroDone() {
     introBuilding = false; // releases the reactive above → bounty counts 0 → net
@@ -454,8 +454,8 @@
     showBag = false;
   }
 
-  // ℹ️ Daily explainers: tap the ×N badge, the Solve-to-Earn number, or the 🏆 streak.
-  /** @type {'mult'|'bounty'|'streak'|null} */
+  // ℹ️ Daily explainers: ×N badge, Solve-to-Earn, 🏆 streak, or today's Twist.
+  /** @type {'mult'|'bounty'|'streak'|'twist'|null} */
   let dailyInfo = null;
   $: dlReward = $gameStore.dailyLive?.reward ?? 0;        // base × multiplier (the full bounty)
   $: dlSpent = $gameStore.dailyLive?.spent ?? 0;
@@ -1561,10 +1561,15 @@
         <div class="info-rows">
           <div class="info-row"><span>Base</span><b>×1.0</b></div>
           {#if dlStreakBonus > 0}<div class="info-row"><span>🏆 Win streak ({dlWinStreak} in a row)</span><b class="pos">+{dlStreakBonus.toFixed(1)}</b></div>{/if}
-          {#if dlBoost > 0}<div class="info-row"><span>💥 Boosts applied</span><b class="pos">+{dlBoost.toFixed(1)}</b></div>{/if}
           <div class="info-row total"><span>Your multiplier</span><b>{fmtMult(dlMult)}</b></div>
         </div>
-        <p class="info-note">Solve on consecutive days for <b>+0.1×</b> each (up to +0.5×). Buy <b>Bounty Boosts</b> in the Store to add more. Caps at ×3.0.</p>
+        <p class="info-note">It grows with your <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'streak'}>win streak</button> — <b>+0.1×</b> per consecutive solve, up to <b>×1.5</b>. Pure skill, same for everyone.</p>
+      {:else if dailyInfo === 'twist'}
+        <div class="info-big">{dailyMod?.emoji ?? '🎁'}</div>
+        <h3 class="info-title">{dailyMod?.name ?? "Today's Twist"}</h3>
+        <p class="info-sub">Today's special — applied automatically. ✓</p>
+        <p class="info-twist-do">{dailyMod?.blurb ?? ''}</p>
+        <p class="info-note">A different special every weekday. Everyone gets the <b>same</b> one — free and auto‑applied — so the Daily stays a fair, same‑for‑all puzzle.</p>
       {:else if dailyInfo === 'streak'}
         <div class="info-big">🏆 {dlWinStreak}</div>
         <h3 class="info-title">Win Streak</h3>
@@ -2139,14 +2144,26 @@
       {/if}
     {/if}
 
-    <!-- 🌍 Category + today's modifier chip + witty clue -->
+    <!-- 🌍 Category + today's auto-applied Twist chip + witty clue -->
     <div class="puzzle-meta">
       {#if $gameStore.category}<span class="category-chip">{$gameStore.category}</span>{/if}
+      {#if $gameStore.gameMode === 'daily' && dailyMod}
+        <button class="twist-chip" title="Today's special — tap to see" on:click={() => { fx('tap'); dailyInfo = 'twist'; }}>{dailyMod.emoji}</button>
+      {/if}
     </div>
     {#if $gameStore.clue}
       <p class="puzzle-clue">{$gameStore.clue}</p>
     {/if}
 
+
+    <!-- 🎁 Announce today's auto-applied Twist during the dramatic load -->
+    {#if introBuilding && $gameStore.gameMode === 'daily' && dailyMod}
+      <div class="twist-announce" aria-hidden="true">
+        <span class="ta-label">Today's special</span>
+        <span class="ta-name">{dailyMod.emoji} {dailyMod.name}</span>
+        <span class="ta-blurb">{dailyMod.blurb} · applied automatically</span>
+      </div>
+    {/if}
 
     <!-- 🔤 Phrase Display -->
     <section class="phrase-section">
@@ -2200,13 +2217,6 @@
     <section class="buttons-section">
       <GameButtons />
     </section>
-
-    <!-- 🎒 Bag — opens your inventory; use power-ups from here (left of Solve) -->
-    {#if gameActive}
-      <button class="bag-fab" title="My Vault" aria-label="My Vault" on:click={openBag}>
-        <img src="/vault.png" alt="🔐" class="vault-ic" />{#if trayPowerups.length > 0}<span class="bag-fab-badge">{trayPowerups.length}</span>{/if}
-      </button>
-    {/if}
 
     <!-- ⌨️ Keyboard Section (keyboard disables itself via gameStore state) -->
     <section class="keyboard-section">
@@ -2525,6 +2535,11 @@
     padding: 6px 13px;
     border-radius: var(--r-pill);
   }
+  /* 🎁 today's auto-applied Twist chip (tap to see what it does) */
+  .twist-chip { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; cursor: pointer;
+    border: 1px solid rgba(253,224,71,0.55); background: rgba(251,191,36,0.16); font-size: 1.1rem; line-height: 1;
+    box-shadow: 0 0 10px rgba(251,191,36,0.25); }
+  .twist-chip:active { transform: scale(0.92); }
   /* ⓘ re-open the "How to win" card */
   .fold-bar { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 6px auto 2px; }
   .fold-bar.broke {
@@ -3554,6 +3569,14 @@
   .info-row .pos { color: #4ade80; } .info-row .neg { color: #fb7185; } .info-row .green { color: #4ade80; }
   .info-row.total { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 2px; font-weight: 700; }
   .info-note { font-size: 0.76rem; color: var(--text-faint); line-height: 1.45; margin: 0 0 16px; }
+  .info-twist-do { font-family: var(--font-display); font-weight: 700; font-size: 1.02rem; color: #4ade80; margin: 0 0 14px; }
+  /* 🎁 Twist announcement during the opening reveal */
+  .twist-announce { display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; margin: 2px auto 6px;
+    animation: twistAnnounceIn 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+  .ta-label { font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brand-2); }
+  .ta-name { font-family: var(--font-display); font-weight: 800; font-size: 1.35rem; color: #fde047; text-shadow: 0 0 16px rgba(251,191,36,0.5); }
+  .ta-blurb { font-size: 0.78rem; color: var(--text-muted); }
+  @keyframes twistAnnounceIn { 0% { opacity: 0; transform: translateY(-10px) scale(0.9); } 100% { opacity: 1; transform: none; } }
   .info-note b { color: var(--brand-2); }
   .info-inline { background: none; border: none; padding: 0; color: var(--brand-2); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
   .info-close { width: 100%; padding: 11px; border-radius: 12px; border: none; cursor: pointer;
