@@ -63,6 +63,8 @@
 {/if}
 
 <div class="main-button-wrapper">
+  <!-- Optional left accessory (e.g. Cash Game vault). Absolutely positioned so Solve stays centered. -->
+  <slot name="left" />
   {#if dualButtonMode}
     <div class="dual-button-container">
       <button

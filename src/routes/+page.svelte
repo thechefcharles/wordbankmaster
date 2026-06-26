@@ -6,7 +6,7 @@
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
 
-  import { gameStore, fetchDailyGame, useDailyTwist, useDailyBoost, fetchFreeplayGame, fetchFreeplayResume, freeplayContinue, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, useDailyTwist, useDailyBoost, fetchFreeplayGame, fetchFreeplayResume, freeplayContinue, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbSkipPuzzle, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
   import { getMyChallenges, getPowerups, getDailyAvailBoosts, getMyMatches, getMyGroups, getMatch, getMatchDetail, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
@@ -325,6 +325,15 @@
   }
   $: isClimb = $gameStore.gameMode === 'climb';
   $: climb = $gameStore.climbInfo; // { bounty, heat, spent, position, stuck, last_gain, state, pups_locked, equipped }
+  // 🏷️ Which mode you're in — a consistent pill under the wordmark on every game screen.
+  $: modeLabel = ({
+    daily:     { emoji: '📅', name: 'Daily' },
+    climb:     { emoji: '🎰', name: 'Cash Game' },
+    freeplay:  { emoji: '🎯', name: 'Free Play' },
+    makeup:    { emoji: '📅', name: 'Make-up' },
+    match:     { emoji: '⚔️', name: 'Challenge' },
+    challenge: { emoji: '⚔️', name: 'Challenge' }
+  })[$gameStore.gameMode] ?? null;
   $: isMatch = $gameStore.gameMode === 'match';
   $: matchInfo = $gameStore.matchInfo; // { position, pack_size, total_score, last_score, done, mode, solved, spent, budget, wager, items_allowed, used_powerups, started_at, clock_seconds, combo }
   $: matchBlitz = isMatch && matchInfo?.mode === 'blitz' && !matchInfo?.done;
@@ -438,6 +447,11 @@
         const avail = ($gameStore.gameMode === 'daily') && (dailyAvailBoosts[it.id] ?? 0) > 0 && gameActive;
         out.push({ id: it.id, emoji: BOOST_META[it.id]?.emoji ?? '💥', name: it.name, blurb: BOOST_META[it.id]?.blurb ?? '', count: it.owned,
           usable: avail, reason: avail ? '' : 'Bought after you started — usable on your next puzzle.' });
+      } else if (it.kind === 'climb') {
+        const used = (climb?.equipped ?? []).includes(it.id);
+        const avail = $gameStore.gameMode === 'climb' && gameActive && !used && (it.owned ?? 0) > 0;
+        out.push({ id: it.id, emoji: PUP_ICON[it.id] ?? '✨', name: it.name, blurb: avail ? 'Tap to use now' : '', count: it.owned, usable: avail,
+          reason: used ? 'Already used on this puzzle.' : ($gameStore.gameMode === 'climb' ? '' : 'For the Cash Game — not this mode.') });
       } else {
         out.push({ id: it.id, emoji: PUP_ICON[it.id] ?? '✨', name: it.name, blurb: '', count: it.owned, usable: false,
           reason: it.kind === 'sabotage' ? 'For challenges — sabotage an opponent there, not the Daily.' : 'For the Cash Game or challenges — not the Daily.' });
@@ -456,6 +470,7 @@
   function useFromBag(item) {
     if (item?.id === 'twist') useTwist();
     else if (item?.id === 'bounty_boost' || item?.id === 'jackpot_boost') { useBoost(item.id); loadVault(); }
+    else if ($gameStore.gameMode === 'climb') { climbPowerup(item.id).then(() => { refreshClimbPups(); loadVault(); }); }
     showBag = false;
   }
 
@@ -552,6 +567,7 @@
       if ($gameStore.gameMode === 'daily') await dailyFold();
       else if ($gameStore.gameMode === 'match') await matchFold();
       else if ($gameStore.gameMode === 'freeplay') await freeplayContinue(); // skip to a fresh puzzle
+      else if ($gameStore.gameMode === 'climb') { await climbSkipPuzzle(); await tick(); playDailyIntroIfArmed(); } // fresh puzzle; heat resets; replay the dramatic build
     } finally { brokeFiring = false; }
   }
   // Give-up confirm layer (in-app, not window.confirm).
@@ -606,6 +622,12 @@
     await matchTimeoutCheck();
   }
   $: climbHeat = ((climb?.heat ?? 100) / 100).toFixed(1);
+  // Heat IS the Cash Game win streak: each solve +0.1× (cap ×2.0), reset to ×1.0 when stuck.
+  $: climbStreak = Math.max(0, Math.round(((climb?.heat ?? 100) - 100) / 10));
+  // Owned, not-yet-used climb buffs — drives the vault badge by the Solve button.
+  $: usableClimbPups = isClimb ? selfPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0 && !((climb?.equipped ?? []).includes(i.id))).length : 0;
+  /** @type {'heat'|'earn'|null} ℹ️ Cash Game explainers (mirror of dailyInfo). */
+  let climbInfo = null;
   $: dr = $gameStore.dailyResult; // { score, clean, no_vowels, first_try, no_reveals }
   /** @type {{rank:number, total:number}|null} */
   let dailyPlacement = null;
@@ -714,13 +736,6 @@
   }
   onDestroy(teardownMatchChat);
 
-  /** @param {any} item */
-  async function handleClimbPup(item) {
-    const usedThisPuzzle = (climb?.equipped ?? []).includes(item.id);
-    if ((item.owned ?? 0) <= 0 || usedThisPuzzle) return;  // must own one, can't reuse this puzzle
-    await climbPowerup(item.id);
-    await refreshClimbPups();
-  }
   $: makeupLabel = (() => {
     const d = $gameStore.makeupDate;
     if (!d) return '';
@@ -1009,6 +1024,10 @@
       hasInitialized = true;
       showMainMenu = false;
       refreshClimbPups();
+      // Play the dramatic opening reveal once reactives settle (no-ops if the
+      // "How it works" card shows — it then fires on dismiss).
+      await tick();
+      playDailyIntroIfArmed();
     } else {
       initError = 'Cash Game failed to load.';
     }
@@ -1363,6 +1382,14 @@
           resultBankAnim.set(newBank - profit, { duration: 0 });
           setTimeout(() => { resultProfit.set(profit); fx('win'); }, 350);
           setTimeout(() => { resultBankAnim.set(newBank); }, 1100);
+        } else if ($gameStore.gameMode === 'climb' && won) {
+          const c = $gameStore.climbInfo || {};
+          const profit = Math.round((c.last_gain ?? 0) - (c.spent ?? 0));
+          const newBank = Math.round($gameStore.bankroll ?? 0);
+          resultProfit.set(0, { duration: 0 });
+          resultBankAnim.set(newBank - profit, { duration: 0 });
+          setTimeout(() => { resultProfit.set(profit); fx('win'); }, 350);
+          setTimeout(() => { resultBankAnim.set(newBank); }, 1100);
         }
       }, 1000);
     }
@@ -1380,6 +1407,10 @@
 <!-- 🏳️ Give up (top-right) — Daily / Challenges / Free Play -->
 {#if loggedIn && hasInitialized && !showMainMenu && (foldMode || isFreeplay) && gameActive}
   <button class="giveup-btn" title="Give up" aria-label="Give up" on:click={confirmFold}>↪</button>
+{/if}
+<!-- ⏭️ Skip (top-right) — Cash Game only; resets heat -->
+{#if loggedIn && hasInitialized && !showMainMenu && isClimb && gameActive && (climb?.state === 'active' || climb?.state === 'stuck')}
+  <button class="giveup-btn" title="Skip this puzzle" aria-label="Skip this puzzle" on:click={confirmFold}>↪</button>
 {/if}
 
 <!-- 💬 Match chat (1v1 + group challenges) — only inside a live match, never on the menu -->
@@ -1420,15 +1451,17 @@
   <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Give up">
     <button type="button" class="modal-backdrop" aria-label="Cancel" on:click={cancelGiveUp}></button>
     <div class="modal-content giveup-modal">
-      <h2 class="gu-title">Give up {$gameStore.gameMode === 'match' ? 'this puzzle' : $gameStore.gameMode === 'freeplay' ? 'this one' : "today's Daily"}?</h2>
-      <p class="gu-text">{$gameStore.gameMode === 'match'
+      <h2 class="gu-title">{isClimb ? 'Skip this puzzle?' : `Give up ${$gameStore.gameMode === 'match' ? 'this puzzle' : $gameStore.gameMode === 'freeplay' ? 'this one' : "today's Daily"}?`}</h2>
+      <p class="gu-text">{isClimb
+        ? `Your heat resets to ×1.0${(climb?.spent ?? 0) > 0 ? ` and you forfeit the $${(climb?.spent ?? 0).toLocaleString()} spent on this one` : ''} — then a fresh puzzle.`
+        : $gameStore.gameMode === 'match'
         ? 'You lose this puzzle and move on — your unspent budget is refunded to your Cash.'
         : $gameStore.gameMode === 'freeplay'
         ? 'You’ll skip to a fresh puzzle — you keep your credits (you only lose what you spent on this one).'
         : 'It counts as a loss and reveals the answer.'}</p>
       <div class="gu-actions">
         <button class="gu-cancel" on:click={cancelGiveUp}>Keep playing</button>
-        <button class="gu-confirm" on:click={doGiveUp}>🏳️ Give up</button>
+        <button class="gu-confirm" on:click={doGiveUp}>{isClimb ? '⏭️ Skip' : '🏳️ Give up'}</button>
       </div>
     </div>
   </div>
@@ -1444,7 +1477,7 @@
       <ul class="wc-list">
         <li><span>💰</span> <b>$2,000</b> in the bank to play with</li>
         <li><span>📅</span> Today is <b>Day 1</b> of the Daily</li>
-        <li><span>🎰</span> The Cash Game ladder restarts at puzzle 1</li>
+        <li><span>🎰</span> Fresh puzzles waiting in the Cash Game</li>
         <li><span>🏆</span> Leaderboards are wide open — go claim a spot</li>
       </ul>
       <button class="wc-btn" on:click={dismissLaunchWelcome}>Let’s play →</button>
@@ -1578,6 +1611,48 @@
         <p class="info-note">The base bounty comes from the letters' value. Spend less on letters to keep more — and grow the <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'mult'}>multiplier</button>.</p>
       {/if}
       <button class="info-close" on:click={() => dailyInfo = null}>Got it</button>
+    </div>
+  </div>
+{/if}
+
+<!-- ℹ️ Cash Game explainers: heat (= win streak) / Solve-to-Earn calculation -->
+{#if climbInfo}
+  <div class="modal-overlay info-overlay" role="button" tabindex="0" aria-label="Close"
+    on:click={() => climbInfo = null} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') climbInfo = null; }}>
+    <div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
+      <button class="modal-x" on:click={() => climbInfo = null} aria-label="Close">✕</button>
+      {#if climbInfo === 'heat'}
+        <div class="info-big">🔥 ×{climbHeat}</div>
+        <h3 class="info-title">Heat — your multiplier</h3>
+        <p class="info-sub">Everything you earn from a puzzle is multiplied by your heat.</p>
+        <div class="info-rows">
+          <div class="info-row"><span>Base</span><b>×1.0</b></div>
+          <div class="info-row"><span>Each solve in a row</span><b class="pos">+0.1×</b></div>
+          <div class="info-row"><span>Maxes out at</span><b>×2.0</b></div>
+          <div class="info-row total"><span>Your heat</span><b>×{climbHeat}</b></div>
+        </div>
+        <p class="info-note">Heat climbs with your <button class="info-inline" on:click|stopPropagation={() => climbInfo = 'streak'}>win streak</button> and resets to ×1.0 if you get stuck or skip.</p>
+      {:else if climbInfo === 'streak'}
+        <div class="info-big">🏆 {climbStreak}</div>
+        <h3 class="info-title">Win Streak</h3>
+        <p class="info-sub">Cash Game puzzles you've solved in a row.</p>
+        <div class="info-rows">
+          <div class="info-row"><span>Solve a puzzle</span><b class="pos">+1</b></div>
+          <div class="info-row"><span>Get stuck or skip</span><b class="neg">back to 0</b></div>
+        </div>
+        <p class="info-note">Your streak powers your <button class="info-inline" on:click|stopPropagation={() => climbInfo = 'heat'}>heat</button> — every win adds <b>+0.1×</b> to your payout (up to ×2.0).</p>
+      {:else}
+        <div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
+        <h3 class="info-title">Solve to Earn</h3>
+        <p class="info-sub">What you pocket if you solve right now.</p>
+        <div class="info-rows">
+          <div class="info-row"><span>Bounty × heat ({fmtMult(Number(climbHeat))})</span><b class="pos">${(climbLive?.payout ?? 0).toLocaleString()}</b></div>
+          <div class="info-row"><span>− Spent on letters</span><b class="neg">−${(climbLive?.spent ?? 0).toLocaleString()}</b></div>
+          <div class="info-row total"><span>You keep</span><b class="green">${(climbLive?.net ?? 0).toLocaleString()}</b></div>
+        </div>
+        <p class="info-note">Spend less on letters to keep more — and grow your <button class="info-inline" on:click|stopPropagation={() => climbInfo = 'heat'}>heat</button>.</p>
+      {/if}
+      <button class="info-close" on:click={() => climbInfo = null}>Got it</button>
     </div>
   </div>
 {/if}
@@ -1984,6 +2059,13 @@
     <!-- 🧠 Game Logo -->
     <img class="game-logo" src="/wordmark.png" alt="WordBank" />
 
+    <!-- 🏷️ Game-mode pill — same spot & style for every mode; tap to see the rules -->
+    {#if $gameStore.currentPhrase && $gameStore.gameMode && modeLabel}
+      <button class="mode-pill" title="How {modeLabel.name} works" on:click={() => { fx('tap'); showObjectiveFor($gameStore.gameMode, true); }}>
+        <span class="mp-emoji">{modeLabel.emoji}</span>{modeLabel.name}<span class="mp-info">ⓘ</span>
+      </button>
+    {/if}
+
     <!-- 💰 Bankroll — top of every mode. Challenge/1v1 = one number (left to spend) + one depleting bar. -->
     {#if $gameStore.currentPhrase && $gameStore.gameMode}
       {#if isMatch && matchInfo && !matchBlitz && !matchInfo.done}
@@ -2039,30 +2121,9 @@
       </div>
     {/if}
 
-    <!-- 🎰 Cash Game (Climb) HUD -->
+    <!-- 🎰 Cash Game (Climb) HUD — number-free so it feels random. Heat lives in the
+         Solve-to-Earn box; power-ups live in the vault beside Solve. -->
     {#if isClimb && climb}
-      <div class="climb-top">
-        <span class="climb-level">🎰 Cash&nbsp;Game&nbsp;#{climb.position}</span>
-        <div class="heat-meter" class:hot={(climb.heat ?? 100) > 100}>
-          <span class="heat-fill" style="width:{Math.min(100, Math.max(0, (climb.heat ?? 100) - 100))}%"></span>
-          <span class="heat-x">🔥 ×{climbHeat}</span>
-        </div>
-      </div>
-      {#if climb.state === 'active'}
-        {@const ownedClimb = selfPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0)}
-        {#if ownedClimb.length}
-          <div class="climb-pups owned">
-            {#each ownedClimb as item}
-              {@const used = (climb.equipped ?? []).includes(item.id)}
-              <button class="cp" class:equipped={used} disabled={used}
-                on:click={() => handleClimbPup(item)} title={item.name}>
-                <span class="cp-ic">{PUP_ICON[item.id] ?? '✨'}</span>
-                <span class="cp-tag">{used ? '✓' : '×' + item.owned}</span>
-              </button>
-            {/each}
-          </div>
-        {/if}
-      {/if}
       {#if climb.stuck && $gameStore.gameState !== 'won'}
         <div class="climb-stuck">
           <span class="cs-text">Out of Cash for this one — leave and earn in the Daily, then come back to finish it.</span>
@@ -2173,10 +2234,15 @@
           {#if $gameStore.gameMode === 'daily'}
             <button class="bp-mult-badge" title="How your multiplier works" on:click={() => { fx('tap'); dailyInfo = 'mult'; }}>×{Number($gameStore.bountyMult ?? 1).toFixed(1)}</button>
             <button class="bp-winstreak" title="Win streak" on:click={() => { fx('tap'); dailyInfo = 'streak'; }}>🏆 {dailyStatus?.win_streak ?? 0}</button>
+          {:else if isClimb}
+            <button class="bp-mult-badge" title="Heat — your payout multiplier" on:click={() => { fx('tap'); climbInfo = 'heat'; }}>🔥 ×{climbHeat}</button>
+            <button class="bp-winstreak" title="Win streak" on:click={() => { fx('tap'); climbInfo = 'streak'; }}>🏆 {climbStreak}</button>
           {/if}
           <span class="bp-label">{soloHero.net >= 0 ? 'Solve to Earn' : '⚠️ You’re losing money'}</span>
           {#if $gameStore.gameMode === 'daily'}
             <button class="bp-amount bp-amount-btn" title="How this is calculated" on:click={() => { fx('tap'); dailyInfo = 'bounty'; }}>{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</button>
+          {:else if isClimb}
+            <button class="bp-amount bp-amount-btn" title="How this is calculated" on:click={() => { fx('tap'); climbInfo = 'earn'; }}>{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</button>
           {:else}
             <span class="bp-amount">{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</span>
           {/if}
@@ -2200,9 +2266,18 @@
       {/if}
     </section>
 
-    <!-- 🎮 Solve / Cancel Buttons -->
+    <!-- 🎮 Solve / Cancel Buttons (Cash Game gets a vault to the left for power-ups) -->
     <section class="buttons-section">
-      <GameButtons />
+      <GameButtons>
+        <svelte:fragment slot="left">
+          {#if isClimb && climb?.state === 'active'}
+            <button class="solve-vault" on:click={openBag} title="Your power-ups" aria-label="Open your vault">
+              <img src="/vault.png" alt="" />
+              {#if usableClimbPups > 0}<span class="solve-vault-badge">{usableClimbPups}</span>{/if}
+            </button>
+          {/if}
+        </svelte:fragment>
+      </GameButtons>
     </section>
 
     <!-- ⌨️ Keyboard Section (keyboard disables itself via gameStore state) -->
@@ -2260,15 +2335,26 @@
               <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
               <button class="next-puzzle-button" on:click={goToDailyLeaderboard}>Leaderboard</button>
             </div>
-          {:else if isClimb}
-            <!-- Cash Game solve → advance up the Climb -->
-            <div class="result-medal">🎰</div>
-            <h2>Solved! +${(climb?.last_gain ?? 0).toLocaleString()}</h2>
+          {:else if isClimb && resultWon}
+            <!-- 🎰 Cash Game win banner (mirrors Daily): bounty × heat − spent = profit -->
+            {@const payout = climb?.last_gain ?? 0}
+            {@const cspent = climb?.spent ?? 0}
+            {@const earnedMult = (climb?.bounty ?? 0) > 0 ? (payout / climb.bounty) : ((climb?.heat ?? 100) / 100)}
+            <h2 class="win-h">🎉 Solved!</h2>
             <p class="result-sub">{$gameStore.currentPhrase}</p>
-            <p class="arcade-gain">Cash Game #{climb?.position} · Heat ×{climbHeat}{#if (climb?.heat ?? 100) >= 200} 🔥 maxed{/if}</p>
+            <div class="win-math">
+              <div class="wm-row"><span>Bounty <small>(🔥 ×{earnedMult.toFixed(1)} heat)</small></span><b>${payout.toLocaleString()}</b></div>
+              <div class="wm-row"><span>− Spent on letters</span><b class="neg">−${cspent.toLocaleString()}</b></div>
+              <div class="wm-row total"><span>Profit</span><b class="profit">{$resultProfit >= 0 ? '+' : '−'}${Math.abs(Math.round($resultProfit)).toLocaleString()}</b></div>
+            </div>
+            <p class="win-twist">🔥 Heat now ×{climbHeat}{#if climbStreak > 0} · 🏆 {climbStreak} win streak{/if}{#if (climb?.heat ?? 100) >= 200} · maxed{/if}</p>
+            <div class="win-bank">
+              <span class="wb-label">💰 Your Cash</span>
+              <span class="wb-amount">${Math.round($resultBankAnim).toLocaleString()}</span>
+            </div>
             <div class="result-actions">
               <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Leave</button>
-              <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; climbAdvance(); }}>Next →</button>
+              <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; climbAdvance().then(() => tick().then(playDailyIntroIfArmed)); }}>Next →</button>
             </div>
           {:else if isMatch}
             <!-- Challenge match: finished the whole pack -->
@@ -2445,7 +2531,6 @@
   .ch-label { font-size: 0.55rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
   .cp-hint { font-size: 0.66rem; color: var(--text-faint); text-align: center; margin: 0 0 5px; }
   .climb-pups { display: flex; gap: 6px; width: 100%; max-width: 360px; margin: 0 auto 12px; justify-content: space-between; }
-  .climb-pups.owned { justify-content: center; gap: 10px; margin-bottom: 10px; }
   .cp {
     flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 7px 2px;
     border-radius: 10px; cursor: pointer; border: 1px solid var(--border); background: var(--surface);
@@ -3494,6 +3579,16 @@
   .bag-fab-badge { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px;
     background: #ea580c; color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 0.66rem; display: grid; place-items: center; }
   .bag-chip { width: 54px; height: 54px; padding: 0; border-radius: 50%; display: grid; place-items: center; }
+  /* 🔐 Cash Game vault — sits to the left of Solve; absolute so Solve stays centered */
+  .solve-vault { position: absolute; right: 100%; margin-right: 12px; top: 50%; transform: translateY(-50%);
+    width: 50px; height: 50px; border-radius: 14px; display: grid; place-items: center; cursor: pointer;
+    background: var(--surface-strong, rgba(20,28,40,0.9)); border: 1px solid rgba(253,224,71,0.5);
+    backdrop-filter: blur(10px); box-shadow: 0 4px 12px rgba(0,0,0,0.4); transition: transform 0.16s var(--ease-spring); }
+  .solve-vault:active { transform: translateY(-50%) scale(0.93); }
+  .solve-vault img { width: 34px; height: 34px; object-fit: contain; }
+  .solve-vault-badge { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px;
+    background: var(--brand-grad, linear-gradient(135deg,#fbbf24,#fde047)); color: #3a2a00;
+    font-family: var(--font-display); font-weight: 800; font-size: 0.66rem; display: grid; place-items: center; }
   .vault-ic { width: 34px; height: 34px; object-fit: contain; }
   .vault-ic-sm { width: 46px; height: 46px; object-fit: contain; display: block; }
   .vault-ic-xs { width: 22px; height: 22px; object-fit: contain; vertical-align: -5px; }
@@ -3621,23 +3716,19 @@
     color: #04240f; background: linear-gradient(135deg, #6ee7b7, #34d399); border: none; }
   .cr-cashout:disabled { opacity: 0.5; cursor: default; }
   .cr-wallet { margin-top: 4px; font-size: 0.66rem; color: var(--text-faint); }
-  /* Cash Game (Climb) gamified HUD */
-  .climb-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; max-width: 360px; margin: 0 auto 14px; }
-  .climb-level {
-    font-family: var(--font-display); font-weight: 800; font-size: 0.95rem; white-space: nowrap;
-    padding: 6px 14px; border-radius: 999px; color: var(--brand-2);
-    background: rgba(253, 224, 71,0.1); border: 1px solid rgba(253, 224, 71,0.35);
+  /* 🏷️ Game-mode pill — centered under the wordmark, same for every mode */
+  .mode-pill {
+    display: inline-flex; align-items: center; gap: 6px; margin: -2px auto 10px;
+    padding: 4px 14px; border-radius: 999px; white-space: nowrap; cursor: pointer;
+    font-family: var(--font-display); font-weight: 800; font-size: 0.72rem;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--brand-2);
+    background: rgba(253, 224, 71, 0.08); border: 1px solid rgba(253, 224, 71, 0.3);
+    transition: transform 0.16s var(--ease-spring), background 0.2s, border-color 0.2s;
   }
-  .heat-meter {
-    position: relative; flex: 1; height: 30px; max-width: 180px; border-radius: 999px; overflow: hidden;
-    background: rgba(255,255,255,0.06); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
-  }
-  .heat-fill {
-    position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px;
-    background: linear-gradient(90deg, #fb923c, #f43f5e); transition: width 0.4s var(--ease-out, ease); opacity: 0.85;
-  }
-  .heat-x { position: relative; z-index: 1; font-family: var(--font-display); font-weight: 800; font-size: 0.85rem; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
-  .heat-meter.hot { border-color: rgba(251,146,60,0.6); box-shadow: 0 0 16px rgba(251,146,60,0.3); }
+  .mode-pill:hover { background: rgba(253, 224, 71, 0.14); border-color: rgba(253, 224, 71, 0.5); }
+  .mode-pill:active { transform: scale(0.95); }
+  .mp-emoji { font-size: 0.9rem; letter-spacing: 0; }
+  .mp-info { font-size: 0.72rem; opacity: 0.6; letter-spacing: 0; }
 
 
   .bankroll-amount {

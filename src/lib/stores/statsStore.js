@@ -501,6 +501,12 @@ export async function climbLeave() {
   if (error) { console.error('❌ climb_leave:', error); return null; }
   return data;
 }
+/** Skip the current Cash Game puzzle for a fresh one (resets heat to ×1.0). @returns {Promise<any>} */
+export async function climbSkip() {
+  const { data, error } = await supabase.rpc('climb_skip');
+  if (error) { console.error('❌ climb_skip:', error); return null; }
+  return data;
+}
 /** @param {string} scope @param {string|null} [group] @returns {Promise<any[]>} */
 export async function getClimbLeaderboard(scope = 'friends', group = null) {
   const { data, error } = await supabase.rpc('get_climb_leaderboard', { p_scope: scope, p_group: group });
