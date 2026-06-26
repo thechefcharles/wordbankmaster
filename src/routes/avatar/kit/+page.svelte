@@ -18,9 +18,9 @@
   </header>
 
   <p class="kp-note">
-    Full-body kit scaffold. The figure below is <b>placeholder art</b> — replace the SVGs in
-    <code>static/avatar/</code> with your Humaaans exports (see that folder's README) and they
-    render here instantly.
+    Full-body kit — real <b>Humaaans</b> art. Mix & match below. When you're happy with the
+    look + wardrobe, set <code>KIT_READY = true</code> in <code>avatarKit.js</code> and I'll
+    switch the builder/store/profile over to this from the current head-and-shoulders avatar.
   </p>
 
   <div class="kp-stage"><KitAvatar {config} size={220} /></div>

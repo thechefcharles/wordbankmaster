@@ -1,9 +1,0 @@
-<svg viewBox="0 0 360 540" xmlns="http://www.w3.org/2000/svg">
-  <g fill="#2fae72">
-    <rect x="110" y="166" width="140" height="150" rx="26"/>
-    <rect x="84" y="182" width="38" height="92" rx="18"/>
-    <rect x="238" y="182" width="38" height="92" rx="18"/>
-  </g>
-  <path d="M134 168 q46 34 92 0 v-8 q-46 22 -92 0 z" fill="#26945f"/>
-  <rect x="150" y="248" width="60" height="40" rx="10" fill="#26945f"/>
-</svg>

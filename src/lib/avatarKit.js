@@ -1,62 +1,68 @@
-// ── Full-body avatar "kit" — layered SVG paper-doll ────────────────────────────
-// This is the integration scaffold for a modular art kit (e.g. Humaaans/Blush).
-// HOW IT WORKS: each slot stacks one transparent SVG, all exported on the SAME
-// canvas (see CANVAS), so they auto-align. To add art: drop the file in
-// static/avatar/<slot>/<file>.svg and add an entry to PARTS below. Items with a
-// `price` are paid cosmetics (wired into the existing store when KIT_READY).
+// ── Full-body avatar kit — Humaaans (3-piece: Bottom + Body + Head) ────────────
+// Humaaans composes a figure from three pieces, each on its OWN canvas, placed at
+// fixed offsets (derived from the library's composed characters). Because every
+// piece of a type shares its canvas, these offsets work for ANY head+body+bottom
+// combo. Art lives in static/avatar/<slot>/*.svg.
 //
-// The placeholder SVGs shipped here are throwaway — replace them with real exports.
+// To add a part: drop the SVG in the slot folder + add a line to PARTS.
 
-/** Export every part on this canvas (px). Aspect ratio drives the on-screen box. */
-export const CANVAS = { w: 360, h: 540 };
+/** Master compose canvas (px). */
+export const CANVAS = { w: 300, h: 460 };
 
-/** Flip to true once real art has replaced the placeholders — then the builder +
- *  store switch from the DiceBear bust to this full-body kit. */
+/** Flip true once the look is dialed in — then the builder/store/profile switch
+ *  from the DiceBear bust to this full-body kit. */
 export const KIT_READY = false;
 
-/** Slots in paint order (low z first). `solid` slots always render something. */
+/** Slots in paint order, each with its placement {x,y,w,h} inside CANVAS. */
 export const SLOTS = [
-  { key: 'body', label: 'Body', z: 0 },
-  { key: 'bottom', label: 'Bottoms', z: 1 },
-  { key: 'top', label: 'Tops', z: 2 },
-  { key: 'shoes', label: 'Shoes', z: 3 },
-  { key: 'hair', label: 'Hair', z: 5 },
-  { key: 'accessory', label: 'Accessories', z: 6 }
+  { key: 'bottom', label: 'Bottoms', z: 0, place: { x: 0, y: 215, w: 300, h: 239 } },
+  { key: 'body', label: 'Outfit', z: 1, place: { x: 23, y: 105, w: 256, h: 187 } },
+  { key: 'head', label: 'Hair', z: 2, place: { x: 97, y: 17, w: 136, h: 104 } }
 ];
 
-/** Parts per slot. file → static/avatar/<slot>/<file> (null = nothing drawn).
- *  Add `price` to make a part a paid cosmetic; `cosmeticId` ties it to the catalog. */
+/** Parts per slot. `price` = paid cosmetic (wired to the store when KIT_READY). */
 export const PARTS = /** @type {Record<string, any[]>} */ ({
+  head: [
+    { id: 'short-1', label: 'Short', file: 'short-1.svg' },
+    { id: 'short-2', label: 'Short 2', file: 'short-2.svg' },
+    { id: 'no-hair', label: 'Bald', file: 'no-hair.svg' },
+    { id: 'caesar', label: 'Caesar', file: 'caesar.svg' },
+    { id: 'wavy', label: 'Wavy', file: 'wavy.svg' },
+    { id: 'airy', label: 'Airy', file: 'airy.svg' },
+    { id: 'pony', label: 'Ponytail', file: 'pony.svg' },
+    { id: 'chongo', label: 'Bun', file: 'chongo.svg' },
+    { id: 'hijab-1', label: 'Hijab', file: 'hijab-1.svg' },
+    { id: 'turban-1', label: 'Turban', file: 'turban-1.svg' },
+    { id: 'curly', label: 'Curly', file: 'curly.svg', price: 300, cosmeticId: 'kit_head_curly' },
+    { id: 'afro', label: 'Afro', file: 'afro.svg', price: 400, cosmeticId: 'kit_head_afro' },
+    { id: 'long', label: 'Long', file: 'long.svg', price: 400, cosmeticId: 'kit_head_long' },
+    { id: 'rad', label: 'Rad', file: 'rad.svg', price: 400, cosmeticId: 'kit_head_rad' },
+    { id: 'top', label: 'Topknot', file: 'top.svg', price: 300, cosmeticId: 'kit_head_top' },
+    { id: 'short-beard', label: 'Beard', file: 'short-beard.svg', price: 500, cosmeticId: 'kit_head_beard' }
+  ],
   body: [
-    { id: 'default', label: 'Default', file: 'default.svg' }
-  ],
-  hair: [
-    { id: 'none', label: 'Bald', file: null },
-    { id: 'short', label: 'Short', file: 'short.svg' },
-    { id: 'long', label: 'Long', file: 'long.svg', price: 300, cosmeticId: 'kit_hair_long' }
-  ],
-  top: [
-    { id: 'tee', label: 'Tee', file: 'tee.svg' },
-    { id: 'hoodie', label: 'Hoodie', file: 'hoodie.svg', price: 400, cosmeticId: 'kit_top_hoodie' }
+    { id: 'long-sleeve', label: 'Long Sleeve', file: 'long-sleeve.svg' },
+    { id: 'turtle-neck', label: 'Turtleneck', file: 'turtle-neck.svg' },
+    { id: 'hoodie', label: 'Hoodie', file: 'hoodie.svg', price: 400, cosmeticId: 'kit_body_hoodie' },
+    { id: 'jacket', label: 'Jacket', file: 'jacket.svg', price: 600, cosmeticId: 'kit_body_jacket' },
+    { id: 'jacket-2', label: 'Bomber', file: 'jacket-2.svg', price: 600, cosmeticId: 'kit_body_jacket2' },
+    { id: 'lab-coat', label: 'Lab Coat', file: 'lab-coat.svg', price: 700, cosmeticId: 'kit_body_labcoat' },
+    { id: 'trench-coat', label: 'Trench Coat', file: 'trench-coat.svg', price: 800, cosmeticId: 'kit_body_trench' }
   ],
   bottom: [
-    { id: 'jeans', label: 'Jeans', file: 'jeans.svg' },
-    { id: 'shorts', label: 'Shorts', file: 'shorts.svg' }
-  ],
-  shoes: [
-    { id: 'sneakers', label: 'Sneakers', file: 'sneakers.svg' },
-    { id: 'boots', label: 'Boots', file: 'boots.svg', price: 500, cosmeticId: 'kit_shoes_boots' }
-  ],
-  accessory: [
-    { id: 'none', label: 'None', file: null },
-    { id: 'glasses', label: 'Glasses', file: 'glasses.svg', price: 300, cosmeticId: 'kit_acc_glasses' }
+    { id: 'skinny-jeans', label: 'Jeans', file: 'skinny-jeans.svg' },
+    { id: 'sweatpants', label: 'Sweatpants', file: 'sweatpants.svg' },
+    { id: 'shorts', label: 'Shorts', file: 'shorts.svg' },
+    { id: 'baggy-pants', label: 'Baggy Pants', file: 'baggy-pants.svg', price: 400, cosmeticId: 'kit_btm_baggy' },
+    { id: 'jogging', label: 'Joggers', file: 'jogging.svg', price: 400, cosmeticId: 'kit_btm_jogging' },
+    { id: 'skirt', label: 'Skirt', file: 'skirt.svg', price: 500, cosmeticId: 'kit_btm_skirt' }
   ]
 });
 
 /** A sensible starter look. */
-export const DEFAULT_KIT = { body: 'default', hair: 'short', top: 'tee', bottom: 'jeans', shoes: 'sneakers', accessory: 'none' };
+export const DEFAULT_KIT = { head: 'short-1', body: 'long-sleeve', bottom: 'skinny-jeans' };
 
-/** Resolve the SVG url for a slot's selected part (null if nothing). @param {string} slot @param {string} id */
+/** Resolve the SVG url for a slot's selected part. @param {string} slot @param {string} id */
 export function partFile(slot, id) {
   const part = (PARTS[slot] || []).find((p) => p.id === id);
   return part && part.file ? `/avatar/${slot}/${part.file}` : null;

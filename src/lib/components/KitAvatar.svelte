@@ -12,15 +12,14 @@
   }
 </script>
 
-<div class="kit" style="--w:{size}px; aspect-ratio:{CANVAS.w} / {CANVAS.h};">
+<svg class="kit" viewBox="0 0 {CANVAS.w} {CANVAS.h}" style="width:{size}px;" xmlns="http://www.w3.org/2000/svg">
   {#each ordered as s (s.key)}
     {#if fileFor(s.key)}
-      <img class="kit-layer" style="z-index:{s.z}" src={fileFor(s.key)} alt="" />
+      <image href={fileFor(s.key)} x={s.place.x} y={s.place.y} width={s.place.w} height={s.place.h} />
     {/if}
   {/each}
-</div>
+</svg>
 
 <style>
-  .kit { position: relative; width: var(--w); flex: none; }
-  .kit-layer { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+  .kit { display: block; height: auto; flex: none; overflow: visible; }
 </style>
