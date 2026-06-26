@@ -320,7 +320,9 @@
 
   // ---- Daily result: shareable card ----
   // Each day is its own puzzle (one per date), so show the date — not a counter.
-  $: todayLabel = browser ? new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : '';
+  // Pinned to UTC — the server schedules the Daily/Twist by UTC CURRENT_DATE, so the
+  // label must match it (otherwise it disagrees near local midnight).
+  $: todayLabel = browser ? new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }) : '';
 
   /** @param {number} br @param {boolean} won */
   function medalFor(br, won) {
