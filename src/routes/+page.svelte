@@ -2001,7 +2001,7 @@
           <!-- ⚔️ Challenges hub (list + New) — carries the pending-invite badge; 👥+ = friends/groups -->
           <div class="vs-cta-group">
             <button class="vs-main" on:click={() => { fx('tap'); openCommunity('challenges'); }}>
-              ⚔️ Challenges{#if challengeInvites.length}<span class="vs-badge">{challengeInvites.length}</span>{/if}
+              ⚔️ Challenge Friends{#if challengeInvites.length}<span class="vs-badge">{challengeInvites.length}</span>{/if}
             </button>
             <button class="vs-people" title="Friends &amp; Groups" aria-label="Friends and groups" on:click={() => { fx('tap'); openCommunity('people'); }}>
               <span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span>
@@ -2068,11 +2068,6 @@
           <div class="comm-tabs">
             <button class="comm-tab" class:active={peopleTab === 'friends'} on:click={() => { peopleTab = 'friends'; fx('tap'); }}>Friends{#if friendReqCount > 0} · {friendReqCount}{/if}</button>
             <button class="comm-tab" class:active={peopleTab === 'groups'} on:click={() => { peopleTab = 'groups'; fx('tap'); }}>Groups</button>
-          </div>
-        {:else}
-          <div class="comm-tabs">
-            <button class="comm-tab" class:active={communityTab === 'challenges'} on:click={() => { communityTab = 'challenges'; fx('tap'); }}>Challenges</button>
-            <button class="comm-tab" class:active={communityTab === 'leaderboard'} on:click={() => { communityTab = 'leaderboard'; fx('tap'); }}>Leaderboard</button>
           </div>
         {/if}
 
