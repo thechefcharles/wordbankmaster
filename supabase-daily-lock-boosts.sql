@@ -1,0 +1,5 @@
+-- 🔒 Boosts locked to puzzle start (migration `daily_lock_boosts_to_start`)
+-- daily_sessions.avail_boosts jsonb snapshots the boosts you own when a session is
+-- created; daily_use_boost only allows ids with avail>0 and decrements the allowance.
+-- get_daily_avail_boosts() exposes it so the client grays boosts bought mid-puzzle.
+-- (daily_start keeps the test1 hook + win-streak multiplier; board returns avail_boosts.)
