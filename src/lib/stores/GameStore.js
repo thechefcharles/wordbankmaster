@@ -8,7 +8,7 @@ import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNe
 import { freeplayStart, freeplayNext, freeplayResume, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
 import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
 import { makeupStart, makeupBuyLetter, makeupReveal, makeupSubmitGuess } from '$lib/stores/statsStore.js';
-import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, climbSkip, getPowerups, buyPowerup, climbUsePowerup, getClimbClue } from '$lib/stores/statsStore.js';
+import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, climbSkip, climbDoubleOrNothing, getPowerups, buyPowerup, climbUsePowerup, getClimbClue } from '$lib/stores/statsStore.js';
 import { createMatch, acceptMatch, matchStart, matchBuyLetter, matchReveal, matchSubmitGuess, matchFold as matchFoldRpc, matchCheck, matchUsePowerup, matchSabotage } from '$lib/stores/statsStore.js';
 import { track } from '$lib/analytics.js';
 
@@ -716,6 +716,19 @@ export async function climbSkipPuzzle() {
   try {
     const board = await climbSkip();
     if (board) { reconcileClimbBoard(board); maybeArmClimbIntro(); await refreshClimbClue(); }
+  } finally {
+    dailyInFlight = false;
+  }
+}
+
+/** Arm Double-or-Nothing on the current Cash Game puzzle (heat ≥ ×1.5).
+ *  Solve → payout doubles; get stuck → $0 and you forfeit your spend. You can't skip once armed. */
+export async function climbArmDoubleOrNothing() {
+  if (dailyInFlight) return;
+  dailyInFlight = true;
+  try {
+    const board = await climbDoubleOrNothing();
+    if (board) reconcileClimbBoard(board);
   } finally {
     dailyInFlight = false;
   }

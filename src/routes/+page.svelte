@@ -6,7 +6,7 @@
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
 
-  import { gameStore, fetchDailyGame, useDailyTwist, useDailyBoost, fetchFreeplayGame, fetchFreeplayResume, freeplayContinue, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbSkipPuzzle, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, useDailyTwist, useDailyBoost, fetchFreeplayGame, fetchFreeplayResume, freeplayContinue, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbSkipPuzzle, climbArmDoubleOrNothing, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
   import { getMyChallenges, getPowerups, getDailyAvailBoosts, getMyMatches, getMyGroups, getMatch, getMatchDetail, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
@@ -339,10 +339,21 @@
   $: matchBlitz = isMatch && matchInfo?.mode === 'blitz' && !matchInfo?.done;
   $: matchCombo = ((matchInfo?.combo ?? 100) / 100).toFixed(2);
   let matchExpiredFired = false;
-  // Climb live: Spent · Payout (bounty × heat) · Net.
+  // 💥 Double or Nothing (Cash Game): server exposes don_armed + don_available (heat ≥ ×1.5).
+  $: donArmed = !!climb?.don_armed;
+  $: donAvailable = !!climb?.don_available;
+  // The doubled target payout (matches server: bounty ×2, then × heat, rounded).
+  $: donTarget = (isClimb && climb) ? Math.round((climb.bounty ?? 0) * 2 * (climb.heat ?? 100) / 100) : 0;
+  // Climb live: Spent · Payout (bounty × heat, doubled while armed) · Net.
   $: climbLive = (isClimb && climb && climb.state === 'active')
-    ? (() => { const pay = Math.round((climb.bounty ?? 0) * (climb.heat ?? 100) / 100); const sp = climb.spent ?? 0; return { spent: sp, payout: pay, net: pay - sp }; })()
+    ? (() => { const m = climb.don_armed ? 2 : 1; const pay = Math.round((climb.bounty ?? 0) * m * (climb.heat ?? 100) / 100); const sp = climb.spent ?? 0; return { spent: sp, payout: pay, net: pay - sp }; })()
     : null;
+  // Win banner needs to know the solve was a Double-or-Nothing (server clears don_armed on solve).
+  let donArmedThisPuzzle = false;
+  $: if (isClimb && climb) {
+    if (climb.don_armed) donArmedThisPuzzle = true;
+    else if (climb.state === 'stuck' || (climb.state === 'active' && (climb.spent ?? 0) === 0)) donArmedThisPuzzle = false;
+  }
   // Challenge live: Spent of your wager budget — lowest spend wins (standard only).
   $: matchLive = (isMatch && matchInfo && !matchInfo.done && matchInfo.mode !== 'blitz')
     ? { spent: matchInfo.spent ?? 0, budget: matchInfo.budget ?? 0 } : null;
@@ -576,6 +587,18 @@
   function cancelGiveUp() { fx('tap'); showGiveUp = false; }
   function doGiveUp() { showGiveUp = false; doFold(false); }
 
+  // 💥 Double or Nothing confirm layer (Cash Game). Solve → ×2; get stuck → forfeit.
+  let showDon = false;
+  let donBusy = false;
+  function openDon() { fx('tap'); showDon = true; }
+  function cancelDon() { fx('tap'); showDon = false; }
+  async function armDon() {
+    if (donBusy) return;
+    donBusy = true;
+    try { fx('tap'); await climbArmDoubleOrNothing(); }
+    finally { donBusy = false; showDon = false; }
+  }
+
   // Free Play: cash out credits → real Cash right from the board (40:1, $50/day cap).
   let fpCashBusy = false;
   // Tapping the credits number cashes out when you're above the $1 floor.
@@ -624,6 +647,9 @@
   $: climbHeat = ((climb?.heat ?? 100) / 100).toFixed(1);
   // Heat IS the Cash Game win streak: each solve +0.1× (cap ×2.0), reset to ×1.0 when stuck.
   $: climbStreak = Math.max(0, Math.round(((climb?.heat ?? 100) - 100) / 10));
+  // 🔥 The run: solves + cumulative profit since heat last reset (run_profit can be negative early).
+  $: climbRun = (isClimb && climb) ? { solves: climb.run_solves ?? 0, profit: climb.run_profit ?? 0, best: climb.best_run_profit ?? 0 } : null;
+  $: climbRunIsBest = climbRun != null && climbRun.profit > 0 && climbRun.profit >= climbRun.best;
   // Owned, not-yet-used climb buffs — drives the vault badge by the Solve button.
   $: usableClimbPups = isClimb ? selfPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0 && !((climb?.equipped ?? []).includes(i.id))).length : 0;
   /** @type {'heat'|'earn'|null} ℹ️ Cash Game explainers (mirror of dailyInfo). */
@@ -1408,8 +1434,8 @@
 {#if loggedIn && hasInitialized && !showMainMenu && (foldMode || isFreeplay) && gameActive}
   <button class="giveup-btn" title="Give up" aria-label="Give up" on:click={confirmFold}>↪</button>
 {/if}
-<!-- ⏭️ Skip (top-right) — Cash Game only; resets heat -->
-{#if loggedIn && hasInitialized && !showMainMenu && isClimb && gameActive && (climb?.state === 'active' || climb?.state === 'stuck')}
+<!-- ⏭️ Skip (top-right) — Cash Game only; resets heat. Hidden once Double-or-Nothing is armed (committed). -->
+{#if loggedIn && hasInitialized && !showMainMenu && isClimb && gameActive && !donArmed && (climb?.state === 'active' || climb?.state === 'stuck')}
   <button class="giveup-btn" title="Skip this puzzle" aria-label="Skip this puzzle" on:click={confirmFold}>↪</button>
 {/if}
 
@@ -1462,6 +1488,24 @@
       <div class="gu-actions">
         <button class="gu-cancel" on:click={cancelGiveUp}>Keep playing</button>
         <button class="gu-confirm" on:click={doGiveUp}>{isClimb ? '⏭️ Skip' : '🏳️ Give up'}</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- 💥 Double or Nothing confirm layer (Cash Game) -->
+{#if showDon}
+  <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Double or Nothing">
+    <button type="button" class="modal-backdrop" aria-label="Cancel" on:click={cancelDon}></button>
+    <div class="modal-content giveup-modal don-modal">
+      <h2 class="gu-title">💥 Double or Nothing?</h2>
+      <p class="gu-text">
+        Solve this puzzle and your payout <b>doubles</b> to <b class="don-win">${donTarget.toLocaleString()}</b>.
+        But you're all in — you <b>can't skip</b>, and if you get stuck you walk away with <b class="don-loss">$0</b>{(climb?.spent ?? 0) > 0 ? ` and forfeit the $${(climb?.spent ?? 0).toLocaleString()} you've spent` : ''}.
+      </p>
+      <div class="gu-actions">
+        <button class="gu-cancel" on:click={cancelDon}>Not now</button>
+        <button class="gu-confirm don-confirm" on:click={armDon} disabled={donBusy}>💥 Double it</button>
       </div>
     </div>
   </div>
@@ -2248,6 +2292,11 @@
           {/if}
           {#each spendFloaters as f (f.id)}<span class="spend-float">{f.text}</span>{/each}
         </div>
+        {#if isClimb && climbRun && climbRun.solves >= 2}
+          <p class="climb-run-line" class:best={climbRunIsBest}>
+            🔥 {climbRun.solves}-solve run · <b class="run-profit" class:neg={climbRun.profit < 0}>{climbRun.profit >= 0 ? '+' : '−'}${Math.abs(climbRun.profit).toLocaleString()}</b> this run{#if climbRunIsBest} · 🏆 personal best{/if}
+          </p>
+        {/if}
       {:else if isFreeplay}
         <!-- Free Play: credits are up top; here just the cash-out + your Cash + reward -->
         <div class="credits-panel">
@@ -2265,6 +2314,21 @@
         {/if}
       {/if}
     </section>
+
+    <!-- 💥 Double or Nothing — Cash Game only, when heat ≥ ×1.5. Arm to double the payout. -->
+    {#if isClimb && climb && $gameStore.gameState !== 'won'}
+      {#if donAvailable}
+        <button class="don-cta" on:click={openDon}>
+          <span class="don-cta-title">💥 Double or Nothing</span>
+          <span class="don-cta-sub">Solve for <b>${donTarget.toLocaleString()}</b> — but get stuck and you forfeit it all</span>
+        </button>
+      {:else if donArmed}
+        <div class="don-armed" role="status">
+          <span class="don-armed-title">💥 Doubled — all in</span>
+          <span class="don-armed-sub">Solve for <b>${donTarget.toLocaleString()}</b> · no skip, no backing out</span>
+        </div>
+      {/if}
+    {/if}
 
     <!-- 🎮 Solve / Cancel Buttons (Cash Game gets a vault to the left for power-ups) -->
     <section class="buttons-section">
@@ -2340,10 +2404,11 @@
             {@const payout = climb?.last_gain ?? 0}
             {@const cspent = climb?.spent ?? 0}
             {@const earnedMult = (climb?.bounty ?? 0) > 0 ? (payout / climb.bounty) : ((climb?.heat ?? 100) / 100)}
-            <h2 class="win-h">🎉 Solved!</h2>
+            {@const heatMult = donArmedThisPuzzle ? earnedMult / 2 : earnedMult}
+            <h2 class="win-h">{donArmedThisPuzzle ? '💥 Doubled!' : '🎉 Solved!'}</h2>
             <p class="result-sub">{$gameStore.currentPhrase}</p>
             <div class="win-math">
-              <div class="wm-row"><span>Bounty <small>(🔥 ×{earnedMult.toFixed(1)} heat)</small></span><b>${payout.toLocaleString()}</b></div>
+              <div class="wm-row"><span>Bounty <small>(🔥 ×{heatMult.toFixed(1)} heat{#if donArmedThisPuzzle} · 💥 ×2{/if})</small></span><b>${payout.toLocaleString()}</b></div>
               <div class="wm-row"><span>− Spent on letters</span><b class="neg">−${cspent.toLocaleString()}</b></div>
               <div class="wm-row total"><span>Profit</span><b class="profit">{$resultProfit >= 0 ? '+' : '−'}${Math.abs(Math.round($resultProfit)).toLocaleString()}</b></div>
             </div>
@@ -3146,6 +3211,41 @@
   .gu-cancel { border: 1px solid var(--border-strong, var(--border)); background: var(--surface-2, rgba(255,255,255,0.05)); color: var(--text); }
   .gu-confirm { border: none; background: rgba(248,113,113,0.18); border: 1px solid rgba(248,113,113,0.5); color: #fca5a5; }
   .gu-confirm:hover { background: rgba(248,113,113,0.28); }
+  /* 💥 Double or Nothing — high-stakes gold/amber accent (distinct from the red Skip/Give-up) */
+  .don-modal .don-win { color: #fbbf24; }
+  .don-modal .don-loss { color: #fca5a5; }
+  .don-confirm { background: rgba(251,191,36,0.16) !important; border: 1px solid rgba(251,191,36,0.6) !important; color: #fcd34d !important; }
+  .don-confirm:hover { background: rgba(251,191,36,0.28) !important; }
+  .don-confirm:disabled { opacity: 0.55; cursor: default; }
+  /* CTA shown in the Cash Game when heat ≥ ×1.5 */
+  .don-cta {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    width: 100%; margin: 0 auto 0.5rem; padding: 0.6rem 0.9rem; border-radius: 14px; cursor: pointer;
+    background: linear-gradient(180deg, rgba(251,191,36,0.16), rgba(245,158,11,0.10));
+    border: 1px solid rgba(251,191,36,0.55); color: #fcd34d;
+    box-shadow: 0 0 18px rgba(251,191,36,0.18); animation: donPulse 1.8s ease-in-out infinite;
+  }
+  .don-cta:active { transform: scale(0.98); }
+  .don-cta-title { font-family: var(--font-display); font-weight: 900; font-size: 1rem; letter-spacing: 0.02em; }
+  .don-cta-sub { font-size: 0.74rem; color: var(--text-muted); }
+  .don-cta-sub b, .don-armed-sub b { color: #fbbf24; }
+  /* 🔥 Cash Game run line — momentum under the money hero */
+  .climb-run-line { margin: 0.35rem auto 0; text-align: center; font-size: 0.8rem; color: var(--text-muted); }
+  .climb-run-line .run-profit { color: #4ade80; }
+  .climb-run-line .run-profit.neg { color: #fca5a5; }
+  .climb-run-line.best { color: #fcd34d; }
+  @keyframes donPulse {
+    0%, 100% { box-shadow: 0 0 14px rgba(251,191,36,0.16); }
+    50% { box-shadow: 0 0 26px rgba(251,191,36,0.36); }
+  }
+  /* Armed (committed) indicator */
+  .don-armed {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    width: 100%; margin: 0 auto 0.5rem; padding: 0.55rem 0.9rem; border-radius: 14px;
+    background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.7);
+  }
+  .don-armed-title { font-family: var(--font-display); font-weight: 900; font-size: 0.95rem; color: #fcd34d; }
+  .don-armed-sub { font-size: 0.74rem; color: var(--text-muted); }
   .chat-modal { max-width: 440px; }
   .chat-h { font-family: var(--font-display); font-size: 1.15rem; margin: 0 0 0.8rem; }
   .chat-msgs {

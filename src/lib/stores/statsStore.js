@@ -507,10 +507,24 @@ export async function climbSkip() {
   if (error) { console.error('❌ climb_skip:', error); return null; }
   return data;
 }
+/** Arm Double-or-Nothing on the current Cash Game puzzle (heat ≥ ×1.5). @returns {Promise<any>} */
+export async function climbDoubleOrNothing() {
+  const { data, error } = await supabase.rpc('climb_double_or_nothing');
+  if (error) { console.error('❌ climb_double_or_nothing:', error); return null; }
+  return data;
+}
 /** @param {string} scope @param {string|null} [group] @returns {Promise<any[]>} */
 export async function getClimbLeaderboard(scope = 'friends', group = null) {
   const { data, error } = await supabase.rpc('get_climb_leaderboard', { p_scope: scope, p_group: group });
   if (error) { console.error('❌ get_climb_leaderboard:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
+
+/** Cash Game run leaderboard — ranks by best run profit (skill, not longevity).
+ *  @param {string} scope @param {string|null} [group] @returns {Promise<any[]>} */
+export async function getClimbRunLeaderboard(scope = 'friends', group = null) {
+  const { data, error } = await supabase.rpc('get_climb_run_leaderboard', { p_scope: scope, p_group: group });
+  if (error) { console.error('❌ get_climb_run_leaderboard:', error); return []; }
   return Array.isArray(data) ? data : [];
 }
 
