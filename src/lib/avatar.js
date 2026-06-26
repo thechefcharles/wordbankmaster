@@ -105,3 +105,19 @@ export function avataaarsOptions(config) {
 export function renderAvatarSvg(config, extra = {}) {
   return createAvatar(avataaars, { ...avataaarsOptions(config), ...extra }).toString();
 }
+
+/** PREMIUM FX: render the avatar with an animated holographic/iridescent shirt.
+ *  Works by rendering the clothing in a sentinel colour, then swapping that fill
+ *  for an animated multi-stop gradient. @param {any} config */
+export function renderHoloAvatar(config) {
+  const SENTINEL = '00fe01'; // an unlikely colour we can find + replace
+  let svg = renderAvatarSvg({ ...config, clothesColor: SENTINEL });
+  const defs =
+    '<defs><linearGradient id="wbHolo" gradientUnits="userSpaceOnUse" x1="40" y1="195" x2="240" y2="285" spreadMethod="reflect">' +
+    '<stop offset="0" stop-color="#ff5cf0"/><stop offset="0.3" stop-color="#5cd0ff"/>' +
+    '<stop offset="0.6" stop-color="#7cff6b"/><stop offset="1" stop-color="#ffe45c"/>' +
+    '<animateTransform attributeName="gradientTransform" type="translate" values="0 0;130 65;0 0" dur="3s" repeatCount="indefinite"/>' +
+    '</linearGradient></defs>';
+  svg = svg.replace('>', '>' + defs);
+  return svg.replace(new RegExp('#' + SENTINEL, 'gi'), 'url(#wbHolo)');
+}
