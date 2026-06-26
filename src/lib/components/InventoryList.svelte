@@ -55,7 +55,7 @@
   {:else if totalCount === 0}
     <p class="inv-msg">Nothing yet. Skip the Daily Twist to bank Bounty Boosts, or buy power-ups &amp; extras in the Store.</p>
   {:else}
-    <p class="inv-total">{totalCount} item{totalCount === 1 ? '' : 's'} in your bag</p>
+    <p class="inv-total">{totalCount} item{totalCount === 1 ? '' : 's'} in your vault</p>
     {#each GROUPS as g}
       {@const list = itemsFor(g.key)}
       {#if list.length}
