@@ -1,0 +1,38 @@
+-- 🎯 Puzzle pools — Phase 2: per-user no-repeat (migrations `user_seen_phase2_core`
+--    + `pickers_phase2_unseen_first`). Builds on Phase 1 (supabase-puzzle-pool-split.sql).
+--
+-- New table public.user_seen_puzzles(user_id, puzzle_id, last_seen, times_seen) records
+-- every CASUAL puzzle a user has been served. RLS on, no policies → only the SECURITY
+-- DEFINER RPCs below touch it. Backfilled once from game_results (casual-pool plays) so
+-- prior history is respected immediately.
+--
+-- Helpers:
+--   _mark_seen(uid, pid)            upsert one (bumps last_seen + times_seen)
+--   _mark_seen_many(uid, pid[])     upsert a pack (challenge packs)
+--   _pick_casual(uid, cat?, excl?, min_len?)        -> uuid
+--       casual pool, unseen-by-user FIRST, then least-recently-seen, random tiebreak.
+--       Returns NULL only if the (filtered) casual pool is empty, so callers always
+--       get a puzzle — once everything is seen it cycles oldest-first (best effort).
+--   _pick_casual_pack(uid[], cats[], n, min_len?)   -> setof uuid
+--       unseen by the WHOLE participant set (intersection) first, else
+--       least-COLLECTIVELY-seen. Used for challenge/match packs.
+--
+-- Pickers now route through these + record seen at the play chokepoint:
+--   freeplay_start / freeplay_next   _pick_casual(cat) → _mark_seen
+--   climb_start / climb_next         _pick_casual()    → _mark_seen   (Cash Game: no
+--                                    more restart-repeats; position is just a rung counter)
+--   create_challenge                 _pick_casual_pack([creator,opp],[cat],1); mark creator
+--   accept_challenge                 mark opponent seen on join
+--   create_match                     _pick_casual_pack([all participants], cats, size, 8);
+--                                    mark host seen for the whole pack
+--   accept_match(p_id,p_reduced)     mark joiner seen for the whole pack
+--
+-- Also DROPPED the stale duplicate create_match overload (…p_mode,p_wager… arg order, no
+-- pool filter) — it had the same PostgREST param-name set as the live one (ambiguous) and
+-- would have leaked daily-pool puzzles into matches.
+--
+-- Known limits (acceptable): challenges share puzzles by design, so two simultaneous
+-- challenges among the same set could pick the same unseen puzzle before either plays;
+-- and endless modes on a finite pool eventually cycle (whales exhaust 408 casual → grow
+-- the library). The 1-arg legacy accept_match(uuid) is unused by the client and does not
+-- record seen — harmless, left in place.
