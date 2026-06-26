@@ -397,9 +397,18 @@
     wager_win: 'Won a wager', wager_stake: 'Wager staked', wager_refund: 'Wager refunded'
   }))[reason] || reason;
 
-  // 🎒 My Bag modal — owned inventory + use power-ups in-game + a Store link.
+  // 🔐 My Vault — owned inventory + use power-ups in-game + a Store link.
   let showBag = false;
+  let vaultVideo = false;
   function openBag() { fx('tap'); showBag = true; }
+  // From the main menu: require the device PIN (if set), then play the safe-opening
+  // animation, then reveal the contents.
+  async function openVaultFromMenu() {
+    fx('tap');
+    try { await requirePin('Open your Vault'); } catch { return; }
+    vaultVideo = true;
+  }
+  function onVaultVideoEnd() { if (vaultVideo) { vaultVideo = false; showBag = true; } }
   /** @param {any} item */
   function useFromBag(item) {
     if (item?.id === 'twist') useTwist();
@@ -1463,7 +1472,16 @@
   </div>
 {/if}
 
-<!-- 🎒 My Bag: use power-ups in-game + view inventory + Store link -->
+<!-- 🔐 Vault-opening animation (from the main menu, after the PIN) -->
+{#if vaultVideo}
+  <div class="vault-video" role="button" tabindex="0" on:click={onVaultVideoEnd}
+    on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') onVaultVideoEnd(); }}>
+    <video src="/vault-open.mp4" autoplay muted playsinline on:ended={onVaultVideoEnd} on:error={onVaultVideoEnd}></video>
+    <span class="vault-skip">tap to skip</span>
+  </div>
+{/if}
+
+<!-- 🔐 My Vault: use power-ups in-game + view inventory + Store link -->
 {#if showBag}
   <div class="modal-overlay info-overlay" role="button" tabindex="0" aria-label="Close"
     on:click={() => showBag = false} on:keydown={(e) => { if (e.key === 'Escape') showBag = false; }}>
@@ -1568,7 +1586,7 @@
     <div class="main-menu fade-up">
       <div class="menu-hero">
         <div class="hero-top">
-          <button class="streak-chip bag-chip" on:click={openBag} title="My Vault" aria-label="My Vault">
+          <button class="streak-chip bag-chip" on:click={openVaultFromMenu} title="My Vault" aria-label="My Vault">
             <img src="/vault.png" alt="🔐" class="vault-ic-sm" />
           </button>
           <button class="bank-chip" on:click={() => goto('/bank')} title="Your Cash">
@@ -3462,6 +3480,12 @@
   .bag-inv { margin-bottom: 14px; }
   .bag-store { width: 100%; padding: 11px; border-radius: 12px; border: none; cursor: pointer;
     font-family: var(--font-display); font-weight: 800; color: #3a2a00; background: linear-gradient(135deg, #fde047, #f59e0b); }
+  /* 🔐 vault-opening animation overlay */
+  .vault-video { position: fixed; inset: 0; z-index: 6500; display: grid; place-items: center;
+    background: rgba(0,0,0,0.94); cursor: pointer; }
+  .vault-video video { width: 100%; max-width: 460px; height: auto; border-radius: 16px; box-shadow: 0 0 60px rgba(251,191,36,0.25); }
+  .vault-skip { position: absolute; bottom: 9%; left: 50%; transform: translateX(-50%); color: var(--text-faint, #8893a3);
+    font-size: 0.8rem; letter-spacing: 0.05em; text-transform: uppercase; pointer-events: none; }
   /* in-game bank modal */
   .bm-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); margin: 0 0 2px; }
   .bm-hist-h { font-family: var(--font-display); font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
