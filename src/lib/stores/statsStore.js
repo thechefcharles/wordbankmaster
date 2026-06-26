@@ -251,6 +251,18 @@ export async function buyCosmetic(id) {
   if (error || !data) { if (error) console.error('❌ buy_cosmetic:', error); return { ok: false }; }
   return data;
 }
+/** My avatar config + owned avatar cosmetic ids. @returns {Promise<{config:any, owned:string[]}>} */
+export async function getMyAvatar() {
+  const { data, error } = await supabase.rpc('get_my_avatar');
+  if (error) { console.error('❌ get_my_avatar:', error); return { config: null, owned: [] }; }
+  return { config: data?.config ?? null, owned: data?.owned ?? [] };
+}
+/** Save my equipped avatar look. @param {any} config @returns {Promise<{ok:boolean, reason?:string}>} */
+export async function setAvatar(config) {
+  const { data, error } = await supabase.rpc('set_avatar', { p_config: config });
+  if (error || !data) { if (error) console.error('❌ set_avatar:', error); return { ok: false }; }
+  return data;
+}
 /** Equip an owned cosmetic. @param {string} id @returns {Promise<{ok:boolean, reason?:string}>} */
 export async function equipCosmetic(id) {
   const { data, error } = await supabase.rpc('equip_cosmetic', { p_id: id });

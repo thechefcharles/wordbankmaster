@@ -2,7 +2,8 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { getProfileDetail } from '$lib/stores/statsStore.js';
+  import { getProfileDetail, getMyAvatar } from '$lib/stores/statsStore.js';
+  import Avatar from '$lib/components/Avatar.svelte';
   import HistoryList from '$lib/components/HistoryList.svelte';
   import BadgesPanel from '$lib/components/BadgesPanel.svelte';
   import NotificationsPanel from '$lib/components/NotificationsPanel.svelte';
@@ -14,11 +15,13 @@
   /** @type {any|null} */
   let d = $state(null);
   let loading = $state(true);
+  let avatar = $state(null);
 
   onMount(async () => {
     track('profile_view');
     const t = $page.url.searchParams.get('tab');
     if (t === 'history' || t === 'badges' || t === 'alerts') tab = /** @type {any} */ (t);
+    getMyAvatar().then((a) => { avatar = a.config; });
     try { d = await getProfileDetail(); } finally { loading = false; }
   });
 
@@ -69,6 +72,10 @@
     </div>
 
     {#if tab === 'stats'}
+      <button class="prof-avatar" onclick={() => goto('/avatar')}>
+        <Avatar config={avatar} size={88} />
+        <span class="prof-avatar-edit">🎨 Edit Avatar</span>
+      </button>
       <div class="sec-title">📊 Overall</div>
       <div class="grid">
         {@render chip((d.overall.puzzles_solved ?? 0).toLocaleString(), 'Puzzles solved')}
@@ -179,6 +186,8 @@
   .sec-title { font-family: var(--font-display); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em;
     text-transform: uppercase; color: var(--gold); text-align: left; margin: 18px 2px 8px; }
   .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .prof-avatar { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0 auto 14px; background: none; border: none; cursor: pointer; }
+  .prof-avatar-edit { font-size: 0.82rem; font-weight: 700; color: var(--brand-2); }
   .stat { display: flex; flex-direction: column; gap: 3px; padding: 0.85rem 0.4rem; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; text-align: center; }
   .stat-link { cursor: pointer; color: var(--text); font: inherit; }
   .stat-link:hover { border-color: var(--brand-2); }

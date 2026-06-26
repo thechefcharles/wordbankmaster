@@ -10,7 +10,8 @@
   import { getMyChallenges, getPowerups, getDailyAvailBoosts, getMyMatches, getMyGroups, getMatch, getMatchDetail, getMatchDebuffs, getMatchOpponents, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getOpenGames, expireStaleDailies, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout, getDailyModifier, deleteMyAccount } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getOpenGames, expireStaleDailies, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout, getDailyModifier, deleteMyAccount, getMyAvatar } from '$lib/stores/statsStore.js';
+  import Avatar from '$lib/components/Avatar.svelte';
   import { unreadCount, refreshNotifications, inboxRequest, inboxTarget, markChallengeNotifRead, markFriendNotifRead } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
@@ -1390,6 +1391,9 @@
   let accountStreak = 0;
   let accountFreezes = 0;
   let maUsername = '';
+  /** @type {any} */ let myAvatar = null;
+  let _avatarLoaded = false;
+  $: if (browser && loggedIn && hasInitialized && !_avatarLoaded) { _avatarLoaded = true; getMyAvatar().then((a) => { myAvatar = a.config; }); }
   let maInput = '';
   let maEditing = false;
   let maMsg = '';
@@ -1948,8 +1952,8 @@
           <button class="bank-chip" on:click={() => goto('/bank')} title="Your Cash">
             <span class="bc-coin">💰</span>{netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}
           </button>
-          <button class="account-ic" on:click={() => goto($unreadCount > 0 ? '/profile?tab=alerts' : '/profile')} title="Profile">
-            👤{#if $unreadCount > 0}<span class="account-count" title="{$unreadCount} new">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}
+          <button class="account-ic" class:has-av={myAvatar} on:click={() => goto($unreadCount > 0 ? '/profile?tab=alerts' : '/profile')} title="Profile">
+            {#if myAvatar}<Avatar config={myAvatar} size={36} />{:else}👤{/if}{#if $unreadCount > 0}<span class="account-count" title="{$unreadCount} new">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}
           </button>
         </div>
         <video class="menu-mark" src="/coin.mp4" poster="/coin-poster.jpg" autoplay loop muted playsinline disablepictureinpicture></video>
@@ -2251,6 +2255,11 @@
           {#if $user?.email}
             <p class="account-email">{$user.email}</p>
           {/if}
+
+          <button class="ma-avatar-btn" on:click={() => { showMyAccount = false; goto('/avatar'); }}>
+            <Avatar config={myAvatar} size={84} />
+            <span class="ma-avatar-edit">🎨 Edit Avatar</span>
+          </button>
 
           <div class="ma-username">
             {#if maUsername && !maEditing}
@@ -3086,6 +3095,12 @@
     cursor: pointer; font-size: 1.7rem; transition: transform 0.15s, border-color 0.2s;
   }
   .account-ic:hover { transform: translateY(-1px); border-color: rgba(251,191,36,0.5); }
+  .account-ic.has-av { overflow: hidden; padding: 0; }
+  .account-ic.has-av :global(.wb-avatar) { width: 100%; height: 100%; border: none; }
+  /* My Account → avatar / edit-avatar entry */
+  .ma-avatar-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 6px auto 10px; background: none; border: none; cursor: pointer; }
+  .ma-avatar-btn :global(.wb-avatar) { box-shadow: 0 6px 18px rgba(0,0,0,0.4); }
+  .ma-avatar-edit { font-size: 0.82rem; font-weight: 700; color: var(--brand-2); }
   .account-ic:active { transform: scale(0.94); }
   /* unread notification count, off the top-right of the avatar */
   .account-count {
