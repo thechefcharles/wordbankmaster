@@ -64,9 +64,12 @@
   /** When showing menu: has user already played daily today? */
   let menuDailyPlayed = false;
   /** Today's daily result for the menu indicator (won/lost + score). */
-  let dailyStatus = /** @type {{ has_played_today: boolean, last_daily_won: boolean|null, daily_bankroll: number, arcade_bankroll: number, current_streak: number, streak_freezes: number, today_score: number } | null} */ (null);
-  $: dailyDone = menuDailyPlayed && !(savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost');
-  $: dailyInProgress = savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost';
+  let dailyStatus = /** @type {{ has_played_today: boolean, last_daily_won: boolean|null, daily_bankroll: number, arcade_bankroll: number, current_streak: number, streak_freezes: number, today_score: number, win_streak: number, daily_in_progress?: boolean } | null} */ (null);
+  // "In progress" must come from SERVER truth (today's session still active), not the
+  // single shared localStorage save slot — that slot gets overwritten when you play
+  // another mode, which used to make a live Daily show as "complete + lost".
+  $: dailyInProgress = (dailyStatus?.daily_in_progress ?? false) || (savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost');
+  $: dailyDone = menuDailyPlayed && !dailyInProgress;
   $: climbInProgress = savedGameInfo?.gameMode === 'climb' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost';
   /** Net Worth for the menu chip. */
   let netWorth = /** @type {number|null} */ (null);
@@ -959,7 +962,8 @@
       dailyStatus = await getDailyStatus(currentUser.id);
       menuDailyPlayed = dailyStatus.has_played_today;
     }
-    const inProgress = savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost';
+    // Resume an active Daily based on SERVER truth, not the clobberable local save slot.
+    const inProgress = (dailyStatus?.daily_in_progress ?? false) || (savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost');
     if (dailyStatus?.has_played_today && !inProgress) {
       showStreakMessage = true;  // already solved today → come-back summary
       return;

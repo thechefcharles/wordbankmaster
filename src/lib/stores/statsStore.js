@@ -44,7 +44,7 @@ export async function getDailyStatus(userId) {
   });
   if (error) {
     console.error('❌ Error fetching daily status:', error);
-    return { has_played_today: false, last_daily_won: null, daily_bankroll: 0, arcade_bankroll: 1000, current_streak: 0, streak_freezes: 0, today_score: 0, win_streak: 0 };
+    return { has_played_today: false, last_daily_won: null, daily_bankroll: 0, arcade_bankroll: 1000, current_streak: 0, streak_freezes: 0, today_score: 0, win_streak: 0, daily_in_progress: false };
   }
   const row = Array.isArray(data) ? data[0] : data;
   return {
@@ -55,7 +55,8 @@ export async function getDailyStatus(userId) {
     current_streak: row?.current_streak ?? 0, // PLAY streak (attendance / showing up)
     streak_freezes: row?.streak_freezes ?? 0,
     today_score: row?.today_score ?? 0,
-    win_streak: row?.win_streak ?? 0 // WIN streak (consecutive solves)
+    win_streak: row?.win_streak ?? 0, // WIN streak (consecutive solves)
+    daily_in_progress: !!row?.daily_in_progress // SERVER truth: today's session still active → resume, don't mark lost
   };
 }
 
