@@ -1,5 +1,6 @@
 <script>
   import { goto } from '$app/navigation';
+  import PageNav from "$lib/components/PageNav.svelte";
   import { renderAvatarSvg, renderHoloAvatar } from '$lib/avatar.js';
 
   const base = { skinColor: 'edb98a', top: 'shortFlat', hairColor: '4a312c', eyes: 'happy',
@@ -14,7 +15,7 @@
 
 <main class="fxp">
   <header class="fxp-head">
-    <button class="back-btn" on:click={() => goto('/avatar')}>← Avatar</button>
+    <PageNav />
     <span class="fxp-tag">Premium FX demo</span>
   </header>
 

@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import PageNav from "$lib/components/PageNav.svelte";
   import LeaderboardPanel from '$lib/components/LeaderboardPanel.svelte';
   import { track } from '$lib/analytics.js';
   onMount(() => track('leaderboard_view'));
@@ -9,7 +10,7 @@
 <svelte:head><title>WordBank — Leaderboard</title></svelte:head>
 
 <main class="lb-page">
-  <button class="back-btn" onclick={() => goto('/')}>← Menu</button>
+  <PageNav />
   <h1>🏆 Leaderboard</h1>
   <LeaderboardPanel />
 </main>

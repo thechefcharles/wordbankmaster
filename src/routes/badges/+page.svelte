@@ -1,12 +1,13 @@
 <script>
   import { goto } from '$app/navigation';
+  import PageNav from "$lib/components/PageNav.svelte";
   import BadgesPanel from '$lib/components/BadgesPanel.svelte';
 </script>
 
 <svelte:head><title>WordBank — Badges</title></svelte:head>
 
 <main class="badges-page">
-  <button class="back-btn" onclick={() => goto('/profile')}>← Profile</button>
+  <PageNav />
   <h1>🏅 Badges</h1>
   <BadgesPanel />
 </main>

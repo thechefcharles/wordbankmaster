@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import PageNav from "$lib/components/PageNav.svelte";
   import { getStreakOverview } from '$lib/stores/statsStore.js';
   import { enterMakeup } from '$lib/stores/GameStore.js';
   import { track } from '$lib/analytics.js';
@@ -78,7 +79,7 @@
 <svelte:head><title>WordBank — Streak</title></svelte:head>
 
 <main class="streak-page">
-  <button class="back-btn" on:click={() => goto('/')}>← Menu</button>
+  <PageNav />
 
   {#if loading}
     <p class="loading">Loading…</p>

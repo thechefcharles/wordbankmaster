@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import PageNav from "$lib/components/PageNav.svelte";
   import { page } from '$app/stores';
   import { getPublicProfile, addFriend } from '$lib/stores/statsStore.js';
   import Avatar from '$lib/components/Avatar.svelte';
@@ -42,7 +43,7 @@
 <svelte:head><title>WordBank — @{username}</title></svelte:head>
 
 <main class="u-page">
-  <button class="back-btn" onclick={() => history.length > 1 ? history.back() : goto('/leaderboard')}>← Back</button>
+  <PageNav />
 
   {#if loading}
     <p class="msg">Loading…</p>

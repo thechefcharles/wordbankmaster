@@ -88,7 +88,10 @@
 
 <main class="av-page">
   <header class="av-head">
-    <button class="back-btn" on:click={() => goto('/')}>← Menu</button>
+    <div class="av-nav">
+      <button class="back-btn" on:click={() => (history.length > 1 ? history.back() : goto('/'))}>← Back</button>
+      <button class="back-btn home" on:click={() => goto('/')} title="Main menu" aria-label="Main menu">🏠</button>
+    </div>
     <div class="av-head-right">
       <button class="av-rand" on:click={randomize} title="Surprise me">🎲</button>
       <span class="av-cash">💰 {fmt(bank)}</span>
@@ -145,7 +148,9 @@
 <style>
   .av-page { max-width: 480px; margin: 0 auto; padding: 1rem 1rem 6rem; min-height: 100vh; }
   .av-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+  .av-nav { display: flex; gap: 8px; }
   .back-btn { padding: 0.5rem 1rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+  .back-btn.home { padding: 0.5rem 0.7rem; font-size: 1.05rem; }
   .av-head-right { display: flex; align-items: center; gap: 10px; }
   .av-rand { width: 38px; height: 38px; border-radius: 50%; cursor: pointer; font-size: 1.1rem; line-height: 1;
     background: var(--surface); border: 1px solid var(--border); }

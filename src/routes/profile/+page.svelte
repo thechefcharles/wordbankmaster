@@ -60,9 +60,12 @@
 
 <main class="you-page">
   <div class="topbar">
-    <button class="back-btn" onclick={back}>← {tab === 'overview' ? 'Menu' : 'Back'}</button>
+    <button class="back-btn" onclick={back}>← Back</button>
     <h1 class="page-title">Profile</h1>
-    <button class="gear" onclick={() => goto('/?account=1')} title="Settings" aria-label="Settings">⚙️</button>
+    <div class="tb-right">
+      <button class="gear" onclick={() => goto('/')} title="Main menu" aria-label="Main menu">🏠</button>
+      <button class="gear" onclick={() => goto('/?account=1')} title="Settings" aria-label="Settings">⚙️</button>
+    </div>
   </div>
 
   {#if loading}
@@ -199,6 +202,7 @@
   .you-page { max-width: 520px; margin: 0 auto; padding: 16px 14px 60px; }
   .topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .back-btn { background: none; border: none; color: var(--text-muted); font-size: 0.92rem; cursor: pointer; padding: 6px 0; }
+  .tb-right { display: flex; gap: 6px; }
   .page-title { font-family: var(--font-display); font-size: 1.2rem; margin: 0; }
   .gear { background: none; border: none; font-size: 1.1rem; cursor: pointer; padding: 6px; opacity: 0.85; }
   .gear:hover { opacity: 1; }

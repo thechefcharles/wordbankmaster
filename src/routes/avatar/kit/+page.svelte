@@ -1,5 +1,6 @@
 <script>
   import { goto } from '$app/navigation';
+  import PageNav from "$lib/components/PageNav.svelte";
   import KitAvatar from '$lib/components/KitAvatar.svelte';
   import { SLOTS, PARTS, DEFAULT_KIT, KIT_READY } from '$lib/avatarKit.js';
 
@@ -13,7 +14,7 @@
 
 <main class="kp">
   <header class="kp-head">
-    <button class="back-btn" on:click={() => goto('/avatar')}>← Avatar</button>
+    <PageNav />
     <span class="kp-tag">{KIT_READY ? 'Kit: LIVE' : 'Kit: scaffold preview'}</span>
   </header>
 
