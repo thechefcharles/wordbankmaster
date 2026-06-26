@@ -521,6 +521,15 @@ export async function getClimbLeaderboard(scope = 'friends', group = null) {
   return Array.isArray(data) ? data : [];
 }
 
+/** Finalize the caller's unfinished Daily puzzles from prior days as losses (no broke
+ *  timer anymore — an unsolved Daily expires at day's end, forfeiting the spend, and
+ *  shows in History). Lazy "midnight" finalization; call on app open. @returns {Promise<number>} */
+export async function expireStaleDailies() {
+  const { data, error } = await supabase.rpc('expire_stale_dailies');
+  if (error) { console.error('❌ expire_stale_dailies:', error); return 0; }
+  return data ?? 0;
+}
+
 /** The caller's currently-resumable solo games (daily/climb/freeplay), newest first.
  *  Server truth for menu resume labels + the top-level Resume shortcut.
  *  @returns {Promise<{mode:string, updated_at:string}[]>} */

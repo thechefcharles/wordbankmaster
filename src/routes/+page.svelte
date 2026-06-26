@@ -10,7 +10,7 @@
   import { getMyChallenges, getPowerups, getDailyAvailBoosts, getMyMatches, getMyGroups, getMatch, getMatchDetail, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getOpenGames, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout, getDailyModifier } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getOpenGames, expireStaleDailies, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout, getDailyModifier } from '$lib/stores/statsStore.js';
   import { unreadCount, refreshNotifications, inboxRequest, inboxTarget, markChallengeNotifRead, markFriendNotifRead } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
@@ -172,10 +172,14 @@
       hasInitialized = true;
 
       // Secondary menu data: must NOT block the loading screen or each other.
-      getDailyStatus(session.user.id)
-        .then((ds) => { dailyStatus = ds; menuDailyPlayed = ds.has_played_today; })
-        .catch((e) => console.error('daily status:', e));
-      refreshOpenGames();
+      // Finalize any unfinished Daily from a prior day (no timer → it expires as a loss)
+      // BEFORE reading status/open games, so the menu reflects it.
+      expireStaleDailies().catch(() => {}).finally(() => {
+        getDailyStatus(session.user.id)
+          .then((ds) => { dailyStatus = ds; menuDailyPlayed = ds.has_played_today; })
+          .catch((e) => console.error('daily status:', e));
+        refreshOpenGames();
+      });
       refreshBank();
       refreshChallengeCount();
       // First-run username gate: prompt if this account hasn't claimed one yet.
@@ -552,12 +556,17 @@
   // a 60s clock starts; guess it or you auto-Fold (lose the puzzle).
   // Mirror of the server-authoritative public.letter_cost() (economy v3.2: −25%, cheapest $20).
   const LETTER_COSTS = { Q:20,W:40,E:100,R:90,T:90,Y:50,U:60,I:80,O:70,P:60,A:100,S:90,D:60,F:50,G:50,H:50,J:20,K:40,L:60,Z:30,X:30,C:60,V:40,B:50,N:80,M:50 };
+  // foldMode = modes with a "Give up" button (Daily + Challenges).
   $: foldMode = ($gameStore.gameMode === 'daily' || $gameStore.gameMode === 'match');
+  // brokeMode = modes with the out-of-Cash auto-fold CLOCK. The Daily has NO timer —
+  // guesses are free + unlimited, so being broke isn't a dead end; you solve it or you
+  // don't (an unfinished Daily expires as a loss at day's end). Only live challenges,
+  // where stalling stalls a real opponent, keep the broke clock.
+  $: brokeMode = ($gameStore.gameMode === 'match');
   $: gameActive = $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost';
   $: isBroke = (() => {
-    // Only while actively on a game screen — never on the menu, so the broke clock
-    // can't keep ticking (or auto-fold the wrong mode) after you leave a game.
-    if (!foldMode || !gameActive || showMainMenu) return false;
+    // Only while actively on a game screen — never on the menu.
+    if (!brokeMode || !gameActive || showMainMenu) return false;
     const mod = $gameStore.modifier, discount = mod === 'discount', vowelHalf = mod === 'vowel_vision';
     const purchased = new Set(($gameStore.purchasedLetters || []).filter(Boolean));
     const incorrect = new Set($gameStore.incorrectLetters || []);
@@ -2295,11 +2304,11 @@
       <PhraseDisplay on:revealComplete={onPhraseRevealComplete} on:introDone={onDailyIntroDone} />
     </section>
 
-    <!-- ⏱ Out-of-Cash broke-timer (Daily/Challenge) — give up lives in the top-right arrow -->
-    {#if (foldMode || isFreeplay) && gameActive && isBroke}
+    <!-- ⏱ Out-of-Cash broke-timer — live Challenges only (Daily has no timer) -->
+    {#if brokeMode && gameActive && isBroke}
       <div class="fold-bar broke">
         <span class="fold-timer">⏱ 0:{String(brokeLeft).padStart(2, '0')}</span>
-        <span class="fold-warn">Out of Cash — guess in time or you {$gameStore.gameMode === 'match' ? 'give up this one' : 'lose the Daily'}</span>
+        <span class="fold-warn">Out of Cash — guess in time or you give up this one</span>
       </div>
     {/if}
 
