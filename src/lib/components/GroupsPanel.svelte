@@ -104,6 +104,7 @@
 
   async function leave() {
     if (!open || busy) return;
+    if (!confirm(`Leave "${open.name}"?`)) return;
     busy = true;
     await leaveGroup(open.id);
     busy = false;
@@ -132,6 +133,7 @@
   /** @param {string} username */
   async function removeMember(username) {
     if (busy) return;
+    if (!confirm(`Remove @${username} from "${open.name}"?`)) return;
     busy = true;
     const res = await removeGroupMember(open.id, username);
     busy = false;

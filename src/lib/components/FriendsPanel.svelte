@@ -70,6 +70,7 @@
   /** @param {any} u */
   async function unfriend(u) {
     if (busy) return;
+    if (!confirm(`Remove @${u.username || u.name} from your friends?`)) return;
     busy = u.id;
     await removeFriend(u.id);
     busy = '';

@@ -1014,9 +1014,21 @@
     location.reload();
   };
 
-  // 🔑 PIN: show "Change PIN" only when one is set; changing clears + re-prompts setup.
+  // 🔑 PIN: show "Change PIN" only when one is set; require the CURRENT PIN first.
   $: hasPin = browser && $user?.id ? hasPinFor($user.id) : false;
-  function changePin() { fx('tap'); showMyAccount = false; clearPin(); clearPinSkipped(); pinNotSet = true; }
+  async function changePin() {
+    fx('tap');
+    try { await requirePin('Enter your current PIN to set a new one'); } catch { return; }
+    showMyAccount = false;
+    clearPin(); clearPinSkipped(); pinNotSet = true; // → the create-new-PIN screen
+  }
+  // 🔓 Forgot PIN (from Settings) — verify by email + password, then set a new PIN.
+  function forgotPin() {
+    if (!confirm('Reset your PIN? You’ll sign back in with your email & password, then set a new PIN.')) return;
+    showMyAccount = false;
+    clearPin(); clearPinSkipped();
+    handleLogout();
+  }
 
   // 🗑️ Permanent account deletion (App Store 5.1.1(v)) — requires typing DELETE.
   const APP_VERSION = '1.0.0';
@@ -2320,6 +2332,7 @@
             <div class="set-label">Security</div>
             <div class="set-group">
               <button class="set-row nav" on:click={changePin}><span>🔑 Change PIN</span><span class="chev">›</span></button>
+              <button class="set-row nav" on:click={forgotPin}><span>🔓 Forgot PIN?</span><span class="chev">›</span></button>
             </div>
           {/if}
 

@@ -121,7 +121,7 @@
     <PinPad bind:this={pad} {error} on:submit={onSubmit} on:change={() => (msg = '')} />
     {#if msg}<p class="pin-msg" class:err={error}>{msg}</p>{/if}
     {#if mode === 'unlock'}
-      <button class="pin-forgot" on:click={() => dispatch('logout')}>Forgot PIN? Sign in with password</button>
+      <button class="pin-forgot" on:click={() => dispatch('logout')}>Forgot PIN? Reset with your email &amp; password</button>
     {:else if step === 'create'}
       <button class="pin-forgot" on:click={() => dispatch('skip')}>Skip for now — set it later in My Account</button>
     {/if}
