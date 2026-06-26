@@ -2311,8 +2311,8 @@
           <!-- Social -->
           <div class="set-label">Social</div>
           <div class="set-group">
-            <button class="set-row nav" on:click={() => { showMyAccount = false; goto('/?people=1'); }}><span>👋 Friends</span><span class="chev">›</span></button>
-            <button class="set-row nav" on:click={() => { showMyAccount = false; goto('/groups'); }}><span>👥 Groups</span><span class="chev">›</span></button>
+            <button class="set-row nav" on:click={() => { showMyAccount = false; peopleTab = 'friends'; openCommunity('people'); }}><span>👋 Friends</span><span class="chev">›</span></button>
+            <button class="set-row nav" on:click={() => { showMyAccount = false; peopleTab = 'groups'; openCommunity('people'); }}><span>👥 Groups</span><span class="chev">›</span></button>
           </div>
 
           <!-- Security -->
