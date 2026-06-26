@@ -10,7 +10,7 @@
   import { getMyChallenges, getPowerups, getDailyAvailBoosts, getMyMatches, getMyGroups, getMatch, getMatchDetail, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout, getDailyModifier } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getOpenGames, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout, getDailyModifier } from '$lib/stores/statsStore.js';
   import { unreadCount, refreshNotifications, inboxRequest, inboxTarget, markChallengeNotifRead, markFriendNotifRead } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
   import { modifierInfo } from '$lib/powerups.js';
@@ -65,12 +65,22 @@
   let menuDailyPlayed = false;
   /** Today's daily result for the menu indicator (won/lost + score). */
   let dailyStatus = /** @type {{ has_played_today: boolean, last_daily_won: boolean|null, daily_bankroll: number, arcade_bankroll: number, current_streak: number, streak_freezes: number, today_score: number, win_streak: number, daily_in_progress?: boolean } | null} */ (null);
-  // "In progress" must come from SERVER truth (today's session still active), not the
-  // single shared localStorage save slot — that slot gets overwritten when you play
-  // another mode, which used to make a live Daily show as "complete + lost".
-  $: dailyInProgress = (dailyStatus?.daily_in_progress ?? false) || (savedGameInfo?.gameMode === 'daily' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost');
+  // 🎮 Live solo games from SERVER truth (daily/climb/freeplay), newest first. The old
+  // single localStorage save slot got overwritten whenever you played another mode, which
+  // made a live Daily show as "complete + lost". openGames lets every mode resume independently.
+  /** @type {{mode:string, updated_at:string}[]} */
+  let openGames = [];
+  async function refreshOpenGames() {
+    const u = get(user); if (!u?.id) return;
+    try { openGames = await getOpenGames(); } catch { /* keep last */ }
+  }
+  // "In progress" must come from SERVER truth, not the clobberable localStorage slot.
+  $: dailyInProgress = openGames.some((g) => g.mode === 'daily') || (dailyStatus?.daily_in_progress ?? false);
   $: dailyDone = menuDailyPlayed && !dailyInProgress;
-  $: climbInProgress = savedGameInfo?.gameMode === 'climb' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost';
+  $: climbInProgress = openGames.some((g) => g.mode === 'climb');
+  // 🔁 Resume shortcut: jump back to your most-recently-played live game.
+  const RESUME_LABEL = /** @type {Record<string,string>} */ ({ daily: 'Daily', climb: 'Cash Game', freeplay: 'Free Play' });
+  $: resumeGame = openGames[0] ?? null;
   /** Net Worth for the menu chip. */
   let netWorth = /** @type {number|null} */ (null);
   async function refreshBank() {
@@ -165,6 +175,7 @@
       getDailyStatus(session.user.id)
         .then((ds) => { dailyStatus = ds; menuDailyPlayed = ds.has_played_today; })
         .catch((e) => console.error('daily status:', e));
+      refreshOpenGames();
       refreshBank();
       refreshChallengeCount();
       // First-run username gate: prompt if this account hasn't claimed one yet.
@@ -544,7 +555,9 @@
   $: foldMode = ($gameStore.gameMode === 'daily' || $gameStore.gameMode === 'match');
   $: gameActive = $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost';
   $: isBroke = (() => {
-    if (!foldMode || !gameActive) return false;
+    // Only while actively on a game screen — never on the menu, so the broke clock
+    // can't keep ticking (or auto-fold the wrong mode) after you leave a game.
+    if (!foldMode || !gameActive || showMainMenu) return false;
     const mod = $gameStore.modifier, discount = mod === 'discount', vowelHalf = mod === 'vowel_vision';
     const purchased = new Set(($gameStore.purchasedLetters || []).filter(Boolean));
     const incorrect = new Set($gameStore.incorrectLetters || []);
@@ -1065,7 +1078,7 @@
 
   // ----- Free Play (unranked, pick a category) -----
   let showCategorySelect = false;
-  $: freeplayInProgress = savedGameInfo?.gameMode === 'freeplay' && savedGameInfo?.gameState !== 'won' && savedGameInfo?.gameState !== 'lost';
+  $: freeplayInProgress = openGames.some((g) => g.mode === 'freeplay');
   async function handleMenuFreeplay() {
     if (!get(user)?.id) return;
     // Resume the exact in-progress puzzle if there is one; otherwise pick a category.
@@ -1075,6 +1088,14 @@
       if (ok) { hasInitialized = true; showMainMenu = false; return; }
     }
     showCategorySelect = true;
+  }
+  /** ▶ Resume the most-recently-played live game (the top-level menu shortcut). */
+  function resumeOpen() {
+    if (!resumeGame) return;
+    fx('tap');
+    if (resumeGame.mode === 'daily') handleMenuDaily();
+    else if (resumeGame.mode === 'climb') handleMenuClimb();
+    else if (resumeGame.mode === 'freeplay') handleMenuFreeplay();
   }
   /** @param {string} category */
   async function startFreeplay(category) {
@@ -1308,6 +1329,7 @@
     showMainMenu = true;
     // Refresh the daily completion indicator (e.g. just finished today's daily).
     getDailyStatus(currentUser.id).then((s) => { dailyStatus = s; menuDailyPlayed = s.has_played_today; });
+    refreshOpenGames();
     refreshBank();
     refreshChallengeCount();
     refreshNotifications();
@@ -1773,6 +1795,13 @@
                 {#if actNow.sub}<small>{actNow.sub}</small>{/if}
               </span>
               <span class="ab-cta">{actNow.cta}</span>
+            </button>
+          {/if}
+          <!-- ▶ Resume your most-recent live game (multiple games can be open at once) -->
+          {#if resumeGame}
+            <button class="menu-card resume-card" style="--i: 0" on:click={resumeOpen}>
+              <span class="mc-title">▶ Resume {RESUME_LABEL[resumeGame.mode] ?? 'game'}</span>
+              {#if openGames.length > 1}<span class="resume-more">+{openGames.length - 1} more in progress</span>{/if}
             </button>
           {/if}
           <button class="menu-card primary" style="--i: 0" on:click={() => { menuView = 'play'; fx('tap'); }}>
@@ -3110,6 +3139,19 @@
     background: linear-gradient(180deg, #d1fae5, #6ee7b7); -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent; color: transparent; text-shadow: none;
   }
+  /* ▶ Resume shortcut card (home menu) — green, mirrors the in-progress accent */
+  .menu-card.resume-card {
+    flex-direction: column; gap: 2px;
+    background: linear-gradient(180deg, #16352b 0%, #0f2a22 100%);
+    border-color: rgba(16,185,129,0.6);
+    box-shadow: inset 0 1px 0 rgba(110,231,183,0.2), inset 0 0 0 1px rgba(16,185,129,0.3), 0 4px 14px rgba(0,0,0,0.5), 0 0 20px rgba(16,185,129,0.25);
+  }
+  .menu-card.resume-card::before, .menu-card.resume-card::after { display: none; }
+  .menu-card.resume-card .mc-title {
+    background: linear-gradient(180deg, #d1fae5, #6ee7b7); -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent; text-shadow: none;
+  }
+  .resume-more { position: relative; z-index: 1; font-size: 0.72rem; color: rgba(167,243,208,0.82); font-weight: 600; }
   .progress-modes { border-left-color: rgba(251,191,36,0.3); }
   .mc-arrow { color: var(--text-faint); font-size: 1.1rem; transition: transform 0.2s, color 0.2s; }
   .mc-count {

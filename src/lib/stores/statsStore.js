@@ -521,6 +521,15 @@ export async function getClimbLeaderboard(scope = 'friends', group = null) {
   return Array.isArray(data) ? data : [];
 }
 
+/** The caller's currently-resumable solo games (daily/climb/freeplay), newest first.
+ *  Server truth for menu resume labels + the top-level Resume shortcut.
+ *  @returns {Promise<{mode:string, updated_at:string}[]>} */
+export async function getOpenGames() {
+  const { data, error } = await supabase.rpc('get_open_games');
+  if (error) { console.error('❌ get_open_games:', error); return []; }
+  return Array.isArray(data) ? data : [];
+}
+
 /** Cash Game run leaderboard — ranks by best run profit (skill, not longevity).
  *  @param {string} scope @param {string|null} [group] @returns {Promise<any[]>} */
 export async function getClimbRunLeaderboard(scope = 'friends', group = null) {
