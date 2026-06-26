@@ -145,7 +145,7 @@
 
     {#key inventoryKey}
       <details class="inv-details">
-        <summary class="inv-summary">🎒 My Bag</summary>
+        <summary class="inv-summary">🔐 My Vault</summary>
         <InventoryList />
       </details>
     {/key}

@@ -28,7 +28,7 @@
   import { goto } from '$app/navigation';
 
   import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
-  import PowerupHotbar from '$lib/components/PowerupHotbar.svelte';
+  import InventoryList from '$lib/components/InventoryList.svelte';
   import Keyboard from '$lib/components/Keyboard.svelte';
   import GameButtons from '$lib/components/GameButtons.svelte';
   import FlipDigit from '$lib/components/FlipDigit.svelte';
@@ -396,6 +396,16 @@
     freeplay_reward: 'Free Play reward', cosmetic_buy: 'Shop purchase', powerup_buy: 'Power-up purchase',
     wager_win: 'Won a wager', wager_stake: 'Wager staked', wager_refund: 'Wager refunded'
   }))[reason] || reason;
+
+  // 🎒 My Bag modal — owned inventory + use power-ups in-game + a Store link.
+  let showBag = false;
+  function openBag() { fx('tap'); showBag = true; }
+  /** @param {any} item */
+  function useFromBag(item) {
+    if (item?.id === 'twist') useTwist();
+    else if (item?.id === 'bounty_boost' || item?.id === 'jackpot_boost') useBoost(item.id);
+    showBag = false;
+  }
 
   // ℹ️ Daily explainers: tap the ×N badge or the Solve-to-Earn number for a breakdown.
   /** @type {'mult'|'bounty'|null} */
@@ -1320,10 +1330,6 @@
 {#if loggedIn && hasInitialized && !showMainMenu}
   <button class="menu-back-btn" title="Main menu" aria-label="Main menu" on:click={goToMainMenu}><span class="hamburger"></span></button>
 {/if}
-<!-- 📅 Attendance streak (top-left, next to the menu) — Daily only -->
-{#if loggedIn && hasInitialized && !showMainMenu && $gameStore.gameMode === 'daily' && gameActive}
-  <div class="att-streak" title="Attendance streak — days in a row">📅 {dailyStatus?.current_streak ?? 0}</div>
-{/if}
 <!-- ❓ How to play THIS game type (top-center) -->
 {#if loggedIn && hasInitialized && !showMainMenu && $gameStore.gameMode}
   <button class="help-btn" title="How to play" aria-label="How to play this game" on:click={() => showObjectiveFor($gameStore.gameMode, true)}>?</button>
@@ -1457,6 +1463,34 @@
   </div>
 {/if}
 
+<!-- 🎒 My Bag: use power-ups in-game + view inventory + Store link -->
+{#if showBag}
+  <div class="modal-overlay info-overlay" role="button" tabindex="0" aria-label="Close"
+    on:click={() => showBag = false} on:keydown={(e) => { if (e.key === 'Escape') showBag = false; }}>
+    <div class="info-card bag-modal" on:click|stopPropagation role="dialog" aria-modal="true">
+      <button class="modal-x" on:click={() => showBag = false} aria-label="Close">✕</button>
+      <h3 class="info-title"><img src="/vault.png" alt="" class="vault-ic-xs" /> My Vault</h3>
+      {#if !showMainMenu && trayPowerups.length}
+        <div class="bag-use-h">Tap to use now</div>
+        <div class="bag-use-grid">
+          {#each trayPowerups as it}
+            <button class="bag-use" disabled={dailyTwistBusy || dailyBoostBusy} on:click={() => useFromBag(it)} title={it.blurb}>
+              <span class="bag-use-e">{it.emoji}</span>
+              {#if (it.count ?? 1) > 1}<span class="bag-use-n">×{it.count}</span>{/if}
+              <span class="bag-use-name">{it.name}</span>
+              <span class="bag-use-d">{it.blurb}</span>
+            </button>
+          {/each}
+        </div>
+      {/if}
+      <div class="bag-inv">
+        <InventoryList />
+      </div>
+      <button class="bag-store" on:click={() => goto('/shop')}>🛍️ Go to the Store →</button>
+    </div>
+  </div>
+{/if}
+
 <!-- ℹ️ Daily explainers: multiplier breakdown / Solve-to-Earn calculation -->
 {#if dailyInfo}
   <div class="modal-overlay info-overlay" role="button" tabindex="0" aria-label="Close"
@@ -1534,8 +1568,8 @@
     <div class="main-menu fade-up">
       <div class="menu-hero">
         <div class="hero-top">
-          <button class="streak-chip" class:lit={(dailyStatus?.current_streak ?? 0) > 0} on:click={() => goto('/streak')} title="Your streak">
-            <span class="sc-flame">🔥</span>{dailyStatus?.current_streak ?? 0}
+          <button class="streak-chip bag-chip" on:click={openBag} title="My Vault" aria-label="My Vault">
+            <img src="/vault.png" alt="🔐" class="vault-ic-sm" />
           </button>
           <button class="bank-chip" on:click={() => goto('/bank')} title="Your Cash">
             <span class="bc-coin">💰</span>{netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}
@@ -1585,7 +1619,9 @@
         </div>
         <div class="main-menu-buttons stagger">
           <button class="menu-card" class:done={dailyDone} class:resumable={dailyInProgress} style="--i: 0" on:click={handleMenuDaily}>
+            <span class="mc-streak left" title="Attendance streak — days in a row">📅 {dailyStatus?.current_streak ?? 0}</span>
             <span class="mc-title">{dailyInProgress ? 'Resume Daily' : 'Daily'}</span>
+            <span class="mc-streak right" title="Win streak — solves in a row">🏆 {dailyStatus?.win_streak ?? 0}</span>
             {#if dailyDone}
               {#if dailyStatus?.last_daily_won}
                 <span class="daily-chip won">✅ +${(dailyStatus?.today_score ?? 0).toLocaleString()}</span>
@@ -2066,7 +2102,7 @@
         <div class="bounty-panel" class:loss={soloHero.net < 0} class:count-pop={introCountPop}>
           {#if $gameStore.gameMode === 'daily'}
             <button class="bp-mult-badge" title="How your multiplier works" on:click={() => { fx('tap'); dailyInfo = 'mult'; }}>×{Number($gameStore.bountyMult ?? 1).toFixed(1)}</button>
-            <div class="bp-winstreak" title="Win streak — solves in a row">🔥 {dailyStatus?.win_streak ?? 0}</div>
+            <button class="bp-winstreak" title="Win streak — boosts your multiplier" on:click={() => { fx('tap'); dailyInfo = 'mult'; }}>🏆 {dailyStatus?.win_streak ?? 0}</button>
           {/if}
           <span class="bp-label">{soloHero.net >= 0 ? 'Solve to Earn' : '⚠️ You’re losing money'}</span>
           {#if $gameStore.gameMode === 'daily'}
@@ -2099,9 +2135,11 @@
       <GameButtons />
     </section>
 
-    <!-- ⚡ Power-up hotbar: 2 slots each side of Solve, page through mode-eligible inventory -->
+    <!-- 🎒 Bag — opens your inventory; use power-ups from here (left of Solve) -->
     {#if gameActive}
-      <PowerupHotbar items={trayPowerups} busy={dailyTwistBusy || dailyBoostBusy} on:use={onUsePowerup} />
+      <button class="bag-fab" title="My Vault" aria-label="My Vault" on:click={openBag}>
+        <img src="/vault.png" alt="🔐" class="vault-ic" />{#if trayPowerups.length > 0}<span class="bag-fab-badge">{trayPowerups.length}</span>{/if}
+      </button>
     {/if}
 
     <!-- ⌨️ Keyboard Section (keyboard disables itself via gameStore state) -->
@@ -2681,13 +2719,6 @@
   }
   .streak-chip:hover { transform: translateY(-1px); }
   .streak-chip:active { transform: scale(0.96); }
-  .streak-chip .sc-flame { filter: grayscale(1) opacity(0.5); font-size: 1rem; }
-  .streak-chip.lit {
-    color: #fcd34d;
-    border-color: rgba(251, 191, 36, 0.45);
-    box-shadow: 0 0 14px rgba(251, 191, 36, 0.2);
-  }
-  .streak-chip.lit .sc-flame { filter: none; }
   .menu-mark {
     width: min(46vw, 172px);
     aspect-ratio: 1;
@@ -2839,6 +2870,13 @@
     font-size: 0.68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap;
     border: 1px solid var(--border); background: rgba(0,0,0,0.25); color: var(--text);
   }
+  /* 📅 / 🏆 streak chips on the Daily card */
+  .mc-streak { position: absolute; top: 50%; transform: translateY(-50%); z-index: 1;
+    font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 0.82rem; color: #463413;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.35); }
+  .mc-streak.left { left: 13px; }
+  .mc-streak.right { right: 13px; }
+  .menu-card.done .mc-streak, .menu-card.resumable .mc-streak { color: rgba(255,255,255,0.85); text-shadow: none; }
   /* solid fills so chips read clearly */
   .daily-chip.won   { color: #052e16; border-color: rgba(22,163,74,0.85); background: linear-gradient(135deg, #4ade80, #16a34a); box-shadow: 0 1px 6px rgba(22,163,74,0.5); }
   .daily-chip.lost  { color: #fff; border-color: rgba(225,80,100,0.85); background: linear-gradient(135deg, #fb7185, #e11d48); box-shadow: 0 1px 6px rgba(225,29,72,0.45); text-shadow: 0 1px 1px rgba(0,0,0,0.25); }
@@ -2939,10 +2977,6 @@
   }
   .giveup-btn:hover { border-color: #f87171; background: rgba(248,113,113,0.16); }
   .giveup-btn:active { transform: scale(0.93); }
-  /* 📅 attendance streak chip (top-left, beside the menu) */
-  .att-streak { position: fixed; top: 16px; left: 60px; z-index: 1000; height: 34px; display: flex; align-items: center; gap: 2px;
-    padding: 0 11px; border-radius: 999px; font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 0.92rem; color: #fde047;
-    background: var(--surface-strong, rgba(20,28,40,0.85)); border: 1px solid rgba(253,224,71,0.45); backdrop-filter: blur(10px); }
   /* match chat — sits just below the help button so they never overlap */
   .match-chat-btn {
     position: fixed; top: 60px; right: 14px; z-index: 1000;
@@ -3381,12 +3415,13 @@
     border: 1px solid rgba(180,130,15,0.95); cursor: pointer;
     box-shadow: 0 0 14px rgba(251,191,36,0.65), inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -2px 3px rgba(120,80,0,0.35); }
   .bp-mult-badge:active { transform: translateY(-50%) scale(0.94); }
-  /* 🔥 win streak — mirror of the multiplier badge, on the right of the bounty */
-  .bp-winstreak { position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  /* 🏆 win streak — mirror of the multiplier badge, on the right of the bounty (boosts mult) */
+  .bp-winstreak { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer;
     font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 0.95rem; line-height: 1;
-    padding: 5px 9px; border-radius: 9px; color: #fff;
-    background: linear-gradient(135deg, #fb923c, #ea580c); border: 1px solid rgba(180,60,10,0.8);
-    box-shadow: 0 0 12px rgba(234,88,12,0.45), inset 0 1px 0 rgba(255,255,255,0.3); }
+    padding: 5px 9px; border-radius: 9px; color: #3a2a00;
+    background: linear-gradient(135deg, #fff1a8, #f6cd4d 45%, #e0a312); border: 1px solid rgba(180,130,15,0.95);
+    box-shadow: 0 0 12px rgba(251,191,36,0.5), inset 0 1px 0 rgba(255,255,255,0.5); }
+  .bp-winstreak:active { transform: translateY(-50%) scale(0.94); }
   /* ℹ️ Daily explainer modal (multiplier / Solve-to-Earn breakdown) */
   .info-overlay { border: none; cursor: pointer; }
   .info-card { position: relative; width: 100%; max-width: 330px; cursor: default; text-align: center;
@@ -3398,6 +3433,35 @@
     background: linear-gradient(135deg, #fb5a5a, #c81e1e); border: 1px solid rgba(0,0,0,0.25); box-shadow: 0 2px 6px rgba(200,30,30,0.4); }
   .modal-x:hover { filter: brightness(1.08); }
   .modal-x:active { transform: scale(0.92); }
+  /* 🎒 Bag button left of Solve (in-game) */
+  .bag-fab { position: fixed; z-index: 998; bottom: calc(env(safe-area-inset-bottom, 0px) + 188px);
+    right: calc(50% + 108px); width: 46px; height: 46px; border-radius: 12px; cursor: pointer; display: grid; place-items: center;
+    font-size: 1.5rem; color: var(--text); background: var(--surface-strong, rgba(20,28,40,0.9));
+    border: 1px solid rgba(253,224,71,0.5); backdrop-filter: blur(10px); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+  .bag-fab:active { transform: scale(0.93); }
+  .bag-fab-badge { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px;
+    background: #ea580c; color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 0.66rem; display: grid; place-items: center; }
+  .bag-chip { padding: 4px 12px; }
+  .vault-ic { width: 32px; height: 32px; object-fit: contain; }
+  .vault-ic-sm { width: 24px; height: 24px; object-fit: contain; display: block; }
+  .vault-ic-xs { width: 22px; height: 22px; object-fit: contain; vertical-align: -5px; }
+  /* 🎒 Bag modal */
+  .bag-modal { max-width: 360px; max-height: 84vh; overflow-y: auto; }
+  .bag-use-h { font-family: var(--font-display); font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--brand-2); margin: 6px 0 8px; text-align: left; }
+  .bag-use-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .bag-use { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 3px; cursor: pointer;
+    padding: 0.9rem 0.5rem; border-radius: 14px; color: var(--text);
+    background: linear-gradient(135deg, rgba(251,191,36,0.2), rgba(251,191,36,0.05)); border: 1px solid rgba(253,224,71,0.55); }
+  .bag-use:active { transform: scale(0.96); }
+  .bag-use:disabled { opacity: 0.5; cursor: default; }
+  .bag-use-e { font-size: 1.7rem; line-height: 1; }
+  .bag-use-n { position: absolute; top: 7px; right: 9px; font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 0.78rem; color: #fde047; }
+  .bag-use-name { font-family: var(--font-display); font-weight: 700; font-size: 0.86rem; }
+  .bag-use-d { font-size: 0.72rem; color: var(--text-muted); line-height: 1.3; }
+  .bag-inv { margin-bottom: 14px; }
+  .bag-store { width: 100%; padding: 11px; border-radius: 12px; border: none; cursor: pointer;
+    font-family: var(--font-display); font-weight: 800; color: #3a2a00; background: linear-gradient(135deg, #fde047, #f59e0b); }
   /* in-game bank modal */
   .bm-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); margin: 0 0 2px; }
   .bm-hist-h { font-family: var(--font-display); font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
