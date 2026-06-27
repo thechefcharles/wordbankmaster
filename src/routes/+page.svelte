@@ -2000,7 +2000,7 @@
           {#if resumables.length}
             <button class="resume-strip" style="--i: 0" on:click={onResume}>
               <span class="rs-dot">▸</span>
-              <span class="rs-label">Continue{resumables.length === 1 ? ' — ' + resumables[0].label : ' your game'}</span>
+              <span class="rs-label">Resume{resumables.length === 1 ? ' — ' + resumables[0].label : ''}</span>
               {#if resumables.length > 1}<span class="rs-count">{resumables.length}</span>{/if}
               <span class="rs-go">›</span>
             </button>
