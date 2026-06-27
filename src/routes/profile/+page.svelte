@@ -21,10 +21,14 @@
   /** @type {{title:string, desc:string, link?:string, linkLabel?:string}|null} */
   let statInfo = $state(null);
 
+  // True when we deep-linked straight into a sub-view (e.g. the menu bell → ?tab=alerts).
+  // Back then returns to the menu instead of the Overview the user never saw.
+  let deepLinked = $state(false);
+
   onMount(async () => {
     track('profile_view');
     const t = $page.url.searchParams.get('tab');
-    if (t === 'stats' || t === 'alerts') tab = /** @type {any} */ (t);
+    if (t === 'stats' || t === 'alerts') { tab = /** @type {any} */ (t); deepLinked = true; }
     getMyAvatar().then((a) => { avatar = a.config; });
     getUserBadges().then((b) => { earned = b; });
     try { d = await getProfileDetail(); } finally { loading = false; }
@@ -38,9 +42,9 @@
     if (n?.type === 'challenge_incoming' || n?.data?.match_id || n?.data?.challenge_id) { requestInbox('challenges'); goto('/'); }
   }
 
-  // Back: from a detail tab → Overview; from Overview → the menu.
+  // Back: deep-linked sub-view → menu; sub-view reached from Overview → Overview; Overview → menu.
   function back() {
-    if (tab !== 'overview') tab = 'overview';
+    if (tab !== 'overview' && !deepLinked) tab = 'overview';
     else goto('/');
   }
 
