@@ -2021,7 +2021,7 @@
           <h2 class="sub-title">Play</h2>
         </div>
         <div class="main-menu-buttons stagger">
-          <button class="menu-card" class:done={dailyDone} class:resumable={dailyInProgress} style="--i: 0" on:click={handleMenuDaily}>
+          <button class="menu-card" class:done={dailyDone} class:resumable={dailyInProgress} class:fresh={!dailyDone && !dailyInProgress} style="--i: 0" on:click={handleMenuDaily}>
             <span class="mc-streak left" title="Attendance streak — days in a row">📅 {dailyStatus?.current_streak ?? 0}</span>
             <span class="mc-title">{dailyInProgress ? 'Resume Daily' : 'Daily'}</span>
             <span class="mc-streak right" title="Win streak — solves in a row">🏆 {dailyStatus?.win_streak ?? 0}</span>
@@ -3350,6 +3350,14 @@
     background: linear-gradient(180deg, #d1fae5, #6ee7b7); -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent; color: transparent; text-shadow: none;
   }
+  /* 📅 Fresh Daily (not started today) — solid gold, "play me" */
+  .menu-card.fresh {
+    background: linear-gradient(135deg, #fde047, #f59e0b); border-color: transparent;
+    box-shadow: 0 4px 16px rgba(245,158,11,0.45), 0 0 24px rgba(251,191,36,0.3);
+  }
+  .menu-card.fresh::before, .menu-card.fresh::after { display: none; }
+  .menu-card.fresh .mc-title { color: #3a2a00; -webkit-text-fill-color: #3a2a00; background: none; text-shadow: none; }
+  .menu-card.fresh .mc-streak { color: #5a4200; text-shadow: none; }
   /* ▶ Resume shortcut card (home menu) — green, mirrors the in-progress accent */
   .menu-card.resume-card {
     background: linear-gradient(180deg, #16352b 0%, #0f2a22 100%);
