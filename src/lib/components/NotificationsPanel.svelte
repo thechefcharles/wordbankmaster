@@ -3,7 +3,7 @@
   // incoming challenges). Shown in Community ▸ Activity. Friend requests can be
   // accepted/declined inline; tapping a row routes via onNavigate.
   import { notifications, dismissNotification } from '$lib/stores/notificationStore.js';
-  import { respondFriendRequest } from '$lib/stores/statsStore.js';
+  import { respondFriendRequest, respondJoinRequest } from '$lib/stores/statsStore.js';
   import { fx } from '$lib/sound.js';
 
   /** @type {{ onNavigate?: ((n:any)=>void)|null, onChange?: (()=>void)|null }} */
@@ -19,6 +19,14 @@
       dismissNotification(n.id); // acting on it clears it
       onChange?.();
     }
+  }
+
+  /** @param {any} n @param {boolean} accept */
+  async function respondGroup(n, accept) {
+    const { group_id, from_id } = n?.data || {};
+    if (!group_id || !from_id) return;
+    const res = await respondJoinRequest(group_id, from_id, accept);
+    if (res?.ok) { fx(accept ? 'win' : 'tap'); dismissNotification(n.id); onChange?.(); }
   }
 </script>
 
@@ -37,6 +45,11 @@
           <div class="ni-actions">
             <button class="ni-act accept" onclick={() => respond(n, true)}>Accept</button>
             <button class="ni-act decline" onclick={() => respond(n, false)}>Decline</button>
+          </div>
+        {:else if n.type === 'group_join' && n.data?.group_id && n.data?.from_id}
+          <div class="ni-actions">
+            <button class="ni-act accept" onclick={() => respondGroup(n, true)}>Approve</button>
+            <button class="ni-act decline" onclick={() => respondGroup(n, false)}>Decline</button>
           </div>
         {/if}
       </div>

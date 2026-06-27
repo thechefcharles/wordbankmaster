@@ -3,9 +3,11 @@
   import { goto } from '$app/navigation';
   import PageNav from "$lib/components/PageNav.svelte";
   import { page } from '$app/stores';
-  import { getPublicProfile, addFriend } from '$lib/stores/statsStore.js';
+  import { getPublicProfile, addFriend, requestJoinGroup } from '$lib/stores/statsStore.js';
   import Avatar from '$lib/components/Avatar.svelte';
   import { track } from '$lib/analytics.js';
+  /** @type {Record<string,string>} */ let busyFriend = $state({});
+  /** @type {Record<string,string>} */ let groupState = $state({});
 
   /** @type {any} */
   let p = $state(null);
@@ -34,6 +36,21 @@
     if (res?.ok) { addMsg = 'Request sent ✓'; p = { ...p, request_outgoing: true }; }
     else addMsg = res?.reason || 'Could not send request';
     addBusy = false;
+  }
+
+  /** @param {string} uname */
+  async function addOne(uname) {
+    if (busyFriend[uname]) return;
+    busyFriend = { ...busyFriend, [uname]: 'busy' };
+    const res = await addFriend(uname);
+    busyFriend = { ...busyFriend, [uname]: res?.ok ? 'sent' : 'err' };
+  }
+  /** @param {any} g */
+  async function join(g) {
+    if (groupState[g.id]) return;
+    groupState = { ...groupState, [g.id]: 'busy' };
+    const res = await requestJoinGroup(g.id);
+    groupState = { ...groupState, [g.id]: res?.ok ? 'requested' : 'err' };
   }
 
   onMount(() => { track('public_profile_view'); load(); });
@@ -117,6 +134,38 @@
         <div class="b-wrap">{#each p.badges as b}<span class="badge">🏅 {(b || '').replace(/_/g, ' ').replace(/\b\w/g, (/** @type {string} */ c) => c.toUpperCase())}</span>{/each}</div>
       </section>
     {/if}
+
+    {#if !p.is_self && (p.friends ?? []).length}
+      <section class="social">
+        <div class="b-h">Friends · {p.friends.length}</div>
+        {#each p.friends as f}
+          <div class="soc-row">
+            <button class="soc-main" onclick={() => goto('/u/' + encodeURIComponent(f.username))}>@{f.username}<span class="soc-go">›</span></button>
+            <button class="soc-act" disabled={!!busyFriend[f.username]} onclick={() => addOne(f.username)}>
+              {busyFriend[f.username] === 'sent' ? '✓ Sent' : busyFriend[f.username] === 'err' ? 'Failed' : '+ Add'}
+            </button>
+          </div>
+        {/each}
+      </section>
+    {/if}
+
+    {#if !p.is_self && (p.groups ?? []).length}
+      <section class="social">
+        <div class="b-h">Groups · {p.groups.length}</div>
+        {#each p.groups as g}
+          <div class="soc-row">
+            <span class="soc-main static">👥 {g.name}</span>
+            {#if g.my_status === 'member'}
+              <span class="soc-tag">✓ Member</span>
+            {:else if groupState[g.id] === 'requested' || g.my_status === 'requested'}
+              <span class="soc-tag">Requested</span>
+            {:else}
+              <button class="soc-act" disabled={groupState[g.id] === 'busy'} onclick={() => join(g)}>{groupState[g.id] === 'err' ? 'Failed' : 'Ask to join'}</button>
+            {/if}
+          </div>
+        {/each}
+      </section>
+    {/if}
   {/if}
 </main>
 
@@ -166,6 +215,17 @@
   .badges { margin-top: 6px; }
   .b-h { color: var(--text-faint); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
   .b-wrap { display: flex; flex-wrap: wrap; gap: 7px; }
+  .social { margin-top: 18px; }
+  .soc-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+  .soc-main { flex: 1; display: flex; align-items: center; justify-content: space-between; padding: 10px 13px; border-radius: 12px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text); font-weight: 600; font-size: 0.92rem; cursor: pointer; text-align: left; }
+  .soc-main.static { cursor: default; }
+  button.soc-main:hover { border-color: var(--brand-2); }
+  .soc-go { color: var(--text-faint); }
+  .soc-act { flex: none; padding: 9px 14px; border-radius: 12px; cursor: pointer; font-weight: 800; font-size: 0.82rem; color: #3a2a00;
+    background: var(--brand-grad, linear-gradient(135deg,#fbbf24,#fde047)); border: none; }
+  .soc-act:disabled { opacity: 0.6; cursor: default; }
+  .soc-tag { flex: none; padding: 9px 12px; font-size: 0.8rem; font-weight: 700; color: var(--text-faint); }
   .badge { font-size: 0.78rem; padding: 5px 10px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--border); color: var(--text-muted); }
 
   @media (max-width: 380px) { .grid { grid-template-columns: repeat(3, 1fr); } }
