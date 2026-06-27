@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import PageNav from "$lib/components/PageNav.svelte";
   import { getBank, getFreeplayCashoutStatus, freeplayCashout } from '$lib/stores/statsStore.js';
+  import InventoryList from '$lib/components/InventoryList.svelte';
   import { requirePin } from '$lib/pinConfirm.js';
   import { track } from '$lib/analytics.js';
   import { fx } from '$lib/sound.js';
@@ -83,6 +84,10 @@
         </div>
       {/if}
     </div>
+
+    <!-- Items (your vault) -->
+    <h2 class="hist-title">🎒 Your Items</h2>
+    <InventoryList />
 
     <!-- Exchange -->
     {#if cashout && cashout.credits > 0}
