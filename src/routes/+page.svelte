@@ -86,8 +86,6 @@
     ...((myMatches ?? []).filter((/** @type {any} */ m) => m.status === 'open' && m.my_state === 'active')
         .map((/** @type {any} */ m) => ({ key: 'match-' + m.id, label: m.group_name || (m.opponent ? '@' + m.opponent : 'Challenge'), icon: '⚔️', go: () => respondToMatch(m) })))
   ];
-  // ⚔️ Pending challenge invites (not yet accepted) → the Challenges notification.
-  $: challengeInvites = (myMatches ?? []).filter((/** @type {any} */ m) => m.status === 'open' && m.my_state === 'invited');
   let showResumeMenu = false;
   function resumeSolo(/** @type {string} */ mode) {
     if (mode === 'daily') handleMenuDaily();
@@ -1980,9 +1978,14 @@
           <button class="bank-chip" on:click={() => goto('/bank')} title="Your Cash">
             <span class="bc-coin">💰</span>{netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}
           </button>
-          <button class="account-ic has-av" on:click={() => goto($unreadCount > 0 ? '/profile?tab=alerts' : '/profile')} title="Profile">
-            <Avatar config={myAvatar} mode="head" fx size={50} />{#if $unreadCount > 0}<span class="account-count" title="{$unreadCount} new">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}
-          </button>
+          <div class="hero-account">
+            <button class="bell-ic" on:click={() => goto('/profile?tab=alerts')} title="Notifications" aria-label="Notifications">
+              🔔{#if $unreadCount > 0}<span class="account-count" title="{$unreadCount} new">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}
+            </button>
+            <button class="account-ic has-av" on:click={() => goto('/profile')} title="Profile" aria-label="Profile">
+              <Avatar config={myAvatar} mode="head" fx size={50} />
+            </button>
+          </div>
         </div>
         <video class="menu-mark" src="/coin.mp4" poster="/coin-poster.jpg" autoplay loop muted playsinline disablepictureinpicture></video>
         <img class="menu-wordmark" src="/wordmark-slogan.png" alt="WordBank — Spend Less. Think More." />
@@ -1996,19 +1999,13 @@
               {#if resumables.length > 1}<span class="resume-count">{resumables.length}</span>{/if}
             </button>
           {/if}
-          {#if friendRequests.length}
-            <button class="menu-card invite-card friend" style="--i: 0" on:click={() => { fx('tap'); goto('/friends'); }}>
-              <span class="mc-title">👋 Friend request{friendRequests.length > 1 ? 's' : ''}</span>
-              {#if friendRequests.length > 1}<span class="invite-count">{friendRequests.length}</span>{/if}
-            </button>
-          {/if}
           <button class="menu-card primary" style="--i: 0" on:click={() => { menuView = 'play'; fx('tap'); }}>
             <span class="mc-title">Play Now!</span>
           </button>
-          <!-- ⚔️ Challenges hub (list + New) — carries the pending-invite badge; 👥+ = friends/groups -->
+          <!-- ⚔️ Challenges hub (list + New). Incoming invites alert via the bell → tap routes here. -->
           <div class="vs-cta-group">
             <button class="vs-main" on:click={() => { fx('tap'); openCommunity('challenges'); }}>
-              ⚔️ Challenge Friends{#if challengeInvites.length}<span class="vs-badge">{challengeInvites.length}</span>{/if}
+              ⚔️ Challenge Friends
             </button>
             <button class="vs-people" title="Friends &amp; Groups" aria-label="Friends and groups" on:click={() => { fx('tap'); openCommunity('people'); }}>
               <span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span>
@@ -3110,6 +3107,12 @@
   }
   .hero-top .streak-chip { justify-self: start; }
   .hero-top .bank-chip { justify-self: center; }
+  .hero-account { justify-self: end; display: flex; align-items: center; gap: 8px; }
+  .bell-ic { position: relative; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+    background: var(--surface, rgba(255,255,255,0.05)); border: 1px solid var(--border); font-size: 1.15rem;
+    transition: transform 0.15s, border-color 0.2s; }
+  .bell-ic:hover { transform: translateY(-1px); border-color: rgba(251,191,36,0.5); }
+  .bell-ic:active { transform: scale(0.94); }
   .account-ic {
     position: relative;
     justify-self: end;
