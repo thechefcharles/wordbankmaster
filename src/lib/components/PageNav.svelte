@@ -6,6 +6,8 @@
   /** Explicit back target. When set, "← Back" goes here deterministically instead of
    *  window.history.back() (which is unreliable once history has accumulated). */
   export let back = '';
+  /** Show the 🏠 home button. Hide it when "← Back" already returns to the menu. */
+  export let showHome = true;
   function goBack() {
     if (back) goto(back);
     else if (browser && window.history.length > 1) window.history.back();
@@ -15,7 +17,7 @@
 
 <nav class="page-nav">
   <button class="pn-btn" on:click={goBack} aria-label="Back">← Back</button>
-  <button class="pn-home" on:click={() => goto(home)} aria-label="Main menu" title="Main menu">🏠</button>
+  {#if showHome}<button class="pn-home" on:click={() => goto(home)} aria-label="Main menu" title="Main menu">🏠</button>{/if}
 </nav>
 
 <style>
