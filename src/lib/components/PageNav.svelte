@@ -3,14 +3,18 @@
   import { browser } from '$app/environment';
   /** Where "home" goes (and the back fallback when there's no history). */
   export let home = '/';
-  function back() {
-    if (browser && window.history.length > 1) window.history.back();
+  /** Explicit back target. When set, "← Back" goes here deterministically instead of
+   *  window.history.back() (which is unreliable once history has accumulated). */
+  export let back = '';
+  function goBack() {
+    if (back) goto(back);
+    else if (browser && window.history.length > 1) window.history.back();
     else goto(home);
   }
 </script>
 
 <nav class="page-nav">
-  <button class="pn-btn" on:click={back} aria-label="Back">← Back</button>
+  <button class="pn-btn" on:click={goBack} aria-label="Back">← Back</button>
   <button class="pn-home" on:click={() => goto(home)} aria-label="Main menu" title="Main menu">🏠</button>
 </nav>
 

@@ -3119,8 +3119,8 @@
     cursor: pointer; font-size: 1.7rem; transition: transform 0.15s, border-color 0.2s;
   }
   .account-ic:hover { transform: translateY(-1px); border-color: rgba(251,191,36,0.5); }
-  .account-ic.has-av { overflow: hidden; padding: 0; }
-  .account-ic.has-av :global(.wb-avatar) { width: 100%; height: 100%; border: none; }
+  .account-ic.has-av { overflow: visible; padding: 0; }
+  .account-ic.has-av :global(.wb-avatar) { width: 100%; height: 100%; border: none; border-radius: 50%; overflow: hidden; }
   /* My Account → avatar / edit-avatar entry */
   .ma-avatar-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 6px auto 10px; background: none; border: none; cursor: pointer; }
   .ma-avatar-btn :global(.wb-avatar) { box-shadow: 0 6px 18px rgba(0,0,0,0.4); }
