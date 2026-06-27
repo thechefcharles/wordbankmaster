@@ -18,6 +18,8 @@
   /** @type {string[]} */
   let earned = $state([]);
   let earnedBadges = $derived(earned.map((id) => badgeInfo(id)).filter(Boolean));
+  /** @type {{title:string, desc:string, link?:string, linkLabel?:string}|null} */
+  let statInfo = $state(null);
 
   onMount(async () => {
     track('profile_view');
@@ -56,7 +58,7 @@
   <button class="stat stat-link" onclick={() => goto(href)}><span class="sv">{value}</span><span class="sc">{label} ›</span></button>
 {/snippet}
 {#snippet chipAct(/** @type {any} */ value, /** @type {string} */ label, /** @type {() => void} */ action)}
-  <button class="stat stat-link" onclick={action}><span class="sv">{value}</span><span class="sc">{label} ›</span></button>
+  <button class="stat stat-link" onclick={action}><span class="sv">{value}</span><span class="sc">{label} ⓘ</span></button>
 {/snippet}
 
 <main class="you-page">
@@ -76,7 +78,12 @@
           <span class="prof-avatar-edit">🎨 Edit Avatar</span>
         </button>
         <div class="ov-id">
-          <div class="uname">{d.username ? '@' + d.username : 'You'}</div>
+          <div class="uname-row">
+            <span class="uname">{d.username ? '@' + d.username : 'You'}</span>
+            <button class="bell-btn" onclick={() => tab = 'alerts'} aria-label="Notifications" title="Notifications">
+              🔔{#if $unreadCount > 0}<span class="bell-count">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}
+            </button>
+          </div>
           <button class="nw nw-btn" onclick={() => goto('/bank')}>{fmt(d.net_worth)}<span class="nw-go"> ›</span></button>
           <button class="ov-people" onclick={() => goto('/?people=1')} aria-label="Friends & groups">
             <span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span><span class="ov-people-lbl">Friends</span>
@@ -85,12 +92,12 @@
       </div>
 
       <div class="grid ov-summary">
-        {@render chipAct((d.overall.puzzles_solved ?? 0).toLocaleString(), 'Puzzles', () => tab = 'stats')}
-        {@render chipAct(d.overall.games_played ?? 0, 'Games', () => tab = 'stats')}
-        {@render chipLink('🔥 ' + (d.daily.current_streak ?? 0), 'Streak', '/streak')}
-        {@render chipLink('🏆 ' + (d.daily.win_streak ?? 0), 'Win streak', '/streak')}
-        {@render chipAct(pct(d.daily.won ?? 0, d.daily.played ?? 0), 'Daily win%', () => tab = 'stats')}
-        {@render chipAct(d.overall.clean_solves ?? 0, 'Clean solves', () => tab = 'stats')}
+        {@render chipAct((d.overall.puzzles_solved ?? 0).toLocaleString(), 'Puzzles', () => statInfo = { title: 'Puzzles solved', desc: 'Every puzzle you’ve cracked across all modes — Daily, Cash Game, Free Play, and challenges.' })}
+        {@render chipAct(d.overall.games_played ?? 0, 'Games', () => statInfo = { title: 'Games played', desc: 'How many games you’ve started across every mode — whether you solved them or not.' })}
+        {@render chipAct('🔥 ' + (d.daily.current_streak ?? 0), 'Streak', () => statInfo = { title: '📅 Play streak', desc: 'Days in a row you’ve shown up for the Daily. Miss a day and it resets (a freeze can save it).', link: '/streak', linkLabel: 'View streak & calendar' })}
+        {@render chipAct('🏆 ' + (d.daily.win_streak ?? 0), 'Win streak', () => statInfo = { title: '🏆 Win streak', desc: 'Daily puzzles you’ve solved in a row. Powers your bounty multiplier — the longer it runs, the more you earn.', link: '/streak', linkLabel: 'View streak & calendar' })}
+        {@render chipAct(pct(d.daily.won ?? 0, d.daily.played ?? 0), 'Daily win%', () => statInfo = { title: 'Daily win rate', desc: 'The share of Dailies you’ve played that you actually solved.' })}
+        {@render chipAct(d.overall.clean_solves ?? 0, 'Clean solves', () => statInfo = { title: 'Clean solves', desc: 'Puzzles you solved with zero wrong letters — pure deduction, no misses.' })}
       </div>
 
       <button class="ov-badges-card" onclick={() => goto('/badges')}>
@@ -105,8 +112,7 @@
       <div class="ov-nav">
         <button class="ov-link" onclick={() => tab = 'stats'}>📊 Full stats <span class="arrow">›</span></button>
         <button class="ov-link" onclick={() => goto('/history')}>📜 Play history <span class="arrow">›</span></button>
-        <button class="ov-link" onclick={() => goto('/streak')}>🔥 Streak &amp; calendar <span class="arrow">›</span></button>
-        <button class="ov-link" onclick={() => tab = 'alerts'}>🔔 Notifications{#if $unreadCount > 0}<span class="ov-count">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}<span class="arrow">›</span></button>
+        <button class="ov-link" onclick={() => goto('/streak')}>📅 Daily Calendar <span class="arrow">›</span></button>
       </div>
     {:else if tab === 'stats'}
       <div class="sec-title">📊 Overall</div>
@@ -185,10 +191,33 @@
       <NotificationsPanel onNavigate={notifNav} />
     {/if}
   {/if}
+
+  {#if statInfo}
+    <div class="si-overlay" role="button" tabindex="0" onclick={() => statInfo = null}
+      onkeydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') statInfo = null; }}>
+      <div class="si-card" role="document" onclick={(e) => e.stopPropagation()}>
+        <h3 class="si-title">{statInfo.title}</h3>
+        <p class="si-desc">{statInfo.desc}</p>
+        {#if statInfo.link}<button class="si-link" onclick={() => goto(/** @type {string} */ (statInfo?.link))}>{statInfo.linkLabel} →</button>{/if}
+        <button class="si-close" onclick={() => statInfo = null}>Got it</button>
+      </div>
+    </div>
+  {/if}
 </main>
 
 <style>
   .you-page { max-width: 520px; margin: 0 auto; padding: 16px 14px 60px; }
+  /* stat explanation popup */
+  .si-overlay { position: fixed; inset: 0; z-index: 4000; display: grid; place-items: center; padding: 24px;
+    background: rgba(4,8,14,0.72); backdrop-filter: blur(6px); border: none; }
+  .si-card { width: 100%; max-width: 320px; padding: 22px; border-radius: 18px; text-align: center;
+    background: var(--surface-strong, rgba(20,26,38,0.96)); border: 1px solid var(--border-strong, rgba(255,255,255,0.16));
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 10px; }
+  .si-title { font-family: var(--font-display); font-size: 1.15rem; margin: 0; }
+  .si-desc { font-size: 0.92rem; line-height: 1.5; color: var(--text-muted); margin: 0; }
+  .si-link { background: none; border: none; color: var(--brand-2); font-weight: 700; cursor: pointer; padding: 4px; font-size: 0.92rem; }
+  .si-close { margin-top: 4px; height: 44px; border-radius: 12px; border: none; cursor: pointer; font-weight: 800; color: #3a2a00;
+    background: linear-gradient(135deg, #fde047, #f59e0b); }
   .topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .back-btn { background: none; border: none; color: var(--text-muted); font-size: 0.92rem; cursor: pointer; padding: 6px 0; }
   .tb-right { display: flex; gap: 6px; }
@@ -222,6 +251,10 @@
   .ov-hero { display: flex; align-items: center; gap: 16px; margin: 6px 0 16px; }
   .ov-hero .prof-avatar { margin: 0; }
   .ov-id { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+  .uname-row { display: flex; align-items: center; gap: 8px; }
+  .bell-btn { position: relative; background: none; border: none; cursor: pointer; font-size: 1.3rem; line-height: 1; padding: 2px; }
+  .bell-count { position: absolute; top: -4px; right: -7px; min-width: 17px; height: 17px; display: grid; place-items: center; padding: 0 4px;
+    border-radius: 999px; background: #dc2626; color: #fff; font-size: 0.62rem; font-weight: 800; }
   .ov-id .uname { font-size: 1.15rem; }
   .ov-id .nw { font-size: 1.7rem; }
   .ov-id .nw-sub { font-size: 0.8rem; color: var(--text-faint); -webkit-text-fill-color: var(--text-faint); }

@@ -119,3 +119,13 @@ export async function markFriendNotifRead(/** @type {string} */ fromId) {
   await markNotificationsRead(null, fromId);
   if (started) await poll();
 }
+/** Permanently dismiss (delete) one notification. @param {string} id */
+export async function dismissNotification(id) {
+  if (!id) return;
+  notifications.update((list) => {
+    const n = list.find((x) => x.id === id);
+    if (n && !n.read) unreadCount.update((c) => Math.max(0, c - 1));
+    return list.filter((x) => x.id !== id);
+  });
+  try { await supabase.rpc('dismiss_notification', { p_id: id }); } catch { /* best-effort */ }
+}
