@@ -1998,9 +1998,11 @@
         <div class="main-menu-buttons stagger">
           <!-- ▶ Resume — any in-progress game (solo + started challenges). One → straight in; many → the Resume menu. -->
           {#if resumables.length}
-            <button class="menu-card resume-card" style="--i: 0" on:click={onResume}>
-              <span class="mc-title">▶ Resume{resumables.length === 1 ? ' ' + resumables[0].label : ''}</span>
-              {#if resumables.length > 1}<span class="resume-count">{resumables.length}</span>{/if}
+            <button class="resume-strip" style="--i: 0" on:click={onResume}>
+              <span class="rs-dot">▸</span>
+              <span class="rs-label">Continue{resumables.length === 1 ? ' — ' + resumables[0].label : ' your game'}</span>
+              {#if resumables.length > 1}<span class="rs-count">{resumables.length}</span>{/if}
+              <span class="rs-go">›</span>
             </button>
           {/if}
           <button class="menu-card primary" style="--i: 0" on:click={() => { menuView = 'play'; fx('tap'); }}>
@@ -3375,30 +3377,24 @@
   .menu-card.fresh .mc-title { color: #3a2a00; -webkit-text-fill-color: #3a2a00; background: none; text-shadow: none; }
   .menu-card.fresh .mc-streak { color: #5a4200; text-shadow: none; }
   /* ▶ Resume shortcut card (home menu) — green, mirrors the in-progress accent */
-  .menu-card.resume-card {
-    background: linear-gradient(180deg, #16352b 0%, #0f2a22 100%);
-    border-color: rgba(16,185,129,0.6);
-    box-shadow: inset 0 1px 0 rgba(110,231,183,0.2), inset 0 0 0 1px rgba(16,185,129,0.3), 0 4px 14px rgba(0,0,0,0.5), 0 0 20px rgba(16,185,129,0.25);
+  /* ▸ slim "Continue" strip — lighter than the Play button, so it reads as a resume
+     prompt rather than a second primary action. */
+  .resume-strip {
+    display: flex; align-items: center; gap: 9px; width: 100%; margin-bottom: 2px;
+    padding: 9px 14px; border-radius: 12px; cursor: pointer;
+    background: linear-gradient(180deg, rgba(16,53,43,0.65), rgba(15,42,34,0.65));
+    border: 1px solid rgba(16,185,129,0.4);
+    font-family: var(--font-display); font-weight: 700; font-size: 0.85rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   }
-  .menu-card.resume-card::before, .menu-card.resume-card::after { display: none; }
-  .menu-card.resume-card .mc-title {
-    background: linear-gradient(180deg, #d1fae5, #6ee7b7); -webkit-background-clip: text; background-clip: text;
-    -webkit-text-fill-color: transparent; color: transparent; text-shadow: none;
-  }
-  /* ⚔️ Challenge-invite / friend-request notification cards */
-  .menu-card.invite-card {
-    background: linear-gradient(180deg, #2a2140 0%, #1c1730 100%); border-color: rgba(167,139,250,0.55);
-    box-shadow: inset 0 0 0 1px rgba(167,139,250,0.25), 0 4px 12px rgba(0,0,0,0.5), 0 0 16px rgba(167,139,250,0.18);
-  }
-  .menu-card.invite-card::before, .menu-card.invite-card::after { display: none; }
-  .menu-card.invite-card .mc-title { background: linear-gradient(180deg, #e9d5ff, #c4b5fd); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; text-shadow: none; }
-  .menu-card.invite-card.friend { border-color: rgba(96,165,250,0.5); }
-  .menu-card.invite-card.friend .mc-title { background: linear-gradient(180deg, #dbeafe, #93c5fd); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-  /* count chips on the notification cards */
-  .resume-count, .invite-count {
-    position: absolute; right: 14px; top: 50%; transform: translateY(-50%); z-index: 1;
-    min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
-    font-family: var(--font-display); font-weight: 800; font-size: 0.8rem; color: #0f2a22; background: #6ee7b7;
+  .resume-strip:hover { border-color: rgba(16,185,129,0.65); }
+  .resume-strip:active { transform: scale(0.99); }
+  .rs-dot { color: #34d399; font-size: 0.8rem; }
+  .rs-label { flex: 1; text-align: left; color: #d1fae5; }
+  .rs-go { color: rgba(110,231,183,0.7); }
+  .rs-count {
+    min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; display: grid; place-items: center;
+    font-family: var(--font-display); font-weight: 800; font-size: 0.72rem; color: #0f2a22; background: #6ee7b7;
   }
   .invite-count { color: #1c1730; background: #c4b5fd; }
   /* ▶ Resume menu modal */
