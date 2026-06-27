@@ -14,6 +14,8 @@
   let loading = true;
   let busy = '';
   let msg = '';
+  /** @type {{title:string, desc:string}|null} */
+  let info = null;
 
   async function load() {
     const [bank, co] = await Promise.all([getBank(500), getFreeplayCashoutStatus()]);
@@ -71,23 +73,21 @@
   {:else if b}
     <!-- Balances -->
     <div class="balances">
-      <div class="bal cash">
-        <span class="bal-label">💰 Cash</span>
+      <button class="bal cash" onclick={() => info = { title: '💰 Cash', desc: 'Your main currency — and your score. Earn it by solving puzzles in the Daily, Cash Game, and challenges. Spend it on letters mid-game and on power-ups & cosmetics in the Store. It can’t be bought with real money.' }}>
+        <span class="bal-label">💰 Cash <span class="bal-i">ⓘ</span></span>
         <span class="bal-value">{fmt(b.bank)}</span>
-        <span class="bal-sub">Your score — can't be bought</span>
-      </div>
+      </button>
       {#if cashout}
-        <div class="bal credits">
-          <span class="bal-label">🎟️ Credits</span>
+        <button class="bal credits" onclick={() => info = { title: '🎟️ Credits', desc: 'Earned in Free Play — a practice stack you can build up. Exchange them for Cash right here in the Bank (40 credits = $1, up to $50 a day).' }}>
+          <span class="bal-label">🎟️ Credits <span class="bal-i">ⓘ</span></span>
           <span class="bal-value cr">{(cashout.credits ?? 0).toLocaleString()}</span>
-          <span class="bal-sub">From Free Play</span>
-        </div>
+        </button>
       {/if}
     </div>
 
     <!-- Items (your vault) -->
     <h2 class="hist-title">🎒 Your Items</h2>
-    <InventoryList />
+    <InventoryList addHref="/shop?from=bank" />
 
     <!-- Exchange -->
     {#if cashout && cashout.credits > 0}
@@ -124,6 +124,17 @@
       </div>
     {/if}
   {/if}
+
+  {#if info}
+    <div class="si-overlay" role="button" tabindex="0" onclick={() => info = null}
+      onkeydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') info = null; }}>
+      <div class="si-card" role="document" onclick={(e) => e.stopPropagation()}>
+        <h3 class="si-title">{info.title}</h3>
+        <p class="si-desc">{info.desc}</p>
+        <button class="si-close" onclick={() => info = null}>Got it</button>
+      </div>
+    </div>
+  {/if}
 </main>
 
 <style>
@@ -132,8 +143,23 @@
   .loading { color: var(--text-muted); padding: 2rem; text-align: center; }
 
   .balances { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-  .bal { display: flex; flex-direction: column; gap: 2px; padding: 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); }
+  .bal { display: flex; flex-direction: column; gap: 2px; padding: 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border);
+    text-align: left; cursor: pointer; font: inherit; color: inherit; }
+  .bal:hover { border-color: var(--brand-2); }
+  .bal:active { transform: scale(0.98); }
   .bal-label { font-size: 0.78rem; color: var(--text-muted); font-weight: 700; }
+  .bal-i { color: var(--text-faint); font-size: 0.72rem; }
+
+  /* balance explanation popup */
+  .si-overlay { position: fixed; inset: 0; z-index: 4000; display: grid; place-items: center; padding: 24px;
+    background: rgba(4,8,14,0.72); backdrop-filter: blur(6px); border: none; }
+  .si-card { width: 100%; max-width: 320px; padding: 22px; border-radius: 18px; text-align: center;
+    background: var(--surface-strong, rgba(20,26,38,0.96)); border: 1px solid var(--border-strong, rgba(255,255,255,0.16));
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 10px; }
+  .si-title { font-family: var(--font-display); font-size: 1.15rem; margin: 0; }
+  .si-desc { font-size: 0.92rem; line-height: 1.5; color: var(--text-muted); margin: 0; }
+  .si-close { margin-top: 4px; height: 44px; border-radius: 12px; border: none; cursor: pointer; font-weight: 800; color: #3a2a00;
+    background: linear-gradient(135deg, #fde047, #f59e0b); }
   .bal-value { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.7rem; color: var(--brand-2); }
   .bal-value.cr { color: #6ee7b7; }
   .bal-sub { font-size: 0.68rem; color: var(--text-faint); }
