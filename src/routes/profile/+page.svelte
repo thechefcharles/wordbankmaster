@@ -5,13 +5,11 @@
   import { getProfileDetail, getMyAvatar, getUserBadges } from '$lib/stores/statsStore.js';
   import { badgeInfo } from '$lib/badges.js';
   import Avatar from '$lib/components/Avatar.svelte';
-  import HistoryList from '$lib/components/HistoryList.svelte';
-  import BadgesPanel from '$lib/components/BadgesPanel.svelte';
   import NotificationsPanel from '$lib/components/NotificationsPanel.svelte';
   import { unreadCount, markAllNotificationsRead } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
 
-  /** @type {'overview'|'stats'|'history'|'badges'|'alerts'} */
+  /** @type {'overview'|'stats'|'alerts'} */
   let tab = $state('overview');
   /** @type {any|null} */
   let d = $state(null);
@@ -24,7 +22,7 @@
   onMount(async () => {
     track('profile_view');
     const t = $page.url.searchParams.get('tab');
-    if (t === 'stats' || t === 'history' || t === 'badges' || t === 'alerts') tab = /** @type {any} */ (t);
+    if (t === 'stats' || t === 'alerts') tab = /** @type {any} */ (t);
     getMyAvatar().then((a) => { avatar = a.config; });
     getUserBadges().then((b) => { earned = b; });
     try { d = await getProfileDetail(); } finally { loading = false; }
@@ -57,28 +55,20 @@
 {#snippet chipLink(/** @type {any} */ value, /** @type {string} */ label, /** @type {string} */ href)}
   <button class="stat stat-link" onclick={() => goto(href)}><span class="sv">{value}</span><span class="sc">{label} ›</span></button>
 {/snippet}
+{#snippet chipAct(/** @type {any} */ value, /** @type {string} */ label, /** @type {() => void} */ action)}
+  <button class="stat stat-link" onclick={action}><span class="sv">{value}</span><span class="sc">{label} ›</span></button>
+{/snippet}
 
 <main class="you-page">
   <div class="topbar">
     <button class="back-btn" onclick={back}>← Back</button>
-    <h1 class="page-title">Profile</h1>
-    <div class="tb-right">
-      <button class="gear" onclick={() => goto('/')} title="Main menu" aria-label="Main menu">🏠</button>
-      <button class="gear" onclick={() => goto('/?account=1')} title="Settings" aria-label="Settings">⚙️</button>
-    </div>
+    <h1 class="page-title">{tab === 'overview' ? 'Profile' : tab === 'stats' ? 'Full Stats' : 'Notifications'}</h1>
+    <button class="gear" onclick={() => goto('/?account=1')} title="Settings" aria-label="Settings">⚙️</button>
   </div>
 
   {#if loading}
     <p class="muted">Loading…</p>
   {:else if d}
-    <div class="tabs">
-      <button class="tab" class:active={tab === 'overview'} onclick={() => tab = 'overview'}>Overview</button>
-      <button class="tab" class:active={tab === 'stats'} onclick={() => tab = 'stats'}>Stats</button>
-      <button class="tab" class:active={tab === 'history'} onclick={() => tab = 'history'}>History</button>
-      <button class="tab" class:active={tab === 'badges'} onclick={() => tab = 'badges'}>Badges</button>
-      <button class="tab" class:active={tab === 'alerts'} onclick={() => tab = 'alerts'}>🔔{#if $unreadCount > 0}<span class="tab-count">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}</button>
-    </div>
-
     {#if tab === 'overview'}
       <div class="ov-hero">
         <button class="prof-avatar" onclick={() => goto('/avatar')}>
@@ -87,7 +77,7 @@
         </button>
         <div class="ov-id">
           <div class="uname">{d.username ? '@' + d.username : 'You'}</div>
-          <div class="nw">{fmt(d.net_worth)}<span class="nw-sub"> Cash</span></div>
+          <button class="nw nw-btn" onclick={() => goto('/bank')}>{fmt(d.net_worth)}<span class="nw-go"> ›</span></button>
           <button class="ov-people" onclick={() => goto('/?people=1')} aria-label="Friends & groups">
             <span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span><span class="ov-people-lbl">Friends</span>
           </button>
@@ -95,25 +85,28 @@
       </div>
 
       <div class="grid ov-summary">
-        {@render chip((d.overall.puzzles_solved ?? 0).toLocaleString(), 'Puzzles')}
-        {@render chip(d.overall.games_played ?? 0, 'Games')}
+        {@render chipAct((d.overall.puzzles_solved ?? 0).toLocaleString(), 'Puzzles', () => tab = 'stats')}
+        {@render chipAct(d.overall.games_played ?? 0, 'Games', () => tab = 'stats')}
         {@render chipLink('🔥 ' + (d.daily.current_streak ?? 0), 'Streak', '/streak')}
-        {@render chip('🏆 ' + (d.daily.win_streak ?? 0), 'Win streak')}
-        {@render chip(pct(d.daily.won ?? 0, d.daily.played ?? 0), 'Daily win%')}
-        {@render chip(d.overall.clean_solves ?? 0, 'Clean solves')}
+        {@render chipLink('🏆 ' + (d.daily.win_streak ?? 0), 'Win streak', '/streak')}
+        {@render chipAct(pct(d.daily.won ?? 0, d.daily.played ?? 0), 'Daily win%', () => tab = 'stats')}
+        {@render chipAct(d.overall.clean_solves ?? 0, 'Clean solves', () => tab = 'stats')}
       </div>
 
-      {#if earnedBadges.length}
-        <div class="sec-title">🏅 Badges <button class="sec-link" onclick={() => tab = 'badges'}>View all ›</button></div>
-        <div class="ov-badges">
-          {#each earnedBadges.slice(0, 12) as bdg}<span class="ov-badge" title={bdg.name}>{bdg.emoji}</span>{/each}
-        </div>
-      {/if}
+      <button class="ov-badges-card" onclick={() => goto('/badges')}>
+        <span class="ov-badges-h">🏅 Badges <span class="arrow">›</span></span>
+        <span class="ov-badges">
+          {#if earnedBadges.length}
+            {#each earnedBadges.slice(0, 14) as bdg}<span class="ov-badge" title={bdg.name}>{bdg.emoji}</span>{/each}
+          {:else}<span class="ov-badges-empty">None yet — play to earn them</span>{/if}
+        </span>
+      </button>
 
       <div class="ov-nav">
         <button class="ov-link" onclick={() => tab = 'stats'}>📊 Full stats <span class="arrow">›</span></button>
-        <button class="ov-link" onclick={() => tab = 'history'}>📜 Play history <span class="arrow">›</span></button>
+        <button class="ov-link" onclick={() => goto('/history')}>📜 Play history <span class="arrow">›</span></button>
         <button class="ov-link" onclick={() => goto('/streak')}>🔥 Streak &amp; calendar <span class="arrow">›</span></button>
+        <button class="ov-link" onclick={() => tab = 'alerts'}>🔔 Notifications{#if $unreadCount > 0}<span class="ov-count">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}<span class="arrow">›</span></button>
       </div>
     {:else if tab === 'stats'}
       <div class="sec-title">📊 Overall</div>
@@ -188,10 +181,6 @@
           {/each}
         </div>
       {/if}
-    {:else if tab === 'history'}
-      <HistoryList />
-    {:else if tab === 'badges'}
-      <BadgesPanel />
     {:else}
       <NotificationsPanel onNavigate={notifNav} />
     {/if}
@@ -244,9 +233,18 @@
   .ov-people:active { transform: scale(0.97); }
   .ov-summary { margin-bottom: 4px; }
   .sec-link { float: right; background: none; border: none; color: var(--brand-2); font-weight: 700; font-size: 0.72rem; cursor: pointer; text-transform: none; letter-spacing: 0; }
+  .nw-btn { background: none; border: none; padding: 0; cursor: pointer; display: inline-flex; align-items: baseline; }
+  .nw-go { font-size: 1rem; color: var(--text-faint); font-family: var(--font-display); }
+  .ov-badges-card { display: block; width: 100%; text-align: left; cursor: pointer; margin-top: 16px; padding: 12px 14px; border-radius: 14px;
+    background: var(--surface); border: 1px solid var(--border); }
+  .ov-badges-card:hover { border-color: var(--brand-2); }
+  .ov-badges-h { display: flex; justify-content: space-between; font-family: var(--font-display); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+  .ov-badges-h .arrow { color: var(--text-faint); }
   .ov-badges { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
   .ov-badge { font-size: 1.5rem; line-height: 1; }
-  .ov-nav { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
+  .ov-badges-empty { font-size: 0.85rem; color: var(--text-muted); }
+  .ov-nav { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+  .ov-count { margin-left: auto; margin-right: 8px; min-width: 20px; height: 20px; display: inline-grid; place-items: center; padding: 0 5px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 0.72rem; font-weight: 800; }
   .ov-link { display: flex; justify-content: space-between; align-items: center; padding: 13px 15px; border-radius: 14px; cursor: pointer;
     background: var(--surface); border: 1px solid var(--border); color: var(--text); font-weight: 700; font-size: 0.95rem; text-align: left; }
   .ov-link:hover { border-color: var(--brand-2); }
