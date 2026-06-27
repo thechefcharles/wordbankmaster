@@ -1,11 +1,15 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import PageNav from "$lib/components/PageNav.svelte";
   import { getShop, buyCosmetic, equipCosmetic, unequipCosmetic, getPowerups, buyPowerup } from '$lib/stores/statsStore.js';
   import { track } from '$lib/analytics.js';
   import { fx } from '$lib/sound.js';
   import InventoryList from '$lib/components/InventoryList.svelte';
+
+  // Back goes to the Bank when you came from its empty-slot "+", else the menu.
+  let backTo = $derived($page.url.searchParams.get('from') === 'bank' ? '/bank' : '/');
 
   let bank = $state(0);
   /** @type {any[]} */
@@ -89,7 +93,7 @@
 <svelte:head><title>WordBank — Store</title></svelte:head>
 
 <main class="shop-page">
-  <PageNav back="/" showHome={false} />
+  <PageNav back={backTo} showHome={false} />
 
   <div class="head">
     <h1>🛍️ Store</h1>

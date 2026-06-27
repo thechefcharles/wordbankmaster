@@ -709,6 +709,12 @@ export async function freeplayCashout(amount = null) {
   if (error || !data) { if (error) console.error('❌ freeplay_cashout:', error); return { ok: false }; }
   return data;
 }
+/** Buy Free Play credits with Cash (40 credits = $1). @param {number} dollars @returns {Promise<any>} */
+export async function buyCredits(dollars) {
+  const { data, error } = await supabase.rpc('buy_credits', { p_dollars: dollars });
+  if (error || !data) { if (error) console.error('❌ buy_credits:', error); return { ok: false }; }
+  return data;
+}
 /** Use a power-up in the Climb. @param {string} id @returns {Promise<any>} */
 export async function climbUsePowerup(id) {
   const { data, error } = await supabase.rpc('climb_use_powerup', { p_id: id });

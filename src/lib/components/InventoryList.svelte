@@ -5,6 +5,9 @@
   import { onMount } from 'svelte';
   import { getPowerups, getShop } from '$lib/stores/statsStore.js';
 
+  /** When set, the empty "+" slots link here (e.g. the Store). */
+  export let addHref = '';
+
   /** @type {any[]} */ let pups = [];
   /** @type {any[]} */ let cosmetics = [];
   let loading = true;
@@ -53,7 +56,12 @@
   {#if loading}
     <p class="inv-msg">Loading…</p>
   {:else if totalCount === 0}
-    <p class="inv-msg">Nothing yet. Skip the Daily Twist to bank Bounty Boosts, or buy power-ups &amp; extras in the Store.</p>
+    <div class="inv-slots">
+      {#each Array(6) as _, i}
+        {#if addHref}<a class="inv-slot" href={addHref} aria-label="Get items in the Store">+</a>
+        {:else}<span class="inv-slot">+</span>{/if}
+      {/each}
+    </div>
   {:else}
     <p class="inv-total">{totalCount} item{totalCount === 1 ? '' : 's'} in your vault</p>
     {#each GROUPS as g}
@@ -90,6 +98,11 @@
   .inv-h { font-family: var(--font-display); font-size: 0.92rem; font-weight: 700; margin: 1.1rem 0 0.1rem; text-align: left; }
   .inv-note { font-size: 0.74rem; color: var(--text-faint); margin: 0 0 0.6rem; }
   .inv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .inv-slots { display: flex; flex-wrap: wrap; gap: 7px; }
+  .inv-slot { width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center; font-size: 1.1rem;
+    border: 1.5px dashed var(--border-strong, rgba(255,255,255,0.16)); background: rgba(255,255,255,0.02);
+    color: var(--text-faint); text-decoration: none; }
+  a.inv-slot:hover { border-color: var(--brand-2); color: var(--brand-2); }
   .inv-card { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 3px;
     padding: 0.9rem 0.5rem; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); }
   .inv-ic { font-size: 1.7rem; line-height: 1; }
