@@ -21,7 +21,8 @@
 {/if}
 
 <style>
-  .cm-overlay { position: fixed; inset: 0; z-index: 5000; display: grid; place-items: center; padding: 20px; }
+  /* above every in-page modal (settings modal is 9999, PinConfirm is 100000) */
+  .cm-overlay { position: fixed; inset: 0; z-index: 100001; display: grid; place-items: center; padding: 20px; }
   .cm-backdrop { position: absolute; inset: 0; background: rgba(4,8,14,0.72); backdrop-filter: blur(6px); border: none; cursor: pointer; }
   .cm-card { position: relative; z-index: 1; width: 100%; max-width: 340px; padding: 22px; border-radius: 20px; text-align: center;
     background: var(--surface-strong, rgba(20,26,38,0.96)); border: 1px solid var(--border-strong, rgba(255,255,255,0.16));
