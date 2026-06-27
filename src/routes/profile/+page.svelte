@@ -85,19 +85,20 @@
             </button>
           </div>
           <button class="nw nw-btn" onclick={() => goto('/bank')}>{fmt(d.net_worth)}<span class="nw-go"> ›</span></button>
-          <button class="ov-people" onclick={() => goto('/?people=1')} aria-label="Friends & groups">
-            <span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span><span class="ov-people-lbl">Friends</span>
-          </button>
+          <div class="ov-social">
+            <button class="ov-social-btn" onclick={() => goto('/my-friends')}>👋 My Friends ›</button>
+            <button class="ov-social-btn" onclick={() => goto('/my-groups')}>👥 My Groups ›</button>
+          </div>
         </div>
       </div>
 
       <div class="grid ov-summary">
-        {@render chipAct((d.overall.puzzles_solved ?? 0).toLocaleString(), 'Puzzles', () => statInfo = { title: 'Puzzles solved', desc: 'Every puzzle you’ve cracked across all modes — Daily, Cash Game, Free Play, and challenges.' })}
-        {@render chipAct(d.overall.games_played ?? 0, 'Games', () => statInfo = { title: 'Games played', desc: 'How many games you’ve started across every mode — whether you solved them or not.' })}
-        {@render chipAct('🔥 ' + (d.daily.current_streak ?? 0), 'Streak', () => statInfo = { title: '📅 Play streak', desc: 'Days in a row you’ve shown up for the Daily. Miss a day and it resets (a freeze can save it).', link: '/streak', linkLabel: 'View streak & calendar' })}
-        {@render chipAct('🏆 ' + (d.daily.win_streak ?? 0), 'Win streak', () => statInfo = { title: '🏆 Win streak', desc: 'Daily puzzles you’ve solved in a row. Powers your bounty multiplier — the longer it runs, the more you earn.', link: '/streak', linkLabel: 'View streak & calendar' })}
-        {@render chipAct(pct(d.daily.won ?? 0, d.daily.played ?? 0), 'Daily win%', () => statInfo = { title: 'Daily win rate', desc: 'The share of Dailies you’ve played that you actually solved.' })}
-        {@render chipAct(d.overall.clean_solves ?? 0, 'Clean solves', () => statInfo = { title: 'Clean solves', desc: 'Puzzles you solved with zero wrong letters — pure deduction, no misses.' })}
+        {@render chipAct((d.overall.puzzles_solved ?? 0).toLocaleString(), 'Total Solves', () => statInfo = { title: 'Total solves', desc: 'Every puzzle you’ve solved across all modes — Daily, Cash Game, Free Play, and challenges.' })}
+        {@render chipAct(d.overall.games_played ?? 0, 'Games Played', () => statInfo = { title: 'Games played', desc: 'How many games you’ve started across every mode — whether you solved them or not.' })}
+        {@render chipAct('🔥 ' + (d.daily.current_streak ?? 0), 'Daily Streak', () => statInfo = { title: '📅 Daily streak', desc: 'Days in a row you’ve shown up for the Daily. Miss a day and it resets (a freeze can save it).', link: '/streak', linkLabel: 'View Daily Calendar' })}
+        {@render chipAct('🏆 ' + (d.daily.win_streak ?? 0), 'Win Streak', () => statInfo = { title: '🏆 Win streak', desc: 'Daily puzzles you’ve solved in a row. Powers your bounty multiplier — the longer it runs, the more you earn.', link: '/streak', linkLabel: 'View Daily Calendar' })}
+        {@render chipAct(pct(d.daily.won ?? 0, d.daily.played ?? 0), 'Daily Win %', () => statInfo = { title: 'Daily win rate', desc: 'The share of Dailies you’ve played that you actually solved.' })}
+        {@render chipAct(d.overall.clean_solves ?? 0, 'Clean Solves', () => statInfo = { title: 'Clean solves', desc: 'Puzzles you solved with zero wrong letters — pure deduction, no misses.' })}
       </div>
 
       <button class="ov-badges-card" onclick={() => goto('/badges')}>
@@ -256,6 +257,10 @@
   .bell-count { position: absolute; top: -4px; right: -7px; min-width: 17px; height: 17px; display: grid; place-items: center; padding: 0 4px;
     border-radius: 999px; background: #dc2626; color: #fff; font-size: 0.62rem; font-weight: 800; }
   .ov-id .uname { font-size: 1.15rem; }
+  .ov-social { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; align-items: flex-start; }
+  .ov-social-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text); cursor: pointer;
+    padding: 6px 12px; border-radius: 999px; font-weight: 700; font-size: 0.82rem; }
+  .ov-social-btn:hover { border-color: var(--brand-2); }
   .ov-id .nw { font-size: 1.7rem; }
   .ov-id .nw-sub { font-size: 0.8rem; color: var(--text-faint); -webkit-text-fill-color: var(--text-faint); }
   .ov-people { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 7px 14px 7px 30px; position: relative;
