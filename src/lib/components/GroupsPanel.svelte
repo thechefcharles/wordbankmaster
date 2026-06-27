@@ -169,7 +169,7 @@
           {#each open.members as m}
             <tr class={m.is_me ? 'me-row' : ((m.rank ?? 0) <= 3 ? 'top-three' : '')}>
               <td class="rank">{#if m.rank === 1}🥇{:else if m.rank === 2}🥈{:else if m.rank === 3}🥉{:else}{m.rank}{/if}</td>
-              <td class="name"><span style={m.color ? `color:${m.color}` : ''}>{m.is_me ? 'You' : m.name}</span>{#if m.is_owner}<span class="owner-tag">owner</span>{/if}{#if m.title}<span class="nw-title">{m.title}</span>{/if}</td>
+              <td class="name">{#if m.is_me}<span style={m.color ? `color:${m.color}` : ''}>You</span>{:else}<button class="m-link" style={m.color ? `color:${m.color}` : ''} onclick={() => m.username && goto('/u/' + encodeURIComponent(m.username))}>{m.name}</button>{/if}{#if m.is_owner}<span class="owner-tag">owner</span>{/if}{#if m.title}<span class="nw-title">{m.title}</span>{/if}</td>
               <td class="score-cell" class:neg={(m.net_worth ?? 0) < 0}>{fmt(m.net_worth)}</td>
               <td>{fmt(m.cash)}</td>
               {#if open.is_owner}<td class="rm-cell">{#if !m.is_owner}<button class="rm-btn" onclick={() => removeMember(m.username)} disabled={busy} title="Remove">✕</button>{/if}</td>{/if}
@@ -324,6 +324,8 @@
   tr:last-child td { border-bottom: none; }
   td.rank { width: 36px; }
   td.name { font-weight: 600; }
+  .m-link { background: none; border: none; padding: 0; font: inherit; font-weight: 600; color: var(--text); cursor: pointer; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2); text-underline-offset: 2px; }
+  .m-link:hover { text-decoration-color: var(--gold); }
   td.score-cell { font-family: var(--font-display); font-weight: 700; color: var(--brand-2); }
   td.score-cell.neg { color: #fb7185; }
   tr.me-row { background: rgba(56,189,248,0.1); }
