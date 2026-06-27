@@ -1004,6 +1004,15 @@
     }
   }
 
+  // Keep the menu pinned to the top. The tall menu + the login→menu height change can
+  // leave the window scrolled (browser scroll-anchoring), which then read as a "jump"
+  // when navigating to /profile. Reset to top whenever the menu becomes visible.
+  let _menuPinned = false;
+  $: if (browser) {
+    if (showMainMenu) { if (!_menuPinned) { _menuPinned = true; tick().then(() => window.scrollTo(0, 0)); } }
+    else _menuPinned = false;
+  }
+
   /** @param {Event} e */
   const removeButtonFocus = (e) => {
     if (e.target && /** @type {HTMLElement} */ (e.target).tagName === 'BUTTON') /** @type {HTMLButtonElement} */ (e.target).blur();
@@ -2751,7 +2760,9 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    /* "safe center": center when content fits, but top-align when it's taller than the
+       viewport (e.g. the menu) so the page doesn't load pre-scrolled and jump on nav. */
+    justify-content: safe center;
   }
 
   .arcade-hud {
