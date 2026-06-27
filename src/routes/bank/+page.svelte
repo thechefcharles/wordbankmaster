@@ -30,8 +30,8 @@
   let dollars = 1; // the $ amount on the dial
   $: cash = b ? b.bank : 0;
   $: credits = cashout ? (cashout.credits ?? 0) : 0;
-  // You can only sell credits above your 2,000 stake, and within today's $50 cap.
-  $: sellableDollars = Math.min(Math.floor(Math.max(0, credits - 2000) / 40), cashout ? cashout.cap_remaining : 0);
+  // All credits are cashable now (server-computed max_cash), within today's $50 cap.
+  $: sellableDollars = cashout ? Math.min(cashout.max_cash ?? 0, cashout.cap_remaining ?? 0) : 0;
   $: maxDollars = Math.max(1, Math.min(50, Math.max(Math.floor(cash), sellableDollars)));
   $: if (dollars > maxDollars) dollars = maxDollars;
   $: canSell = dollars >= 1 && dollars <= sellableDollars;
@@ -112,21 +112,20 @@
 
     <!-- Exchange (always 40 🎟️ = $1) -->
     <div class="exchange">
-      <div class="ex-top">
-        <span class="ex-rate-lbl">Rate</span>
-        <span class="ex-mono"><b>40</b> 🎟️</span><span class="ex-eq">=</span><span class="ex-mono">$<b>1</b> 💰</span>
-      </div>
+      <h2 class="ex-h">💱 Exchange</h2>
+      <div class="ex-rate-pill"><span class="ex-rate-lbl">Rate</span><b>40</b>&nbsp;🎟️<span class="ex-eq">=</span><b>$1</b>&nbsp;💰</div>
 
       <div class="ex-dial">
         <button class="ex-step" onclick={() => dollars = Math.max(1, dollars - 1)} aria-label="Less" disabled={dollars <= 1}>−</button>
-        <div class="ex-amt"><span class="ex-cr">{(dollars * 40).toLocaleString()} 🎟️</span><span class="ex-swap">⇄</span><span class="ex-usd">${dollars}</span></div>
+        <div class="ex-amt">
+          <span class="ex-usd">${dollars}</span>
+          <span class="ex-cr">{(dollars * 40).toLocaleString()} credits</span>
+        </div>
         <button class="ex-step" onclick={() => dollars = Math.min(maxDollars, dollars + 1)} aria-label="More" disabled={dollars >= maxDollars}>+</button>
       </div>
       <input class="ex-slider" type="range" min="1" max={maxDollars} bind:value={dollars} />
 
-      <div class="ex-actions one">
-        <button class="ex-act sell" disabled={!canSell || !!busy} onclick={sell}>🎟️ → 💰 Sell {(dollars * 40).toLocaleString()} credits for ${dollars}</button>
-      </div>
+      <button class="ex-act sell" disabled={!canSell || !!busy} onclick={sell}>🎟️&nbsp;→&nbsp;💰&nbsp; Sell for ${dollars}</button>
       {#if msg}<p class="msg">{msg}</p>{/if}
     </div>
 
@@ -210,31 +209,29 @@
   .bal-value.cr { color: #6ee7b7; }
   .bal-sub { font-size: 0.68rem; color: var(--text-faint); }
 
-  .exchange { padding: 16px 14px; border-radius: 16px; margin-bottom: 16px;
-    background: linear-gradient(135deg, rgba(110,231,183,0.08), rgba(110,231,183,0.02)); border: 1px solid rgba(110,231,183,0.3); }
-  .ex-top { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 14px; }
-  .ex-rate-lbl { font-size: 0.66rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint);
-    padding: 3px 8px; border-radius: 999px; background: rgba(255,255,255,0.05); }
-  .ex-mono { font-family: 'Orbitron', var(--font-display); font-size: 1rem; color: var(--text); }
-  .ex-mono b { font-size: 1.2rem; color: #6ee7b7; }
-  .ex-eq { color: var(--text-faint); font-size: 1.1rem; }
-  .ex-dial { display: flex; align-items: center; gap: 10px; }
-  .ex-step { width: 40px; height: 40px; flex: none; border-radius: 11px; cursor: pointer; font-size: 1.4rem; font-weight: 800;
+  .exchange { padding: 18px 16px; border-radius: 18px; margin-bottom: 16px; text-align: center;
+    display: flex; flex-direction: column; align-items: center;
+    background: linear-gradient(135deg, rgba(110,231,183,0.09), rgba(110,231,183,0.02)); border: 1px solid rgba(110,231,183,0.3); }
+  .ex-h { font-family: var(--font-display); font-size: 1.05rem; font-weight: 800; margin: 0 0 12px; }
+  .ex-rate-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; margin-bottom: 16px;
+    background: rgba(0,0,0,0.25); border: 1px solid var(--border); font-family: 'Orbitron', var(--font-display); color: var(--text); }
+  .ex-rate-pill b { color: #6ee7b7; font-size: 1.05rem; }
+  .ex-rate-lbl { font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-faint); margin-right: 4px; }
+  .ex-eq { color: var(--text-faint); margin: 0 2px; }
+  .ex-dial { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; max-width: 300px; }
+  .ex-step { width: 46px; height: 46px; flex: none; border-radius: 12px; cursor: pointer; font-size: 1.5rem; font-weight: 800;
     background: var(--surface); border: 1px solid var(--border); color: var(--text); display: grid; place-items: center; }
-  .ex-step:disabled { opacity: 0.35; cursor: default; }
-  .ex-amt { flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 9px; border-radius: 11px;
+  .ex-step:hover:not(:disabled) { border-color: #34d399; }
+  .ex-step:disabled { opacity: 0.3; cursor: default; }
+  .ex-amt { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 6px; border-radius: 12px;
     background: rgba(0,0,0,0.25); border: 1px solid var(--border); }
-  .ex-cr { font-family: var(--font-display); font-weight: 700; color: #6ee7b7; font-size: 0.95rem; }
-  .ex-swap { color: var(--text-faint); }
-  .ex-usd { font-family: var(--font-display); font-weight: 800; color: var(--brand-2); font-size: 1.05rem; }
-  .ex-slider { width: 100%; margin: 12px 0 14px; accent-color: #34d399; }
-  .ex-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .ex-actions.one { grid-template-columns: 1fr; }
-  .ex-act { padding: 0.75rem; border: none; border-radius: 12px; cursor: pointer; font-weight: 800; font-size: 0.92rem; }
+  .ex-usd { font-family: 'Orbitron', var(--font-display); font-weight: 800; color: var(--brand-2); font-size: 1.8rem; line-height: 1; }
+  .ex-cr { font-size: 0.72rem; color: #6ee7b7; font-weight: 700; }
+  .ex-slider { width: 100%; max-width: 300px; margin: 16px 0; accent-color: #34d399; }
+  .ex-act { width: 100%; max-width: 300px; padding: 0.85rem; border: none; border-radius: 13px; cursor: pointer; font-weight: 800; font-size: 0.98rem; }
   .ex-act.sell { color: #06281d; background: linear-gradient(135deg, #6ee7b7, #34d399); }
-  .ex-act.buy { color: #3a2a00; background: linear-gradient(135deg, #fde047, #f59e0b); }
   .ex-act:disabled { opacity: 0.4; cursor: default; }
-  .msg { text-align: center; color: #fb7185; font-size: 0.85rem; margin: 0.5rem 0 0; }
+  .msg { text-align: center; color: #fb7185; font-size: 0.85rem; margin: 0.6rem 0 0; }
 
   .led-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 1.4rem 0 0.6rem; flex-wrap: wrap; }
   .hist-title { font-family: var(--font-display); font-size: 1rem; margin: 0; }
