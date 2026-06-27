@@ -89,7 +89,7 @@
 <svelte:head><title>WordBank — Store</title></svelte:head>
 
 <main class="shop-page">
-  <PageNav />
+  <PageNav back="/" showHome={false} />
 
   <div class="head">
     <h1>🛍️ Store</h1>
