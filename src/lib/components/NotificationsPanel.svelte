@@ -28,6 +28,13 @@
     const res = await respondJoinRequest(group_id, from_id, accept);
     if (res?.ok) { fx(accept ? 'win' : 'tap'); dismissNotification(n.id); onChange?.(); }
   }
+
+  // Action-required notifications (friend request / group-join request) must be
+  // accepted or declined — they can't be dismissed, and tapping them won't clear them.
+  /** @param {any} n */
+  const actionRequired = (n) =>
+    (n.type === 'friend_request' && n.data?.from_id) ||
+    (n.type === 'group_join' && n.data?.group_id && n.data?.from_id);
 </script>
 
 {#if $notifications.length === 0}
@@ -35,9 +42,11 @@
 {:else}
   <div class="notif-list">
     {#each $notifications as n (n.id)}
-      <div class="notif-item" class:fresh={!n.read}>
-        <button class="ni-dismiss" onclick={() => dismissNotification(n.id)} aria-label="Dismiss" title="Dismiss">✕</button>
-        <button class="ni-main" onclick={() => { onNavigate?.(n); dismissNotification(n.id); }}>
+      <div class="notif-item" class:fresh={!n.read} class:needs-action={actionRequired(n)}>
+        {#if !actionRequired(n)}
+          <button class="ni-dismiss" onclick={() => dismissNotification(n.id)} aria-label="Dismiss" title="Dismiss">✕</button>
+        {/if}
+        <button class="ni-main" onclick={() => { onNavigate?.(n); if (!actionRequired(n)) dismissNotification(n.id); }}>
           <span class="ni-title">{n.title}</span>
           <span class="ni-body">{n.body}</span>
         </button>
@@ -61,6 +70,7 @@
   .empty { color: var(--text-muted); font-size: 0.88rem; text-align: center; padding: 1rem 0.4rem; }
   .notif-list { display: flex; flex-direction: column; gap: 0.5rem; }
   .notif-item { position: relative; padding: 0.7rem 2.1rem 0.7rem 0.85rem; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+  .notif-item.needs-action { padding-right: 0.85rem; }
   .ni-dismiss { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border-radius: 8px; border: none; cursor: pointer;
     background: transparent; color: var(--text-faint); font-size: 0.9rem; }
   .ni-dismiss:hover { background: var(--surface-2, rgba(255,255,255,0.06)); color: var(--text); }

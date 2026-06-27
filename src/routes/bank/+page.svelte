@@ -37,7 +37,7 @@
 <svelte:head><title>WordBank — Cash & Net Worth</title></svelte:head>
 
 <main class="bank-page">
-  <PageNav />
+  <PageNav back="/" />
 
   {#if loading}
     <p class="loading">Loading…</p>

@@ -6,7 +6,7 @@
   import { badgeInfo } from '$lib/badges.js';
   import Avatar from '$lib/components/Avatar.svelte';
   import NotificationsPanel from '$lib/components/NotificationsPanel.svelte';
-  import { unreadCount, markAllNotificationsRead } from '$lib/stores/notificationStore.js';
+  import { unreadCount } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
 
   /** @type {'overview'|'stats'|'alerts'} */
@@ -30,8 +30,8 @@
     try { d = await getProfileDetail(); } finally { loading = false; }
   });
 
-  // Viewing your alerts clears the unread badge.
-  $effect(() => { if (tab === 'alerts') markAllNotificationsRead(); });
+  // Note: the unread count only drops when a notification is acted on or dismissed —
+  // NOT just from viewing the list. (No mark-all-read on open.)
   /** @param {any} n */
   function notifNav(n) {
     if (n?.type === 'challenge_incoming' || n?.data?.match_id || n?.data?.challenge_id) goto('/');
