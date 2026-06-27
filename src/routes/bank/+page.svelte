@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import PageNav from "$lib/components/PageNav.svelte";
-  import { getBank, getFreeplayCashoutStatus, freeplayCashout, buyCredits } from '$lib/stores/statsStore.js';
+  import { getBank, getFreeplayCashoutStatus, freeplayCashout } from '$lib/stores/statsStore.js';
   import InventoryList from '$lib/components/InventoryList.svelte';
   import { requirePin } from '$lib/pinConfirm.js';
   import { track } from '$lib/analytics.js';
@@ -35,7 +35,6 @@
   $: maxDollars = Math.max(1, Math.min(50, Math.max(Math.floor(cash), sellableDollars)));
   $: if (dollars > maxDollars) dollars = maxDollars;
   $: canSell = dollars >= 1 && dollars <= sellableDollars;
-  $: canBuy = dollars >= 1 && dollars <= cash;
 
   async function sell() {
     if (busy || !canSell) return;
@@ -48,14 +47,6 @@
     busy = '';
     if (res?.ok) { fx('win'); track('freeplay_cashout', { cash: res.cashed }); await load(); }
     else { msg = res?.reason === 'daily_cap' ? 'Daily $50 limit reached.' : 'Could not sell right now.'; }
-  }
-  async function buy() {
-    if (busy || !canBuy) return;
-    busy = 'buy'; msg = '';
-    const res = await buyCredits(dollars);
-    busy = '';
-    if (res?.ok) { fx('win'); track('buy_credits', { dollars }); await load(); }
-    else { msg = res?.reason === 'insufficient' ? 'Not enough Cash.' : 'Could not buy right now.'; }
   }
 
   const fmt = (/** @type {number} */ n) => '$' + Math.round(n ?? 0).toLocaleString();
@@ -133,9 +124,8 @@
       </div>
       <input class="ex-slider" type="range" min="1" max={maxDollars} bind:value={dollars} />
 
-      <div class="ex-actions">
-        <button class="ex-act sell" disabled={!canSell || !!busy} onclick={sell}>🎟️ → 💰 Sell</button>
-        <button class="ex-act buy" disabled={!canBuy || !!busy} onclick={buy}>💰 → 🎟️ Buy</button>
+      <div class="ex-actions one">
+        <button class="ex-act sell" disabled={!canSell || !!busy} onclick={sell}>🎟️ → 💰 Sell {(dollars * 40).toLocaleString()} credits for ${dollars}</button>
       </div>
       {#if msg}<p class="msg">{msg}</p>{/if}
     </div>
@@ -239,6 +229,7 @@
   .ex-usd { font-family: var(--font-display); font-weight: 800; color: var(--brand-2); font-size: 1.05rem; }
   .ex-slider { width: 100%; margin: 12px 0 14px; accent-color: #34d399; }
   .ex-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ex-actions.one { grid-template-columns: 1fr; }
   .ex-act { padding: 0.75rem; border: none; border-radius: 12px; cursor: pointer; font-weight: 800; font-size: 0.92rem; }
   .ex-act.sell { color: #06281d; background: linear-gradient(135deg, #6ee7b7, #34d399); }
   .ex-act.buy { color: #3a2a00; background: linear-gradient(135deg, #fde047, #f59e0b); }
