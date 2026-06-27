@@ -6,7 +6,7 @@
   import { badgeInfo } from '$lib/badges.js';
   import Avatar from '$lib/components/Avatar.svelte';
   import NotificationsPanel from '$lib/components/NotificationsPanel.svelte';
-  import { unreadCount } from '$lib/stores/notificationStore.js';
+  import { unreadCount, requestInbox } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
 
   /** @type {'overview'|'stats'|'alerts'} */
@@ -34,7 +34,8 @@
   // NOT just from viewing the list. (No mark-all-read on open.)
   /** @param {any} n */
   function notifNav(n) {
-    if (n?.type === 'challenge_incoming' || n?.data?.match_id || n?.data?.challenge_id) goto('/');
+    // Challenge invites/results → open the Challenges hub on the menu.
+    if (n?.type === 'challenge_incoming' || n?.data?.match_id || n?.data?.challenge_id) { requestInbox('challenges'); goto('/'); }
   }
 
   // Back: from a detail tab → Overview; from Overview → the menu.
