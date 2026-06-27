@@ -14,25 +14,33 @@
   let loading = $state(true);
   let error = $state('');
 
-  // Sortable columns (client-side). Default: today's score, high → low.
-  /** @type {'name'|'net_worth'|'score'|'play_streak'|'win_streak'} */
-  let sortKey = $state('score');
-  /** @type {'asc'|'desc'} */
-  let sortDir = $state('desc');
-  /** @param {typeof sortKey} k */
+  // Sortable columns (client-side). Default: by place, best → worst. Tap # again to
+  // flip and bring LAST place to the top.
+  /** @typedef {'place'|'name'|'net_worth'|'score'|'play_streak'|'win_streak'} SortKey */
+  let sortKey = $state(/** @type {SortKey} */ ('place'));
+  let sortDir = $state(/** @type {'asc'|'desc'} */ ('asc'));
+  /** @param {SortKey} k */
   function setSort(k) {
     if (sortKey === k) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
-    else { sortKey = k; sortDir = k === 'name' ? 'asc' : 'desc'; }
+    else { sortKey = k; sortDir = (k === 'name' || k === 'place') ? 'asc' : 'desc'; }
   }
-  /** @param {typeof sortKey} k */
+  /** @param {SortKey} k */
   const arrow = (k) => sortKey === k ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '';
+  // Canonical place = rank by today's score (played first, high → low). Stays fixed
+  // no matter how the list is sorted, so the # column always shows the real place.
+  let ranked = $derived.by(() =>
+    [...rows]
+      .sort((a, b) => (b.score ?? -Infinity) - (a.score ?? -Infinity) || String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }))
+      .map((r, i) => ({ ...r, _place: i + 1 }))
+  );
   let sortedRows = $derived.by(() => {
     const dir = sortDir === 'asc' ? 1 : -1;
-    return [...rows].sort((a, b) => {
+    return [...ranked].sort((a, b) => {
+      if (sortKey === 'place') return dir * (a._place - b._place);
       if (sortKey === 'name') return dir * String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' });
       const av = sortKey === 'score' ? (a.score ?? -Infinity) : Number(a[sortKey] ?? 0);
       const bv = sortKey === 'score' ? (b.score ?? -Infinity) : Number(b[sortKey] ?? 0);
-      return dir * (av - bv) || String(a.name || '').localeCompare(String(b.name || ''));
+      return dir * (av - bv) || (a._place - b._place);
     });
   });
 
@@ -77,7 +85,7 @@
     <table>
       <thead>
         <tr>
-          <th>#</th>
+          <th><button class="sort" class:on={sortKey === 'place'} onclick={() => setSort('place')}>#{arrow('place')}</button></th>
           <th><button class="sort" class:on={sortKey === 'name'} onclick={() => setSort('name')}>Player{arrow('name')}</button></th>
           <th class="num"><button class="sort" class:on={sortKey === 'net_worth'} onclick={() => setSort('net_worth')}>💰 Cash{arrow('net_worth')}</button></th>
           <th class="num"><button class="sort" class:on={sortKey === 'score'} onclick={() => setSort('score')}>Score{arrow('score')}</button></th>
@@ -87,8 +95,8 @@
       </thead>
       <tbody>
         {#each sortedRows as r, i}
-          <tr class={r.is_me ? 'me' : (i < 3 ? 'top' : '')}>
-            <td class="rank">{medal(i + 1)}</td>
+          <tr class={r.is_me ? 'me' : (r._place <= 3 ? 'top' : '')}>
+            <td class="rank">{medal(r._place)}</td>
             <td class="name">
               {#if r.is_me}
                 <button class="name-link" onclick={() => goto('/profile')} style={r.color ? `color:${r.color}` : ''}>You</button>

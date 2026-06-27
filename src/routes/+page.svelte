@@ -2061,7 +2061,9 @@
           {:else}
             <button class="sub-back" on:click={() => { menuView = 'home'; fx('tap'); }}>← Back</button>
             <h2 class="sub-title">{communityTab === 'leaderboard' ? '🏆 Leaderboard' : '⚔️ Challenges'}</h2>
-            <button class="sub-people" title="Friends & Groups" aria-label="Friends & Groups" on:click={() => { communityTab = 'people'; peopleBackToHome = false; fx('tap'); }}><span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span></button>
+            {#if communityTab === 'challenges'}
+              <button class="sub-people" title="Friends & Groups" aria-label="Friends & Groups" on:click={() => { communityTab = 'people'; peopleBackToHome = false; fx('tap'); }}><span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span></button>
+            {/if}
           {/if}
         </div>
         {#if communityTab === 'people'}
@@ -3008,8 +3010,9 @@
     gap: 1.2rem;
   }
   .sub-head {
-    width: 100%; display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.2rem;
+    width: 100%; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 0.6rem; margin-bottom: 0.2rem;
   }
+  .sub-head .sub-back { justify-self: start; }
   .sub-back {
     display: inline-flex; align-items: center; gap: 4px; padding: 0.5rem 0.9rem;
     background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
@@ -3017,9 +3020,9 @@
     transition: transform 0.15s, border-color 0.2s, background 0.2s;
   }
   .sub-back:hover { transform: translateX(-2px); border-color: var(--border-strong); background: var(--surface-2); }
-  .sub-title { font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; }
+  .sub-title { font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; text-align: center; grid-column: 2; }
   .sub-people {
-    position: relative; margin-left: auto; width: 40px; height: 40px; display: grid; place-items: center; font-size: 1.1rem;
+    position: relative; justify-self: end; width: 40px; height: 40px; display: grid; place-items: center; font-size: 1.1rem;
     background: var(--surface); border: 1px solid var(--border); border-radius: 12px; cursor: pointer;
   }
   .sub-people:hover { border-color: var(--brand-2); }
@@ -3799,6 +3802,7 @@
   .ma-version { text-align: center; font-size: 0.72rem; color: var(--text-faint); margin: 14px 0 2px; }
   /* ── Sectioned settings layout ── */
   .settings-modal { text-align: left; }
+  .settings-modal > h2 { text-align: center; }
   .set-profile { display: flex; align-items: center; gap: 13px; margin: 6px 0 4px; }
   .set-av { position: relative; background: none; border: none; cursor: pointer; padding: 0; flex: none; }
   .set-av-edit { position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); font-size: 0.62rem; font-weight: 800;
