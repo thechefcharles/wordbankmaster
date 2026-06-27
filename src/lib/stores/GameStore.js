@@ -26,6 +26,7 @@ import { track } from '$lib/analytics.js';
  *   bankroll: number,
  *   wagerAmount: number,
  *   guessesRemaining: number,
+ *   revealsRemaining?: number,
  *   category: string,
  *   currentPhrase: string,
  *   gameState: string,
@@ -330,6 +331,7 @@ function reconcileFreeplayBoard(board) {
   gameStore.set(/** @type {GameState} */ ({
     ...prev, ...boardToState(board, prev),
     gameMode: 'freeplay',
+    revealsRemaining: board.reveals_remaining ?? 0,
     gameState: finished ? board.state : 'default',
     modifier: null, arcadeRun: null
   }));
@@ -987,7 +989,10 @@ export async function matchFold() {
  */
 export function selectLetter(letter) {
   gameStore.update(/** @param {GameState} state */ (state) => {
-    const cost = LETTER_COSTS[letter] || 0;
+    // Free Play: letters are free (gated by the reveal budget, not the wallet).
+    const isFree = state.gameMode === 'freeplay';
+    if (isFree && (state.revealsRemaining ?? 0) <= 0) return state; // out of reveals
+    const cost = isFree ? 0 : (LETTER_COSTS[letter] || 0);
     if (state.bankroll < cost) {
       console.log(`Insufficient funds to purchase letter ${letter}`);
       return state;

@@ -2389,9 +2389,11 @@
     <!-- 💰 Bankroll — top of every mode. Challenge ante now lives in the bounty hero below. -->
     {#if $gameStore.currentPhrase && $gameStore.gameMode}
       {#if isFreeplay}
-        <button class="top-bank tap" disabled={fpCashBusy} on:click={tapCredits}>
-          <div class="tb-row"><span class="tb-cap">🎟️ Credits</span><span class="tb-amt cr">{Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span></div>
-        </button>
+        <div class="fp-hud">
+          <span class="fp-stat"><span class="fp-cap">🎟️ Credits</span><span class="fp-val cr">{Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span></span>
+          <span class="fp-stat"><span class="fp-cap">🔍 Reveals</span><span class="fp-val">{$gameStore.revealsRemaining ?? 0}</span></span>
+          <span class="fp-stat"><span class="fp-cap">🎯 Guesses</span><span class="fp-val">{$gameStore.guessesRemaining ?? 0}</span></span>
+        </div>
       {:else if !matchBlitz}
         <button class="top-bank solo" class:pop-up={bankFlash === 'up'} class:pop-down={bankFlash === 'down'} title="Your Cash" on:click={openBankModal}>
           {#if isMatch}<span class="tb-wallet-cap">💰 Wallet</span>{/if}
@@ -2534,19 +2536,9 @@
           </p>
         {/if}
       {:else if isFreeplay}
-        <!-- Free Play: credits are up top; here just the cash-out + your Cash + reward -->
-        <div class="credits-panel">
-          {#if (($gameStore.bankroll ?? 0) - 2000) >= 40}
-            <button class="cr-cashout" disabled={fpCashBusy} on:click={doFreeplayCashout}>
-              💵 Cash out ${Math.min(50, Math.floor((($gameStore.bankroll ?? 0) - 2000) / 40))}
-            </button>
-          {:else}
-            <span class="cr-note">Play money · cash out at 40:1</span>
-          {/if}
-          <span class="cr-wallet">💰 Cash {netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}</span>
-        </div>
-        {#if freeLive}
-          <p class="live-line">Solve {freeLive.clean ? 'clean ' : ''}for <b>+{freeLive.clean ? 250 : 120}</b> credits</p>
+        <!-- Free Play: budgets + credits are up top; the reward shrinks as you use reveals. -->
+        {#if $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
+          <p class="live-line">Solve now for <b>+{Math.max(150, 300 - 50 * (3 - ($gameStore.revealsRemaining ?? 3)))}</b> credits</p>
         {/if}
       {/if}
     </section>
@@ -4148,6 +4140,13 @@
   /* 💰 Top bankroll bar (very top, all modes) */
   .top-bank { width: 100%; max-width: 340px; margin: 0 auto 12px; padding: 9px 16px; border-radius: 14px;
     border: 1px solid rgba(253, 224, 71, 0.4); background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(251, 191, 36, 0.03)); }
+  /* Free Play HUD: credits wallet + reveal/guess budgets */
+  .fp-hud { display: flex; justify-content: center; gap: 10px; width: fit-content; max-width: 360px; margin: 0 auto 12px; }
+  .fp-stat { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 14px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--surface); }
+  .fp-cap { font-size: 0.62rem; color: var(--text-faint); font-weight: 700; white-space: nowrap; }
+  .fp-val { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.1rem; color: var(--text); }
+  .fp-val.cr { color: #6ee7b7; }
   /* solo bankroll = a centered gold chip below WordBank (matches the menu) — tap → /bank */
   .top-bank.solo { width: fit-content; max-width: none; margin: 0 auto 12px; padding: 7px 18px; text-align: center; cursor: pointer; }
   .top-bank.solo:active { transform: scale(0.97); }
