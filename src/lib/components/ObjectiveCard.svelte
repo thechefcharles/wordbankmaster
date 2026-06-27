@@ -1,7 +1,7 @@
 <script>
   // Pre-game "How to win" card. Shown the moment a mode starts so a first-time
-  // player always knows the objective. Solo modes show it once (the parent gates
-  // on localStorage); challenges show it every entry (they carry the stakes).
+  // player always knows the objective. The parent gates on localStorage so it shows
+  // once — per-mode for solo modes, per-match for challenges (first entry, not resume).
   import { createEventDispatcher } from 'svelte';
   import { MODIFIERS } from '$lib/powerups.js';
   const dispatch = createEventDispatcher();
@@ -23,7 +23,6 @@
   /** @param {string} m @param {any} c */
   function content(m, c) {
     const pk = (c.packSize ?? 1) > 1 ? `${c.packSize} puzzles` : 'the puzzle';
-    const w = c.wager ? `$${Number(c.wager).toLocaleString()}` : null;
     switch (m) {
       case 'daily': return { icon: '📅', title: "Today's Daily",
         goal: 'Solve the hidden phrase.',
@@ -47,15 +46,13 @@
         bar: 'Counts toward your stats.' };
       case 'match': {
         if ((c.fieldSize ?? 2) > 2) return { icon: '👥', title: 'Group Challenge',
-          goal: `Solve ${pk} spending as little as possible.`,
-          win: 'Most Cash left takes the whole pot.',
-          bar: w ? `Your ${w} buy-in is all at stake — winner takes it, a tie splits.`
-                 : 'Winner takes the pot; a tie splits it.' };
+          goal: `Solve ${pk} — spend the least.`,
+          win: 'Winner takes all.',
+          bar: '' };
         return { icon: '⚔️', title: c.opponent ? `Duel vs @${c.opponent}` : 'Challenge',
-          goal: `Solve ${pk} — spend less than your rival.`,
-          win: 'Most Cash left takes the pot; lose and you forfeit your buy-in.',
-          bar: w ? `Your ${w} is all at stake. Skip a puzzle and you pay its full price.`
-                 : 'Skip a puzzle and you pay its full price.' };
+          goal: `Solve ${pk} — spend the least.`,
+          win: 'Winner takes all.',
+          bar: '' };
       }
       default: return { icon: '🎯', title: 'WordBank',
         goal: 'Solve the hidden phrase.', win: 'Spend as little as you can.', bar: '' };

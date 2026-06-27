@@ -977,14 +977,21 @@
     return { opponent: opps.length === 1 ? opps[0]?.name : undefined,
       wager: mi.wager, packSize: mi.pack_size, fieldSize: opps.length + 1 };
   }
+  // once-seen localStorage key: per-mode for solo modes, per-match for challenges
+  // (so the "How to win" card shows on the FIRST entry only, never on resume).
+  function objSeenKey(/** @type {string} */ mode) {
+    if (mode === 'match') { const id = get(gameStore).matchInfo?.id; return id ? 'wb_obj_match_' + id : null; }
+    return SOLO_MODES.includes(mode) ? 'wb_obj_' + mode : null;
+  }
   /** @param {boolean} [forced] re-opened via the board ⓘ button — bypass the once-seen gate */
   function showObjectiveFor(/** @type {string} */ mode, forced = false) {
     if (!mode || showTutorial) return;
-    if (!forced && SOLO_MODES.includes(mode) && browser && localStorage.getItem('wb_obj_' + mode) === '1') return;
+    const key = objSeenKey(mode);
+    if (!forced && key && browser && localStorage.getItem(key) === '1') return;
     objective = { mode, ctx: buildObjectiveCtx(mode) };
   }
   function dismissObjective() {
-    if (objective && browser && SOLO_MODES.includes(objective.mode)) localStorage.setItem('wb_obj_' + objective.mode, '1');
+    if (objective && browser) { const key = objSeenKey(objective.mode); if (key) localStorage.setItem(key, '1'); }
     objective = null;
     tick().then(playDailyIntroIfArmed); // board is now visible → play the opening reveal
   }
