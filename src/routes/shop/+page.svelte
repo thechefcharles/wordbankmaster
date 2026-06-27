@@ -2,8 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import PageNav from "$lib/components/PageNav.svelte";
-  import { getShop, buyCosmetic, equipCosmetic, unequipCosmetic, getPowerups, buyPowerup, getFreeplayCashoutStatus, freeplayCashout } from '$lib/stores/statsStore.js';
-  import { requirePin } from '$lib/pinConfirm.js';
+  import { getShop, buyCosmetic, equipCosmetic, unequipCosmetic, getPowerups, buyPowerup } from '$lib/stores/statsStore.js';
   import { track } from '$lib/analytics.js';
   import { fx } from '$lib/sound.js';
   import InventoryList from '$lib/components/InventoryList.svelte';
@@ -39,40 +38,21 @@
   /** @type {any[]} */
   let dboost = $state([]);
 
-  /** @type {any|null} */
-  let cashout = $state(null);
   let inventoryKey = $state(0); // bump to re-mount the bag after a purchase
 
   async function load() {
-    const [shop, pu, co] = await Promise.all([getShop(), getPowerups(), getFreeplayCashoutStatus()]);
+    const [shop, pu] = await Promise.all([getShop(), getPowerups()]);
     bank = shop.bank;
     items = shop.items;
     pups = (pu.items || []).filter((/** @type {any} */ i) => i.kind === 'climb');
     sabs = (pu.items || []).filter((/** @type {any} */ i) => i.kind === 'sabotage');
     dboost = (pu.items || []).filter((/** @type {any} */ i) => i.kind === 'daily');
-    cashout = co;
     inventoryKey++;
-  }
-
-  async function doCashout() {
-    if (busy || !cashout) return;
-    const amt = Math.min(cashout.max_cash, cashout.cap_remaining);
-    if (amt <= 0) return;
-    try { await requirePin(`Cash out ${(amt * 40).toLocaleString()} credits → $${amt}`, [
-      { label: 'Credits', value: (amt * 40).toLocaleString() },
-      { label: 'You receive', value: '$' + amt }
-    ]); } catch { return; }
-    busy = 'cashout'; msg = '';
-    const res = await freeplayCashout(amt);
-    busy = '';
-    if (res?.ok) { fx('win'); track('freeplay_cashout', { cash: res.cashed }); await load(); }
-    else { msg = res?.reason === 'daily_cap' ? "You've hit today's $50 cash-out cap — come back tomorrow." : 'Could not cash out right now.'; }
   }
 
   /** @param {any} item */
   async function buyPup(item) {
     if (busy) return;
-    try { await requirePin(`Buy ${item.name} · $${item.price.toLocaleString()}`); } catch { return; }
     busy = item.id; msg = '';
     const res = await buyPowerup(item.id);
     busy = '';
@@ -90,7 +70,6 @@
   /** @param {any} item */
   async function buy(item) {
     if (busy) return;
-    try { await requirePin(`Buy ${item.label} · $${item.price.toLocaleString()}`); } catch { return; }
     busy = item.id; msg = '';
     const res = await buyCosmetic(item.id);
     busy = '';
@@ -116,28 +95,7 @@
     <h1>🛍️ Store</h1>
     <span class="bank-chip">💰 ${bank.toLocaleString()}</span>
   </div>
-  {#if cashout && cashout.credits > 0}
-    <div class="cashout-card">
-      <div class="co-top">
-        <div>
-          <span class="co-label">🎟️ Free Play credits</span>
-          <span class="co-credits">{cashout.credits.toLocaleString()}</span>
-        </div>
-        {#if cashout.max_cash > 0 && cashout.cap_remaining > 0}
-          <button class="co-btn" disabled={busy === 'cashout'} onclick={doCashout}>
-            💵 Cash out ${Math.min(cashout.max_cash, cashout.cap_remaining)}
-          </button>
-        {:else if cashout.cap_remaining <= 0}
-          <span class="co-pending">Daily $50 cap reached</span>
-        {:else}
-          <span class="co-pending">Earn {(2040 - cashout.credits).toLocaleString()} more to cash out</span>
-        {/if}
-      </div>
-      <p class="co-note">First 2,000 credits are your stake. Cash out the rest at 40 credits = $1 (up to $50/day).</p>
-    </div>
-  {/if}
-
-  <p class="sub">Power-ups for the Cash Game &amp; challenges, plus cosmetics.</p>
+  <p class="sub">Power-ups for the Cash Game &amp; challenges, plus cosmetics. <a class="bank-link" href="/bank">Exchange credits → Cash in the Bank ›</a></p>
 
   {#if loading}
     <p class="loading">Loading…</p>
@@ -146,7 +104,7 @@
 
     {#key inventoryKey}
       <details class="inv-details">
-        <summary class="inv-summary">🔐 My Vault</summary>
+        <summary class="inv-summary">🎒 What you own</summary>
         <InventoryList />
       </details>
     {/key}
@@ -261,6 +219,8 @@
   h1 { font-family: var(--font-display); font-size: 1.7rem; margin: 0; }
   .bank-chip { font-family: var(--font-display); font-weight: 800; color: #fbbf24; font-size: 1.05rem; }
   .sub { color: var(--text-muted); font-size: 0.9rem; margin: 0.2rem 0 1.4rem; }
+  .bank-link { color: var(--brand-2); text-decoration: none; font-weight: 600; white-space: nowrap; }
+  .bank-link:hover { text-decoration: underline; }
   .loading { color: var(--text-muted); padding: 2rem; text-align: center; }
   .msg { text-align: center; color: #f87171; font-size: 0.88rem; margin: 0 0 1rem; }
   .cashout-card {

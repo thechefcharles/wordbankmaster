@@ -1,0 +1,3 @@
+-- get_bank now takes p_limit (default 12) so the Bank page can pull the full ledger.
+-- (Applied to prod: DROP get_bank(); recreate as get_bank(p_limit integer DEFAULT 12)
+--  with `LIMIT GREATEST(p_limit,1)` on the bank_ledger subquery.)
