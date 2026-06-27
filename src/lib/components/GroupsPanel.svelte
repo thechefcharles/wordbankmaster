@@ -252,7 +252,6 @@
   {:else}
     {#if onExit}<button class="back-btn" onclick={onExit}>← Menu</button>{/if}
     {#if title}<h1>{title}</h1>{/if}
-    <p class="sub top">Your crews. Everyone's Net Worth, ranked. Add friends — no codes.</p>
 
     {#if loading}
       <p class="loading">Loading…</p>
