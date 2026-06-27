@@ -63,8 +63,9 @@ export async function getDailyStatus(userId) {
 
 /** My Cash: balance (= Net Worth) and recent ledger. (v3: loans removed.)
  * @returns {Promise<{ bank:number, net_worth:number, ledger:any[] }>} */
-export async function getBank() {
-  const { data, error } = await supabase.rpc('get_bank');
+/** @param {number} [limit] ledger rows to return (default 12; pass a big number for full history) */
+export async function getBank(limit) {
+  const { data, error } = await supabase.rpc('get_bank', limit ? { p_limit: limit } : {});
   if (error || !data) { if (error) console.error('❌ get_bank:', error); return { bank: 0, net_worth: 0, ledger: [] }; }
   return { bank: data.bank ?? 0, net_worth: data.net_worth ?? data.bank ?? 0,
     ledger: Array.isArray(data.ledger) ? data.ledger : [] };

@@ -1981,20 +1981,15 @@
     <div class="main-menu fade-up">
       <div class="menu-hero">
         <div class="hero-top">
-          <button class="streak-chip bag-chip" on:click={openVaultFromMenu} title="My Vault" aria-label="My Vault">
-            <img src="/vault.png" alt="🔐" class="vault-ic-sm" />
+          <button class="bell-ic" on:click={() => goto('/profile?tab=alerts')} title="Notifications" aria-label="Notifications">
+            🔔{#if $unreadCount > 0}<span class="account-count" title="{$unreadCount} new">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}
           </button>
           <button class="bank-chip" on:click={() => goto('/bank')} title="Your Cash">
             <span class="bc-coin">💰</span>{netWorth == null ? '—' : '$' + Math.round(netWorth).toLocaleString()}
           </button>
-          <div class="hero-account">
-            <button class="bell-ic" on:click={() => goto('/profile?tab=alerts')} title="Notifications" aria-label="Notifications">
-              🔔{#if $unreadCount > 0}<span class="account-count" title="{$unreadCount} new">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}
-            </button>
-            <button class="account-ic has-av" on:click={() => goto('/profile')} title="Profile" aria-label="Profile">
-              <Avatar config={myAvatar} mode="head" fx size={50} />
-            </button>
-          </div>
+          <button class="account-ic has-av" on:click={() => goto('/profile')} title="Profile" aria-label="Profile">
+            <Avatar config={myAvatar} mode="head" fx size={50} />
+          </button>
         </div>
         <video class="menu-mark" src="/coin.mp4" poster="/coin-poster.jpg" autoplay loop muted playsinline disablepictureinpicture></video>
         <img class="menu-wordmark" src="/wordmark-slogan.png" alt="WordBank — Spend Less. Think More." />
@@ -3118,7 +3113,7 @@
   }
   .hero-top .streak-chip { justify-self: start; }
   .hero-top .bank-chip { justify-self: center; }
-  .hero-account { justify-self: end; display: flex; align-items: center; gap: 8px; }
+  .hero-top .bell-ic { justify-self: start; }
   .bell-ic { position: relative; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
     background: var(--surface, rgba(255,255,255,0.05)); border: 1px solid var(--border); font-size: 1.15rem;
     transition: transform 0.15s, border-color 0.2s; }
