@@ -76,7 +76,7 @@
   }
 </script>
 
-<svelte:head><title>WordBank — Streak</title></svelte:head>
+<svelte:head><title>WordBank — Daily Calendar</title></svelte:head>
 
 <main class="streak-page">
   <PageNav />

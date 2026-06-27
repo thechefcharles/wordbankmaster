@@ -119,6 +119,18 @@ export async function getGroup(id) {
   if (error) { console.error('❌ get_group:', error); return null; }
   return data;
 }
+/** Ask to join a group (owner approves). @param {string} groupId @returns {Promise<{ok:boolean, reason?:string, status?:string}>} */
+export async function requestJoinGroup(groupId) {
+  const { data, error } = await supabase.rpc('request_join_group', { p_group: groupId });
+  if (error || !data) { if (error) console.error('❌ request_join_group:', error); return { ok: false }; }
+  return data;
+}
+/** Owner: approve/decline a join request. @param {string} groupId @param {string} userId @param {boolean} accept */
+export async function respondJoinRequest(groupId, userId, accept) {
+  const { data, error } = await supabase.rpc('respond_join_request', { p_group: groupId, p_user: userId, p_accept: accept });
+  if (error || !data) { if (error) console.error('❌ respond_join_request:', error); return { ok: false }; }
+  return data;
+}
 /** @param {string} name @returns {Promise<{ok:boolean, reason?:string, group?:any}>} */
 export async function createGroup(name) {
   const { data, error } = await supabase.rpc('create_group', { p_name: name });

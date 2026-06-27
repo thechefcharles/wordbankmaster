@@ -5,13 +5,11 @@
   import { getProfileDetail, getMyAvatar, getUserBadges } from '$lib/stores/statsStore.js';
   import { badgeInfo } from '$lib/badges.js';
   import Avatar from '$lib/components/Avatar.svelte';
-  import HistoryList from '$lib/components/HistoryList.svelte';
-  import BadgesPanel from '$lib/components/BadgesPanel.svelte';
   import NotificationsPanel from '$lib/components/NotificationsPanel.svelte';
   import { unreadCount, markAllNotificationsRead } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
 
-  /** @type {'overview'|'stats'|'history'|'badges'|'alerts'} */
+  /** @type {'overview'|'stats'|'alerts'} */
   let tab = $state('overview');
   /** @type {any|null} */
   let d = $state(null);
@@ -20,11 +18,13 @@
   /** @type {string[]} */
   let earned = $state([]);
   let earnedBadges = $derived(earned.map((id) => badgeInfo(id)).filter(Boolean));
+  /** @type {{title:string, desc:string, link?:string, linkLabel?:string}|null} */
+  let statInfo = $state(null);
 
   onMount(async () => {
     track('profile_view');
     const t = $page.url.searchParams.get('tab');
-    if (t === 'stats' || t === 'history' || t === 'badges' || t === 'alerts') tab = /** @type {any} */ (t);
+    if (t === 'stats' || t === 'alerts') tab = /** @type {any} */ (t);
     getMyAvatar().then((a) => { avatar = a.config; });
     getUserBadges().then((b) => { earned = b; });
     try { d = await getProfileDetail(); } finally { loading = false; }
@@ -57,28 +57,20 @@
 {#snippet chipLink(/** @type {any} */ value, /** @type {string} */ label, /** @type {string} */ href)}
   <button class="stat stat-link" onclick={() => goto(href)}><span class="sv">{value}</span><span class="sc">{label} ›</span></button>
 {/snippet}
+{#snippet chipAct(/** @type {any} */ value, /** @type {string} */ label, /** @type {() => void} */ action)}
+  <button class="stat stat-link" onclick={action}><span class="sv">{value}</span><span class="sc">{label} ⓘ</span></button>
+{/snippet}
 
 <main class="you-page">
   <div class="topbar">
     <button class="back-btn" onclick={back}>← Back</button>
-    <h1 class="page-title">Profile</h1>
-    <div class="tb-right">
-      <button class="gear" onclick={() => goto('/')} title="Main menu" aria-label="Main menu">🏠</button>
-      <button class="gear" onclick={() => goto('/?account=1')} title="Settings" aria-label="Settings">⚙️</button>
-    </div>
+    <h1 class="page-title">{tab === 'overview' ? 'Profile' : tab === 'stats' ? 'Full Stats' : 'Notifications'}</h1>
+    <button class="gear" onclick={() => goto('/?account=1')} title="Settings" aria-label="Settings">⚙️</button>
   </div>
 
   {#if loading}
     <p class="muted">Loading…</p>
   {:else if d}
-    <div class="tabs">
-      <button class="tab" class:active={tab === 'overview'} onclick={() => tab = 'overview'}>Overview</button>
-      <button class="tab" class:active={tab === 'stats'} onclick={() => tab = 'stats'}>Stats</button>
-      <button class="tab" class:active={tab === 'history'} onclick={() => tab = 'history'}>History</button>
-      <button class="tab" class:active={tab === 'badges'} onclick={() => tab = 'badges'}>Badges</button>
-      <button class="tab" class:active={tab === 'alerts'} onclick={() => tab = 'alerts'}>🔔{#if $unreadCount > 0}<span class="tab-count">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}</button>
-    </div>
-
     {#if tab === 'overview'}
       <div class="ov-hero">
         <button class="prof-avatar" onclick={() => goto('/avatar')}>
@@ -86,34 +78,42 @@
           <span class="prof-avatar-edit">🎨 Edit Avatar</span>
         </button>
         <div class="ov-id">
-          <div class="uname">{d.username ? '@' + d.username : 'You'}</div>
-          <div class="nw">{fmt(d.net_worth)}<span class="nw-sub"> Cash</span></div>
-          <button class="ov-people" onclick={() => goto('/?people=1')} aria-label="Friends & groups">
-            <span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span><span class="ov-people-lbl">Friends</span>
-          </button>
+          <div class="uname-row">
+            <span class="uname">{d.username ? '@' + d.username : 'You'}</span>
+            <button class="bell-btn" onclick={() => tab = 'alerts'} aria-label="Notifications" title="Notifications">
+              🔔{#if $unreadCount > 0}<span class="bell-count">{$unreadCount > 99 ? '99+' : $unreadCount}</span>{/if}
+            </button>
+          </div>
+          <button class="nw nw-btn" onclick={() => goto('/bank')}>{fmt(d.net_worth)}<span class="nw-go"> ›</span></button>
+          <div class="ov-social">
+            <button class="ov-social-btn" onclick={() => goto('/my-friends')}>👋 My Friends ›</button>
+            <button class="ov-social-btn" onclick={() => goto('/my-groups')}>👥 My Groups ›</button>
+          </div>
         </div>
       </div>
 
       <div class="grid ov-summary">
-        {@render chip((d.overall.puzzles_solved ?? 0).toLocaleString(), 'Puzzles')}
-        {@render chip(d.overall.games_played ?? 0, 'Games')}
-        {@render chipLink('🔥 ' + (d.daily.current_streak ?? 0), 'Streak', '/streak')}
-        {@render chip('🏆 ' + (d.daily.win_streak ?? 0), 'Win streak')}
-        {@render chip(pct(d.daily.won ?? 0, d.daily.played ?? 0), 'Daily win%')}
-        {@render chip(d.overall.clean_solves ?? 0, 'Clean solves')}
+        {@render chipAct((d.overall.puzzles_solved ?? 0).toLocaleString(), 'Total Solves', () => statInfo = { title: 'Total solves', desc: 'Every puzzle you’ve solved across all modes — Daily, Cash Game, Free Play, and challenges.' })}
+        {@render chipAct(d.overall.games_played ?? 0, 'Games Played', () => statInfo = { title: 'Games played', desc: 'How many games you’ve started across every mode — whether you solved them or not.' })}
+        {@render chipAct('🔥 ' + (d.daily.current_streak ?? 0), 'Daily Streak', () => statInfo = { title: '📅 Daily streak', desc: 'Days in a row you’ve shown up for the Daily. Miss a day and it resets (a freeze can save it).', link: '/streak', linkLabel: 'View Daily Calendar' })}
+        {@render chipAct('🏆 ' + (d.daily.win_streak ?? 0), 'Win Streak', () => statInfo = { title: '🏆 Win streak', desc: 'Daily puzzles you’ve solved in a row. Powers your bounty multiplier — the longer it runs, the more you earn.', link: '/streak', linkLabel: 'View Daily Calendar' })}
+        {@render chipAct(pct(d.daily.won ?? 0, d.daily.played ?? 0), 'Daily Win %', () => statInfo = { title: 'Daily win rate', desc: 'The share of Dailies you’ve played that you actually solved.' })}
+        {@render chipAct(d.overall.clean_solves ?? 0, 'Clean Solves', () => statInfo = { title: 'Clean solves', desc: 'Puzzles you solved with zero wrong letters — pure deduction, no misses.' })}
       </div>
 
-      {#if earnedBadges.length}
-        <div class="sec-title">🏅 Badges <button class="sec-link" onclick={() => tab = 'badges'}>View all ›</button></div>
-        <div class="ov-badges">
-          {#each earnedBadges.slice(0, 12) as bdg}<span class="ov-badge" title={bdg.name}>{bdg.emoji}</span>{/each}
-        </div>
-      {/if}
+      <button class="ov-badges-card" onclick={() => goto('/badges')}>
+        <span class="ov-badges-h">🏅 Badges <span class="arrow">›</span></span>
+        <span class="ov-badges">
+          {#if earnedBadges.length}
+            {#each earnedBadges.slice(0, 14) as bdg}<span class="ov-badge" title={bdg.name}>{bdg.emoji}</span>{/each}
+          {:else}<span class="ov-badges-empty">None yet — play to earn them</span>{/if}
+        </span>
+      </button>
 
       <div class="ov-nav">
         <button class="ov-link" onclick={() => tab = 'stats'}>📊 Full stats <span class="arrow">›</span></button>
-        <button class="ov-link" onclick={() => tab = 'history'}>📜 Play history <span class="arrow">›</span></button>
-        <button class="ov-link" onclick={() => goto('/streak')}>🔥 Streak &amp; calendar <span class="arrow">›</span></button>
+        <button class="ov-link" onclick={() => goto('/history')}>📜 Play history <span class="arrow">›</span></button>
+        <button class="ov-link" onclick={() => goto('/streak')}>📅 Daily Calendar <span class="arrow">›</span></button>
       </div>
     {:else if tab === 'stats'}
       <div class="sec-title">📊 Overall</div>
@@ -188,18 +188,37 @@
           {/each}
         </div>
       {/if}
-    {:else if tab === 'history'}
-      <HistoryList />
-    {:else if tab === 'badges'}
-      <BadgesPanel />
     {:else}
       <NotificationsPanel onNavigate={notifNav} />
     {/if}
+  {/if}
+
+  {#if statInfo}
+    <div class="si-overlay" role="button" tabindex="0" onclick={() => statInfo = null}
+      onkeydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') statInfo = null; }}>
+      <div class="si-card" role="document" onclick={(e) => e.stopPropagation()}>
+        <h3 class="si-title">{statInfo.title}</h3>
+        <p class="si-desc">{statInfo.desc}</p>
+        {#if statInfo.link}<button class="si-link" onclick={() => goto(/** @type {string} */ (statInfo?.link))}>{statInfo.linkLabel} →</button>{/if}
+        <button class="si-close" onclick={() => statInfo = null}>Got it</button>
+      </div>
+    </div>
   {/if}
 </main>
 
 <style>
   .you-page { max-width: 520px; margin: 0 auto; padding: 16px 14px 60px; }
+  /* stat explanation popup */
+  .si-overlay { position: fixed; inset: 0; z-index: 4000; display: grid; place-items: center; padding: 24px;
+    background: rgba(4,8,14,0.72); backdrop-filter: blur(6px); border: none; }
+  .si-card { width: 100%; max-width: 320px; padding: 22px; border-radius: 18px; text-align: center;
+    background: var(--surface-strong, rgba(20,26,38,0.96)); border: 1px solid var(--border-strong, rgba(255,255,255,0.16));
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 10px; }
+  .si-title { font-family: var(--font-display); font-size: 1.15rem; margin: 0; }
+  .si-desc { font-size: 0.92rem; line-height: 1.5; color: var(--text-muted); margin: 0; }
+  .si-link { background: none; border: none; color: var(--brand-2); font-weight: 700; cursor: pointer; padding: 4px; font-size: 0.92rem; }
+  .si-close { margin-top: 4px; height: 44px; border-radius: 12px; border: none; cursor: pointer; font-weight: 800; color: #3a2a00;
+    background: linear-gradient(135deg, #fde047, #f59e0b); }
   .topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .back-btn { background: none; border: none; color: var(--text-muted); font-size: 0.92rem; cursor: pointer; padding: 6px 0; }
   .tb-right { display: flex; gap: 6px; }
@@ -233,7 +252,15 @@
   .ov-hero { display: flex; align-items: center; gap: 16px; margin: 6px 0 16px; }
   .ov-hero .prof-avatar { margin: 0; }
   .ov-id { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+  .uname-row { display: flex; align-items: center; gap: 8px; }
+  .bell-btn { position: relative; background: none; border: none; cursor: pointer; font-size: 1.3rem; line-height: 1; padding: 2px; }
+  .bell-count { position: absolute; top: -4px; right: -7px; min-width: 17px; height: 17px; display: grid; place-items: center; padding: 0 4px;
+    border-radius: 999px; background: #dc2626; color: #fff; font-size: 0.62rem; font-weight: 800; }
   .ov-id .uname { font-size: 1.15rem; }
+  .ov-social { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; align-items: flex-start; }
+  .ov-social-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text); cursor: pointer;
+    padding: 6px 12px; border-radius: 999px; font-weight: 700; font-size: 0.82rem; }
+  .ov-social-btn:hover { border-color: var(--brand-2); }
   .ov-id .nw { font-size: 1.7rem; }
   .ov-id .nw-sub { font-size: 0.8rem; color: var(--text-faint); -webkit-text-fill-color: var(--text-faint); }
   .ov-people { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 7px 14px 7px 30px; position: relative;
@@ -244,9 +271,18 @@
   .ov-people:active { transform: scale(0.97); }
   .ov-summary { margin-bottom: 4px; }
   .sec-link { float: right; background: none; border: none; color: var(--brand-2); font-weight: 700; font-size: 0.72rem; cursor: pointer; text-transform: none; letter-spacing: 0; }
+  .nw-btn { background: none; border: none; padding: 0; cursor: pointer; display: inline-flex; align-items: baseline; }
+  .nw-go { font-size: 1rem; color: var(--text-faint); font-family: var(--font-display); }
+  .ov-badges-card { display: block; width: 100%; text-align: left; cursor: pointer; margin-top: 16px; padding: 12px 14px; border-radius: 14px;
+    background: var(--surface); border: 1px solid var(--border); }
+  .ov-badges-card:hover { border-color: var(--brand-2); }
+  .ov-badges-h { display: flex; justify-content: space-between; font-family: var(--font-display); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+  .ov-badges-h .arrow { color: var(--text-faint); }
   .ov-badges { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
   .ov-badge { font-size: 1.5rem; line-height: 1; }
-  .ov-nav { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
+  .ov-badges-empty { font-size: 0.85rem; color: var(--text-muted); }
+  .ov-nav { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+  .ov-count { margin-left: auto; margin-right: 8px; min-width: 20px; height: 20px; display: inline-grid; place-items: center; padding: 0 5px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 0.72rem; font-weight: 800; }
   .ov-link { display: flex; justify-content: space-between; align-items: center; padding: 13px 15px; border-radius: 14px; cursor: pointer;
     background: var(--surface); border: 1px solid var(--border); color: var(--text); font-weight: 700; font-size: 0.95rem; text-align: left; }
   .ov-link:hover { border-color: var(--brand-2); }

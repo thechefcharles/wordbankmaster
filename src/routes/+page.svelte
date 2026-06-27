@@ -2001,7 +2001,7 @@
           <!-- ⚔️ Challenges hub (list + New) — carries the pending-invite badge; 👥+ = friends/groups -->
           <div class="vs-cta-group">
             <button class="vs-main" on:click={() => { fx('tap'); openCommunity('challenges'); }}>
-              ⚔️ Challenges{#if challengeInvites.length}<span class="vs-badge">{challengeInvites.length}</span>{/if}
+              ⚔️ Challenge Friends{#if challengeInvites.length}<span class="vs-badge">{challengeInvites.length}</span>{/if}
             </button>
             <button class="vs-people" title="Friends &amp; Groups" aria-label="Friends and groups" on:click={() => { fx('tap'); openCommunity('people'); }}>
               <span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span>
@@ -2021,7 +2021,7 @@
           <h2 class="sub-title">Play</h2>
         </div>
         <div class="main-menu-buttons stagger">
-          <button class="menu-card" class:done={dailyDone} class:resumable={dailyInProgress} style="--i: 0" on:click={handleMenuDaily}>
+          <button class="menu-card" class:done={dailyDone} class:resumable={dailyInProgress} class:fresh={!dailyDone && !dailyInProgress} style="--i: 0" on:click={handleMenuDaily}>
             <span class="mc-streak left" title="Attendance streak — days in a row">📅 {dailyStatus?.current_streak ?? 0}</span>
             <span class="mc-title">{dailyInProgress ? 'Resume Daily' : 'Daily'}</span>
             <span class="mc-streak right" title="Win streak — solves in a row">🏆 {dailyStatus?.win_streak ?? 0}</span>
@@ -2061,18 +2061,15 @@
           {:else}
             <button class="sub-back" on:click={() => { menuView = 'home'; fx('tap'); }}>← Back</button>
             <h2 class="sub-title">{communityTab === 'leaderboard' ? '🏆 Leaderboard' : '⚔️ Challenges'}</h2>
-            <button class="sub-people" title="Friends & Groups" aria-label="Friends & Groups" on:click={() => { communityTab = 'people'; peopleBackToHome = false; fx('tap'); }}><span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span></button>
+            {#if communityTab === 'challenges'}
+              <button class="sub-people" title="Friends & Groups" aria-label="Friends & Groups" on:click={() => { communityTab = 'people'; peopleBackToHome = false; fx('tap'); }}><span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span></button>
+            {/if}
           {/if}
         </div>
         {#if communityTab === 'people'}
           <div class="comm-tabs">
             <button class="comm-tab" class:active={peopleTab === 'friends'} on:click={() => { peopleTab = 'friends'; fx('tap'); }}>Friends{#if friendReqCount > 0} · {friendReqCount}{/if}</button>
             <button class="comm-tab" class:active={peopleTab === 'groups'} on:click={() => { peopleTab = 'groups'; fx('tap'); }}>Groups</button>
-          </div>
-        {:else}
-          <div class="comm-tabs">
-            <button class="comm-tab" class:active={communityTab === 'challenges'} on:click={() => { communityTab = 'challenges'; fx('tap'); }}>Challenges</button>
-            <button class="comm-tab" class:active={communityTab === 'leaderboard'} on:click={() => { communityTab = 'leaderboard'; fx('tap'); }}>Leaderboard</button>
           </div>
         {/if}
 
@@ -3013,8 +3010,9 @@
     gap: 1.2rem;
   }
   .sub-head {
-    width: 100%; display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.2rem;
+    width: 100%; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 0.6rem; margin-bottom: 0.2rem;
   }
+  .sub-head .sub-back { justify-self: start; }
   .sub-back {
     display: inline-flex; align-items: center; gap: 4px; padding: 0.5rem 0.9rem;
     background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
@@ -3022,9 +3020,9 @@
     transition: transform 0.15s, border-color 0.2s, background 0.2s;
   }
   .sub-back:hover { transform: translateX(-2px); border-color: var(--border-strong); background: var(--surface-2); }
-  .sub-title { font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; }
+  .sub-title { font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; text-align: center; grid-column: 2; }
   .sub-people {
-    position: relative; margin-left: auto; width: 40px; height: 40px; display: grid; place-items: center; font-size: 1.1rem;
+    position: relative; justify-self: end; width: 40px; height: 40px; display: grid; place-items: center; font-size: 1.1rem;
     background: var(--surface); border: 1px solid var(--border); border-radius: 12px; cursor: pointer;
   }
   .sub-people:hover { border-color: var(--brand-2); }
@@ -3352,6 +3350,14 @@
     background: linear-gradient(180deg, #d1fae5, #6ee7b7); -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent; color: transparent; text-shadow: none;
   }
+  /* 📅 Fresh Daily (not started today) — solid gold, "play me" */
+  .menu-card.fresh {
+    background: linear-gradient(135deg, #fde047, #f59e0b); border-color: transparent;
+    box-shadow: 0 4px 16px rgba(245,158,11,0.45), 0 0 24px rgba(251,191,36,0.3);
+  }
+  .menu-card.fresh::before, .menu-card.fresh::after { display: none; }
+  .menu-card.fresh .mc-title { color: #3a2a00; -webkit-text-fill-color: #3a2a00; background: none; text-shadow: none; }
+  .menu-card.fresh .mc-streak { color: #5a4200; text-shadow: none; }
   /* ▶ Resume shortcut card (home menu) — green, mirrors the in-progress accent */
   .menu-card.resume-card {
     background: linear-gradient(180deg, #16352b 0%, #0f2a22 100%);
@@ -3804,6 +3810,7 @@
   .ma-version { text-align: center; font-size: 0.72rem; color: var(--text-faint); margin: 14px 0 2px; }
   /* ── Sectioned settings layout ── */
   .settings-modal { text-align: left; }
+  .settings-modal > h2 { text-align: center; }
   .set-profile { display: flex; align-items: center; gap: 13px; margin: 6px 0 4px; }
   .set-av { position: relative; background: none; border: none; cursor: pointer; padding: 0; flex: none; }
   .set-av-edit { position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); font-size: 0.62rem; font-weight: 800;
