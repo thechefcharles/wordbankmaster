@@ -30,6 +30,8 @@
     N:'⠝',O:'⠕',P:'⠏',Q:'⠟',R:'⠗',S:'⠎',T:'⠞',U:'⠥',V:'⠧',W:'⠺',X:'⠭',Y:'⠽',Z:'⠵'
   };
 
+  // Blitz spends TIME, not Cash — every reveal is a flat −3s.
+  $: isBlitzKb = $gameStore.gameMode === 'blitz';
   // Effective per-letter prices after active discount / vowel_vision (server matches this):
   // daily uses the shared modifier.
   $: effCosts = (() => {
@@ -58,8 +60,10 @@
   $: incorrectLetters = ($gameStore.incorrectLetters || []) as string[];
 
   // 🔹 Disable keys that are unaffordable or already marked incorrect (modifier-adjusted prices).
+  //    Blitz pays in TIME, not Cash, so letters are never gated by bankroll there.
   $: disabledKeys = Object.keys(letterCosts).filter((letter: string) =>
-        (effCosts[letter] ?? 0) > $gameStore.bankroll || incorrectLetters.includes(letter));
+        isBlitzKb ? incorrectLetters.includes(letter)
+                  : ((effCosts[letter] ?? 0) > $gameStore.bankroll || incorrectLetters.includes(letter)));
 
   /**
    * 🔹 Letter click logic for both guess mode and purchase mode.
@@ -173,7 +177,7 @@
       >
         <span class="braille">{BRAILLE[letter]}</span>
         <div class="letter">{letter}</div>
-        <div class="price">${effCosts[letter] ?? 0}</div>
+        <div class="price" class:time={isBlitzKb}>{isBlitzKb ? "−3s" : "$" + (effCosts[letter] ?? 0)}</div>
       </button>
     {/each}
   </div>
@@ -198,7 +202,7 @@
       >
         <span class="braille">{BRAILLE[letter]}</span>
         <div class="letter">{letter}</div>
-        <div class="price">${effCosts[letter] ?? 0}</div>
+        <div class="price" class:time={isBlitzKb}>{isBlitzKb ? "−3s" : "$" + (effCosts[letter] ?? 0)}</div>
       </button>
     {/each}
   </div>
@@ -223,7 +227,7 @@
       >
         <span class="braille">{BRAILLE[letter]}</span>
         <div class="letter">{letter}</div>
-        <div class="price">${effCosts[letter] ?? 0}</div>
+        <div class="price" class:time={isBlitzKb}>{isBlitzKb ? "−3s" : "$" + (effCosts[letter] ?? 0)}</div>
       </button>
     {/each}
 
@@ -357,6 +361,7 @@
     color: rgba(251, 191, 36, 0.55);
     font-variant-numeric: tabular-nums;
   }
+  .price.time { color: rgba(253, 224, 71, 0.75); font-weight: 700; }
 
   /* ---------------------------
      Key State Styles
