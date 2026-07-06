@@ -43,7 +43,7 @@
   /** @param {string} reason */
   function reasonLabel(reason) {
     return ({
-      quest_reward: 'Daily quests reward', daily_win: 'Daily reward', daily_reward: 'Daily reward',
+      daily_win: 'Daily reward', daily_reward: 'Daily reward',
       attendance: 'Attendance reward', arcade_cashout: 'Cash Game cash-out', climb_bounty: 'Cash Game bounty',
       freeplay_reward: 'Free Play reward', freeplay_cashout: 'Exchanged credits → Cash',
       cosmetic_buy: 'Store purchase', powerup_buy: 'Power-up purchase',
