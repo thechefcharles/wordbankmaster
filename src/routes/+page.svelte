@@ -65,7 +65,7 @@
   /** When showing menu: has user already played daily today? */
   let menuDailyPlayed = false;
   /** Today's daily result for the menu indicator (won/lost + score). */
-  let dailyStatus = /** @type {{ has_played_today: boolean, last_daily_won: boolean|null, daily_bankroll: number, arcade_bankroll: number, current_streak: number, streak_freezes: number, today_score: number, win_streak: number, daily_in_progress?: boolean } | null} */ (null);
+  let dailyStatus = /** @type {{ has_played_today: boolean, last_daily_won: boolean|null, daily_bankroll: number, bank: number, current_streak: number, streak_freezes: number, today_score: number, win_streak: number, daily_in_progress?: boolean } | null} */ (null);
   // 🎮 Live solo games from SERVER truth (daily/climb), newest first. The old
   // single localStorage save slot got overwritten whenever you played another mode, which
   // made a live Daily show as "complete + lost". openGames lets every mode resume independently.
@@ -119,18 +119,18 @@
         const { data: newProfile } = await fetchUserProfile(userId);
         if (!newProfile) return null;
         userProfile.set(newProfile);
-        gameStore.update(state => ({ ...state, bankroll: 1000 }));
-        console.log("✅ Profile created. Bankroll: 1000");
+        gameStore.update(state => ({ ...state, bankroll: 2000 }));
+        console.log("✅ Profile created. Bankroll: 2000");
         return newProfile;
       }
 
       userProfile.set(profile);
       gameStore.update(state => ({
         ...state,
-        bankroll: profile.arcade_bankroll ?? 1000
+        bankroll: profile.bank ?? 2000
       }));
 
-      console.log("✅ Profile loaded. Bankroll:", profile.current_bankroll ?? profile.arcade_bankroll);
+      console.log("✅ Profile loaded. Bankroll:", profile.current_bankroll ?? profile.bank);
       return profile;
     } catch (err) {
       console.error("❌ Profile load error:", err instanceof Error ? err.message : String(err));

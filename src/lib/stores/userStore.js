@@ -3,7 +3,7 @@ import { supabase } from '$lib/supabaseClient';
 
 /**
  * @typedef {{ id: string, [key: string]: unknown }} AppUser
- * @typedef {{ id?: string, current_bankroll?: number, arcade_bankroll?: number, [key: string]: unknown }} ProfileData
+ * @typedef {{ id?: string, current_bankroll?: number, bank?: number, [key: string]: unknown }} ProfileData
  */
 
 // 🧑 Authenticated Supabase user store
@@ -70,7 +70,7 @@ export async function ensureProfileExists(userId) {
   try {
     const { error } = await supabase
       .from('profiles')
-      .insert({ id: userId, arcade_bankroll: 1000 });
+      .insert({ id: userId, bank: 2000 });
 
     // 23505 = unique_violation: the profile already exists (created by the on-signup trigger).
     // That's the expected happy path, not an error.
