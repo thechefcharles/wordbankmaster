@@ -87,7 +87,7 @@
     <div class="hero">
       <div class="flame" class:lit={ov && ov.current_streak > 0}>🔥</div>
       <div class="count">{ov?.current_streak ?? 0}</div>
-      <div class="count-label">day streak</div>
+      <div class="count-label">play streak</div>
     </div>
 
     {#if nudge}<p class="nudge">{nudge}</p>{/if}

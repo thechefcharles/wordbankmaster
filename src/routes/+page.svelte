@@ -2032,7 +2032,7 @@
         </div>
         <div class="main-menu-buttons stagger">
           <button class="menu-card" class:done={dailyDone} class:resumable={dailyInProgress} class:fresh={!dailyDone && !dailyInProgress} style="--i: 0" on:click={handleMenuDaily}>
-            <span class="mc-streak left" title="Attendance streak — days in a row">📅 {dailyStatus?.current_streak ?? 0}</span>
+            <span class="mc-streak left" title="Play streak — days in a row">📅 {dailyStatus?.current_streak ?? 0}</span>
             <span class="mc-title">{dailyInProgress ? 'Resume Daily' : 'Daily'}</span>
             <span class="mc-streak right" title="Win streak — solves in a row">🏆 {dailyStatus?.win_streak ?? 0}</span>
             {#if dailyDone}
@@ -2254,7 +2254,7 @@
           <div class="cbt-stats">
             <div class="cbt-stat"><span class="cbt-val">+${dailyStatus?.today_score?.toLocaleString() ?? 0}</span><span class="cbt-cap">Profit</span></div>
             {#if (dailyStatus?.current_streak ?? 0) > 0}
-              <div class="cbt-stat"><span class="cbt-val">🔥 {dailyStatus?.current_streak}</span><span class="cbt-cap">Day streak</span></div>
+              <div class="cbt-stat"><span class="cbt-val">🔥 {dailyStatus?.current_streak}</span><span class="cbt-cap">Play streak</span></div>
             {/if}
           </div>
           <p class="streak-message">
