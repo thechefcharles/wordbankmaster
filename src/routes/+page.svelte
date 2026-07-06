@@ -529,11 +529,10 @@
   // ℹ️ Daily explainers: ×N badge, Solve-to-Earn, 🏆 streak, or today's Twist.
   /** @type {'mult'|'bounty'|'streak'|'twist'|null} */
   let dailyInfo = null;
-  $: dlReward = $gameStore.dailyLive?.reward ?? 0;        // base × multiplier (the full bounty)
-  $: dlSpent = $gameStore.dailyLive?.spent ?? 0;
-  $: dlMult = Number($gameStore.bountyMult ?? 1);
-  $: dlBase = dlMult > 0 ? Math.round(dlReward / dlMult) : dlReward;
-  $: dlNet = dlReward - dlSpent;
+  $: dlMult = Number($gameStore.dailyLive?.mult ?? $gameStore.bountyMult ?? 1);
+  $: dlRemaining = $gameStore.dailyLive?.remaining ?? 0;     // Prize budget left
+  $: dlWinnings = $gameStore.dailyLive?.winnings ?? Math.round(dlRemaining * dlMult); // banked if you solve now
+  $: dlNet = dlWinnings;
   $: dlWinStreak = dailyStatus?.win_streak ?? 0;
   $: dlStreakBonus = Math.min(0.1 * dlWinStreak, 0.5);
   $: dlWrong = $gameStore.wrongGuesses ?? 0;
@@ -1690,15 +1689,15 @@
         </div>
         <p class="info-note">Also boosts your <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'mult'}>multiplier</button> — <b>+0.1×</b> per win.</p>
       {:else}
-        <div class="info-big green">${Math.max(0, dlNet).toLocaleString()}</div>
-        <h3 class="info-title">Solve to Earn</h3>
-        <p class="info-sub">What you pocket if you solve right now.</p>
+        <div class="info-big green">${Math.max(0, dlWinnings).toLocaleString()}</div>
+        <h3 class="info-title">You'll bank</h3>
+        <p class="info-sub">What you'd bank if you solve right now. Your Cash never drops — playing only adds to it.</p>
         <div class="info-rows">
-          <div class="info-row"><span>Bounty (base ${dlBase.toLocaleString()} × {fmtMult(dlMult)})</span><b class="pos">${dlReward.toLocaleString()}</b></div>
-          <div class="info-row"><span>− Spent on letters</span><b class="neg">−${dlSpent.toLocaleString()}</b></div>
-          <div class="info-row total"><span>You keep</span><b class="green">${dlNet.toLocaleString()}</b></div>
+          <div class="info-row"><span>🏆 Prize left</span><b class="pos">${dlRemaining.toLocaleString()}</b></div>
+          {#if dlMult > 1}<div class="info-row"><span>× Streak bonus</span><b>{fmtMult(dlMult)}</b></div>{/if}
+          <div class="info-row total"><span>You bank</span><b class="green">${dlWinnings.toLocaleString()}</b></div>
         </div>
-        <p class="info-note">Spend less to keep more — and grow the <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'mult'}>multiplier</button>.</p>
+        <p class="info-note">Deduce letters instead of buying them — keep more of the Prize. Grows your <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'mult'}>multiplier</button> too.</p>
       {/if}
       <button class="info-close" on:click={() => dailyInfo = null}>Got it</button>
     </div>
@@ -2293,9 +2292,10 @@
     <!-- 💰 Bankroll — top of every mode. Challenge ante now lives in the bounty hero below. -->
     {#if $gameStore.currentPhrase && $gameStore.gameMode}
       {#if !matchBlitz}
-        <button class="top-bank solo" class:pop-up={bankFlash === 'up'} class:pop-down={bankFlash === 'down'} title="Your Cash" on:click={openBankModal}>
-          {#if isMatch}<span class="tb-wallet-cap">💰 Wallet</span>{/if}
-          <span class="tb-solo">{#if !isMatch}💰 {/if}${Math.round($tweenBank).toLocaleString()}</span>
+        {@const isDailyLike = $gameStore.gameMode === 'daily' || isMakeup}
+        <button class="top-bank solo" class:pop-up={bankFlash === 'up'} class:pop-down={bankFlash === 'down'} title={isDailyLike ? 'Prize remaining — spend it, keep the rest' : 'Your Cash'} on:click={openBankModal}>
+          {#if isMatch}<span class="tb-wallet-cap">💰 Wallet</span>{:else if isDailyLike}<span class="tb-wallet-cap">🏆 Prize</span>{/if}
+          <span class="tb-solo">{#if isMatch}💰 {:else if !isDailyLike}💰 {/if}${Math.round($tweenBank).toLocaleString()}</span>
         </button>
       {/if}
     {/if}
@@ -2412,7 +2412,7 @@
             <button class="bp-mult-badge" title="Heat — your payout multiplier" on:click={() => { fx('tap'); climbInfo = 'heat'; }}>🔥 ×{climbHeat}</button>
             <button class="bp-winstreak" title="Win streak" on:click={() => { fx('tap'); climbInfo = 'streak'; }}>🏆 {climbStreak}</button>
           {/if}
-          <span class="bp-label">{isMatch ? (matchLeft > 0 ? '💰 Left to Spend' : '🪙 Out of ante') : (soloHero.net >= 0 ? 'Solve to Earn' : '⚠️ You’re losing money')}</span>
+          <span class="bp-label">{isMatch ? (matchLeft > 0 ? '💰 Left to Spend' : '🪙 Out of ante') : ($gameStore.gameMode === 'daily' ? "You'll bank" : (soloHero.net >= 0 ? 'Solve to Earn' : '⚠️ You’re losing money'))}</span>
           {#if $gameStore.gameMode === 'daily'}
             <button class="bp-amount bp-amount-btn" title="How this is calculated" on:click={() => { fx('tap'); dailyInfo = 'bounty'; }}>{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</button>
           {:else if isClimb}
@@ -2485,14 +2485,18 @@
         <div class="modal-content result-modal">
           {#if isDailyResult && resultWon && dr}
             {@const mult = Number(dr.mult ?? $gameStore.bountyMult ?? 1)}
-            {@const base = dr.base ?? (mult > 0 ? Math.round((dr.reward ?? 0) / mult) : (dr.reward ?? 0))}
+            {@const prize = Number(dr.base ?? 0)}
+            {@const kept = Number(dr.kept ?? Math.max(0, prize - (dr.spent ?? 0)))}
+            {@const banked = Number(dr.winnings ?? dr.banked ?? dr.reward ?? Math.round(kept * mult))}
             <h2 class="win-h">🎉 Solved!</h2>
             <p class="result-sub">{todayLabel}</p>
-            <!-- 3-line math -->
+            <!-- Prize − Spent = Kept ×mult = Banked -->
             <div class="win-math">
-              <div class="wm-row"><span>Bounty {#if mult > 1}<small>(${base.toLocaleString()} × {fmtMult(mult)})</small>{/if}</span><b>${(dr.reward ?? 0).toLocaleString()}</b></div>
+              <div class="wm-row"><span>🏆 Prize</span><b>${prize.toLocaleString()}</b></div>
               <div class="wm-row"><span>− Spent on letters</span><b class="neg">−${(dr.spent ?? 0).toLocaleString()}</b></div>
-              <div class="wm-row total"><span>Profit</span><b class="profit">{$resultProfit >= 0 ? '+' : '−'}${Math.abs(Math.round($resultProfit)).toLocaleString()}</b></div>
+              <div class="wm-row"><span>= Kept</span><b>${kept.toLocaleString()}</b></div>
+              {#if mult > 1}<div class="wm-row"><span>× Streak bonus</span><b>{fmtMult(mult)}</b></div>{/if}
+              <div class="wm-row total"><span>💰 Banked</span><b class="profit">+${banked.toLocaleString()}</b></div>
             </div>
             {#if dailyMod}
               <p class="win-twist">{dailyMod.emoji} <b>{dailyMod.name}</b> — applied for everyone</p>

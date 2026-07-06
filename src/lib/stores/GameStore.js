@@ -48,7 +48,7 @@ import { track } from '$lib/analytics.js';
  *   climbInfo?: any,
  *   matchInfo?: any,
  *   cashToast?: { amount:number, label:string } | null,
- *   dailyLive?: { spent:number, reward:number, net:number } | null
+ *   dailyLive?: { remaining:number, mult:number, winnings:number } | null
  * }} GameState
  */
 
@@ -93,7 +93,7 @@ export const gameStore = writable(/** @type {GameState} */ ({
   climbInfo: null, // { bounty, heat, attempts, spent, position, stuck, last_gain, state } (climb mode)
   matchInfo: null, // { position, pack_size, total_score, last_score, done, status } (challenge match)
   cashToast: null, // { amount, label } — transient Cash-earned toast (attendance / free-play reward)
-  dailyLive: null, // { spent, clean, no_vowels, first_try, reward, net } — live Daily HUD metrics
+  dailyLive: null, // { remaining, mult, winnings } — live Daily V2 HUD (Prize left → what you'd bank)
   dailyIntro: 0, // bumps on a FRESH daily open → ARMS the opening reveal (pending)
   dailyIntroGo: 0, // bumps once the board is actually visible → PLAYS the opening reveal
   dailyIntroPlayed: 0 // the dailyIntro token that has already played (persists across remounts)
