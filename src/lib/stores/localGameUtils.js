@@ -34,7 +34,7 @@ export function saveGameToLocalStorage() {
   }
   
   /**
-   * 📋 Peek at saved game without restoring (for menu labels: Resume daily/arcade)
+   * 📋 Peek at saved game without restoring (for menu labels: Resume daily/etc.)
    * @param {string} userId
    * @returns {{ gameMode: string, gameState: string } | null}
    */
@@ -46,7 +46,7 @@ export function saveGameToLocalStorage() {
     try {
       const parsed = JSON.parse(saved);
       if (!parsed || typeof parsed.currentPhrase !== 'string' || !parsed.currentPhrase.trim()) return null;
-      const gameMode = parsed.gameMode === 'practice' ? 'arcade' : (parsed.gameMode || 'arcade');
+      const gameMode = parsed.gameMode || 'daily';
       const gameState = parsed.gameState || 'default';
       return { gameMode, gameState };
     } catch {

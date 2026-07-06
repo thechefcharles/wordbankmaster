@@ -335,61 +335,10 @@ export async function getCategoryStats() {
   return data ?? [];
 }
 
-/* ===== Free Play (unranked, pick-a-category) — return a masked board ===== */
-/** @param {string} category @returns {Promise<object|null>} */
-export async function freeplayStart(category) {
-  const { data, error } = await supabase.rpc('freeplay_start', { p_category: category });
-  if (error) { console.error('❌ freeplay_start error:', error); return null; }
-  return data;
-}
-/** @returns {Promise<object|null>} */
-export async function freeplayNext() {
-  const { data, error } = await supabase.rpc('freeplay_next');
-  if (error) { console.error('❌ freeplay_next error:', error); return null; }
-  return data;
-}
-/** Resume an in-progress Free Play puzzle (null if none active). @returns {Promise<object|null>} */
-export async function freeplayResume() {
-  const { data, error } = await supabase.rpc('freeplay_resume');
-  if (error) { console.error('❌ freeplay_resume error:', error); return null; }
-  return data ?? null;
-}
-/** @param {string} letter @returns {Promise<object|null>} */
-export async function freeplayBuyLetter(letter) {
-  const { data, error } = await supabase.rpc('freeplay_buy_letter', { p_letter: letter });
-  if (error) { console.error('❌ freeplay_buy_letter error:', error); return null; }
-  return data;
-}
-/** @returns {Promise<object|null>} */
-export async function freeplayReveal() {
-  const { data, error } = await supabase.rpc('freeplay_reveal');
-  if (error) { console.error('❌ freeplay_reveal error:', error); return null; }
-  return data;
-}
-/** @param {Record<string,string>} guess @returns {Promise<object|null>} */
-export async function freeplaySubmitGuess(guess) {
-  const { data, error } = await supabase.rpc('freeplay_submit_guess', { p_guess: guess });
-  if (error) { console.error('❌ freeplay_submit_guess error:', error); return null; }
-  return data;
-}
-/** @returns {Promise<string|null>} */
-export async function getFreeplayClue() {
-  const { data, error } = await supabase.rpc('freeplay_clue');
-  if (error) { console.error('❌ freeplay_clue error:', error); return null; }
-  return data ?? null;
-}
-
 /** Witty clue for the caller's current daily puzzle. @returns {Promise<string|null>} */
 export async function getDailyClue() {
   const { data, error } = await supabase.rpc('daily_clue');
   if (error) { console.error('❌ daily_clue error:', error); return null; }
-  return data ?? null;
-}
-
-/** Witty clue for the caller's current arcade puzzle. @returns {Promise<string|null>} */
-export async function getArcadeClue() {
-  const { data, error } = await supabase.rpc('arcade_clue');
-  if (error) { console.error('❌ arcade_clue error:', error); return null; }
   return data ?? null;
 }
 
@@ -419,19 +368,6 @@ export async function getDailyGhost() {
   const { data, error } = await supabase.rpc('get_daily_ghost');
   if (error) { console.error('❌ get_daily_ghost error:', error); return null; }
   return data;
-}
-
-/**
- * Fetch the arcade gauntlet leaderboard (best banked run + furthest reached).
- * @param {string} period - 'daily' | 'weekly' | 'monthly' | 'yearly' | 'all'
- */
-export async function fetchArcadeLeaderboard(period = 'daily') {
-  const { data, error } = await supabase.rpc('get_arcade_gauntlet_leaderboard', { p_period: period });
-  if (error) {
-    console.error('❌ Error fetching arcade leaderboard:', error);
-    return [];
-  }
-  return data ?? [];
 }
 
 /* ============================================================
@@ -562,7 +498,7 @@ export async function expireStaleDailies() {
   return data ?? 0;
 }
 
-/** The caller's currently-resumable solo games (daily/climb/freeplay), newest first.
+/** The caller's currently-resumable solo games (daily/climb), newest first.
  *  Server truth for menu resume labels + the top-level Resume shortcut.
  *  @returns {Promise<{mode:string, updated_at:string}[]>} */
 export async function getOpenGames() {
@@ -696,19 +632,6 @@ export async function buyPowerup(id) {
   if (error || !data) { if (error) console.error('❌ buy_powerup:', error); return { ok: false }; }
   return data;
 }
-/* ===== Free Play cash-out (credits → real Cash, 40:1, $50/day cap) ===== */
-/** @returns {Promise<{credits:number,cashable_credits:number,max_cash:number,rate:number,floor:number,daily_cap:number,cap_remaining:number}|null>} */
-export async function getFreeplayCashoutStatus() {
-  const { data, error } = await supabase.rpc('freeplay_cashout_status');
-  if (error || !data) { if (error) console.error('❌ freeplay_cashout_status:', error); return null; }
-  return data;
-}
-/** Cash out credits (null = the max allowed). @param {number|null} amount @returns {Promise<any>} */
-export async function freeplayCashout(amount = null) {
-  const { data, error } = await supabase.rpc('freeplay_cashout', { p_amount: amount });
-  if (error || !data) { if (error) console.error('❌ freeplay_cashout:', error); return { ok: false }; }
-  return data;
-}
 /** Use a power-up in the Climb. @param {string} id @returns {Promise<any>} */
 export async function climbUsePowerup(id) {
   const { data, error } = await supabase.rpc('climb_use_powerup', { p_id: id });
@@ -725,52 +648,6 @@ export async function makeupReveal(date) {
 export async function makeupSubmitGuess(date, guess) {
   const { data, error } = await supabase.rpc('makeup_submit_guess', { p_date: date, p_guess: guess });
   if (error) { console.error('❌ makeup_submit_guess error:', error); return null; }
-  return data;
-}
-
-/* ===== Arcade Press-Your-Luck gauntlet (server-authoritative) =====
-   Each returns { board, run } where run = { state, banked, multiplier, position,
-   total, furthest, last_gain }. */
-/** @returns {Promise<any>} */
-export async function arcadeStart() {
-  const { data, error } = await supabase.rpc('arcade_start');
-  if (error) { console.error('❌ arcade_start error:', error); return null; }
-  return data;
-}
-/** @param {string} letter @returns {Promise<any>} */
-export async function arcadeBuyLetter(letter) {
-  const { data, error } = await supabase.rpc('arcade_buy_letter', { p_letter: letter });
-  if (error) { console.error('❌ arcade_buy_letter error:', error); return null; }
-  return data;
-}
-/** @returns {Promise<any>} */
-export async function arcadeReveal() {
-  const { data, error } = await supabase.rpc('arcade_reveal');
-  if (error) { console.error('❌ arcade_reveal error:', error); return null; }
-  return data;
-}
-/** @param {Record<string,string>} guess @returns {Promise<any>} */
-export async function arcadeSubmitGuess(guess) {
-  const { data, error } = await supabase.rpc('arcade_submit_guess', { p_guess: guess });
-  if (error) { console.error('❌ arcade_submit_guess error:', error); return null; }
-  return data;
-}
-/** Advance after a solve / retry after a bust. @returns {Promise<any>} */
-export async function arcadeNext() {
-  const { data, error } = await supabase.rpc('arcade_next');
-  if (error) { console.error('❌ arcade_next error:', error); return null; }
-  return data;
-}
-/** Spend an earned power-up during the current run. @param {string} powerup @returns {Promise<any>} */
-export async function arcadeUsePowerup(powerup) {
-  const { data, error } = await supabase.rpc('arcade_use_powerup', { p_powerup: powerup });
-  if (error) { console.error('❌ arcade_use_powerup error:', error); return null; }
-  return data;
-}
-/** Cash out the current arcade run's winnings into your Bank. @returns {Promise<any>} */
-export async function arcadeCashout() {
-  const { data, error } = await supabase.rpc('arcade_cashout');
-  if (error) { console.error('❌ arcade_cashout error:', error); return null; }
   return data;
 }
 

@@ -1,59 +1,29 @@
 <script>
   import { onMount } from 'svelte';
   import PageNav from "$lib/components/PageNav.svelte";
-  import { getBank, getFreeplayCashoutStatus, freeplayCashout } from '$lib/stores/statsStore.js';
+  import { getBank } from '$lib/stores/statsStore.js';
   import InventoryList from '$lib/components/InventoryList.svelte';
-  import { requirePin } from '$lib/pinConfirm.js';
   import { track } from '$lib/analytics.js';
-  import { fx } from '$lib/sound.js';
 
   /** @type {{ bank:number, net_worth:number, ledger:any[] }|null} */
   let b = null;
-  /** @type {any|null} */
-  let cashout = null;
   let loading = true;
-  let busy = '';
-  let msg = '';
   /** @type {{title:string, desc:string}|null} */
   let info = null;
 
   async function load() {
-    const [bank, co] = await Promise.all([getBank(500), getFreeplayCashoutStatus()]);
-    b = bank; cashout = co;
+    b = await getBank(500);
   }
   onMount(async () => {
     track('bank_view');
     try { await load(); } finally { loading = false; }
   });
 
-  // ── Currency exchange (always 40 credits = $1) ──
-  let dollars = 1; // the $ amount on the dial
-  $: cash = b ? b.bank : 0;
-  $: credits = cashout ? (cashout.credits ?? 0) : 0;
-  // All credits are cashable now (server-computed max_cash), within today's $50 cap.
-  $: sellableDollars = cashout ? Math.min(cashout.max_cash ?? 0, cashout.cap_remaining ?? 0) : 0;
-  $: maxDollars = Math.max(1, Math.min(50, Math.max(Math.floor(cash), sellableDollars)));
-  $: if (dollars > maxDollars) dollars = maxDollars;
-  $: canSell = dollars >= 1 && dollars <= sellableDollars;
-
-  async function sell() {
-    if (busy || !canSell) return;
-    try { await requirePin(`Sell ${(dollars * 40).toLocaleString()} credits → $${dollars}`, [
-      { label: 'Credits', value: (dollars * 40).toLocaleString() },
-      { label: 'You receive', value: '$' + dollars }
-    ]); } catch { return; }
-    busy = 'sell'; msg = '';
-    const res = await freeplayCashout(dollars);
-    busy = '';
-    if (res?.ok) { fx('win'); track('freeplay_cashout', { cash: res.cashed }); await load(); }
-    else { msg = res?.reason === 'daily_cap' ? 'Daily $50 limit reached.' : 'Could not sell right now.'; }
-  }
-
   const fmt = (/** @type {number} */ n) => '$' + Math.round(n ?? 0).toLocaleString();
   const dateOnly = (/** @type {string} */ at) => at ? new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
 
   // Ledger filters: by type, and sort by date/amount. Custom dropdowns so the menu
-  // opens downward over the ledger (native <select> popped upward over the exchange).
+  // opens downward over the ledger.
   let typeFilter = 'all';
   let sortBy = 'newest';
   /** @type {null|'type'|'sort'} */
@@ -98,36 +68,11 @@
         <span class="bal-label">💰 Cash <span class="bal-i">ⓘ</span></span>
         <span class="bal-value">{fmt(b.bank)}</span>
       </button>
-      {#if cashout}
-        <button class="bal credits" onclick={() => info = { title: '🎟️ Credits', desc: 'Earned in Free Play — a practice stack you can build up. Exchange them for Cash right here in the Bank (40 credits = $1, up to $50 a day).' }}>
-          <span class="bal-label">🎟️ Credits <span class="bal-i">ⓘ</span></span>
-          <span class="bal-value cr">{(cashout.credits ?? 0).toLocaleString()}</span>
-        </button>
-      {/if}
     </div>
 
     <!-- Items (your vault) -->
     <h2 class="hist-title">🎒 Your Items</h2>
     <InventoryList addHref="/shop?from=bank" />
-
-    <!-- Exchange (always 40 🎟️ = $1) -->
-    <div class="exchange">
-      <h2 class="ex-h">💱 Exchange</h2>
-      <div class="ex-rate-pill"><span class="ex-rate-lbl">Rate</span><b>40</b>&nbsp;🎟️<span class="ex-eq">=</span><b>$1</b>&nbsp;💰</div>
-
-      <div class="ex-dial">
-        <button class="ex-step" onclick={() => dollars = Math.max(1, dollars - 1)} aria-label="Less" disabled={dollars <= 1}>−</button>
-        <div class="ex-amt">
-          <span class="ex-usd">${dollars}</span>
-          <span class="ex-cr">{(dollars * 40).toLocaleString()} credits</span>
-        </div>
-        <button class="ex-step" onclick={() => dollars = Math.min(maxDollars, dollars + 1)} aria-label="More" disabled={dollars >= maxDollars}>+</button>
-      </div>
-      <input class="ex-slider" type="range" min="1" max={maxDollars} bind:value={dollars} />
-
-      <button class="ex-act sell" disabled={!canSell || !!busy} onclick={sell}>🎟️&nbsp;→&nbsp;💰&nbsp; Sell for ${dollars}</button>
-      {#if msg}<p class="msg">{msg}</p>{/if}
-    </div>
 
     <!-- Ledger -->
     <div class="led-head">
@@ -187,7 +132,7 @@
   .bank-title { font-family: var(--font-display); font-size: 1.5rem; margin: 4px 0 16px; text-align: center; }
   .loading { color: var(--text-muted); padding: 2rem; text-align: center; }
 
-  .balances { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .balances { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 14px; }
   .bal { display: flex; flex-direction: column; gap: 2px; padding: 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border);
     text-align: left; cursor: pointer; font: inherit; color: inherit; }
   .bal:hover { border-color: var(--brand-2); }
@@ -206,32 +151,6 @@
   .si-close { margin-top: 4px; height: 44px; border-radius: 12px; border: none; cursor: pointer; font-weight: 800; color: #3a2a00;
     background: linear-gradient(135deg, #fde047, #f59e0b); }
   .bal-value { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.7rem; color: var(--brand-2); }
-  .bal-value.cr { color: #6ee7b7; }
-  .bal-sub { font-size: 0.68rem; color: var(--text-faint); }
-
-  .exchange { padding: 18px 16px; border-radius: 18px; margin-bottom: 16px; text-align: center;
-    display: flex; flex-direction: column; align-items: center;
-    background: linear-gradient(135deg, rgba(110,231,183,0.09), rgba(110,231,183,0.02)); border: 1px solid rgba(110,231,183,0.3); }
-  .ex-h { font-family: var(--font-display); font-size: 1.05rem; font-weight: 800; margin: 0 0 12px; }
-  .ex-rate-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; margin-bottom: 16px;
-    background: rgba(0,0,0,0.25); border: 1px solid var(--border); font-family: 'Orbitron', var(--font-display); color: var(--text); }
-  .ex-rate-pill b { color: #6ee7b7; font-size: 1.05rem; }
-  .ex-rate-lbl { font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-faint); margin-right: 4px; }
-  .ex-eq { color: var(--text-faint); margin: 0 2px; }
-  .ex-dial { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; max-width: 300px; }
-  .ex-step { width: 46px; height: 46px; flex: none; border-radius: 12px; cursor: pointer; font-size: 1.5rem; font-weight: 800;
-    background: var(--surface); border: 1px solid var(--border); color: var(--text); display: grid; place-items: center; }
-  .ex-step:hover:not(:disabled) { border-color: #34d399; }
-  .ex-step:disabled { opacity: 0.3; cursor: default; }
-  .ex-amt { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 6px; border-radius: 12px;
-    background: rgba(0,0,0,0.25); border: 1px solid var(--border); }
-  .ex-usd { font-family: 'Orbitron', var(--font-display); font-weight: 800; color: var(--brand-2); font-size: 1.8rem; line-height: 1; }
-  .ex-cr { font-size: 0.72rem; color: #6ee7b7; font-weight: 700; }
-  .ex-slider { width: 100%; max-width: 300px; margin: 16px 0; accent-color: #34d399; }
-  .ex-act { width: 100%; max-width: 300px; padding: 0.85rem; border: none; border-radius: 13px; cursor: pointer; font-weight: 800; font-size: 0.98rem; }
-  .ex-act.sell { color: #06281d; background: linear-gradient(135deg, #6ee7b7, #34d399); }
-  .ex-act:disabled { opacity: 0.4; cursor: default; }
-  .msg { text-align: center; color: #fb7185; font-size: 0.85rem; margin: 0.6rem 0 0; }
 
   .led-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 1.4rem 0 0.6rem; flex-wrap: wrap; }
   .hist-title { font-family: var(--font-display); font-size: 1rem; margin: 0; }

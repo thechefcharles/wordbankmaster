@@ -6,11 +6,11 @@
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
 
-  import { gameStore, fetchDailyGame, useDailyTwist, useDailyBoost, fetchFreeplayGame, fetchFreeplayResume, freeplayContinue, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbSkipPuzzle, climbArmDoubleOrNothing, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, useDailyTwist, useDailyBoost, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbSkipPuzzle, climbArmDoubleOrNothing, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
   import { getMyChallenges, getPowerups, getDailyAvailBoosts, getMyMatches, getMyGroups, getMatch, getMatchDetail, getMatchDebuffs, getMatchOpponents, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getOpenGames, expireStaleDailies, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout, getDailyModifier, deleteMyAccount, getMyAvatar } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getOpenGames, expireStaleDailies, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getDailyModifier, deleteMyAccount, getMyAvatar } from '$lib/stores/statsStore.js';
   import Avatar from '$lib/components/Avatar.svelte';
   import { unreadCount, refreshNotifications, inboxRequest, inboxTarget, markChallengeNotifRead, markFriendNotifRead } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
@@ -58,31 +58,32 @@
   let pinNotSet = false;   // logged in on this device with no PIN yet → prompt setup
   /** @type {string | null} */
   let initError = null; // 🔍 Diagnostic: what failed during init
-  /** Show main menu (Daily / Arcade / Leaderboard / My account) when true; game when false */
+  /** Show main menu (Daily / Cash Game / Leaderboard / My account) when true; game when false */
   let showMainMenu = false;
-  /** When showing menu: can we show "Resume daily" / "Resume arcade"? */
+  /** When showing menu: can we show "Resume daily" / "Resume in-progress game"? */
   let savedGameInfo = /** @type {{ gameMode: string, gameState: string } | null} */ (null);
   /** When showing menu: has user already played daily today? */
   let menuDailyPlayed = false;
   /** Today's daily result for the menu indicator (won/lost + score). */
   let dailyStatus = /** @type {{ has_played_today: boolean, last_daily_won: boolean|null, daily_bankroll: number, arcade_bankroll: number, current_streak: number, streak_freezes: number, today_score: number, win_streak: number, daily_in_progress?: boolean } | null} */ (null);
-  // 🎮 Live solo games from SERVER truth (daily/climb/freeplay), newest first. The old
+  // 🎮 Live solo games from SERVER truth (daily/climb), newest first. The old
   // single localStorage save slot got overwritten whenever you played another mode, which
   // made a live Daily show as "complete + lost". openGames lets every mode resume independently.
   /** @type {{mode:string, updated_at:string}[]} */
   let openGames = [];
   async function refreshOpenGames() {
     const u = get(user); if (!u?.id) return;
-    try { openGames = await getOpenGames(); } catch { /* keep last */ }
+    // Filter out any legacy Free Play rows the server may still return (mode retired in V2).
+    try { openGames = (await getOpenGames()).filter((/** @type {any} */ g) => g.mode !== 'freeplay'); } catch { /* keep last */ }
   }
   // "In progress" must come from SERVER truth, not the clobberable localStorage slot.
   $: dailyInProgress = openGames.some((g) => g.mode === 'daily') || (dailyStatus?.daily_in_progress ?? false);
   $: dailyDone = menuDailyPlayed && !dailyInProgress;
   $: climbInProgress = openGames.some((g) => g.mode === 'climb');
   // 🔁 Resume: every in-progress game — solo modes AND challenges you've started.
-  const RESUME_LABEL = /** @type {Record<string,string>} */ ({ daily: 'Daily', climb: 'Cash Game', freeplay: 'Free Play' });
+  const RESUME_LABEL = /** @type {Record<string,string>} */ ({ daily: 'Daily', climb: 'Cash Game' });
   $: resumables = [
-    ...openGames.map((/** @type {any} */ g) => ({ key: 'solo-' + g.mode, label: RESUME_LABEL[g.mode] ?? 'Game', icon: (/** @type {Record<string,string>} */ ({daily:'📅',climb:'🎰',freeplay:'🎯'}))[g.mode] ?? '▶', go: () => resumeSolo(g.mode) })),
+    ...openGames.map((/** @type {any} */ g) => ({ key: 'solo-' + g.mode, label: RESUME_LABEL[g.mode] ?? 'Game', icon: (/** @type {Record<string,string>} */ ({daily:'📅',climb:'🎰'}))[g.mode] ?? '▶', go: () => resumeSolo(g.mode) })),
     ...((myMatches ?? []).filter((/** @type {any} */ m) => m.status === 'open' && m.my_state === 'active')
         .map((/** @type {any} */ m) => ({ key: 'match-' + m.id, label: m.group_name || (m.opponent ? '@' + m.opponent : 'Challenge'), icon: '⚔️', go: () => respondToMatch(m) })))
   ];
@@ -90,7 +91,6 @@
   function resumeSolo(/** @type {string} */ mode) {
     if (mode === 'daily') handleMenuDaily();
     else if (mode === 'climb') handleMenuClimb();
-    else if (mode === 'freeplay') handleMenuFreeplay();
   }
   function onResume() {
     fx('tap');
@@ -231,10 +231,7 @@
     !$gameWasRestored
   ) {
     const gameMode = localStorage.getItem('gameMode') || 'daily';
-    if (gameMode === 'freeplay') {
-      // Free Play isn't deep-link restorable — send back to the menu to re-pick.
-      showMainMenu = true;
-    } else if (gameMode === 'makeup') {
+    if (gameMode === 'makeup') {
       fetchMakeupGame().then((ok) => { if (!ok) showMainMenu = true; });
     } else if (gameMode === 'climb') {
       fetchClimbGame().then((ok) => { if (!ok) showMainMenu = true; });
@@ -324,7 +321,6 @@
   // Live Daily HUD metrics (only while actively playing the daily).
   $: dLive = (($gameStore.gameMode === 'daily' || $gameStore.gameMode === 'makeup') && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost')
     ? $gameStore.dailyLive : null;
-  $: isFreeplay = $gameStore.gameMode === 'freeplay';
   $: isChallenge = $gameStore.gameMode === 'challenge';
   $: isMakeup = $gameStore.gameMode === 'makeup';
   // Auto-dismiss the Cash-earned toast after a few seconds.
@@ -340,7 +336,6 @@
   $: modeLabel = ({
     daily:     { emoji: '📅', name: 'Daily' },
     climb:     { emoji: '🎰', name: 'Cash Game' },
-    freeplay:  { emoji: '🎯', name: 'Free Play' },
     makeup:    { emoji: '📅', name: 'Make-up' },
     match:     { emoji: '⚔️', name: 'Challenge' },
     challenge: { emoji: '⚔️', name: 'Challenge' }
@@ -369,9 +364,6 @@
   $: matchLive = (isMatch && matchInfo && !matchInfo.done && matchInfo.mode !== 'blitz')
     ? { spent: matchInfo.spent ?? 0, budget: matchInfo.budget ?? 0 } : null;
   $: matchLeft = matchLive ? Math.max(0, (matchLive.budget ?? 0) - (matchLive.spent ?? 0)) : 0;
-  // Free Play live: clean status + the trickle you'd earn.
-  $: freeLive = ($gameStore.gameMode === 'freeplay' && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost')
-    ? { clean: ($gameStore.incorrectLetters?.length ?? 0) === 0 } : null;
   // Unified money hero (Daily · Cash Game = net you keep; Challenge = ante left to spend).
   $: soloHero = climbLive ? { net: climbLive.net } : (dLive ? { net: dLive.net } : (matchLive ? { net: matchLeft } : null));
 
@@ -635,7 +627,6 @@
       fx(auto ? 'bust' : 'tap');
       if ($gameStore.gameMode === 'daily') await dailyFold();
       else if ($gameStore.gameMode === 'match') await matchFold();
-      else if ($gameStore.gameMode === 'freeplay') await freeplayContinue(); // skip to a fresh puzzle
       else if ($gameStore.gameMode === 'climb') { await climbSkipPuzzle(); await tick(); playDailyIntroIfArmed(); } // fresh puzzle; heat resets; replay the dramatic build
     } finally { brokeFiring = false; }
   }
@@ -657,39 +648,6 @@
     finally { donBusy = false; showDon = false; }
   }
 
-  // Free Play: cash out credits → real Cash right from the board (40:1, $50/day cap).
-  let fpCashBusy = false;
-  // Tapping the credits number cashes out when you're above the $1 floor.
-  function tapCredits() {
-    if (($gameStore.bankroll ?? 0) - 2000 >= 40) doFreeplayCashout();
-    else gameStore.update((s) => ({ ...s, cashToast: { amount: 0, label: 'Reach 2,040 credits to cash out for real Cash' } }));
-  }
-  async function doFreeplayCashout() {
-    if (fpCashBusy) return;
-    fpCashBusy = true;
-    const st = await getFreeplayCashoutStatus();
-    fpCashBusy = false;
-    if (!st) return;
-    const amt = Math.min(st.max_cash ?? 0, st.cap_remaining ?? 0);
-    if (amt <= 0) {
-      gameStore.update((s) => ({ ...s, cashToast: { amount: 0, label: "Daily $50 cash-out cap reached — back tomorrow" } }));
-      return;
-    }
-    try {
-      await requirePin(`Cash out ${(amt * 40).toLocaleString()} credits → $${amt}`, [
-        { label: 'Credits', value: (amt * 40).toLocaleString() },
-        { label: 'You receive', value: '$' + amt }
-      ]);
-    } catch { return; }
-    fpCashBusy = true;
-    const res = await freeplayCashout(amt);
-    fpCashBusy = false;
-    if (res?.ok) {
-      fx('win');
-      gameStore.update((s) => ({ ...s, bankroll: res.bankroll, cashToast: { amount: res.cashed, label: 'Cashed out to your Cash!' } }));
-      await refreshBank();
-    }
-  }
   $: matchRemaining = (() => {
     if (!matchBlitz || !matchInfo?.started_at) return 0;
     const start = new Date(matchInfo.started_at).getTime();
@@ -869,7 +827,7 @@
       }
       return `🧠 WordBank Daily · ${todayLabel}\nDidn't crack it today 😬\n${link}`;
     }
-    return `🏦 WordBank Arcade\n${resultMedal.emoji} ${br} banked\n${link}`;
+    return `🏦 WordBank\n${resultMedal.emoji} ${br} banked\n${link}`;
   }
   async function handleShare() {
     const text = buildShareText();
@@ -968,7 +926,7 @@
   /** @type {{ mode: string, ctx: any } | null} */
   let objective = null;
   let _wasMenu = true;
-  const SOLO_MODES = ['daily', 'climb', 'freeplay', 'makeup'];
+  const SOLO_MODES = ['daily', 'climb', 'makeup'];
 
   function buildObjectiveCtx(/** @type {string} */ mode) {
     if (mode !== 'match') return {};
@@ -1178,31 +1136,6 @@
     }
   }
 
-  // ----- Free Play (unranked, pick a category) -----
-  let showCategorySelect = false;
-  $: freeplayInProgress = openGames.some((g) => g.mode === 'freeplay');
-  async function handleMenuFreeplay() {
-    if (!get(user)?.id) return;
-    // Resume the exact in-progress puzzle if there is one; otherwise pick a category.
-    if (freeplayInProgress) {
-      localStorage.setItem('gameMode', 'freeplay');
-      const ok = await fetchFreeplayResume();
-      if (ok) { hasInitialized = true; showMainMenu = false; return; }
-    }
-    showCategorySelect = true;
-  }
-  /** @param {string} category */
-  async function startFreeplay(category) {
-    showCategorySelect = false;
-    localStorage.setItem('gameMode', 'freeplay');
-    const ok = await fetchFreeplayGame(category);
-    if (ok) {
-      hasInitialized = true;
-      showMainMenu = false;
-    } else {
-      initError = 'Free Play failed to load.';
-    }
-  }
   // ===== Challenge Builder (configurable packs vs friends/groups) =====
   let showChallenges = false; // the New-Challenge builder modal
   /** Which Community hub tab is showing. */
@@ -1380,13 +1313,6 @@
     refreshClimbPups(); // load owned power-ups for the match tray
   }
 
-  // After solving / going broke in Free Play, load the next puzzle in the category.
-  async function handleFreeplayContinue() {
-    showResultModal = false;
-    hasTriggeredModal = false;
-    await freeplayContinue();
-  }
-
   function handleMenuLeaderboard() {
     goto('/leaderboard');
   }
@@ -1491,7 +1417,7 @@
     if (showStreakMessage) showStreakMessage = false;
   }
 
-  // Daily result → go to the daily leaderboard (arcade uses handleArcadeContinue instead).
+  // Daily result → go to the daily leaderboard.
   const goToDailyLeaderboard = () => {
     showResultModal = false;
     hasTriggeredModal = false;
@@ -1551,8 +1477,8 @@
 {#if loggedIn && hasInitialized && !showMainMenu}
   <button class="audio-btn" title="Sound & music" aria-label="Sound and music settings" on:click={() => { fx('tap'); showAudio = true; }}>{$soundEnabled || $musicEnabled ? '🔊' : '🔇'}</button>
 {/if}
-<!-- 🏳️ Give up (top-right) — Daily / Challenges / Free Play -->
-{#if loggedIn && hasInitialized && !showMainMenu && (foldMode || isFreeplay) && gameActive}
+<!-- 🏳️ Give up (top-right) — Daily / Challenges -->
+{#if loggedIn && hasInitialized && !showMainMenu && foldMode && gameActive}
   <button class="giveup-btn" title="Give up" aria-label="Give up" on:click={confirmFold}>↪</button>
 {/if}
 <!-- ⏭️ Skip (top-right) — Cash Game only; resets heat. Hidden once Double-or-Nothing is armed (committed). -->
@@ -1598,13 +1524,11 @@
   <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Give up">
     <button type="button" class="modal-backdrop" aria-label="Cancel" on:click={cancelGiveUp}></button>
     <div class="modal-content giveup-modal">
-      <h2 class="gu-title">{isClimb ? 'Skip this puzzle?' : `Give up ${$gameStore.gameMode === 'match' ? 'this puzzle' : $gameStore.gameMode === 'freeplay' ? 'this one' : "today's Daily"}?`}</h2>
+      <h2 class="gu-title">{isClimb ? 'Skip this puzzle?' : `Give up ${$gameStore.gameMode === 'match' ? 'this puzzle' : "today's Daily"}?`}</h2>
       <p class="gu-text">{isClimb
         ? `Your heat resets to ×1.0${(climb?.spent ?? 0) > 0 ? ` and you forfeit the $${(climb?.spent ?? 0).toLocaleString()} spent on this one` : ''} — then a fresh puzzle.`
         : $gameStore.gameMode === 'match'
         ? 'Skip this puzzle — you pay its full price and move on.'
-        : $gameStore.gameMode === 'freeplay'
-        ? 'You’ll skip to a fresh puzzle — you keep your credits (you only lose what you spent on this one).'
         : 'It counts as a loss and reveals the answer.'}</p>
       <div class="gu-actions">
         <button class="gu-cancel" on:click={cancelGiveUp}>Keep playing</button>
@@ -2053,11 +1977,7 @@
             <span class="mc-title">Cash Game</span>
             {#if climbInProgress}<span class="daily-chip prog">▶ Resume</span>{/if}
           </button>
-          <button class="menu-card" class:resumable={freeplayInProgress} style="--i: 2" on:click={handleMenuFreeplay}>
-            <span class="mc-title">{freeplayInProgress ? 'Resume Free Play' : 'Free Play'}</span>
-            {#if freeplayInProgress}<span class="daily-chip prog">▶ Resume</span>{/if}
-          </button>
-          <button class="menu-card" style="--i: 3" on:click={() => { blitzSoon = true; fx('tap'); setTimeout(() => blitzSoon = false, 2500); }}>
+          <button class="menu-card" style="--i: 2" on:click={() => { blitzSoon = true; fx('tap'); setTimeout(() => blitzSoon = false, 2500); }}>
             <span class="mc-title">Blitz</span><span class="mc-stat">Soon</span>
           </button>
           {#if blitzSoon}<p class="pm-soon-note">⚡ Solo Blitz is coming soon!</p>{/if}
@@ -2125,26 +2045,6 @@
         {/if}
       {/if}
     </div>
-
-    <!-- Free Play: category picker -->
-    {#if showCategorySelect}
-      <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Pick a category">
-        <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showCategorySelect = false}></button>
-        <div class="modal-content main-menu-modal cat-modal">
-          <button class="close-btn" on:click={() => showCategorySelect = false}>❌</button>
-          <h2>Free Play</h2>
-          <p class="cat-sub">Pick a category — solve as many as you like. Unranked.</p>
-          <div class="cat-grid">
-            {#each CATEGORIES as c}
-              <button class="cat-tile" on:click={() => startFreeplay(c.value)}>
-                <span class="cat-emoji">{c.emoji}</span>
-                <span class="cat-label">{c.label}</span>
-              </button>
-            {/each}
-          </div>
-        </div>
-      </div>
-    {/if}
 
     <!-- Challenges: wager vs friends -->
     {#if showChallenges}
@@ -2392,13 +2292,7 @@
 
     <!-- 💰 Bankroll — top of every mode. Challenge ante now lives in the bounty hero below. -->
     {#if $gameStore.currentPhrase && $gameStore.gameMode}
-      {#if isFreeplay}
-        <div class="fp-hud">
-          <span class="fp-stat"><span class="fp-cap">🎟️ Credits</span><span class="fp-val cr">{Math.round($gameStore.bankroll ?? 0).toLocaleString()}</span></span>
-          <span class="fp-stat"><span class="fp-cap">🔍 Reveals</span><span class="fp-val">{$gameStore.revealsRemaining ?? 0}</span></span>
-          <span class="fp-stat"><span class="fp-cap">🎯 Guesses</span><span class="fp-val">{$gameStore.guessesRemaining ?? 0}</span></span>
-        </div>
-      {:else if !matchBlitz}
+      {#if !matchBlitz}
         <button class="top-bank solo" class:pop-up={bankFlash === 'up'} class:pop-down={bankFlash === 'down'} title="Your Cash" on:click={openBankModal}>
           {#if isMatch}<span class="tb-wallet-cap">💰 Wallet</span>{/if}
           <span class="tb-solo">{#if !isMatch}💰 {/if}${Math.round($tweenBank).toLocaleString()}</span>
@@ -2422,7 +2316,6 @@
       </div>
     {/if}
 
-    <!-- 🕹️ Arcade gauntlet HUD -->
     <!-- ⏱️ Pressure-mode challenge clock -->
     {#if pressureActive}
       <div class="pressure-hud" class:danger={pressureRemaining <= 10}>
@@ -2538,11 +2431,6 @@
           <p class="climb-run-line" class:best={climbRunIsBest}>
             🔥 {climbRun.solves}-solve run · <b class="run-profit" class:neg={climbRun.profit < 0}>{climbRun.profit >= 0 ? '+' : '−'}${Math.abs(climbRun.profit).toLocaleString()}</b> this run{#if climbRunIsBest} · 🏆 personal best{/if}
           </p>
-        {/if}
-      {:else if isFreeplay}
-        <!-- Free Play: budgets + credits are up top; the reward shrinks as you use reveals. -->
-        {#if $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
-          <p class="live-line">Solve now for <b>+{Math.max(150, 300 - 50 * (3 - ($gameStore.revealsRemaining ?? 3)))}</b> credits</p>
         {/if}
       {/if}
     </section>
@@ -2672,21 +2560,6 @@
               {/if}
               <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Menu</button>
             </div>
-          {:else if isFreeplay}
-            <!-- Free Play transition (unranked) -->
-            {#if resultWon}
-              <div class="result-medal">✅</div>
-              <h2>Solved!</h2>
-              <p class="result-sub">{$gameStore.currentPhrase}</p>
-            {:else}
-              <div class="result-medal">💸</div>
-              <h2>Out of Cash</h2>
-              <p class="result-sub">The answer was {$gameStore.currentPhrase}</p>
-            {/if}
-            <div class="result-actions">
-              <button class="share-btn" on:click={() => { showResultModal = false; showCategorySelect = true; }}>Categories</button>
-              <button class="next-puzzle-button" on:click={handleFreeplayContinue}>Next</button>
-            </div>
           {:else if isMakeup}
             <!-- Make-up daily result (calendar fill; no streak/Bank) -->
             {#if resultWon}
@@ -2758,13 +2631,6 @@
     justify-content: safe center;
   }
 
-  .arcade-hud {
-    display: flex;
-    gap: 8px;
-    width: 100%;
-    max-width: 360px;
-    margin: 0 auto 14px;
-  }
   .pressure-hud {
     display: flex; flex-direction: column; align-items: center; gap: 2px;
     width: 100%; max-width: 360px; margin: 0 auto 14px; padding: 0.5rem 1rem;
@@ -2784,43 +2650,6 @@
   }
   .makeup-banner .mb-tag { font-family: var(--font-display); font-weight: 800; font-size: 0.8rem; color: #38bdf8; white-space: nowrap; }
   .makeup-banner .mb-text { font-size: 0.74rem; color: var(--text-muted); }
-  .bank-it-btn {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 8px;
-    margin: 0 auto 14px;
-    padding: 0.6rem 1.3rem;
-    border: 1px solid rgba(253, 224, 71, 0.5);
-    border-radius: 999px;
-    background: linear-gradient(135deg, rgba(251, 191, 36,0.16), rgba(253, 224, 71,0.08));
-    color: var(--brand-2);
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 1rem;
-    cursor: pointer;
-    box-shadow: 0 0 16px rgba(253, 224, 71, 0.18);
-    transition: transform 0.15s, box-shadow 0.2s;
-  }
-  .bank-it-btn:hover { transform: translateY(-1px); box-shadow: 0 0 22px rgba(253, 224, 71, 0.3); }
-  .bank-it-btn:active { transform: scale(0.97); }
-  .bank-it-btn:disabled { opacity: 0.6; }
-  .bib-sub { font-family: var(--font-ui); font-weight: 500; font-size: 0.72rem; color: var(--text-faint); }
-  .ah-cell {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    padding: 10px 6px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--r-md);
-  }
-  .ah-mult { border-color: rgba(253, 224, 71, 0.35); background: linear-gradient(135deg, rgba(251, 191, 36,0.12), rgba(253, 224, 71,0.04)); }
-  .ah-val { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; color: var(--text); font-variant-numeric: tabular-nums; }
-  .ah-mult .ah-val { color: var(--brand-2); }
-  .ah-gold { color: #fcd34d; }
-  .ah-label { font-size: 0.55rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
   /* Cash Game (Climb) HUD */
   .climb-hud { display: flex; gap: 8px; width: 100%; max-width: 360px; margin: 0 auto 12px; }
   .match-pos { text-align: center; font-family: var(--font-display); font-weight: 700; font-size: 0.8rem; color: var(--text-muted); margin: 0 0 8px; }
@@ -3642,8 +3471,6 @@
   .main-menu-modal { text-align: center; }
   .main-menu-modal .main-menu-btn { margin-top: 1rem; }
 
-  /* Free Play category picker */
-  .cat-modal { max-width: 420px; }
   .cat-sub { font-size: 0.85rem; color: var(--text-muted); margin: 0 0 16px; }
 
   /* Challenges modal */
@@ -3714,34 +3541,6 @@
   .ch-result.win { color: var(--brand-2); }
   .ch-result.loss { color: #fb7185; }
   .ch-result.tie { color: var(--text-muted); }
-  .cat-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-  .cat-tile {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 14px 8px;
-    border-radius: var(--r-md, 14px);
-    background: var(--surface, rgba(255, 255, 255, 0.05));
-    border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
-    color: var(--text);
-    cursor: pointer;
-    transition: transform 0.15s var(--ease-spring, ease), border-color 0.2s, background 0.2s;
-  }
-  .cat-tile:hover { transform: translateY(-2px); border-color: rgba(253, 224, 71, 0.5); background: var(--surface-2, rgba(255, 255, 255, 0.07)); }
-  .cat-tile:active { transform: scale(0.97); }
-  .cat-emoji { font-size: 1.6rem; line-height: 1; }
-  .cat-label {
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: 0.82rem;
-    text-align: center;
-    line-height: 1.1;
-  }
 
   /* Streak + freeze chips (My Account) */
   .account-stats {
@@ -4144,13 +3943,6 @@
   /* 💰 Top bankroll bar (very top, all modes) */
   .top-bank { width: 100%; max-width: 340px; margin: 0 auto 12px; padding: 9px 16px; border-radius: 14px;
     border: 1px solid rgba(253, 224, 71, 0.4); background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(251, 191, 36, 0.03)); }
-  /* Free Play HUD: credits wallet + reveal/guess budgets */
-  .fp-hud { display: flex; justify-content: center; gap: 10px; width: fit-content; max-width: 360px; margin: 0 auto 12px; }
-  .fp-stat { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 14px; border-radius: 12px;
-    border: 1px solid var(--border); background: var(--surface); }
-  .fp-cap { font-size: 0.62rem; color: var(--text-faint); font-weight: 700; white-space: nowrap; }
-  .fp-val { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.1rem; color: var(--text); }
-  .fp-val.cr { color: #6ee7b7; }
   /* solo bankroll = a centered gold chip below WordBank (matches the menu) — tap → /bank */
   .top-bank.solo { width: fit-content; max-width: none; margin: 0 auto 12px; padding: 7px 18px; text-align: center; cursor: pointer; }
   .top-bank.solo:active { transform: scale(0.97); }
@@ -4175,27 +3967,6 @@
   @keyframes bankColorDown { 0%,100% { color: #fcd34d; } 25% { color: #fb7185; text-shadow: 0 0 20px rgba(251,113,133,0.9); } }
   .tb-solo { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.55rem; color: #fcd34d; font-variant-numeric: tabular-nums; }
   .tb-wallet-cap { display: block; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-faint); }
-  .top-bank.tap { cursor: pointer; display: block; text-align: left;
-    border-color: rgba(167, 139, 250, 0.55); border-style: dashed;
-    background: linear-gradient(135deg, rgba(167, 139, 250, 0.13), rgba(167, 139, 250, 0.03)); }
-  .top-bank.tap:disabled { cursor: default; opacity: 0.6; }
-  .tb-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-  .tb-cap { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brand-2); }
-  .tb-amt { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.7rem; line-height: 1; color: #fcd34d; font-variant-numeric: tabular-nums; }
-  .tb-amt.cr { color: #c4b5fd; }
-  .top-bank.tap .tb-cap { color: #c4b5fd; }
-  .tb-bar { margin-top: 7px; height: 9px; border-radius: 999px; background: rgba(255,255,255,0.10); overflow: hidden; }
-  .tb-fill { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #fbbf24, #fde047); transition: width 0.35s ease; }
-  .tb-sub { margin-top: 5px; font-size: 0.66rem; color: var(--text-faint); }
-  /* Free Play play-money "Credits" — violet + dashed so it reads as not-real-Cash */
-  .credits-panel { display: flex; flex-direction: column; align-items: center; gap: 1px;
-    width: 100%; max-width: 320px; margin: 0 auto; padding: 13px 18px; border-radius: var(--r-lg, 18px);
-    border: 1px dashed rgba(167, 139, 250, 0.55); background: linear-gradient(135deg, rgba(167, 139, 250, 0.13), rgba(167, 139, 250, 0.03)); }
-  .cr-note { margin-top: 2px; font-size: 0.68rem; color: var(--text-faint); }
-  .cr-cashout { margin-top: 5px; padding: 0.4rem 0.9rem; border-radius: 999px; cursor: pointer; font-weight: 800; font-size: 0.8rem;
-    color: #04240f; background: linear-gradient(135deg, #6ee7b7, #34d399); border: none; }
-  .cr-cashout:disabled { opacity: 0.5; cursor: default; }
-  .cr-wallet { margin-top: 4px; font-size: 0.66rem; color: var(--text-faint); }
   /* 🏷️ Game-mode pill — centered under the wordmark, same for every mode */
   .mode-pill {
     display: inline-flex; align-items: center; gap: 6px; margin: -2px auto 10px;
@@ -4406,7 +4177,7 @@
   .next-puzzle-button:hover { transform: translateY(-2px); filter: brightness(1.05); }
   .next-puzzle-button:active { transform: scale(0.97); }
 
-  /* Result modal (daily/arcade) */
+  /* Result modal */
   .result-modal h2 { font-size: 1.7rem; margin: 4px 0 2px; }
   .result-medal {
     font-size: 3.4rem;

@@ -3,9 +3,7 @@
 import { writable, get } from 'svelte/store';
 import confetti from 'canvas-confetti';
 import { fx } from '$lib/sound.js';
-import { dailyStart, dailyUseTwist, dailyUseBoost, dailyBuyLetter, dailyReveal, dailySubmitGuess, dailyFold as dailyFoldRpc, getDailyModifier, getDailyClue, getArcadeClue } from '$lib/stores/statsStore.js';
-import { arcadeStart, arcadeBuyLetter, arcadeReveal, arcadeSubmitGuess, arcadeNext, arcadeUsePowerup, arcadeCashout } from '$lib/stores/statsStore.js';
-import { freeplayStart, freeplayNext, freeplayResume, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
+import { dailyStart, dailyUseTwist, dailyUseBoost, dailyBuyLetter, dailyReveal, dailySubmitGuess, dailyFold as dailyFoldRpc, getDailyModifier, getDailyClue } from '$lib/stores/statsStore.js';
 import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
 import { makeupStart, makeupBuyLetter, makeupReveal, makeupSubmitGuess } from '$lib/stores/statsStore.js';
 import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, climbSkip, climbDoubleOrNothing, getPowerups, buyPowerup, climbUsePowerup, getClimbClue } from '$lib/stores/statsStore.js';
@@ -26,7 +24,6 @@ import { track } from '$lib/analytics.js';
  *   bankroll: number,
  *   wagerAmount: number,
  *   guessesRemaining: number,
- *   revealsRemaining?: number,
  *   category: string,
  *   currentPhrase: string,
  *   gameState: string,
@@ -40,8 +37,6 @@ import { track } from '$lib/analytics.js';
  *   subcategory: string,
  *   gameMode: string,
  *   freeReveals?: number,
- *   arcadeRun?: any,
- *   arcadeCashedOut?: boolean,
  *   modifier?: string | null,
  *   bountyMult?: number,
  *   twistUsed?: boolean,
@@ -86,10 +81,8 @@ export const gameStore = writable(/** @type {GameState} */ ({
   shakenLetters: [],
   message: '',
   subcategory: '',
-  gameMode: 'daily', // 'daily' | 'arcade'
+  gameMode: 'daily', // 'daily' | 'climb' | 'challenge' | 'match' | 'makeup'
   freeReveals: 0, // owned Free Reveal power-ups (daily)
-  arcadeRun: null, // arcade gauntlet run state { state, banked, multiplier, position, total, furthest, last_gain }
-  arcadeCashedOut: false, // true when the last arcade run ended via "Bank it" (vs bust)
   modifier: null, // today's Daily Twist power-up id (daily only)
   twistUsed: false, // have you used today's Twist? (unused → ×1.5 bounty)
   bountyMult: 1, // bounty multiplier (1.0 once Twist used, else 1.5)
@@ -138,7 +131,7 @@ let dailyInFlight = false;
  * @param {any} board - board JSON returned by a daily_* RPC
  */
 /**
- * boardToState — shared masked-board → gameStore partial (used by daily + arcade).
+ * boardToState — shared masked-board → gameStore partial.
  * @param {any} board @param {GameState} prev
  */
 function boardToState(board, prev) {
@@ -224,212 +217,6 @@ function reconcileDailyBoard(board) {
   }
 }
 
-/**
- * reconcileArcadeBoard — arcade gauntlet { board, run } → gameStore.
- * @param {any} resp
- */
-function reconcileArcadeBoard(resp) {
-  if (!resp || !resp.board) return;
-  const prev = get(gameStore);
-  const board = resp.board;
-  const run = resp.run || {};
-  // Rolling-survival outcome: solved -> won (continue), over -> lost (run ends).
-  let gs = 'default';
-  if (run.state === 'solved') gs = 'won';
-  else if (run.state === 'over') gs = 'lost';
-  gameStore.set(/** @type {GameState} */ ({
-    ...prev, ...boardToState(board, prev),
-    gameMode: 'arcade',
-    gameState: gs,
-    arcadeRun: run,
-    arcadeCashedOut: false,
-    freeReveals: 0,
-    modifier: null
-  }));
-  if (run.state === 'solved') {
-    setTimeout(() => launchConfetti(), 300);
-    fx('win');
-    if ((run.last_gain || 0) > 0) setTimeout(() => fx('multiplier'), 240);
-    if (prev.gameState !== 'won') track('arcade_solve', { position: run.position ?? 0, payout: run.last_gain ?? 0, earned: run.last_earn ?? null });
-  } else if (run.state === 'over') {
-    fx('bust');
-    if (prev.gameState !== 'lost') track('arcade_over', { peak: run.banked ?? 0, solved: run.furthest ?? 0 });
-  } else {
-    playMoveCue(prev, board);
-  }
-}
-
-/** confirmPurchaseArcade — commit a letter/reveal on the current gauntlet puzzle. @param {GameState} state */
-async function confirmPurchaseArcade(state) {
-  const purchase = state.selectedPurchase;
-  if (!purchase || dailyInFlight) return;
-  dailyInFlight = true;
-  try {
-    let resp = null;
-    if (purchase.type === 'letter') resp = await arcadeBuyLetter(purchase.value ?? '');
-    else if (purchase.type === 'hint') resp = await arcadeReveal();
-    if (resp) reconcileArcadeBoard(resp);
-    else gameStore.update(s => ({ ...s, selectedPurchase: null, gameState: 'default' }));
-  } finally {
-    dailyInFlight = false;
-  }
-}
-
-/** submitGuessArcade — submit a guess on the current gauntlet puzzle. @param {GameState} state */
-async function submitGuessArcade(state) {
-  if (state.gameState !== 'guess_mode' || dailyInFlight) return;
-  /** @type {Record<string, string>} */
-  const guess = {};
-  for (const [k, v] of Object.entries(state.guessedLetters || {})) guess[k] = /** @type {string} */ (v);
-  if (Object.keys(guess).length === 0) return;
-  dailyInFlight = true;
-  try {
-    const resp = await arcadeSubmitGuess(guess);
-    if (resp) reconcileArcadeBoard(resp);
-  } finally {
-    dailyInFlight = false;
-  }
-}
-
-/** Refresh the clue for the current arcade puzzle (changes each rung). */
-async function refreshArcadeClue() {
-  try {
-    const clue = await getArcadeClue();
-    gameStore.update(s => ({ ...s, clue }));
-  } catch { /* non-fatal */ }
-}
-
-/** Start or resume today's arcade gauntlet. */
-export async function fetchArcadeGame() {
-  try {
-    track('arcade_start');
-    const resp = await arcadeStart();
-    if (!resp) { console.error('❌ arcade_start returned nothing'); return false; }
-    reconcileArcadeBoard(resp);
-    await refreshArcadeClue();
-    return true;
-  } catch (err) {
-    console.error('❌ Error starting arcade:', err instanceof Error ? err.message : String(err));
-    return false;
-  }
-}
-
-/** Advance to the next puzzle after a solve, or retry after a bust. */
-export async function arcadeContinue() {
-  if (dailyInFlight) return;
-  dailyInFlight = true;
-  try {
-    const resp = await arcadeNext();
-    if (resp) { reconcileArcadeBoard(resp); await refreshArcadeClue(); }
-  } finally {
-    dailyInFlight = false;
-  }
-}
-
-/* ===== Free Play (unranked, category-picked, endless) ===== */
-
-/** @param {any} board */
-function reconcileFreeplayBoard(board) {
-  if (!board) return;
-  const prev = get(gameStore);
-  const finished = board.state !== 'active';
-  gameStore.set(/** @type {GameState} */ ({
-    ...prev, ...boardToState(board, prev),
-    gameMode: 'freeplay',
-    revealsRemaining: board.reveals_remaining ?? 0,
-    gameState: finished ? board.state : 'default',
-    modifier: null, arcadeRun: null
-  }));
-  if (board.state === 'won') {
-    setTimeout(() => launchConfetti(), 300); fx('win');
-    const rw = /** @type {any} */ (board).freeplay_reward;
-    if (rw > 0) gameStore.update(s => ({ ...s, cashToast: { amount: rw, label: 'Free Play reward' } }));
-  }
-  else if (finished) fx('bust');
-  else playMoveCue(prev, board);
-}
-
-async function refreshFreeplayClue() {
-  try {
-    const clue = await getFreeplayClue();
-    gameStore.update(s => ({ ...s, clue }));
-  } catch { /* non-fatal */ }
-}
-
-/** Start Free Play in a category (random puzzle from it). @param {string} category */
-export async function fetchFreeplayGame(category) {
-  try {
-    track('freeplay_start', { category });
-    const board = await freeplayStart(category);
-    if (!board) { console.error('❌ freeplay_start returned nothing'); return false; }
-    reconcileFreeplayBoard(board);
-    await refreshFreeplayClue();
-    return true;
-  } catch (err) {
-    console.error('❌ Error starting free play:', err instanceof Error ? err.message : String(err));
-    return false;
-  }
-}
-
-/** Resume the in-progress Free Play puzzle. Returns true if a live board was
- *  restored, false if there's nothing to resume (caller picks a category). */
-export async function fetchFreeplayResume() {
-  try {
-    const board = await freeplayResume();
-    if (!board) return false;
-    reconcileFreeplayBoard(board);
-    await refreshFreeplayClue();
-    return true;
-  } catch (err) {
-    console.error('❌ Error resuming free play:', err instanceof Error ? err.message : String(err));
-    return false;
-  }
-}
-
-/** Next free-play puzzle in the same category. */
-export async function freeplayContinue() {
-  if (dailyInFlight) return;
-  dailyInFlight = true;
-  try {
-    const board = await freeplayNext();
-    if (board) { reconcileFreeplayBoard(board); await refreshFreeplayClue(); }
-  } finally {
-    dailyInFlight = false;
-  }
-}
-
-/** @param {GameState} state */
-async function confirmPurchaseFreeplay(state) {
-  const purchase = state.selectedPurchase;
-  if (!purchase || dailyInFlight) return;
-  dailyInFlight = true;
-  try {
-    let board = null;
-    if (purchase.type === 'letter') board = await freeplayBuyLetter(purchase.value ?? '');
-    else if (purchase.type === 'hint') board = await freeplayReveal();
-    if (board) reconcileFreeplayBoard(board);
-    else gameStore.update(s => ({ ...s, selectedPurchase: null, gameState: 'default' }));
-  } finally {
-    dailyInFlight = false;
-  }
-}
-
-/** @param {GameState} state */
-async function submitGuessFreeplay(state) {
-  if (state.gameState !== 'guess_mode' || dailyInFlight) return;
-  /** @type {Record<string, string>} */
-  const guess = {};
-  for (const [k, v] of Object.entries(state.guessedLetters || {})) guess[k] = /** @type {string} */ (v);
-  if (Object.keys(guess).length === 0) return;
-  dailyInFlight = true;
-  try {
-    const board = await freeplaySubmitGuess(guess);
-    if (board) reconcileFreeplayBoard(board);
-  } finally {
-    dailyInFlight = false;
-  }
-}
-
 /* ===== Challenges (friend wager; same puzzle, score = leftover bankroll) ===== */
 /** @type {string|null} */
 let activeChallengeId = null;
@@ -443,7 +230,7 @@ function reconcileChallengeBoard(board) {
     ...prev, ...boardToState(board, prev),
     gameMode: 'challenge',
     gameState: finished ? board.state : 'default',
-    modifier: null, arcadeRun: null,
+    modifier: null,
     challengeInfo: board.challenge ?? prev.challengeInfo ?? null
   }));
   if (board.state === 'won') { setTimeout(() => launchConfetti(), 300); fx('win'); }
@@ -532,7 +319,7 @@ function reconcileMakeupBoard(board) {
     ...prev, ...boardToState(board, prev),
     gameMode: 'makeup',
     gameState: finished ? board.state : 'default',
-    modifier: null, arcadeRun: null,
+    modifier: null,
     clue: board.clue ?? prev.clue ?? null,
     makeupDate: board.makeup?.date ?? prev.makeupDate ?? activeMakeupDate
   }));
@@ -627,7 +414,7 @@ function reconcileClimbBoard(board) {
     ...prev, ...boardToState(board, prev),
     gameMode: 'climb',
     gameState: solved ? 'won' : 'default',
-    modifier: null, arcadeRun: null,
+    modifier: null,
     climbInfo: climb
   }));
   // No confetti — the slot-machine reveal (box-by-box win pop) is the celebration, like Daily.
@@ -770,7 +557,7 @@ function reconcileMatchBoard(board) {
     ...prev, ...(done ? {} : boardToState(board, prev)),
     gameMode: 'match',
     gameState: done ? 'won' : 'default',
-    modifier: null, arcadeRun: null,
+    modifier: null,
     clue: done ? prev.clue : (board.clue ?? null),
     matchInfo: { ...match, id: activeMatchId, standing: board.standing ?? null }
   }));
@@ -879,35 +666,6 @@ async function submitGuessMatch(state) {
   }
 }
 
-/** Spend an earned power-up during the current arcade run. @param {string} powerup */
-export async function useArcadePowerup(powerup) {
-  if (dailyInFlight) return;
-  dailyInFlight = true;
-  try {
-    const resp = await arcadeUsePowerup(powerup);
-    if (resp) reconcileArcadeBoard(resp);
-  } finally {
-    dailyInFlight = false;
-  }
-}
-
-/** Cash out the current arcade run's winnings into your Bank (ends the run). */
-export async function arcadeCashOut() {
-  if (dailyInFlight) return;
-  dailyInFlight = true;
-  try {
-    const resp = await arcadeCashout();
-    if (resp) {
-      reconcileArcadeBoard(resp);
-      // reconcile cleared the flag; mark this as a cash-out so the modal differs from a bust
-      gameStore.update(s => ({ ...s, arcadeCashedOut: true }));
-      fx('multiplier');
-    }
-  } finally {
-    dailyInFlight = false;
-  }
-}
-
 /**
  * confirmPurchaseDaily
  * Commit a pending letter/hint/extra-guess purchase via the server.
@@ -994,10 +752,7 @@ export async function matchFold() {
  */
 export function selectLetter(letter) {
   gameStore.update(/** @param {GameState} state */ (state) => {
-    // Free Play: letters are free (gated by the reveal budget, not the wallet).
-    const isFree = state.gameMode === 'freeplay';
-    if (isFree && (state.revealsRemaining ?? 0) <= 0) return state; // out of reveals
-    const cost = isFree ? 0 : (LETTER_COSTS[letter] || 0);
+    const cost = LETTER_COSTS[letter] || 0;
     if (state.bankroll < cost) {
       console.log(`Insufficient funds to purchase letter ${letter}`);
       return state;
@@ -1060,8 +815,6 @@ export function confirmPurchase() {
   // All modes are server-authoritative: commit via RPC and reconcile.
   const current = get(gameStore);
   if (current.gameMode === 'daily') confirmPurchaseDaily(current);
-  else if (current.gameMode === 'arcade') confirmPurchaseArcade(current);
-  else if (current.gameMode === 'freeplay') confirmPurchaseFreeplay(current);
   else if (current.gameMode === 'challenge') confirmPurchaseChallenge(current);
   else if (current.gameMode === 'makeup') confirmPurchaseMakeup(current);
   else if (current.gameMode === 'climb') confirmPurchaseClimb(current);
@@ -1158,14 +911,12 @@ export function deleteGuessLetter() {
 
 /**
  * submitGuess
- * Routes the full guess to the server (daily or arcade), which validates and scores.
+ * Routes the full guess to the server, which validates and scores.
  */
 export function submitGuess() {
   // All modes are server-authoritative: the server validates + scores.
   const current = get(gameStore);
   if (current.gameMode === 'daily') submitGuessDaily(current);
-  else if (current.gameMode === 'arcade') submitGuessArcade(current);
-  else if (current.gameMode === 'freeplay') submitGuessFreeplay(current);
   else if (current.gameMode === 'challenge') submitGuessChallenge(current);
   else if (current.gameMode === 'makeup') submitGuessMakeup(current);
   else if (current.gameMode === 'climb') submitGuessClimb(current);

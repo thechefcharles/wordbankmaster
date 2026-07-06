@@ -32,12 +32,6 @@
       title: 'Cash Game & Challenges',
       isNew: true,
       body: 'Endless puzzles for Cash, or wager friends — spend the least to take the pot.'
-    },
-    {
-      icon: '🎲',
-      title: 'Broke? Free Play',
-      isNew: true,
-      body: 'Free Play costs nothing and pays per solve. Grind back anytime.'
     }
   ];
 
