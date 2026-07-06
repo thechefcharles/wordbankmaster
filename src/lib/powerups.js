@@ -1,5 +1,4 @@
-// Power-up catalog. Keys match the server ids. Arcade earns exactly 3, each by a
-// special feat (most solves earn nothing). `armed`: arms on the CURRENT puzzle
+// Power-up catalog. Keys match the server ids. `armed`: arms on the CURRENT puzzle
 // (shown as ON). Otherwise it fires instantly when used. `feat`: the move that
 // earns it (shown in the solve modal so players learn the feats).
 /** @type {Record<string, { emoji: string, name: string, desc: string, feat: string, armed?: boolean }>} */

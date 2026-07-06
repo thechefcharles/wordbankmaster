@@ -31,7 +31,7 @@
   };
 
   // Effective per-letter prices after active discount / vowel_vision (server matches this):
-  // daily uses the shared modifier; arcade uses the run's armed power-ups.
+  // daily uses the shared modifier.
   // Free Play: letters are free (the cost is your limited reveal budget).
   $: isFreeplay = $gameStore.gameMode === 'freeplay';
   $: effCosts = (() => {
@@ -40,9 +40,6 @@
     if ($gameStore.gameMode === 'daily') {
       const m = $gameStore.modifier;
       discount = m === 'discount'; vowelHalf = m === 'vowel_vision';
-    } else if ($gameStore.gameMode === 'arcade') {
-      const a: string[] = ($gameStore.arcadeRun && $gameStore.arcadeRun.active) || [];
-      discount = a.includes('discount'); vowelHalf = a.includes('vowel_vision');
     }
     const out: Record<string, number> = {};
     for (const k of Object.keys(letterCosts)) {

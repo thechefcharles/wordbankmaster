@@ -58,9 +58,9 @@
   let pinNotSet = false;   // logged in on this device with no PIN yet → prompt setup
   /** @type {string | null} */
   let initError = null; // 🔍 Diagnostic: what failed during init
-  /** Show main menu (Daily / Arcade / Leaderboard / My account) when true; game when false */
+  /** Show main menu (Daily / Cash Game / Leaderboard / My account) when true; game when false */
   let showMainMenu = false;
-  /** When showing menu: can we show "Resume daily" / "Resume arcade"? */
+  /** When showing menu: can we show "Resume daily" / "Resume in-progress game"? */
   let savedGameInfo = /** @type {{ gameMode: string, gameState: string } | null} */ (null);
   /** When showing menu: has user already played daily today? */
   let menuDailyPlayed = false;
@@ -869,7 +869,7 @@
       }
       return `🧠 WordBank Daily · ${todayLabel}\nDidn't crack it today 😬\n${link}`;
     }
-    return `🏦 WordBank Arcade\n${resultMedal.emoji} ${br} banked\n${link}`;
+    return `🏦 WordBank\n${resultMedal.emoji} ${br} banked\n${link}`;
   }
   async function handleShare() {
     const text = buildShareText();
@@ -1491,7 +1491,7 @@
     if (showStreakMessage) showStreakMessage = false;
   }
 
-  // Daily result → go to the daily leaderboard (arcade uses handleArcadeContinue instead).
+  // Daily result → go to the daily leaderboard.
   const goToDailyLeaderboard = () => {
     showResultModal = false;
     hasTriggeredModal = false;
@@ -2422,7 +2422,6 @@
       </div>
     {/if}
 
-    <!-- 🕹️ Arcade gauntlet HUD -->
     <!-- ⏱️ Pressure-mode challenge clock -->
     {#if pressureActive}
       <div class="pressure-hud" class:danger={pressureRemaining <= 10}>
@@ -2758,13 +2757,6 @@
     justify-content: safe center;
   }
 
-  .arcade-hud {
-    display: flex;
-    gap: 8px;
-    width: 100%;
-    max-width: 360px;
-    margin: 0 auto 14px;
-  }
   .pressure-hud {
     display: flex; flex-direction: column; align-items: center; gap: 2px;
     width: 100%; max-width: 360px; margin: 0 auto 14px; padding: 0.5rem 1rem;
@@ -2784,43 +2776,6 @@
   }
   .makeup-banner .mb-tag { font-family: var(--font-display); font-weight: 800; font-size: 0.8rem; color: #38bdf8; white-space: nowrap; }
   .makeup-banner .mb-text { font-size: 0.74rem; color: var(--text-muted); }
-  .bank-it-btn {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 8px;
-    margin: 0 auto 14px;
-    padding: 0.6rem 1.3rem;
-    border: 1px solid rgba(253, 224, 71, 0.5);
-    border-radius: 999px;
-    background: linear-gradient(135deg, rgba(251, 191, 36,0.16), rgba(253, 224, 71,0.08));
-    color: var(--brand-2);
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 1rem;
-    cursor: pointer;
-    box-shadow: 0 0 16px rgba(253, 224, 71, 0.18);
-    transition: transform 0.15s, box-shadow 0.2s;
-  }
-  .bank-it-btn:hover { transform: translateY(-1px); box-shadow: 0 0 22px rgba(253, 224, 71, 0.3); }
-  .bank-it-btn:active { transform: scale(0.97); }
-  .bank-it-btn:disabled { opacity: 0.6; }
-  .bib-sub { font-family: var(--font-ui); font-weight: 500; font-size: 0.72rem; color: var(--text-faint); }
-  .ah-cell {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    padding: 10px 6px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--r-md);
-  }
-  .ah-mult { border-color: rgba(253, 224, 71, 0.35); background: linear-gradient(135deg, rgba(251, 191, 36,0.12), rgba(253, 224, 71,0.04)); }
-  .ah-val { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; color: var(--text); font-variant-numeric: tabular-nums; }
-  .ah-mult .ah-val { color: var(--brand-2); }
-  .ah-gold { color: #fcd34d; }
-  .ah-label { font-size: 0.55rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
   /* Cash Game (Climb) HUD */
   .climb-hud { display: flex; gap: 8px; width: 100%; max-width: 360px; margin: 0 auto 12px; }
   .match-pos { text-align: center; font-family: var(--font-display); font-weight: 700; font-size: 0.8rem; color: var(--text-muted); margin: 0 0 8px; }
@@ -4406,7 +4361,7 @@
   .next-puzzle-button:hover { transform: translateY(-2px); filter: brightness(1.05); }
   .next-puzzle-button:active { transform: scale(0.97); }
 
-  /* Result modal (daily/arcade) */
+  /* Result modal */
   .result-modal h2 { font-size: 1.7rem; margin: 4px 0 2px; }
   .result-medal {
     font-size: 3.4rem;
