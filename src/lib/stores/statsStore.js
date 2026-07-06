@@ -473,6 +473,44 @@ export async function getCashgameMeta() {
   if (error) { console.error('❌ get_cashgame_meta:', error); return null; }
   return data;
 }
+
+/* ===== Blitz (timed speed run) ===== */
+/** @param {string} tier @returns {Promise<any>} */
+export async function blitzStart(tier) {
+  const { data, error } = await supabase.rpc('blitz_start', { p_tier: tier });
+  if (error || !data) { if (error) console.error('❌ blitz_start:', error); return { ok: false }; }
+  return data;
+}
+/** @param {string} letter @returns {Promise<any>} */
+export async function blitzBuyLetter(letter) {
+  const { data, error } = await supabase.rpc('blitz_buy_letter', { p_letter: letter });
+  if (error) { console.error('❌ blitz_buy_letter:', error); return null; }
+  return data;
+}
+/** @param {Record<string,string>} guess @returns {Promise<any>} */
+export async function blitzSubmitGuess(guess) {
+  const { data, error } = await supabase.rpc('blitz_submit_guess', { p_guess: guess });
+  if (error) { console.error('❌ blitz_submit_guess:', error); return null; }
+  return data;
+}
+/** @returns {Promise<any>} */
+export async function blitzSkip() {
+  const { data, error } = await supabase.rpc('blitz_skip');
+  if (error) { console.error('❌ blitz_skip:', error); return null; }
+  return data;
+}
+/** End the run (clock hit 0). @returns {Promise<any>} */
+export async function blitzEnd() {
+  const { data, error } = await supabase.rpc('blitz_end');
+  if (error || !data) { if (error) console.error('❌ blitz_end:', error); return { blitz: { state: 'ended' } }; }
+  return data;
+}
+/** Tier-select meta + Blitz stats. @returns {Promise<any>} */
+export async function getBlitzMeta() {
+  const { data, error } = await supabase.rpc('get_blitz_meta');
+  if (error) { console.error('❌ get_blitz_meta:', error); return null; }
+  return data;
+}
 /** @param {string} letter @returns {Promise<any>} */
 export async function climbBuyLetter(letter) {
   const { data, error } = await supabase.rpc('climb_buy_letter', { p_letter: letter });

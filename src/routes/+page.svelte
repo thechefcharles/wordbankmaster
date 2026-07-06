@@ -6,11 +6,11 @@
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
 
-  import { gameStore, fetchDailyGame, useDailyTwist, useDailyBoost, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, startCashGame, cashOutClimb, climbAdvance, climbLeaveGame, climbSkipPuzzle, climbArmDoubleOrNothing, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, useDailyTwist, useDailyBoost, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, startCashGame, cashOutClimb, climbAdvance, climbLeaveGame, climbSkipPuzzle, climbArmDoubleOrNothing, climbPowerup, startBlitz, endBlitz, blitzSkipPuzzle, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
   import { getMyChallenges, getPowerups, getDailyAvailBoosts, getMyMatches, getMyGroups, getMatch, getMatchDetail, getMatchDebuffs, getMatchOpponents, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getOpenGames, expireStaleDailies, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getDailyModifier, deleteMyAccount, getMyAvatar, getCashgameMeta } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getOpenGames, expireStaleDailies, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getDailyModifier, deleteMyAccount, getMyAvatar, getCashgameMeta, getBlitzMeta } from '$lib/stores/statsStore.js';
   import Avatar from '$lib/components/Avatar.svelte';
   import { unreadCount, refreshNotifications, inboxRequest, inboxTarget, markChallengeNotifRead, markFriendNotifRead } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
@@ -236,8 +236,8 @@
       fetchMakeupGame().then((ok) => { if (!ok) showMainMenu = true; });
     } else if (gameMode === 'climb') {
       fetchClimbGame().then((ok) => { if (!ok) showMainMenu = true; });
-    } else if (gameMode === 'match') {
-      // Matches aren't deep-link restorable (need the active id) — return to the menu.
+    } else if (gameMode === 'match' || gameMode === 'blitz') {
+      // Matches (need the active id) + Blitz (a live timed run) aren't deep-link restorable.
       localStorage.setItem('gameMode', 'daily');
       showMainMenu = true;
     } else {
@@ -333,10 +333,34 @@
   }
   $: isClimb = $gameStore.gameMode === 'climb';
   $: climb = $gameStore.climbInfo; // { bounty, heat, spent, position, stuck, last_gain, state, pups_locked, equipped }
+  // ⚡ Blitz — the live client clock counts down to blitzInfo.remaining_ms (server-authoritative);
+  // each action resyncs it. At 0 we call endBlitz() once.
+  $: isBlitz = $gameStore.gameMode === 'blitz';
+  $: blitz = $gameStore.blitzInfo; // { remaining_ms, combo, solved, winnings, tier, buy_in, base, state }
+  let blitzClockMs = 0;
+  /** @type {ReturnType<typeof setInterval>|undefined} */
+  let blitzTimer;
+  let blitzEnding = false;
+  // Resync the local clock whenever the server sends a fresh remaining_ms.
+  $: if (isBlitz && blitz && blitz.state !== 'ended' && blitz.remaining_ms != null) {
+    blitzClockMs = blitz.remaining_ms;
+  }
+  $: if (isBlitz && blitz && blitz.state !== 'ended') {
+    if (!blitzTimer) {
+      blitzEnding = false;
+      blitzTimer = setInterval(() => {
+        blitzClockMs = Math.max(0, blitzClockMs - 100);
+        if (blitzClockMs <= 0 && !blitzEnding) { blitzEnding = true; clearInterval(blitzTimer); blitzTimer = undefined; endBlitz(); }
+      }, 100);
+    }
+  } else if (blitzTimer) { clearInterval(blitzTimer); blitzTimer = undefined; }
+  onDestroy(() => { if (blitzTimer) clearInterval(blitzTimer); });
+  $: blitzSec = Math.ceil(blitzClockMs / 1000);
   // 🏷️ Which mode you're in — a consistent pill under the wordmark on every game screen.
   $: modeLabel = ({
     daily:     { emoji: '📅', name: 'Daily' },
     climb:     { emoji: '🎰', name: 'Cash Game' },
+    blitz:     { emoji: '⚡', name: 'Blitz' },
     makeup:    { emoji: '📅', name: 'Make-up' },
     match:     { emoji: '⚔️', name: 'Challenge' },
     challenge: { emoji: '⚔️', name: 'Challenge' }
@@ -1166,6 +1190,36 @@
     const res = await cashOutClimb();
     cgBusy = false;
     if (res?.ok) { cashoutResult = res; showResultModal = true; refreshBank(); }
+  }
+
+  // ===== ⚡ Blitz — tier select + timed run =====
+  let showBlitzTier = false;
+  /** @type {any} */
+  let bzMeta = null;
+  let bzBusy = false;
+  /** @type {any} */
+  let blitzResult = null; // { solved, winnings, buy_in, net, best_combo, tier }
+  async function handleMenuBlitz() {
+    if (!get(user)?.id) return;
+    localStorage.setItem('gameMode', 'blitz');
+    bzMeta = await getBlitzMeta();
+    showBlitzTier = true;
+  }
+  /** @param {string} tier */
+  async function pickBlitzTier(tier) {
+    if (bzBusy) return;
+    bzBusy = true;
+    const res = await startBlitz(tier);
+    bzBusy = false;
+    if (res?.ok) {
+      hasInitialized = true; showMainMenu = false; showBlitzTier = false; blitzResult = null;
+    } else if (res?.reason === 'insufficient') {
+      if (confirm(`You need $${(res.buy_in ?? 0).toLocaleString()} to buy in (you have $${(res.bank ?? 0).toLocaleString()}). Borrow from the Bank?`)) { showBlitzTier = false; goto('/bank'); }
+    }
+  }
+  // When the run ends (clock → 0), surface the result modal.
+  $: if (isBlitz && blitz && blitz.state === 'ended' && !blitzResult) {
+    blitzResult = blitz; showResultModal = true; refreshBank();
   }
 
   // ===== Challenge Builder (configurable packs vs friends/groups) =====
@@ -2021,10 +2075,9 @@
             <span class="mc-title">Cash Game</span>
             {#if climbInProgress}<span class="daily-chip prog">▶ Resume</span>{/if}
           </button>
-          <button class="menu-card" style="--i: 2" on:click={() => { blitzSoon = true; fx('tap'); setTimeout(() => blitzSoon = false, 2500); }}>
-            <span class="mc-title">Blitz</span><span class="mc-stat">Soon</span>
+          <button class="menu-card" style="--i: 2" on:click={handleMenuBlitz}>
+            <span class="mc-title">⚡ Blitz</span><span class="mc-stat">Beat the clock</span>
           </button>
-          {#if blitzSoon}<p class="pm-soon-note">⚡ Solo Blitz is coming soon!</p>{/if}
         </div>
 
       {:else if menuView === 'community'}
@@ -2112,6 +2165,32 @@
           </div>
           {#if (cgMeta?.best_run ?? 0) > 0}
             <p class="tier-stats">Best run <b>${(cgMeta.best_run).toLocaleString()}</b> · best multiple <b>{((cgMeta.best_multiple_x100 ?? 0)/100).toFixed(1)}×</b> · run streak <b>{cgMeta.run_streak ?? 0}</b></p>
+          {/if}
+        </div>
+      </div>
+    {/if}
+
+    <!-- ⚡ Blitz: tier select (timed run) -->
+    {#if showBlitzTier}
+      <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Pick a Blitz tier">
+        <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showBlitzTier = false}></button>
+        <div class="modal-content main-menu-modal tier-modal">
+          <button class="close-btn" on:click={() => showBlitzTier = false}>❌</button>
+          <h2>⚡ Blitz</h2>
+          <p class="cat-sub">Beat the clock. 45s to start — reveal costs 3s, a wrong guess costs 5s, each solve adds 8s + a combo-boosted payout. Bank whatever you win.</p>
+          <div class="tier-grid tier-grid-3">
+            {#each (bzMeta?.tiers ?? []) as t}
+              <button class="tier-tile" disabled={bzBusy || !t.affordable}
+                on:click={() => pickBlitzTier(t.tier)}>
+                <span class="tt-label">{t.label}</span>
+                <span class="tt-buyin">${t.buy_in.toLocaleString()} <small>buy-in</small></span>
+                <span class="tt-meta">~${t.base}/solve × combo</span>
+                {#if !t.affordable}<span class="tt-lock">Need ${t.buy_in.toLocaleString()}</span>{/if}
+              </button>
+            {/each}
+          </div>
+          {#if (bzMeta?.best_run ?? 0) > 0}
+            <p class="tier-stats">Best run <b>{bzMeta.best_run}</b> solved · best combo <b>×{((bzMeta.best_combo_x100 ?? 100)/100).toFixed(2)}</b> · biggest payout <b>${(bzMeta.best_payout ?? 0).toLocaleString()}</b></p>
           {/if}
         </div>
       </div>
@@ -2364,7 +2443,18 @@
 
     <!-- 💰 Bankroll — top of every mode. Challenge ante now lives in the bounty hero below. -->
     {#if $gameStore.currentPhrase && $gameStore.gameMode}
-      {#if !matchBlitz}
+      {#if isBlitz && blitz && blitz.state !== 'ended'}
+        <!-- ⚡ Blitz HUD: big countdown clock + combo + live winnings -->
+        <div class="blitz-hud">
+          <div class="bz-clock" class:danger={blitzSec <= 10}>⏱️ {blitzSec}<span class="bz-clock-s">s</span></div>
+          <div class="bz-row">
+            <span class="bz-stat"><b class="bz-combo">×{((blitz.combo ?? 100)/100).toFixed(2)}</b><small>combo</small></span>
+            <span class="bz-stat"><b class="bz-win">${Math.round(blitz.winnings ?? 0).toLocaleString()}</b><small>winnings</small></span>
+            <span class="bz-stat"><b>{blitz.solved ?? 0}</b><small>solved</small></span>
+          </div>
+          <button class="bz-skip" on:click={() => { fx('tap'); blitzSkipPuzzle(); }}>Skip (−3s, combo resets)</button>
+        </div>
+      {:else if !matchBlitz}
         {@const isDailyLike = $gameStore.gameMode === 'daily' || isMakeup}
         <button class="top-bank solo" class:pop-up={bankFlash === 'up'} class:pop-down={bankFlash === 'down'} title={isDailyLike ? 'Prize remaining — spend it, keep the rest' : 'Your Cash'} on:click={openBankModal}>
           {#if isMatch}<span class="tb-wallet-cap">💰 Wallet</span>{:else if isDailyLike}<span class="tb-wallet-cap">🏆 Prize</span>{/if}
@@ -2647,6 +2737,21 @@
               <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Leave</button>
               <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; handleMenuClimb(); }}>New Run</button>
             </div>
+          {:else if isBlitz && blitzResult}
+            <!-- ⚡ Blitz: time's up -->
+            {@const br = blitzResult}
+            <h2 class="win-h">⚡ Time!</h2>
+            <p class="result-sub">{br.solved ?? 0} solved · best combo ×{((br.best_combo ?? 100)/100).toFixed(2)}</p>
+            <div class="win-math">
+              <div class="wm-row"><span>Winnings</span><b>${(br.winnings ?? 0).toLocaleString()}</b></div>
+              <div class="wm-row"><span>− Buy-in</span><b class="neg">−${(br.buy_in ?? 0).toLocaleString()}</b></div>
+              <div class="wm-row total"><span>Net</span><b class="profit">{(br.net ?? 0) >= 0 ? '+' : '−'}${Math.abs(br.net ?? 0).toLocaleString()}</b></div>
+            </div>
+            <p class="win-twist">{(br.net ?? 0) >= 0 ? '🔥 You beat the clock — banked to your Cash.' : 'Whiffed the bet — the Daily always refills your Cash.'}</p>
+            <div class="result-actions">
+              <button class="share-btn" on:click={() => { blitzResult = null; showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Done</button>
+              <button class="next-puzzle-button" on:click={() => { blitzResult = null; showResultModal = false; hasTriggeredModal = false; handleMenuBlitz(); }}>New Run</button>
+            </div>
           {:else if isMatch}
             <!-- Challenge match: finished the whole pack -->
             <div class="result-medal">⚔️</div>
@@ -2834,6 +2939,20 @@
   .tt-lock { font-size: 0.66rem; color: #fca5a5; margin-top: 2px; }
   .tier-stats { text-align: center; font-size: 0.78rem; color: var(--text-muted); margin: 0; }
   .tier-stats b { color: var(--brand-2); }
+  .tier-grid-3 { grid-template-columns: repeat(3, 1fr); }
+  /* ⚡ Blitz HUD */
+  .blitz-hud { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; max-width: 360px; margin: 0 auto 12px; }
+  .bz-clock { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 2.6rem; line-height: 1; color: #fde047; font-variant-numeric: tabular-nums; }
+  .bz-clock-s { font-size: 1.1rem; color: var(--text-faint); margin-left: 2px; }
+  .bz-clock.danger { color: #fb7185; animation: pressurePulse 1s ease-in-out infinite; }
+  .bz-row { display: flex; gap: 10px; }
+  .bz-stat { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 5px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); }
+  .bz-stat b { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.05rem; color: var(--text); }
+  .bz-stat small { font-size: 0.58rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
+  .bz-combo { color: #fbbf24 !important; }
+  .bz-win { color: #6ee7b7 !important; }
+  .bz-skip { padding: 0.4rem 0.9rem; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-weight: 700; font-size: 0.74rem; cursor: pointer; }
+  .bz-skip:hover { border-color: #fb7185; color: #fca5a5; }
   .arcade-gain { font-family: var(--font-display); font-weight: 700; color: var(--brand-2); margin: -8px 0 14px; font-size: 1rem; }
   .arcade-earn {
     font-family: var(--font-display); font-weight: 700; font-size: 0.95rem;
