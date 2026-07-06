@@ -43,6 +43,9 @@ import { track } from '$lib/analytics.js';
  *   arcadeRun?: any,
  *   arcadeCashedOut?: boolean,
  *   modifier?: string | null,
+ *   bountyMult?: number,
+ *   twistUsed?: boolean,
+ *   wrongGuesses?: number,
  *   clue?: string | null,
  *   challengeInfo?: any,
  *   makeupDate?: string | null,
@@ -90,6 +93,7 @@ export const gameStore = writable(/** @type {GameState} */ ({
   modifier: null, // today's Daily Twist power-up id (daily only)
   twistUsed: false, // have you used today's Twist? (unused → ×1.5 bounty)
   bountyMult: 1, // bounty multiplier (1.0 once Twist used, else 1.5)
+  wrongGuesses: 0, // wrong phrase guesses this Daily (each −0.2× mult, floor 1.0)
   clue: null, // witty one-line hint for the current puzzle
   challengeInfo: null, // { mode, started_at, limit_seconds, play_state, score } for the active challenge
   makeupDate: null, // YYYY-MM-DD of the make-up day being played (makeup mode only)
@@ -206,7 +210,8 @@ function reconcileDailyBoard(board) {
     // Daily Twist: the available modifier id + whether you've used it + bounty multiplier.
     modifier: board.modifier !== undefined ? board.modifier : prev.modifier,
     twistUsed: board.twist_used !== undefined ? board.twist_used : (prev.twistUsed ?? false),
-    bountyMult: board.bounty_mult !== undefined ? board.bounty_mult : (prev.bountyMult ?? 1)
+    bountyMult: board.bounty_mult !== undefined ? board.bounty_mult : (prev.bountyMult ?? 1),
+    wrongGuesses: board.wrong_guesses !== undefined ? board.wrong_guesses : (prev.wrongGuesses ?? 0)
   }));
   // Only celebrate a FRESH solve: a board carrying daily_result (set by the solve),
   // not when re-opening an already-completed daily (which comes back 'won' with no result).

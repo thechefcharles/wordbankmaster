@@ -544,7 +544,9 @@
   $: dlNet = dlReward - dlSpent;
   $: dlWinStreak = dailyStatus?.win_streak ?? 0;
   $: dlStreakBonus = Math.min(0.1 * dlWinStreak, 0.5);
-  $: dlBoost = Math.max(0, Math.round((dlMult - 1 - dlStreakBonus) * 10) / 10);
+  $: dlWrong = $gameStore.wrongGuesses ?? 0;
+  $: dlPenalty = Math.min(0.2 * dlWrong, Math.max(0, dlMult - 1)); // shown penalty, can't push below ×1.0 floor
+  $: dlBoost = Math.max(0, Math.round((dlMult - 1 - dlStreakBonus + dlPenalty) * 10) / 10);
   const fmtMult = (/** @type {number} */ n) => '×' + n.toFixed(1);
   let _prevBank = /** @type {number|null} */ (null);
   let _floatId = 0;
@@ -1743,9 +1745,11 @@
         <div class="info-rows">
           <div class="info-row"><span>Base</span><b>×1.0</b></div>
           {#if dlStreakBonus > 0}<div class="info-row"><span>🏆 Win streak ({dlWinStreak} in a row)</span><b class="pos">+{dlStreakBonus.toFixed(1)}</b></div>{/if}
+          {#if dlBoost > 0}<div class="info-row"><span>💥 Boosts</span><b class="pos">+{dlBoost.toFixed(1)}</b></div>{/if}
+          {#if dlWrong > 0}<div class="info-row"><span>❌ Wrong guesses ({dlWrong})</span><b class="neg">−{dlPenalty.toFixed(1)}</b></div>{/if}
           <div class="info-row total"><span>Your multiplier</span><b>{fmtMult(dlMult)}</b></div>
         </div>
-        <p class="info-note">Grows with your <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'streak'}>win streak</button> — <b>+0.1×</b> per solve, up to <b>×1.5</b>.</p>
+        <p class="info-note">Grows with your <button class="info-inline" on:click|stopPropagation={() => dailyInfo = 'streak'}>win streak</button> (<b>+0.1×</b>/solve, up to <b>×1.5</b>). Each wrong guess costs <b>−0.2×</b> (never below ×1.0).</p>
       {:else if dailyInfo === 'twist'}
         <div class="info-big">{dailyMod?.emoji ?? '🎁'}</div>
         <h3 class="info-title">{dailyMod?.name ?? "Today's Twist"}</h3>
