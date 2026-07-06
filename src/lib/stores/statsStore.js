@@ -66,9 +66,24 @@ export async function getDailyStatus(userId) {
 /** @param {number} [limit] ledger rows to return (default 12; pass a big number for full history) */
 export async function getBank(limit) {
   const { data, error } = await supabase.rpc('get_bank', limit ? { p_limit: limit } : {});
-  if (error || !data) { if (error) console.error('❌ get_bank:', error); return { bank: 0, net_worth: 0, ledger: [] }; }
+  if (error || !data) { if (error) console.error('❌ get_bank:', error); return { bank: 0, net_worth: 0, loan: 0, loan_cap: 0, in_the_red: false, ledger: [] }; }
   return { bank: data.bank ?? 0, net_worth: data.net_worth ?? data.bank ?? 0,
+    loan: data.loan ?? 0, loan_cap: data.loan_cap ?? 0, in_the_red: !!data.in_the_red,
     ledger: Array.isArray(data.ledger) ? data.ledger : [] };
+}
+
+/** Borrow from the Loan Shark (25% fee, one at a time, ≤ credit limit). @param {number} amount */
+export async function takeLoan(amount) {
+  const { data, error } = await supabase.rpc('take_loan', { p_amount: amount });
+  if (error || !data) { if (error) console.error('❌ take_loan:', error); return { ok: false }; }
+  return data;
+}
+
+/** Repay the loan from Cash (null = pay the max you can afford). @param {number|null} amount */
+export async function repayLoan(amount = null) {
+  const { data, error } = await supabase.rpc('repay_loan', { p_amount: amount });
+  if (error || !data) { if (error) console.error('❌ repay_loan:', error); return { ok: false }; }
+  return data;
 }
 
 /** Lowest winning spend per mode (e.g. { daily: 20, climb: 60 }) — powers the
