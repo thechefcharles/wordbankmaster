@@ -498,7 +498,7 @@ export async function expireStaleDailies() {
   return data ?? 0;
 }
 
-/** The caller's currently-resumable solo games (daily/climb/freeplay), newest first.
+/** The caller's currently-resumable solo games (daily/climb), newest first.
  *  Server truth for menu resume labels + the top-level Resume shortcut.
  *  @returns {Promise<{mode:string, updated_at:string}[]>} */
 export async function getOpenGames() {

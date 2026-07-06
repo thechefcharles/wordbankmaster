@@ -24,7 +24,6 @@ import { track } from '$lib/analytics.js';
  *   bankroll: number,
  *   wagerAmount: number,
  *   guessesRemaining: number,
- *   revealsRemaining?: number,
  *   category: string,
  *   currentPhrase: string,
  *   gameState: string,

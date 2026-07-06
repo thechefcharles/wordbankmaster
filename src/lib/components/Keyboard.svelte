@@ -32,10 +32,7 @@
 
   // Effective per-letter prices after active discount / vowel_vision (server matches this):
   // daily uses the shared modifier.
-  // Free Play: letters are free (the cost is your limited reveal budget).
-  $: isFreeplay = $gameStore.gameMode === 'freeplay';
   $: effCosts = (() => {
-    if ($gameStore.gameMode === 'freeplay') { const out: Record<string, number> = {}; for (const k of Object.keys(letterCosts)) out[k] = 0; return out; }
     let discount = false, vowelHalf = false;
     if ($gameStore.gameMode === 'daily') {
       const m = $gameStore.modifier;
@@ -60,13 +57,8 @@
   $: lockedLetters = ($gameStore.lockedLetters || {}) as LockedLetters;
   $: incorrectLetters = ($gameStore.incorrectLetters || []) as string[];
 
-  // 🔹 Disable keys. Free Play: all disabled when out of reveals, else only wrong letters.
-  //    Other modes: unaffordable or incorrect keys (modifier-adjusted prices).
-  $: disabledKeys = isFreeplay
-    ? ((($gameStore as any).revealsRemaining ?? 0) <= 0
-        ? Object.keys(letterCosts)
-        : Object.keys(letterCosts).filter((letter: string) => incorrectLetters.includes(letter)))
-    : Object.keys(letterCosts).filter((letter: string) =>
+  // 🔹 Disable keys that are unaffordable or already marked incorrect (modifier-adjusted prices).
+  $: disabledKeys = Object.keys(letterCosts).filter((letter: string) =>
         (effCosts[letter] ?? 0) > $gameStore.bankroll || incorrectLetters.includes(letter));
 
   /**
@@ -181,7 +173,7 @@
       >
         <span class="braille">{BRAILLE[letter]}</span>
         <div class="letter">{letter}</div>
-        {#if !isFreeplay}<div class="price">${effCosts[letter] ?? 0}</div>{/if}
+        <div class="price">${effCosts[letter] ?? 0}</div>
       </button>
     {/each}
   </div>
@@ -206,7 +198,7 @@
       >
         <span class="braille">{BRAILLE[letter]}</span>
         <div class="letter">{letter}</div>
-        {#if !isFreeplay}<div class="price">${effCosts[letter] ?? 0}</div>{/if}
+        <div class="price">${effCosts[letter] ?? 0}</div>
       </button>
     {/each}
   </div>
@@ -231,7 +223,7 @@
       >
         <span class="braille">{BRAILLE[letter]}</span>
         <div class="letter">{letter}</div>
-        {#if !isFreeplay}<div class="price">${effCosts[letter] ?? 0}</div>{/if}
+        <div class="price">${effCosts[letter] ?? 0}</div>
       </button>
     {/each}
 
