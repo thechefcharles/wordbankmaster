@@ -429,7 +429,7 @@
   const fmtCash = (/** @type {number} */ n) => '$' + Math.round(n ?? 0).toLocaleString();
   /** @param {string} reason */
   const bankReason = (reason) => (/** @type {Record<string,string>} */ ({
-    quest_reward: 'Daily quests reward', daily_win: 'Daily reward', daily_reward: 'Daily reward',
+    daily_win: 'Daily reward', daily_reward: 'Daily reward',
     attendance: 'Daily attendance reward', arcade_cashout: 'Cash Game cash-out', climb_bounty: 'Climb bounty',
     freeplay_reward: 'Free Play reward', cosmetic_buy: 'Shop purchase', powerup_buy: 'Power-up purchase',
     wager_win: 'Won a wager', wager_stake: 'Wager staked', wager_refund: 'Wager refunded'
