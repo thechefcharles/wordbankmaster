@@ -16,7 +16,7 @@
 
   // Sortable columns (client-side). Default: by place, best → worst. Tap # again to
   // flip and bring LAST place to the top.
-  /** @typedef {'place'|'name'|'net_worth'|'score'|'play_streak'|'win_streak'} SortKey */
+  /** @typedef {'place'|'name'|'net_worth'|'score'|'efficiency'|'play_streak'|'win_streak'} SortKey */
   let sortKey = $state(/** @type {SortKey} */ ('place'));
   let sortDir = $state(/** @type {'asc'|'desc'} */ ('asc'));
   /** @param {SortKey} k */
@@ -38,8 +38,9 @@
     return [...ranked].sort((a, b) => {
       if (sortKey === 'place') return dir * (a._place - b._place);
       if (sortKey === 'name') return dir * String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' });
-      const av = sortKey === 'score' ? (a.score ?? -Infinity) : Number(a[sortKey] ?? 0);
-      const bv = sortKey === 'score' ? (b.score ?? -Infinity) : Number(b[sortKey] ?? 0);
+      const nullLast = sortKey === 'score' || sortKey === 'efficiency';
+      const av = nullLast ? (a[sortKey] ?? -Infinity) : Number(a[sortKey] ?? 0);
+      const bv = nullLast ? (b[sortKey] ?? -Infinity) : Number(b[sortKey] ?? 0);
       return dir * (av - bv) || (a._place - b._place);
     });
   });
@@ -89,6 +90,7 @@
           <th><button class="sort" class:on={sortKey === 'name'} onclick={() => setSort('name')}>Player{arrow('name')}</button></th>
           <th class="num"><button class="sort" class:on={sortKey === 'net_worth'} onclick={() => setSort('net_worth')}>💰 Cash{arrow('net_worth')}</button></th>
           <th class="num"><button class="sort" class:on={sortKey === 'score'} onclick={() => setSort('score')}>Bounty Earned{arrow('score')}</button></th>
+          <th class="num"><button class="sort" class:on={sortKey === 'efficiency'} onclick={() => setSort('efficiency')} title="Efficiency — value kept of the puzzle's base bounty (same for everyone; pure spend-less skill)">⚡ Eff{arrow('efficiency')}</button></th>
           <th class="num"><button class="sort" class:on={sortKey === 'play_streak'} onclick={() => setSort('play_streak')}>🔥{arrow('play_streak')}</button></th>
           <th class="num"><button class="sort" class:on={sortKey === 'win_streak'} onclick={() => setSort('win_streak')}>🏆{arrow('win_streak')}</button></th>
         </tr>
@@ -107,6 +109,7 @@
             </td>
             <td class="metric">{fmt(r.net_worth)}</td>
             <td class="metric gold">{r.played ? Number(r.score).toLocaleString() : '—'}</td>
+            <td class="metric eff">{r.efficiency != null ? r.efficiency + '%' : '—'}</td>
             <td class="metric small">{r.play_streak > 0 ? '🔥' + r.play_streak : '—'}</td>
             <td class="metric small">{r.win_streak > 0 ? '🏆' + r.win_streak : '—'}</td>
           </tr>
@@ -135,6 +138,7 @@
   .name-link:hover { text-decoration-color: var(--gold); }
   td.metric { font-family: var(--font-display); font-weight: 700; color: var(--text); text-align: right; white-space: nowrap; }
   td.metric.gold { color: var(--brand-2); }
+  td.metric.eff { color: #6ee7b7; font-size: 0.85rem; }
   td.metric.small { font-weight: 700; font-size: 0.82rem; color: var(--text-muted); }
   th.num { text-align: right; }
   th button.sort { background: none; border: none; padding: 0; margin: 0; cursor: pointer; font: inherit;
