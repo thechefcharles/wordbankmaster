@@ -10,7 +10,7 @@
   import { getMyChallenges, getPowerups, getDailyAvailBoosts, getMyMatches, getMyGroups, getMatch, getMatchDetail, getMatchDebuffs, getMatchOpponents, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getOpenGames, expireStaleDailies, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getFreeplayCashoutStatus, freeplayCashout, getDailyModifier, deleteMyAccount, getMyAvatar } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getOpenGames, expireStaleDailies, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getDailyModifier, deleteMyAccount, getMyAvatar } from '$lib/stores/statsStore.js';
   import Avatar from '$lib/components/Avatar.svelte';
   import { unreadCount, refreshNotifications, inboxRequest, inboxTarget, markChallengeNotifRead, markFriendNotifRead } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
@@ -657,39 +657,6 @@
     finally { donBusy = false; showDon = false; }
   }
 
-  // Free Play: cash out credits → real Cash right from the board (40:1, $50/day cap).
-  let fpCashBusy = false;
-  // Tapping the credits number cashes out when you're above the $1 floor.
-  function tapCredits() {
-    if (($gameStore.bankroll ?? 0) - 2000 >= 40) doFreeplayCashout();
-    else gameStore.update((s) => ({ ...s, cashToast: { amount: 0, label: 'Reach 2,040 credits to cash out for real Cash' } }));
-  }
-  async function doFreeplayCashout() {
-    if (fpCashBusy) return;
-    fpCashBusy = true;
-    const st = await getFreeplayCashoutStatus();
-    fpCashBusy = false;
-    if (!st) return;
-    const amt = Math.min(st.max_cash ?? 0, st.cap_remaining ?? 0);
-    if (amt <= 0) {
-      gameStore.update((s) => ({ ...s, cashToast: { amount: 0, label: "Daily $50 cash-out cap reached — back tomorrow" } }));
-      return;
-    }
-    try {
-      await requirePin(`Cash out ${(amt * 40).toLocaleString()} credits → $${amt}`, [
-        { label: 'Credits', value: (amt * 40).toLocaleString() },
-        { label: 'You receive', value: '$' + amt }
-      ]);
-    } catch { return; }
-    fpCashBusy = true;
-    const res = await freeplayCashout(amt);
-    fpCashBusy = false;
-    if (res?.ok) {
-      fx('win');
-      gameStore.update((s) => ({ ...s, bankroll: res.bankroll, cashToast: { amount: res.cashed, label: 'Cashed out to your Cash!' } }));
-      await refreshBank();
-    }
-  }
   $: matchRemaining = (() => {
     if (!matchBlitz || !matchInfo?.started_at) return 0;
     const start = new Date(matchInfo.started_at).getTime();
@@ -4130,27 +4097,6 @@
   @keyframes bankColorDown { 0%,100% { color: #fcd34d; } 25% { color: #fb7185; text-shadow: 0 0 20px rgba(251,113,133,0.9); } }
   .tb-solo { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.55rem; color: #fcd34d; font-variant-numeric: tabular-nums; }
   .tb-wallet-cap { display: block; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-faint); }
-  .top-bank.tap { cursor: pointer; display: block; text-align: left;
-    border-color: rgba(167, 139, 250, 0.55); border-style: dashed;
-    background: linear-gradient(135deg, rgba(167, 139, 250, 0.13), rgba(167, 139, 250, 0.03)); }
-  .top-bank.tap:disabled { cursor: default; opacity: 0.6; }
-  .tb-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-  .tb-cap { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brand-2); }
-  .tb-amt { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.7rem; line-height: 1; color: #fcd34d; font-variant-numeric: tabular-nums; }
-  .tb-amt.cr { color: #c4b5fd; }
-  .top-bank.tap .tb-cap { color: #c4b5fd; }
-  .tb-bar { margin-top: 7px; height: 9px; border-radius: 999px; background: rgba(255,255,255,0.10); overflow: hidden; }
-  .tb-fill { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #fbbf24, #fde047); transition: width 0.35s ease; }
-  .tb-sub { margin-top: 5px; font-size: 0.66rem; color: var(--text-faint); }
-  /* Free Play play-money "Credits" — violet + dashed so it reads as not-real-Cash */
-  .credits-panel { display: flex; flex-direction: column; align-items: center; gap: 1px;
-    width: 100%; max-width: 320px; margin: 0 auto; padding: 13px 18px; border-radius: var(--r-lg, 18px);
-    border: 1px dashed rgba(167, 139, 250, 0.55); background: linear-gradient(135deg, rgba(167, 139, 250, 0.13), rgba(167, 139, 250, 0.03)); }
-  .cr-note { margin-top: 2px; font-size: 0.68rem; color: var(--text-faint); }
-  .cr-cashout { margin-top: 5px; padding: 0.4rem 0.9rem; border-radius: 999px; cursor: pointer; font-weight: 800; font-size: 0.8rem;
-    color: #04240f; background: linear-gradient(135deg, #6ee7b7, #34d399); border: none; }
-  .cr-cashout:disabled { opacity: 0.5; cursor: default; }
-  .cr-wallet { margin-top: 4px; font-size: 0.66rem; color: var(--text-faint); }
   /* 🏷️ Game-mode pill — centered under the wordmark, same for every mode */
   .mode-pill {
     display: inline-flex; align-items: center; gap: 6px; margin: -2px auto 10px;

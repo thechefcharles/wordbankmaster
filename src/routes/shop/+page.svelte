@@ -99,7 +99,7 @@
     <h1>🛍️ Store</h1>
     <span class="bank-chip">💰 ${bank.toLocaleString()}</span>
   </div>
-  <p class="sub">Power-ups for the Cash Game &amp; challenges, plus cosmetics. <a class="bank-link" href="/bank">Exchange credits → Cash in the Bank ›</a></p>
+  <p class="sub">Power-ups for the Cash Game &amp; challenges, plus cosmetics.</p>
 
   {#if loading}
     <p class="loading">Loading…</p>
@@ -223,24 +223,8 @@
   h1 { font-family: var(--font-display); font-size: 1.7rem; margin: 0; }
   .bank-chip { font-family: var(--font-display); font-weight: 800; color: #fbbf24; font-size: 1.05rem; }
   .sub { color: var(--text-muted); font-size: 0.9rem; margin: 0.2rem 0 1.4rem; }
-  .bank-link { color: var(--brand-2); text-decoration: none; font-weight: 600; white-space: nowrap; }
-  .bank-link:hover { text-decoration: underline; }
   .loading { color: var(--text-muted); padding: 2rem; text-align: center; }
   .msg { text-align: center; color: #f87171; font-size: 0.88rem; margin: 0 0 1rem; }
-  .cashout-card {
-    border: 1px solid rgba(110, 231, 183, 0.35); border-radius: 16px; padding: 0.9rem 1rem; margin: 0 0 1.2rem;
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(20, 26, 38, 0.6));
-  }
-  .co-top { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; }
-  .co-label { display: block; font-size: 0.74rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.05em; }
-  .co-credits { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 1.6rem; color: #6ee7b7; }
-  .co-btn {
-    padding: 0.6rem 0.95rem; border-radius: 11px; border: none; cursor: pointer; font-weight: 800; font-size: 0.9rem;
-    color: #04240f; background: linear-gradient(135deg, #6ee7b7, #34d399); white-space: nowrap;
-  }
-  .co-btn:disabled { opacity: 0.5; cursor: default; }
-  .co-pending { font-size: 0.78rem; color: var(--text-muted); text-align: right; }
-  .co-note { font-size: 0.72rem; color: var(--text-faint); margin: 0.6rem 0 0; line-height: 1.35; }
   .owned-x { font-family: 'Orbitron', var(--font-display); font-weight: 800; font-size: 0.78rem; color: #fde047; }
   .inv-details { margin: 0 0 0.4rem; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); padding: 0 0.9rem; }
   .inv-summary { cursor: pointer; padding: 0.85rem 0; font-family: var(--font-display); font-weight: 700; font-size: 0.98rem; list-style: none; }
