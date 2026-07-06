@@ -99,8 +99,9 @@
   }
   /** Net Worth for the menu chip. */
   let netWorth = /** @type {number|null} */ (null);
+  let menuLoan = 0; // outstanding loan → drives the menu debt banner
   async function refreshBank() {
-    try { netWorth = (await getBank()).net_worth; } catch { /* non-fatal */ }
+    try { const gb = await getBank(); netWorth = gb.net_worth; menuLoan = gb.loan ?? 0; } catch { /* non-fatal */ }
   }
 
   // ✅ Load Supabase user profile and sync bankroll (creates profile if missing)
@@ -1923,6 +1924,13 @@
       </div>
       {#if menuView === 'home'}
         <div class="main-menu-buttons stagger">
+          <!-- 🦈 Debt banner — you owe the Loan Shark; Store locked + payouts auto-skim. -->
+          {#if menuLoan > 0}
+            <button class="debt-banner" style="--i: 0" on:click={() => { fx('tap'); goto('/bank'); }}>
+              🦈 <span class="db-text">You owe <b>${Math.round(menuLoan).toLocaleString()}</b> — half of every payout auto-repays it</span>
+              <span class="db-go">Repay ›</span>
+            </button>
+          {/if}
           <!-- ▶ Resume — any in-progress game (solo + started challenges). One → straight in; many → the Resume menu. -->
           {#if resumables.length}
             <button class="resume-strip" style="--i: 0" on:click={onResume}>
@@ -3218,6 +3226,19 @@
   }
   .resume-strip:hover { border-color: rgba(16,185,129,0.65); }
   .resume-strip:active { transform: scale(0.99); }
+  .debt-banner {
+    display: flex; align-items: center; gap: 9px; width: 100%; margin-bottom: 2px;
+    padding: 9px 14px; border-radius: 12px; cursor: pointer;
+    background: linear-gradient(180deg, rgba(53,16,16,0.7), rgba(42,15,15,0.7));
+    border: 1px solid rgba(248,113,113,0.5);
+    font-family: var(--font-display); font-weight: 700; font-size: 0.82rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .debt-banner:hover { border-color: rgba(248,113,113,0.75); }
+  .debt-banner:active { transform: scale(0.99); }
+  .db-text { flex: 1; text-align: left; color: #fecaca; font-weight: 600; }
+  .db-text b { color: #fb7185; }
+  .db-go { color: rgba(251,113,133,0.85); }
   .rs-dot { color: #34d399; font-size: 0.8rem; }
   .rs-label { flex: 1; text-align: left; color: #d1fae5; }
   .rs-go { color: rgba(110,231,183,0.7); }
