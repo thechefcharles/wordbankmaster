@@ -455,6 +455,24 @@ export async function climbStart() {
   if (error) { console.error('❌ climb_start:', error); return null; }
   return data;
 }
+/** Cash Game V2: buy in at a tier → a fresh run. @param {string} tier @returns {Promise<any>} */
+export async function cashgameStart(tier) {
+  const { data, error } = await supabase.rpc('cashgame_start', { p_tier: tier });
+  if (error || !data) { if (error) console.error('❌ cashgame_start:', error); return { ok: false }; }
+  return data;
+}
+/** Cash out the current run → bank the bankroll, end the run. @returns {Promise<any>} */
+export async function cashgameCashout() {
+  const { data, error } = await supabase.rpc('cashgame_cashout');
+  if (error || !data) { if (error) console.error('❌ cashgame_cashout:', error); return { ok: false }; }
+  return data;
+}
+/** Tier-select meta: unlocked tiers + Cash Game stats. @returns {Promise<any>} */
+export async function getCashgameMeta() {
+  const { data, error } = await supabase.rpc('get_cashgame_meta');
+  if (error) { console.error('❌ get_cashgame_meta:', error); return null; }
+  return data;
+}
 /** @param {string} letter @returns {Promise<any>} */
 export async function climbBuyLetter(letter) {
   const { data, error } = await supabase.rpc('climb_buy_letter', { p_letter: letter });
