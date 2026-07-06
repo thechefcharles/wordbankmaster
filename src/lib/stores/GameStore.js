@@ -4,7 +4,6 @@ import { writable, get } from 'svelte/store';
 import confetti from 'canvas-confetti';
 import { fx } from '$lib/sound.js';
 import { dailyStart, dailyUseTwist, dailyUseBoost, dailyBuyLetter, dailyReveal, dailySubmitGuess, dailyFold as dailyFoldRpc, getDailyModifier, getDailyClue } from '$lib/stores/statsStore.js';
-import { freeplayStart, freeplayNext, freeplayResume, freeplayBuyLetter, freeplayReveal, freeplaySubmitGuess, getFreeplayClue } from '$lib/stores/statsStore.js';
 import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
 import { makeupStart, makeupBuyLetter, makeupReveal, makeupSubmitGuess } from '$lib/stores/statsStore.js';
 import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, climbSkip, climbDoubleOrNothing, getPowerups, buyPowerup, climbUsePowerup, getClimbClue } from '$lib/stores/statsStore.js';
@@ -83,7 +82,7 @@ export const gameStore = writable(/** @type {GameState} */ ({
   shakenLetters: [],
   message: '',
   subcategory: '',
-  gameMode: 'daily', // 'daily' | 'freeplay' | 'climb' | 'challenge' | 'match' | 'makeup'
+  gameMode: 'daily', // 'daily' | 'climb' | 'challenge' | 'match' | 'makeup'
   freeReveals: 0, // owned Free Reveal power-ups (daily)
   modifier: null, // today's Daily Twist power-up id (daily only)
   twistUsed: false, // have you used today's Twist? (unused → ×1.5 bounty)
@@ -133,7 +132,7 @@ let dailyInFlight = false;
  * @param {any} board - board JSON returned by a daily_* RPC
  */
 /**
- * boardToState — shared masked-board → gameStore partial (used by daily + freeplay).
+ * boardToState — shared masked-board → gameStore partial.
  * @param {any} board @param {GameState} prev
  */
 function boardToState(board, prev) {
@@ -216,109 +215,6 @@ function reconcileDailyBoard(board) {
   // analytics: fire once, only on the actual solve transition
   if (board.daily_result && prev.gameState !== 'won' && prev.gameState !== 'lost') {
     track('daily_result', { won: true, bankroll: board.bankroll ?? 0 });
-  }
-}
-
-/* ===== Free Play (unranked, category-picked, endless) ===== */
-
-/** @param {any} board */
-function reconcileFreeplayBoard(board) {
-  if (!board) return;
-  const prev = get(gameStore);
-  const finished = board.state !== 'active';
-  gameStore.set(/** @type {GameState} */ ({
-    ...prev, ...boardToState(board, prev),
-    gameMode: 'freeplay',
-    revealsRemaining: board.reveals_remaining ?? 0,
-    gameState: finished ? board.state : 'default',
-    modifier: null  }));
-  if (board.state === 'won') {
-    setTimeout(() => launchConfetti(), 300); fx('win');
-    const rw = /** @type {any} */ (board).freeplay_reward;
-    if (rw > 0) gameStore.update(s => ({ ...s, cashToast: { amount: rw, label: 'Free Play reward' } }));
-  }
-  else if (finished) fx('bust');
-  else playMoveCue(prev, board);
-}
-
-async function refreshFreeplayClue() {
-  try {
-    const clue = await getFreeplayClue();
-    gameStore.update(s => ({ ...s, clue }));
-  } catch { /* non-fatal */ }
-}
-
-/** Start Free Play in a category (random puzzle from it). @param {string} category */
-export async function fetchFreeplayGame(category) {
-  try {
-    track('freeplay_start', { category });
-    const board = await freeplayStart(category);
-    if (!board) { console.error('❌ freeplay_start returned nothing'); return false; }
-    reconcileFreeplayBoard(board);
-    await refreshFreeplayClue();
-    return true;
-  } catch (err) {
-    console.error('❌ Error starting free play:', err instanceof Error ? err.message : String(err));
-    return false;
-  }
-}
-
-/** Resume the in-progress Free Play puzzle. Returns true if a live board was
- *  restored, false if there's nothing to resume (caller picks a category). */
-export async function fetchFreeplayResume() {
-  try {
-    const board = await freeplayResume();
-    if (!board) return false;
-    reconcileFreeplayBoard(board);
-    await refreshFreeplayClue();
-    return true;
-  } catch (err) {
-    console.error('❌ Error resuming free play:', err instanceof Error ? err.message : String(err));
-    return false;
-  }
-}
-
-/** Next free-play puzzle in the same category. */
-export async function freeplayContinue() {
-  if (dailyInFlight) return;
-  dailyInFlight = true;
-  try {
-    const board = await freeplayNext();
-    if (board) { reconcileFreeplayBoard(board); await refreshFreeplayClue(); }
-  } finally {
-    dailyInFlight = false;
-  }
-}
-
-/** @param {GameState} state */
-async function confirmPurchaseFreeplay(state) {
-  const purchase = state.selectedPurchase;
-  if (!purchase || dailyInFlight) return;
-  dailyInFlight = true;
-  try {
-    let board = null;
-    if (purchase.type === 'letter') board = await freeplayBuyLetter(purchase.value ?? '');
-    else if (purchase.type === 'hint') board = await freeplayReveal();
-    if (board) reconcileFreeplayBoard(board);
-    else gameStore.update(s => ({ ...s, selectedPurchase: null, gameState: 'default' }));
-  } finally {
-    dailyInFlight = false;
-  }
-}
-
-/** @param {GameState} state */
-async function submitGuessFreeplay(state) {
-  if (state.gameState !== 'guess_mode' || dailyInFlight) return;
-  /** @type {Record<string, string>} */
-  const guess = {};
-  for (const [k, v] of Object.entries(state.guessedLetters || {})) guess[k] = /** @type {string} */ (v);
-  if (Object.keys(guess).length === 0) return;
-  dailyInFlight = true;
-  try {
-    const board = await freeplaySubmitGuess(guess);
-    if (board) reconcileFreeplayBoard(board);
-  } finally {
-    dailyInFlight = false;
   }
 }
 
@@ -857,10 +753,7 @@ export async function matchFold() {
  */
 export function selectLetter(letter) {
   gameStore.update(/** @param {GameState} state */ (state) => {
-    // Free Play: letters are free (gated by the reveal budget, not the wallet).
-    const isFree = state.gameMode === 'freeplay';
-    if (isFree && (state.revealsRemaining ?? 0) <= 0) return state; // out of reveals
-    const cost = isFree ? 0 : (LETTER_COSTS[letter] || 0);
+    const cost = LETTER_COSTS[letter] || 0;
     if (state.bankroll < cost) {
       console.log(`Insufficient funds to purchase letter ${letter}`);
       return state;
@@ -923,7 +816,6 @@ export function confirmPurchase() {
   // All modes are server-authoritative: commit via RPC and reconcile.
   const current = get(gameStore);
   if (current.gameMode === 'daily') confirmPurchaseDaily(current);
-  else if (current.gameMode === 'freeplay') confirmPurchaseFreeplay(current);
   else if (current.gameMode === 'challenge') confirmPurchaseChallenge(current);
   else if (current.gameMode === 'makeup') confirmPurchaseMakeup(current);
   else if (current.gameMode === 'climb') confirmPurchaseClimb(current);
@@ -1026,7 +918,6 @@ export function submitGuess() {
   // All modes are server-authoritative: the server validates + scores.
   const current = get(gameStore);
   if (current.gameMode === 'daily') submitGuessDaily(current);
-  else if (current.gameMode === 'freeplay') submitGuessFreeplay(current);
   else if (current.gameMode === 'challenge') submitGuessChallenge(current);
   else if (current.gameMode === 'makeup') submitGuessMakeup(current);
   else if (current.gameMode === 'climb') submitGuessClimb(current);

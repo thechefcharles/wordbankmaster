@@ -98,7 +98,7 @@
       </div>
 
       <div class="grid ov-summary">
-        {@render chipAct((d.overall.puzzles_solved ?? 0).toLocaleString(), 'Total Solves', () => statInfo = { title: 'Total solves', desc: 'Every puzzle you’ve solved across all modes — Daily, Cash Game, Free Play, and challenges.' })}
+        {@render chipAct((d.overall.puzzles_solved ?? 0).toLocaleString(), 'Total Solves', () => statInfo = { title: 'Total solves', desc: 'Every puzzle you’ve solved across all modes — Daily, Cash Game, and challenges.' })}
         {@render chipAct(d.overall.games_played ?? 0, 'Games Played', () => statInfo = { title: 'Games played', desc: 'How many games you’ve started across every mode — whether you solved them or not.' })}
         {@render chipAct('🔥 ' + (d.daily.current_streak ?? 0), 'Play Streak', () => statInfo = { title: '🔥 Play streak', desc: 'Days in a row you’ve shown up for the Daily. Miss a day and it resets (a freeze can save it).', link: '/streak', linkLabel: 'View Daily Calendar' })}
         {@render chipAct('🏆 ' + (d.daily.win_streak ?? 0), 'Win Streak', () => statInfo = { title: '🏆 Win streak', desc: 'Daily puzzles you’ve solved in a row. Powers your bounty multiplier — the longer it runs, the more you earn.', link: '/streak', linkLabel: 'View Daily Calendar' })}

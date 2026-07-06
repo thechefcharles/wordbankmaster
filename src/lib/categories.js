@@ -1,5 +1,5 @@
 // The 12 puzzle categories. `value` is the exact string stored on
-// daily_puzzles.category (emoji included) and passed to freeplay_start.
+// daily_puzzles.category (emoji included); used by the Challenge builder's picker.
 /** @type {{ value: string, label: string, emoji: string }[]} */
 export const CATEGORIES = [
   { value: 'Movies & TV 🎬',        label: 'Movies & TV',       emoji: '🎬' },

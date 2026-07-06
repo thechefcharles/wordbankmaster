@@ -335,50 +335,6 @@ export async function getCategoryStats() {
   return data ?? [];
 }
 
-/* ===== Free Play (unranked, pick-a-category) — return a masked board ===== */
-/** @param {string} category @returns {Promise<object|null>} */
-export async function freeplayStart(category) {
-  const { data, error } = await supabase.rpc('freeplay_start', { p_category: category });
-  if (error) { console.error('❌ freeplay_start error:', error); return null; }
-  return data;
-}
-/** @returns {Promise<object|null>} */
-export async function freeplayNext() {
-  const { data, error } = await supabase.rpc('freeplay_next');
-  if (error) { console.error('❌ freeplay_next error:', error); return null; }
-  return data;
-}
-/** Resume an in-progress Free Play puzzle (null if none active). @returns {Promise<object|null>} */
-export async function freeplayResume() {
-  const { data, error } = await supabase.rpc('freeplay_resume');
-  if (error) { console.error('❌ freeplay_resume error:', error); return null; }
-  return data ?? null;
-}
-/** @param {string} letter @returns {Promise<object|null>} */
-export async function freeplayBuyLetter(letter) {
-  const { data, error } = await supabase.rpc('freeplay_buy_letter', { p_letter: letter });
-  if (error) { console.error('❌ freeplay_buy_letter error:', error); return null; }
-  return data;
-}
-/** @returns {Promise<object|null>} */
-export async function freeplayReveal() {
-  const { data, error } = await supabase.rpc('freeplay_reveal');
-  if (error) { console.error('❌ freeplay_reveal error:', error); return null; }
-  return data;
-}
-/** @param {Record<string,string>} guess @returns {Promise<object|null>} */
-export async function freeplaySubmitGuess(guess) {
-  const { data, error } = await supabase.rpc('freeplay_submit_guess', { p_guess: guess });
-  if (error) { console.error('❌ freeplay_submit_guess error:', error); return null; }
-  return data;
-}
-/** @returns {Promise<string|null>} */
-export async function getFreeplayClue() {
-  const { data, error } = await supabase.rpc('freeplay_clue');
-  if (error) { console.error('❌ freeplay_clue error:', error); return null; }
-  return data ?? null;
-}
-
 /** Witty clue for the caller's current daily puzzle. @returns {Promise<string|null>} */
 export async function getDailyClue() {
   const { data, error } = await supabase.rpc('daily_clue');
