@@ -6,11 +6,11 @@
   import { tweened } from 'svelte/motion';
   import { cubicOut } from 'svelte/easing';
 
-  import { gameStore, fetchDailyGame, useDailyTwist, useDailyBoost, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, climbAdvance, climbLeaveGame, climbSkipPuzzle, climbArmDoubleOrNothing, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
+  import { gameStore, fetchDailyGame, useDailyTwist, useDailyBoost, startChallenge, acceptAndPlayChallenge, resumeChallenge, challengeTimeoutCheck, fetchMakeupGame, fetchClimbGame, startCashGame, cashOutClimb, climbAdvance, climbLeaveGame, climbSkipPuzzle, climbArmDoubleOrNothing, climbPowerup, startMatch, acceptAndPlayMatch, resumeMatch, matchTimeoutCheck, matchPowerup, matchSabotageOpponent, dailyFold, matchFold } from '$lib/stores/GameStore.js';
   import { getMyChallenges, getPowerups, getDailyAvailBoosts, getMyMatches, getMyGroups, getMatch, getMatchDetail, getMatchDebuffs, getMatchOpponents, declineMatch } from '$lib/stores/statsStore.js';
   import { CATEGORIES } from '$lib/categories.js';
   import { user, userProfile, fetchUserProfile, ensureProfileExists } from '$lib/stores/userStore.js';
-  import { getDailyStatus, getOpenGames, expireStaleDailies, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getDailyModifier, deleteMyAccount, getMyAvatar } from '$lib/stores/statsStore.js';
+  import { getDailyStatus, getOpenGames, expireStaleDailies, getDailyGhost, getMyDailyRank, addFriend, searchUsers, getMyUsername, setUsername, getBank, getDailyBoard, getMatchMessages, sendMatchMessage, getFriendRequestCount, respondFriendRequest, listFriendRequests, getDailyModifier, deleteMyAccount, getMyAvatar, getCashgameMeta } from '$lib/stores/statsStore.js';
   import Avatar from '$lib/components/Avatar.svelte';
   import { unreadCount, refreshNotifications, inboxRequest, inboxTarget, markChallengeNotifRead, markFriendNotifRead } from '$lib/stores/notificationStore.js';
   import { track } from '$lib/analytics.js';
@@ -1118,22 +1118,54 @@
   $: dailyMod = ($gameStore.gameMode === 'daily' && $gameStore.modifier) ? modifierInfo($gameStore.modifier) : null;
 
   /** Start or resume the Cash Game (the persistent real-Cash Climb). */
+  // ===== Cash Game V2 — tier select + run =====
+  let showTierSelect = false;
+  /** @type {any} */
+  let cgMeta = null;
+  let cgBusy = false;
+  /** @type {any} */
+  let cashoutResult = null; // { banked, buy_in, profit, multiple_x100, solves, tier }
+
+  async function enterClimbGame() {
+    hasInitialized = true;
+    showMainMenu = false;
+    showTierSelect = false;
+    refreshClimbPups();
+    await tick();
+    playDailyIntroIfArmed();
+  }
   async function handleMenuClimb() {
     const currentUser = get(user);
     if (!currentUser?.id) return;
     localStorage.setItem('gameMode', 'climb');
-    const ok = await fetchClimbGame();
-    if (ok) {
-      hasInitialized = true;
-      showMainMenu = false;
-      refreshClimbPups();
-      // Play the dramatic opening reveal once reactives settle (no-ops if the
-      // "How it works" card shows — it then fires on dismiss).
-      await tick();
-      playDailyIntroIfArmed();
+    const res = await fetchClimbGame();
+    if (res === 'needs_tier') {
+      cgMeta = await getCashgameMeta();
+      showTierSelect = true;
+    } else if (res) {
+      await enterClimbGame();
     } else {
       initError = 'Cash Game failed to load.';
     }
+  }
+  /** @param {string} tier */
+  async function pickTier(tier) {
+    if (cgBusy) return;
+    cgBusy = true;
+    const res = await startCashGame(tier);
+    cgBusy = false;
+    if (res?.ok) { await enterClimbGame(); }
+    else if (res?.reason === 'insufficient') {
+      // Can't afford the buy-in → offer the Loan Shark.
+      if (confirm(`You need $${(res.buy_in ?? 0).toLocaleString()} to buy in (you have $${(res.bank ?? 0).toLocaleString()}). Borrow from the Bank?`)) { showTierSelect = false; goto('/bank'); }
+    } else if (res?.reason === 'locked') { fx('wrong'); }
+  }
+  async function cashOut() {
+    if (cgBusy) return;
+    cgBusy = true;
+    const res = await cashOutClimb();
+    cgBusy = false;
+    if (res?.ok) { cashoutResult = res; showResultModal = true; refreshBank(); }
   }
 
   // ===== Challenge Builder (configurable packs vs friends/groups) =====
@@ -2053,6 +2085,33 @@
       {/if}
     </div>
 
+    <!-- 🎰 Cash Game: tier select (buy-in run) -->
+    {#if showTierSelect}
+      <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Pick a tier">
+        <button type="button" class="modal-backdrop" aria-label="Close" on:click={() => showTierSelect = false}></button>
+        <div class="modal-content main-menu-modal tier-modal">
+          <button class="close-btn" on:click={() => showTierSelect = false}>❌</button>
+          <h2>🎰 Cash Game</h2>
+          <p class="cat-sub">Stake a buy-in, grow the run, cash out — or bust. Higher tiers = bigger stakes, thinner margins, bigger jackpots.</p>
+          <div class="tier-grid">
+            {#each (cgMeta?.tiers ?? []) as t}
+              <button class="tier-tile" class:locked={!t.unlocked} disabled={cgBusy || !t.unlocked || (cgMeta?.bank ?? 0) < t.buy_in}
+                on:click={() => pickTier(t.tier)}>
+                <span class="tt-label">{t.label}</span>
+                <span class="tt-buyin">${t.buy_in.toLocaleString()} <small>buy-in</small></span>
+                <span class="tt-meta">k {Number(t.k).toFixed(2)} · heat ×{(t.heat_cap/100).toFixed(1)}</span>
+                {#if !t.unlocked}<span class="tt-lock">🔒 {t.tier === 'silver' ? '3 Bronze wins' : t.tier === 'gold' ? '3 Silver wins' : 'locked'}</span>
+                {:else if (cgMeta?.bank ?? 0) < t.buy_in}<span class="tt-lock">Need ${t.buy_in.toLocaleString()}</span>{/if}
+              </button>
+            {/each}
+          </div>
+          {#if (cgMeta?.best_run ?? 0) > 0}
+            <p class="tier-stats">Best run <b>${(cgMeta.best_run).toLocaleString()}</b> · best multiple <b>{((cgMeta.best_multiple_x100 ?? 0)/100).toFixed(1)}×</b> · run streak <b>{cgMeta.run_streak ?? 0}</b></p>
+          {/if}
+        </div>
+      </div>
+    {/if}
+
     <!-- Challenges: wager vs friends -->
     {#if showChallenges}
       <div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Challenge Friends">
@@ -2343,13 +2402,19 @@
     <!-- 🎰 Cash Game (Climb) HUD — number-free so it feels random. Heat lives in the
          Solve-to-Earn box; power-ups live in the vault beside Solve. -->
     {#if isClimb && climb}
-      {#if climb.stuck && $gameStore.gameState !== 'won'}
+      {#if climb.stuck && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
         <div class="climb-stuck">
-          <span class="cs-text">Out of Cash</span>
-          <div class="cs-actions">
-            <button class="cs-leave" on:click={goToMainMenu}>Leave &amp; earn</button>
-          </div>
+          <span class="cs-text">🎯 Final guess — solve it or bust the run</span>
         </div>
+      {/if}
+      <!-- 🏦 Cash Out — bank the run bankroll anytime (the press-your-luck valve). -->
+      {#if (climb.state === 'active' || climb.state === 'stuck') && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
+        {@const bankroll = Math.round(climb.bankroll ?? 0)}
+        {@const profit = bankroll - Math.round(climb.buy_in ?? 0)}
+        <button class="cashout-btn" class:up={profit > 0} disabled={cgBusy || bankroll <= 0} on:click={cashOut}>
+          🏦 Cash Out <b>${bankroll.toLocaleString()}</b>
+          {#if profit !== 0}<span class="co-profit" class:neg={profit < 0}>{profit > 0 ? '+' : '−'}${Math.abs(profit).toLocaleString()}</span>{/if}
+        </button>
       {/if}
     {/if}
 
@@ -2536,27 +2601,45 @@
               <button class="share-btn" on:click={handleShare}>{shareCopied ? '✓ Copied!' : 'Share'}</button>
               <button class="next-puzzle-button" on:click={goToDailyLeaderboard}>Leaderboard</button>
             </div>
+          {:else if isClimb && cashoutResult}
+            <!-- 🏦 Cash Game: cashed out — banked the run bankroll -->
+            {@const co = cashoutResult}
+            <h2 class="win-h">🏦 Cashed Out!</h2>
+            <p class="result-sub">{(co.tier ?? '').charAt(0).toUpperCase() + (co.tier ?? '').slice(1)} run · {co.solves ?? 0} solve{co.solves === 1 ? '' : 's'}</p>
+            <div class="win-math">
+              <div class="wm-row"><span>Banked</span><b>${(co.banked ?? 0).toLocaleString()}</b></div>
+              <div class="wm-row"><span>− Buy-in</span><b class="neg">−${(co.buy_in ?? 0).toLocaleString()}</b></div>
+              <div class="wm-row total"><span>Profit</span><b class="profit">{(co.profit ?? 0) >= 0 ? '+' : '−'}${Math.abs(co.profit ?? 0).toLocaleString()}</b></div>
+            </div>
+            <p class="win-twist">{((co.multiple_x100 ?? 0) / 100).toFixed(1)}× your buy-in · 🔥 peak ×{((co.heat ?? 100) / 100).toFixed(1)} — banked to your Cash</p>
+            <div class="result-actions">
+              <button class="share-btn" on:click={() => { cashoutResult = null; showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Done</button>
+              <button class="next-puzzle-button" on:click={() => { cashoutResult = null; showResultModal = false; hasTriggeredModal = false; handleMenuClimb(); }}>New Run</button>
+            </div>
           {:else if isClimb && resultWon}
-            <!-- 🎰 Cash Game win banner (mirrors Daily): bounty × heat − spent = profit -->
+            <!-- 🎰 Solved a puzzle → the payout grew your RUN bankroll (not Cash yet) -->
             {@const payout = climb?.last_gain ?? 0}
-            {@const cspent = climb?.spent ?? 0}
-            {@const earnedMult = (climb?.bounty ?? 0) > 0 ? (payout / climb.bounty) : ((climb?.heat ?? 100) / 100)}
-            {@const heatMult = donArmedThisPuzzle ? earnedMult / 2 : earnedMult}
-            <h2 class="win-h">{donArmedThisPuzzle ? '💥 Doubled!' : '🎉 Solved!'}</h2>
+            {@const bankroll = Math.round(climb?.bankroll ?? 0)}
+            <h2 class="win-h">🎉 Solved!</h2>
             <p class="result-sub">{$gameStore.currentPhrase}</p>
             <div class="win-math">
-              <div class="wm-row"><span>Bounty <small>(🔥 ×{heatMult.toFixed(1)} heat{#if donArmedThisPuzzle} · 💥 ×2{/if})</small></span><b>${payout.toLocaleString()}</b></div>
-              <div class="wm-row"><span>− Spent on letters</span><b class="neg">−${cspent.toLocaleString()}</b></div>
-              <div class="wm-row total"><span>Profit</span><b class="profit">{$resultProfit >= 0 ? '+' : '−'}${Math.abs(Math.round($resultProfit)).toLocaleString()}</b></div>
+              <div class="wm-row"><span>Payout <small>(🔥 ×{climbHeat} heat)</small></span><b class="profit">+${payout.toLocaleString()}</b></div>
+              <div class="wm-row total"><span>🎰 Run bankroll</span><b>${bankroll.toLocaleString()}</b></div>
             </div>
-            <p class="win-twist">🔥 Heat now ×{climbHeat}{#if climbStreak > 0} · 🏆 {climbStreak} win streak{/if}{#if (climb?.heat ?? 100) >= 200} · maxed{/if}</p>
-            <div class="win-bank">
-              <span class="wb-label">💰 Your Cash</span>
-              <span class="wb-amount">${Math.round($resultBankAnim).toLocaleString()}</span>
+            <p class="win-twist">🔥 Heat now ×{climbHeat}{#if (climb?.run_solves ?? 0) > 1} · {climb.run_solves}-solve run{/if} — bank it or push on?</p>
+            <div class="result-actions">
+              <button class="share-btn co-inline" disabled={cgBusy} on:click={() => { showResultModal = false; hasTriggeredModal = false; cashOut(); }}>🏦 Cash Out ${bankroll.toLocaleString()}</button>
+              <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; climbAdvance().then(() => tick().then(playDailyIntroIfArmed)); }}>Next →</button>
             </div>
+          {:else if isClimb}
+            <!-- 💥 Busted — lost the buy-in -->
+            <div class="result-medal">💥</div>
+            <h2>Busted</h2>
+            <p class="result-sub">The answer was {$gameStore.currentPhrase}</p>
+            <p class="arcade-gain">You lost your ${(climb?.buy_in ?? 0).toLocaleString()} buy-in. The Daily always refills your Cash — come back for another run.</p>
             <div class="result-actions">
               <button class="share-btn" on:click={() => { showResultModal = false; hasTriggeredModal = false; goToMainMenu(); }}>Leave</button>
-              <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; climbAdvance().then(() => tick().then(playDailyIntroIfArmed)); }}>Next →</button>
+              <button class="next-puzzle-button" on:click={() => { showResultModal = false; hasTriggeredModal = false; handleMenuClimb(); }}>New Run</button>
             </div>
           {:else if isMatch}
             <!-- Challenge match: finished the whole pack -->
@@ -2714,6 +2797,37 @@
   .cs-text { font-size: 0.82rem; color: #fca5a5; }
   .cs-actions { display: flex; gap: 8px; justify-content: center; }
   .cs-leave { padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-weight: 700; color: var(--text-muted); background: transparent; }
+  /* 🏦 Cash Out button (during a run) */
+  .cashout-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; max-width: 360px;
+    margin: 0 auto 12px; padding: 0.7rem 1rem; border-radius: 14px; cursor: pointer;
+    border: 1px solid rgba(110,231,183,0.5); background: linear-gradient(135deg, rgba(110,231,183,0.14), rgba(52,211,153,0.05));
+    color: #6ee7b7; font-family: var(--font-display); font-weight: 800; font-size: 1rem;
+  }
+  .cashout-btn.up { border-color: rgba(110,231,183,0.8); box-shadow: 0 0 16px rgba(52,211,153,0.25); }
+  .cashout-btn:disabled { opacity: 0.45; cursor: default; }
+  .cashout-btn b { color: #d1fae5; }
+  .co-profit { font-size: 0.85rem; color: #34d399; font-weight: 700; }
+  .co-profit.neg { color: #fb7185; }
+  .co-inline { background: linear-gradient(135deg, #6ee7b7, #34d399) !important; color: #06281d !important; }
+  /* 🎰 Cash Game tier select */
+  .tier-modal { max-width: 460px; }
+  .tier-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 4px 0 12px; }
+  .tier-tile {
+    display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 14px 10px; border-radius: 16px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text); cursor: pointer;
+    transition: transform 0.15s, border-color 0.2s;
+  }
+  .tier-tile:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--brand-2); }
+  .tier-tile:disabled { opacity: 0.5; cursor: default; }
+  .tier-tile.locked { border-style: dashed; }
+  .tt-label { font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; }
+  .tt-buyin { font-family: 'Orbitron', var(--font-display); font-weight: 800; color: var(--brand-2); font-size: 1.1rem; }
+  .tt-buyin small { font-family: var(--font-ui); font-weight: 500; font-size: 0.62rem; color: var(--text-faint); }
+  .tt-meta { font-size: 0.66rem; color: var(--text-faint); }
+  .tt-lock { font-size: 0.66rem; color: #fca5a5; margin-top: 2px; }
+  .tier-stats { text-align: center; font-size: 0.78rem; color: var(--text-muted); margin: 0; }
+  .tier-stats b { color: var(--brand-2); }
   .arcade-gain { font-family: var(--font-display); font-weight: 700; color: var(--brand-2); margin: -8px 0 14px; font-size: 1rem; }
   .arcade-earn {
     font-family: var(--font-display); font-weight: 700; font-size: 0.95rem;

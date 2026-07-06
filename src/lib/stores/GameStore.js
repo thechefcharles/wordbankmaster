@@ -6,7 +6,7 @@ import { fx } from '$lib/sound.js';
 import { dailyStart, dailyUseTwist, dailyUseBoost, dailyBuyLetter, dailyReveal, dailySubmitGuess, dailyFold as dailyFoldRpc, getDailyModifier, getDailyClue } from '$lib/stores/statsStore.js';
 import { createChallenge, acceptChallenge, getChallengeBoard, challengeBuyLetter, challengeReveal, challengeSubmitGuess, challengeCheck } from '$lib/stores/statsStore.js';
 import { makeupStart, makeupBuyLetter, makeupReveal, makeupSubmitGuess } from '$lib/stores/statsStore.js';
-import { climbStart, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, climbSkip, climbDoubleOrNothing, getPowerups, buyPowerup, climbUsePowerup, getClimbClue } from '$lib/stores/statsStore.js';
+import { climbStart, cashgameStart, cashgameCashout, climbBuyLetter, climbReveal, climbSubmitGuess, climbNext, climbLeave, climbSkip, climbDoubleOrNothing, getPowerups, buyPowerup, climbUsePowerup, getClimbClue } from '$lib/stores/statsStore.js';
 import { createMatch, acceptMatch, matchStart, matchBuyLetter, matchReveal, matchSubmitGuess, matchFold as matchFoldRpc, matchCheck, matchUsePowerup, matchSabotage } from '$lib/stores/statsStore.js';
 import { track } from '$lib/analytics.js';
 
@@ -408,17 +408,19 @@ function reconcileClimbBoard(board) {
   if (!board) return;
   const prev = get(gameStore);
   const climb = board.climb || {};
-  // 'solved' shows a win beat (then climbAdvance); 'complete' = reached the top.
+  // 'solved' shows a win beat (then climbAdvance); 'busted' ends the run (you lost the buy-in).
   const solved = climb.state === 'solved';
+  const busted = climb.state === 'busted' || climb.busted === true;
   gameStore.set(/** @type {GameState} */ ({
     ...prev, ...boardToState(board, prev),
     gameMode: 'climb',
-    gameState: solved ? 'won' : 'default',
+    gameState: busted ? 'lost' : (solved ? 'won' : 'default'),
     modifier: null,
     climbInfo: climb
   }));
   // No confetti — the slot-machine reveal (box-by-box win pop) is the celebration, like Daily.
-  if (solved) { fx('win'); }
+  if (busted) fx('bust');
+  else if (solved) { fx('win'); }
   else playMoveCue(prev, board);
 }
 
@@ -441,19 +443,53 @@ function maybeArmMatchIntro() {
   }
 }
 
-/** Start or resume the Climb. @returns {Promise<boolean>} */
+/** Resume an in-progress Cash Game run. Returns 'needs_tier' when there's no live run
+ *  (the caller then shows the tier-select), true if a run was restored, false on error. */
 export async function fetchClimbGame() {
   try {
-    track('climb_start');
     const board = await climbStart();
     if (!board) return false;
+    if (board.needs_tier) return 'needs_tier';
     reconcileClimbBoard(board);
     maybeArmClimbIntro();
     await refreshClimbClue();
     return true;
   } catch (err) {
-    console.error('❌ Error starting climb:', err instanceof Error ? err.message : String(err));
+    console.error('❌ Error resuming Cash Game:', err instanceof Error ? err.message : String(err));
     return false;
+  }
+}
+
+/** Buy in at a tier and start a fresh run. @param {string} tier @returns {Promise<any>} */
+export async function startCashGame(tier) {
+  try {
+    track('cashgame_start', { tier });
+    const resp = await cashgameStart(tier);
+    if (!resp?.ok) return resp || { ok: false };
+    reconcileClimbBoard(resp);
+    maybeArmClimbIntro();
+    await refreshClimbClue();
+    return resp;
+  } catch (err) {
+    console.error('❌ Error starting Cash Game:', err instanceof Error ? err.message : String(err));
+    return { ok: false };
+  }
+}
+
+/** Cash out the current run → bank the bankroll, end the run. @returns {Promise<any>} */
+export async function cashOutClimb() {
+  if (dailyInFlight) return { ok: false };
+  dailyInFlight = true;
+  try {
+    const resp = await cashgameCashout();
+    if (resp?.ok) {
+      fx('multiplier');
+      // Surface a cash-out result the UI can celebrate, then clear the run.
+      gameStore.update(s => ({ ...s, gameState: 'won', climbInfo: { ...(s.climbInfo || {}), state: 'cashed_out', cashout: resp } }));
+    }
+    return resp || { ok: false };
+  } finally {
+    dailyInFlight = false;
   }
 }
 

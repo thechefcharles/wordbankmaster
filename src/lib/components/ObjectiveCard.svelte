@@ -28,10 +28,10 @@
         goal: 'Solve the hidden phrase.',
         win: 'Spend as little Cash as you can — your leftover is your score.',
         bar: 'Just showing up pays a streak reward.' };
-      case 'climb': return { icon: '🧗', title: 'Cash Game',
-        goal: 'Climb an endless ladder of puzzles.',
-        win: 'Solve each one cheaply to grow your bankroll.',
-        bar: "Don't go broke." };
+      case 'climb': return { icon: '🎰', title: 'Cash Game',
+        goal: 'Stake a buy-in → grow a run bankroll by solving cheaply.',
+        win: 'Cash out anytime to bank it — heat multiplies each solve.',
+        bar: 'Bust (a wrong final guess) loses the buy-in.' };
       case 'makeup': return { icon: '🗓️', title: 'Make-up Daily',
         goal: 'Play a daily you missed.',
         win: 'Same rules — solve it as cheaply as you can.',
