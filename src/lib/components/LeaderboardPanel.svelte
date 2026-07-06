@@ -88,7 +88,7 @@
           <th><button class="sort" class:on={sortKey === 'place'} onclick={() => setSort('place')}>#{arrow('place')}</button></th>
           <th><button class="sort" class:on={sortKey === 'name'} onclick={() => setSort('name')}>Player{arrow('name')}</button></th>
           <th class="num"><button class="sort" class:on={sortKey === 'net_worth'} onclick={() => setSort('net_worth')}>💰 Cash{arrow('net_worth')}</button></th>
-          <th class="num"><button class="sort" class:on={sortKey === 'score'} onclick={() => setSort('score')}>Score{arrow('score')}</button></th>
+          <th class="num"><button class="sort" class:on={sortKey === 'score'} onclick={() => setSort('score')}>Bounty Earned{arrow('score')}</button></th>
           <th class="num"><button class="sort" class:on={sortKey === 'play_streak'} onclick={() => setSort('play_streak')}>🔥{arrow('play_streak')}</button></th>
           <th class="num"><button class="sort" class:on={sortKey === 'win_streak'} onclick={() => setSort('win_streak')}>🏆{arrow('win_streak')}</button></th>
         </tr>

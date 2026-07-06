@@ -126,11 +126,9 @@
         {@render chip((d.overall.puzzles_solved ?? 0).toLocaleString(), 'Puzzles solved')}
         {@render chip(d.overall.games_played ?? 0, 'Games played')}
         {@render chip(d.overall.clean_solves ?? 0, 'Clean solves')}
-        {@render chip(mult(d.overall.avg_multiple), 'Avg multiple')}
-        {@render chip(mult(d.overall.best_multiple), 'Best multiple')}
-        {@render chip(fmt(d.overall.earned), 'Earned')}
+        {@render chip(fmt(d.overall.earned), 'Lifetime earned')}
+        {@render chip(fmt(d.overall.spent), 'Lifetime spent')}
       </div>
-      <p class="spent-line">Lifetime spent: <b>{fmt(d.overall.spent)}</b></p>
 
       <div class="sec-title">📅 Daily</div>
       <div class="grid">
@@ -140,8 +138,7 @@
         {@render chip(d.daily.best_win_streak ?? 0, 'Best win')}
         {@render chip(pct(d.daily.won ?? 0, d.daily.played ?? 0), 'Win rate')}
         {@render chip(d.daily.won ?? 0, 'Dailies won')}
-        {@render chip(mult(d.daily.best_multiple), 'Best ×')}
-        {@render chip(time(d.daily.fastest_ms), 'Fastest')}
+        {@render chip(fmt(d.daily.best_bounty), 'Best bounty')}
       </div>
 
       <div class="sec-title">🎰 Cash Game</div>
@@ -299,8 +296,6 @@
   .stat-link .sc { color: var(--brand-2); }
   .sv { font-family: var(--font-display); font-weight: 800; font-size: 1.02rem; color: var(--text); }
   .sc { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); }
-  .spent-line { text-align: center; color: var(--text-muted); font-size: 0.82rem; margin: 10px 0 0; }
-  .spent-line b { color: var(--text); }
 
   .cats { display: flex; flex-direction: column; gap: 6px; }
   .cat-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 11px;
