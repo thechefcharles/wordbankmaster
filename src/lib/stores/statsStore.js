@@ -44,14 +44,14 @@ export async function getDailyStatus(userId) {
   });
   if (error) {
     console.error('❌ Error fetching daily status:', error);
-    return { has_played_today: false, last_daily_won: null, daily_bankroll: 0, arcade_bankroll: 1000, current_streak: 0, streak_freezes: 0, today_score: 0, win_streak: 0, daily_in_progress: false };
+    return { has_played_today: false, last_daily_won: null, daily_bankroll: 0, bank: 2000, current_streak: 0, streak_freezes: 0, today_score: 0, win_streak: 0, daily_in_progress: false };
   }
   const row = Array.isArray(data) ? data[0] : data;
   return {
     has_played_today: !!row?.has_played_today,
     last_daily_won: row?.last_daily_won ?? null,
     daily_bankroll: row?.daily_bankroll ?? 0,
-    arcade_bankroll: row?.arcade_bankroll ?? 1000,
+    bank: row?.bank ?? 2000,
     current_streak: row?.current_streak ?? 0, // PLAY streak (attendance / showing up)
     streak_freezes: row?.streak_freezes ?? 0,
     today_score: row?.today_score ?? 0,
