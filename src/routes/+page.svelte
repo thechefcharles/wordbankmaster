@@ -1194,8 +1194,13 @@
   /** @type {string[]} */
   let mbCategories = [];
   let mbPackSize = 3;
-  let mbWager = 0;
-  let mbPayout = 'winner'; // 'winner' | 'top3' | 'even'
+  let mbWager = 500;
+  let mbPayout = 'winner'; // derived from field size at settle; kept for the RPC signature
+  // Challenge tier antes (ante = stake = pot size; payout is by field size at settle).
+  const CHALLENGE_TIERS = [
+    { v: 0, label: '🤝 Friendly' }, { v: 500, label: '🥉 $500' },
+    { v: 2000, label: '🥈 $2K' }, { v: 10000, label: '🥇 $10K' }
+  ];
   let mbWindow = 172800; // seconds
   let mbItemsAllowed = false; // host toggle: allow power-ups in this challenge
   let mbMsg = '';
@@ -1793,7 +1798,7 @@
         <div class="info-row"><span>Lose</span><b class="neg">forfeit your buy-in</b></div>
         <div class="info-row"><span>Skip a puzzle</span><b class="neg">pays full price</b></div>
       </div>
-      <p class="info-note">Winner-take-all — most Cash left wins everyone's buy-in. A tie splits the pot evenly. Out of ante? Keep guessing free.</p>
+      <p class="info-note">Most Cash left wins the pot. Duel = winner-take-all (tie splits 50/50); groups pay a podium (3 → 70/30, 4+ → 60/30/10). Wrong guesses waste your ante, so guess only when you're sure.</p>
       <button class="info-close" on:click={() => showAnteInfo = false}>Got it</button>
     </div>
   </div>
@@ -2165,17 +2170,18 @@
                 <label class="ch-field"><span>Puzzles</span>
                   <select class="ch-input" bind:value={mbPackSize}>{#each [1, 3, 5, 10] as n}<option value={n}>{n}</option>{/each}</select>
                 </label>
-                <label class="ch-field"><span>Payout</span>
-                  <select class="ch-input" bind:value={mbPayout}><option value="winner">Winner takes all</option><option value="podium">Podium (3·2·1)</option></select>
-                </label>
-              </div>
-              <div class="ch-row">
-                <label class="ch-field"><span>Buy-in ($0 = friendly)</span>
-                  <input class="ch-input" type="number" min="0" step="100" bind:value={mbWager} />
-                </label>
                 <label class="ch-field"><span>Respond within</span>
                   <select class="ch-input" bind:value={mbWindow}>{#each WINDOWS as w}<option value={w.s}>{w.l}</option>{/each}</select>
                 </label>
+              </div>
+              <div class="ch-field ch-ante">
+                <span>Ante — the stakes</span>
+                <div class="ante-chips">
+                  {#each CHALLENGE_TIERS as t}
+                    <button class="ante-chip" class:on={mbWager === t.v} type="button" on:click={() => { mbWager = t.v; fx('tap'); }}>{t.label}</button>
+                  {/each}
+                </div>
+                <p class="ch-hint">{mbWager > 0 ? 'Each player antes this → the pot. Duel: winner takes all. Group: podium (3 → 70/30 · 4+ → 60/30/10). Spend less to keep more — that’s your score.' : 'Friendly — no stakes, just bragging rights.'}</p>
               </div>
               <button class="ch-toggle" class:on={mbItemsAllowed} on:click={() => { mbItemsAllowed = !mbItemsAllowed; fx('tap'); }}>
                 <span class="ch-tog-box">{mbItemsAllowed ? '✓' : ''}</span>
@@ -3666,6 +3672,14 @@
   .ch-cat.on { opacity: 1; border-color: rgba(253, 224, 71,0.55); background: rgba(253, 224, 71,0.08); }
   .ch-hint { font-size: 0.72rem; color: var(--text-faint); text-align: center; margin: 0; }
   .ch-field { flex: 1; display: flex; flex-direction: column; gap: 3px; text-align: left; min-width: 0; }
+  .ch-field > span { font-size: 0.72rem; color: var(--text-faint); font-weight: 700; }
+  .ch-ante { margin-top: 0.2rem; }
+  .ante-chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 4px 0 2px; }
+  .ante-chip { padding: 0.55rem 0.3rem; border-radius: 11px; border: 1px solid var(--border); background: var(--surface);
+    color: var(--text); font-family: var(--font-display); font-weight: 700; font-size: 0.82rem; cursor: pointer; white-space: nowrap; }
+  .ante-chip:hover { border-color: var(--brand-2); }
+  .ante-chip.on { border-color: var(--brand-2); background: linear-gradient(135deg, rgba(251,191,36,0.16), rgba(253,224,71,0.05)); color: var(--brand-2); }
+  .ch-ante .ch-hint { text-align: left; margin-top: 4px; line-height: 1.4; }
   .ch-field > span { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); font-weight: 600; }
   .ch-play.ghost { color: var(--brand-2); background: transparent; border: 1px solid rgba(253, 224, 71,0.4); }
   .ch-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 280px; overflow-y: auto; }
