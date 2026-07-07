@@ -170,16 +170,4 @@
 		background: transparent;
 		border-color: rgba(248, 113, 113, 0.4);
 	}
-	.ni-done {
-		display: inline-block;
-		margin-top: 0.5rem;
-		font-size: 0.8rem;
-		font-weight: 800;
-	}
-	.ni-done.accepted {
-		color: var(--brand-2);
-	}
-	.ni-done.declined {
-		color: var(--text-faint);
-	}
 </style>

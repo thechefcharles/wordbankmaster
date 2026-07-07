@@ -57,16 +57,7 @@
 		align-items: center;
 		justify-content: space-between;
 	}
-	.back-btn {
-		padding: 0.5rem 1rem;
-		background: var(--surface);
-		color: var(--text);
-		border: 1px solid var(--border);
-		border-radius: 12px;
-		cursor: pointer;
-		font-weight: 600;
-		font-size: 0.9rem;
-	}
+
 	.kp-tag {
 		font-size: 0.75rem;
 		font-weight: 700;

@@ -25,12 +25,4 @@
 		margin: 6px 0 4px;
 		text-align: center;
 	}
-	.back-btn {
-		background: none;
-		border: none;
-		color: var(--text-muted);
-		font-size: 0.92rem;
-		cursor: pointer;
-		padding: 6px 0;
-	}
 </style>
