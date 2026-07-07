@@ -1,6 +1,5 @@
 <script>
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 	import PageNav from '$lib/components/PageNav.svelte';
 	import LeaderboardPanel from '$lib/components/LeaderboardPanel.svelte';
 	import { track } from '$lib/analytics.js';

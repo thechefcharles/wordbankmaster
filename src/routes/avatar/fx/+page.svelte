@@ -1,5 +1,4 @@
 <script>
-	import { goto } from '$app/navigation';
 	import PageNav from '$lib/components/PageNav.svelte';
 	import { renderAvatarSvg, renderHoloAvatar } from '$lib/avatar.js';
 
@@ -40,6 +39,7 @@
 		<div class="fxp-stage" style="--sz:230px">
 			{#if aura}<div class="fx-aura"></div>{/if}
 			{#if frame}<div class="fx-ring"></div>{/if}
+			<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 			<div class="fx-inner" class:framed={frame}>{@html svg}</div>
 			{#if crown}<img class="fx-crown" src="/avatar/fx/crown.svg" alt="" />{/if}
 		</div>

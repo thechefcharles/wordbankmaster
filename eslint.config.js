@@ -9,6 +9,8 @@ const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
 
 export default ts.config(
 	includeIgnoreFile(gitignorePath),
+	// Non-shipped dev artifacts: the REMEMBER scratch dir isn't source.
+	{ ignores: ['.remember/**'] },
 	js.configs.recommended,
 	...ts.configs.recommended,
 	...svelte.configs['flat/recommended'],
@@ -41,7 +43,21 @@ export default ts.config(
 					varsIgnorePattern: '^_',
 					caughtErrorsIgnorePattern: '^_'
 				}
-			]
+			],
+			// Our a11y svelte-ignore comments list the full set of related codes for
+			// intentional stop-propagation modal wrappers; don't nag when a given element
+			// only trips a subset of them.
+			'svelte/no-unused-svelte-ignore': 'off'
+		}
+	},
+	{
+		// Dev/build scripts are Node CommonJS/ESM tooling, not app source — require() is
+		// legit and one-off expression statements (Playwright chains) are fine here.
+		files: ['scripts/**'],
+		languageOptions: { globals: { ...globals.node } },
+		rules: {
+			'@typescript-eslint/no-require-imports': 'off',
+			'@typescript-eslint/no-unused-expressions': 'off'
 		}
 	}
 );

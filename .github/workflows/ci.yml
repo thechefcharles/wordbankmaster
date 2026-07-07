@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Format + type-check + build (gates); eslint (informational)
+    name: Lint + type-check + build (all gates)
     runs-on: ubuntu-latest
     env:
       # Build-time placeholders so vite build doesn't need real secrets in CI.
@@ -27,19 +27,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # HARD GATES — all clean as of the format/type-fix pass.
-      - name: Format check (prettier)
-        run: npx prettier --check .
+      # HARD GATES — all clean (dead CSS + unused vars removed; a11y ignores in place).
+      - name: Lint (prettier + eslint)
+        run: npm run lint
 
       - name: Type-check (svelte-check)
         run: npm run check
-
-      # INFORMATIONAL — eslint still flags ~183 unused-CSS selectors (risky to strip
-      # blindly — Svelte can't see dynamically-applied classes) + some unused vars.
-      # Reports without blocking; promote to a gate once the dead CSS is cleaned up.
-      - name: Lint (eslint, informational)
-        run: npx eslint .
-        continue-on-error: true
 
       - name: Build
         run: npm run build

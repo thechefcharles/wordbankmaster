@@ -80,7 +80,7 @@
 		await load();
 	});
 	$effect(() => {
-		scope;
+		void scope;
 		load();
 	});
 
@@ -159,7 +159,7 @@
 				</tr>
 			</thead>
 			<tbody>
-				{#each sortedRows as r, i}
+				{#each sortedRows as r}
 					<tr class={r.is_me ? 'me' : r._place <= 3 ? 'top' : ''}>
 						<td class="rank">{medal(r._place)}</td>
 						<td class="name">

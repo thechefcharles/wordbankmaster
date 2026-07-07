@@ -75,7 +75,7 @@
 		<p class="inv-msg">Loading…</p>
 	{:else if totalCount === 0}
 		<div class="inv-slots">
-			{#each Array(6) as _, i}
+			{#each Array(6) as _}
 				{#if addHref}<a class="inv-slot" href={addHref} aria-label="Get items in the Store">+</a>
 				{:else}<span class="inv-slot">+</span>{/if}
 			{/each}
