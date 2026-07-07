@@ -2,20 +2,30 @@
 import { chromium } from 'playwright';
 
 const COIN = 'file:///Users/admin/wordbankmaster/static/logo-coin.png';
-const WM   = 'file:///Users/admin/wordbankmaster/static/wordmark-slogan.png';
+const WM = 'file:///Users/admin/wordbankmaster/static/wordmark-slogan.png';
 
 // Subtle SVG noise texture (data URI) for "textured" options
-const noise = (op) => `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='${op}'/%3E%3C/svg%3E")`;
+const noise = (op) =>
+	`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='${op}'/%3E%3C/svg%3E")`;
 
 const variants = [
-  { name: '1 · Current Navy',     bg: `#0a0e14` },
-  { name: '2 · Onyx + Gold Glow', bg: `radial-gradient(120% 80% at 50% 0%, rgba(251,191,36,0.12), rgba(0,0,0,0) 55%), #0b0b0d` },
-  { name: '3 · Charcoal Gold',    bg: `radial-gradient(130% 90% at 50% 18%, #211a10, #0d0b08 70%)` },
-  { name: '4 · Espresso',         bg: `linear-gradient(180deg, #241a10, #100a06)` },
-  { name: '5 · Casino Felt',      bg: `radial-gradient(130% 90% at 50% 20%, #11402b, #06170f 72%)` },
-  { name: '6 · Burgundy Luxe',    bg: `radial-gradient(130% 90% at 50% 18%, #2a0f17, #0c0609 72%)` },
-  { name: '7 · Carbon Texture',   bg: `${noise(0.5)}, radial-gradient(130% 90% at 50% 12%, #181818, #090909 75%)` },
-  { name: '8 · Gold Spotlight',   bg: `radial-gradient(60% 38% at 50% 30%, rgba(251,191,36,0.22), rgba(0,0,0,0) 60%), #070707` },
+	{ name: '1 · Current Navy', bg: `#0a0e14` },
+	{
+		name: '2 · Onyx + Gold Glow',
+		bg: `radial-gradient(120% 80% at 50% 0%, rgba(251,191,36,0.12), rgba(0,0,0,0) 55%), #0b0b0d`
+	},
+	{ name: '3 · Charcoal Gold', bg: `radial-gradient(130% 90% at 50% 18%, #211a10, #0d0b08 70%)` },
+	{ name: '4 · Espresso', bg: `linear-gradient(180deg, #241a10, #100a06)` },
+	{ name: '5 · Casino Felt', bg: `radial-gradient(130% 90% at 50% 20%, #11402b, #06170f 72%)` },
+	{ name: '6 · Burgundy Luxe', bg: `radial-gradient(130% 90% at 50% 18%, #2a0f17, #0c0609 72%)` },
+	{
+		name: '7 · Carbon Texture',
+		bg: `${noise(0.5)}, radial-gradient(130% 90% at 50% 12%, #181818, #090909 75%)`
+	},
+	{
+		name: '8 · Gold Spotlight',
+		bg: `radial-gradient(60% 38% at 50% 30%, rgba(251,191,36,0.22), rgba(0,0,0,0) 60%), #070707`
+	}
 ];
 
 const page = (bg) => `<!doctype html><html><head><meta charset=utf8><style>
@@ -50,9 +60,9 @@ const b = await chromium.launch();
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
 const p = await ctx.newPage();
 for (let i = 0; i < variants.length; i++) {
-  await p.setContent(page(variants[i].bg), { waitUntil: 'networkidle' });
-  await p.waitForTimeout(250);
-  await p.screenshot({ path: `/tmp/bg-${i}.png` });
+	await p.setContent(page(variants[i].bg), { waitUntil: 'networkidle' });
+	await p.waitForTimeout(250);
+	await p.screenshot({ path: `/tmp/bg-${i}.png` });
 }
 await b.close();
-console.log('done', variants.map(v => v.name).join(' | '));
+console.log('done', variants.map((v) => v.name).join(' | '));

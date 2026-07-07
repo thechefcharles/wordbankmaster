@@ -19,19 +19,21 @@ import fs from 'node:fs';
 
 const { TEAM_ID, KEY_ID, CLIENT_ID, KEY_PATH } = process.env;
 if (!TEAM_ID || !KEY_ID || !CLIENT_ID || !KEY_PATH) {
-  console.error('Missing env. Need TEAM_ID, KEY_ID, CLIENT_ID, KEY_PATH. See the header of this file.');
-  process.exit(1);
+	console.error(
+		'Missing env. Need TEAM_ID, KEY_ID, CLIENT_ID, KEY_PATH. See the header of this file.'
+	);
+	process.exit(1);
 }
 
 const b64url = (buf) => Buffer.from(buf).toString('base64url');
 const now = Math.floor(Date.now() / 1000);
 const header = { alg: 'ES256', kid: KEY_ID };
 const payload = {
-  iss: TEAM_ID,
-  iat: now,
-  exp: now + 60 * 60 * 24 * 180, // ~6 months (Apple's max)
-  aud: 'https://appleid.apple.com',
-  sub: CLIENT_ID
+	iss: TEAM_ID,
+	iat: now,
+	exp: now + 60 * 60 * 24 * 180, // ~6 months (Apple's max)
+	aud: 'https://appleid.apple.com',
+	sub: CLIENT_ID
 };
 
 const signingInput = `${b64url(JSON.stringify(header))}.${b64url(JSON.stringify(payload))}`;
@@ -39,4 +41,6 @@ const key = crypto.createPrivateKey(fs.readFileSync(KEY_PATH));
 const sig = crypto.sign('sha256', Buffer.from(signingInput), { key, dsaEncoding: 'ieee-p1363' });
 
 console.log(`${signingInput}.${b64url(sig)}`);
-console.error('\n↑ Paste this into Supabase → Auth → Providers → Apple → "Secret Key (for OAuth)". Expires in ~6 months.');
+console.error(
+	'\n↑ Paste this into Supabase → Auth → Providers → Apple → "Secret Key (for OAuth)". Expires in ~6 months.'
+);

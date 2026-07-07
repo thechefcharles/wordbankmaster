@@ -1,30 +1,65 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>WordBank</title>
-  <style>
-    html, body { margin: 0; height: 100%; background: #0a0e14; color: #e6edf3;
-      font-family: -apple-system, system-ui, sans-serif; }
-    .wrap { height: 100%; display: flex; flex-direction: column; align-items: center;
-      justify-content: center; gap: 14px; text-align: center; padding: 24px; }
-    .mark { width: 76px; height: 76px; }
-    h1 { font-size: 1.4rem; margin: 0; letter-spacing: -0.02em; }
-    p { color: #8b98a9; margin: 0; font-size: 0.95rem; }
-    .spin { width: 26px; height: 26px; border: 3px solid rgba(163,230,53,0.25);
-      border-top-color: #a3e635; border-radius: 50%; animation: s 0.8s linear infinite; }
-    @keyframes s { to { transform: rotate(360deg); } }
-  </style>
-</head>
-<body>
-  <!-- Offline / load fallback. When online, Capacitor loads the live app via
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+		<title>WordBank</title>
+		<style>
+			html,
+			body {
+				margin: 0;
+				height: 100%;
+				background: #0a0e14;
+				color: #e6edf3;
+				font-family: -apple-system, system-ui, sans-serif;
+			}
+			.wrap {
+				height: 100%;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				gap: 14px;
+				text-align: center;
+				padding: 24px;
+			}
+			.mark {
+				width: 76px;
+				height: 76px;
+			}
+			h1 {
+				font-size: 1.4rem;
+				margin: 0;
+				letter-spacing: -0.02em;
+			}
+			p {
+				color: #8b98a9;
+				margin: 0;
+				font-size: 0.95rem;
+			}
+			.spin {
+				width: 26px;
+				height: 26px;
+				border: 3px solid rgba(163, 230, 53, 0.25);
+				border-top-color: #a3e635;
+				border-radius: 50%;
+				animation: s 0.8s linear infinite;
+			}
+			@keyframes s {
+				to {
+					transform: rotate(360deg);
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<!-- Offline / load fallback. When online, Capacitor loads the live app via
        server.url in capacitor.config.json. -->
-  <div class="wrap">
-    <img class="mark" src="https://wordbanksvelte.vercel.app/logo-mark.png" alt="WordBank" />
-    <h1>WordBank</h1>
-    <div class="spin"></div>
-    <p>Connect to the internet to play.</p>
-  </div>
-</body>
+		<div class="wrap">
+			<img class="mark" src="https://wordbanksvelte.vercel.app/logo-mark.png" alt="WordBank" />
+			<h1>WordBank</h1>
+			<div class="spin"></div>
+			<p>Connect to the internet to play.</p>
+		</div>
+	</body>
 </html>
