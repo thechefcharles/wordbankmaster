@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Build (gate) + lint/type-check (informational)
+    name: Format + type-check + build (gates); eslint (informational)
     runs-on: ubuntu-latest
     env:
       # Build-time placeholders so vite build doesn't need real secrets in CI.
@@ -21,24 +21,25 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22.x"
-          cache: "npm"
+          node-version: '22.x'
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      # Lint + type-check are INFORMATIONAL for now: the repo has ~100 files that
-      # predate `prettier --check` and a ~35-error svelte-check baseline (mixed
-      # Svelte 4/5 + JSDoc). They report status without failing the run; tighten to
-      # a hard gate once those are cleaned up.
-      - name: Lint (informational)
-        run: npm run lint
-        continue-on-error: true
+      # HARD GATES — all clean as of the format/type-fix pass.
+      - name: Format check (prettier)
+        run: npx prettier --check .
 
-      - name: Type-check (informational)
+      - name: Type-check (svelte-check)
         run: npm run check
+
+      # INFORMATIONAL — eslint still flags ~183 unused-CSS selectors (risky to strip
+      # blindly — Svelte can't see dynamically-applied classes) + some unused vars.
+      # Reports without blocking; promote to a gate once the dead CSS is cleaned up.
+      - name: Lint (eslint, informational)
+        run: npx eslint .
         continue-on-error: true
 
-      # Build is the hard gate — a broken build fails CI.
       - name: Build
         run: npm run build

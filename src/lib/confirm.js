@@ -7,14 +7,14 @@ export const confirmStore = writable(null);
 
 /** @param {{title:string, message?:string, confirmText?:string, cancelText?:string, danger?:boolean}} opts @returns {Promise<boolean>} */
 export function requireConfirm(opts) {
-  return new Promise((resolve) => {
-    confirmStore.set({
-      title: opts.title,
-      message: opts.message,
-      confirmText: opts.confirmText ?? 'Confirm',
-      cancelText: opts.cancelText ?? 'Cancel',
-      danger: opts.danger ?? false,
-      resolve
-    });
-  });
+	return new Promise((resolve) => {
+		confirmStore.set({
+			title: opts.title,
+			message: opts.message,
+			confirmText: opts.confirmText ?? 'Confirm',
+			cancelText: opts.cancelText ?? 'Cancel',
+			danger: opts.danger ?? false,
+			resolve
+		});
+	});
 }
