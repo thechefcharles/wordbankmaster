@@ -79,7 +79,11 @@
 
 	// Blitz spends TIME, not Cash — every reveal is a flat −3s.
 	$: isBlitzKb = $gameStore.gameMode === 'blitz';
-	// Effective per-letter prices after active discount / vowel_vision (server matches this):
+	// Cash Game scales every letter by the tier's stake multiplier (Micro ×1 … Gold ×20);
+	// 1 everywhere else. Server (climb_buy_letter) charges the same.
+	$: climbMult =
+		$gameStore.gameMode === 'climb' ? Number($gameStore.climbInfo?.stake ?? 1) || 1 : 1;
+	// Effective per-letter prices after active discount / vowel_vision / tier stake (server matches):
 	// daily uses the shared modifier.
 	$: effCosts = (() => {
 		let discount = false,
@@ -94,7 +98,7 @@
 			let c = letterCosts[k];
 			if (discount) c = Math.ceil(c * 0.75);
 			if (vowelHalf && 'AEIOU'.includes(k)) c = Math.ceil(c * 0.5);
-			out[k] = c;
+			out[k] = c * climbMult;
 		}
 		return out;
 	})();
