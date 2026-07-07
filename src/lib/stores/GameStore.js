@@ -1050,10 +1050,13 @@ export async function matchFold() {
 export function selectLetter(letter) {
 	gameStore.update(
 		/** @param {GameState} state */ (state) => {
-			// Cash Game scales letter cost by the tier stake multiplier (server matches).
-			const climbMult = state.gameMode === 'climb' ? Number(state.climbInfo?.stake ?? 1) || 1 : 1;
+			// Cash Game scales letter cost by the tier stake multiplier, and spends the per-puzzle
+			// BUDGET (not the accumulated Wallet); server matches both.
+			const isClimb = state.gameMode === 'climb';
+			const climbMult = isClimb ? Number(state.climbInfo?.stake ?? 1) || 1 : 1;
 			const cost = (LETTER_COSTS[letter] || 0) * climbMult;
-			if (state.bankroll < cost) {
+			const affordPool = isClimb ? Number(state.climbInfo?.budget_left ?? 0) : state.bankroll;
+			if (affordPool < cost) {
 				console.log(`Insufficient funds to purchase letter ${letter}`);
 				return state;
 			}

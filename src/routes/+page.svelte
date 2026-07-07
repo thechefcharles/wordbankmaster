@@ -481,7 +481,7 @@
 		_attTimer = setTimeout(() => gameStore.update((s) => ({ ...s, cashToast: null })), 4000);
 	}
 	$: isClimb = $gameStore.gameMode === 'climb';
-	$: climb = $gameStore.climbInfo; // { bounty, heat, spent, position, final_guess, cheapest, wrong_penalty, last_gain, state, pups_locked, equipped }
+	$: climb = $gameStore.climbInfo; // { wallet, bounty, budget_left, solve_reward, spent, heat, must_guess, cheapest, last_gain, state, run_solves, wiped, pups_locked, equipped }
 	// ⚡ Blitz — the live client clock counts down to blitzInfo.remaining_ms (server-authoritative);
 	// each action resyncs it. At 0 we call endBlitz() once.
 	$: isBlitz = $gameStore.gameMode === 'blitz';
@@ -536,15 +536,15 @@
 	// The doubled target payout (matches server: bounty ×2, then × heat, rounded).
 	$: donTarget =
 		isClimb && climb ? Math.round(((climb.bounty ?? 0) * 2 * (climb.heat ?? 100)) / 100) : 0;
-	// Climb live: Spent · Payout (bounty × heat, doubled while armed) · Net.
+	// Climb live (Accumulator): "Solve to Earn" = leftover budget × heat, banked into the
+	// Wallet on solve. Server-computed as solve_reward.
 	$: climbLive =
 		isClimb && climb && climb.state === 'active'
-			? (() => {
-					const m = climb.don_armed ? 2 : 1;
-					const pay = Math.round(((climb.bounty ?? 0) * m * (climb.heat ?? 100)) / 100);
-					const sp = climb.spent ?? 0;
-					return { spent: sp, payout: pay, net: pay - sp };
-				})()
+			? {
+					spent: climb.spent ?? 0,
+					payout: climb.solve_reward ?? 0,
+					net: climb.solve_reward ?? 0
+				}
 			: null;
 	// Challenge live: Spent of your ante budget — lowest spend wins (standard only).
 	$: matchLive =
@@ -2293,15 +2293,7 @@
 {#if loggedIn && hasInitialized && !showMainMenu && foldMode && gameActive}
 	<button class="giveup-btn" title="Give up" aria-label="Give up" on:click={confirmFold}>↪</button>
 {/if}
-<!-- ⏭️ Skip (top-right) — Cash Game only; resets heat. Hidden once Double-or-Nothing is armed (committed). -->
-{#if loggedIn && hasInitialized && !showMainMenu && isClimb && gameActive && !donArmed && climb?.state === 'active'}
-	<button
-		class="giveup-btn"
-		title="Skip this puzzle"
-		aria-label="Skip this puzzle"
-		on:click={confirmFold}>↪</button
-	>
-{/if}
+<!-- Skip retired in Cash Game V4 — Cash Out is the graceful bail. -->
 
 <!-- 💬 Match chat (1v1 + group challenges) — only inside a live match, never on the menu -->
 {#if isMatch && matchInfo && !showMainMenu}
@@ -3987,11 +3979,11 @@
 		<!-- 🎰 Cash Game (Climb) HUD — number-free so it feels random. Heat lives in the
          Solve-to-Earn box; power-ups live in the vault beside Solve. -->
 		{#if isClimb && climb}
-			{#if climb.final_guess && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
+			{#if climb.must_guess && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
 				<div class="climb-stuck">
 					<span class="cs-text"
-						>🎯 Final guess — can't afford another letter. Solve it, or Cash Out to bank your
-						Wallet. A wrong guess busts the run.</span
+						>🎯 Out of budget — you must guess now, or Cash Out to bank your Wallet. A wrong guess
+						wipes it.</span
 					>
 				</div>
 			{/if}
@@ -4351,6 +4343,7 @@
 							{(co.tier ?? '').charAt(0).toUpperCase() + (co.tier ?? '').slice(1)} run · {co.solves ??
 								0} solve{co.solves === 1 ? '' : 's'}
 						</p>
+						{#if co.phrase}<p class="result-sub">Answer: <b>{co.phrase}</b></p>{/if}
 						<div class="win-math">
 							<div class="wm-row">
 								<span>Banked</span><b>${(co.banked ?? 0).toLocaleString()}</b>
@@ -4367,9 +4360,9 @@
 							</div>
 						</div>
 						<p class="win-twist">
-							{((co.multiple_x100 ?? 0) / 100).toFixed(1)}× your buy-in · 🔥 peak ×{(
+							{((co.multiple_x100 ?? 0) / 100).toFixed(1)}× your ante · 🔥 peak ×{(
 								(co.heat ?? 100) / 100
-							).toFixed(1)} — banked to your Cash
+							).toFixed(1)} — banked to your Bank Account
 						</p>
 						<div class="result-actions">
 							<button
@@ -4431,13 +4424,18 @@
 							>
 						</div>
 					{:else if isClimb}
-						<!-- 💥 Busted — lost the buy-in -->
+						<!-- 💥 Wiped — a wrong guess emptied the Wallet -->
 						<div class="result-medal">💥</div>
-						<h2>Busted</h2>
+						<h2>Wiped Out</h2>
 						<p class="result-sub">The answer was {$gameStore.currentPhrase}</p>
 						<p class="arcade-gain">
-							You lost your ${(climb?.buy_in ?? 0).toLocaleString()} buy-in. The Daily always refills
-							your Cash — come back for another run.
+							{#if (climb?.wiped ?? 0) > 0}A wrong guess wiped your <b
+									>${(climb?.wiped ?? 0).toLocaleString()}</b
+								>
+								Wallet and your ${(climb?.buy_in ?? 0).toLocaleString()} ante.{:else}You lost your ${(
+									climb?.buy_in ?? 0
+								).toLocaleString()} ante.{/if} The Daily always refills your Bank Account — come back
+							for another run.
 						</p>
 						<div class="result-actions">
 							<button

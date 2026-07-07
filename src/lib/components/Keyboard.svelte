@@ -112,12 +112,18 @@
 	$: lockedLetters = ($gameStore.lockedLetters || {}) as LockedLetters;
 	$: incorrectLetters = ($gameStore.incorrectLetters || []) as string[];
 
+	// The pool letters are bought from: Cash Game spends the per-puzzle BUDGET (not the
+	// accumulated Wallet); every other mode spends the bankroll.
+	$: affordPool =
+		$gameStore.gameMode === 'climb'
+			? Number($gameStore.climbInfo?.budget_left ?? 0)
+			: $gameStore.bankroll;
 	// 🔹 Disable keys that are unaffordable or already marked incorrect (modifier-adjusted prices).
-	//    Blitz pays in TIME, not Cash, so letters are never gated by bankroll there.
+	//    Blitz pays in TIME, not Cash, so letters are never gated by budget there.
 	$: disabledKeys = Object.keys(letterCosts).filter((letter: string) =>
 		isBlitzKb
 			? incorrectLetters.includes(letter)
-			: (effCosts[letter] ?? 0) > $gameStore.bankroll || incorrectLetters.includes(letter)
+			: (effCosts[letter] ?? 0) > affordPool || incorrectLetters.includes(letter)
 	);
 
 	/**
