@@ -4349,7 +4349,10 @@
 						{@const co = cashoutResult}
 						{@const prof = co.profit ?? 0}
 						<div class="receipt">
-							<div class="rcpt-head">🏦 WORDBANK</div>
+							<div class="rcpt-brand">
+								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
+								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
+							</div>
 							<div class="rcpt-title">CASH OUT</div>
 							<div class="rcpt-meta">
 								{(co.tier ?? '').charAt(0).toUpperCase() + (co.tier ?? '').slice(1)} run · {co.solves ??
@@ -4357,7 +4360,7 @@
 							</div>
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line">
-								<span>Wallet banked</span><span>${(co.banked ?? 0).toLocaleString()}</span>
+								<span>Cash banked</span><span>${(co.banked ?? 0).toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
 								<span>Buy-in (ante)</span><span class="neg"
@@ -4411,7 +4414,10 @@
 						{@const walletAfter = Math.round(climb?.bankroll ?? 0)}
 						{@const walletBefore = walletAfter - payout}
 						<div class="receipt">
-							<div class="rcpt-head">🏦 WORDBANK</div>
+							<div class="rcpt-brand">
+								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
+								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
+							</div>
 							<div class="rcpt-title">CASH GAME</div>
 							<div class="rcpt-meta">
 								{(climb?.tier ?? '').charAt(0).toUpperCase() + (climb?.tier ?? '').slice(1)} · Puzzle
@@ -4434,7 +4440,7 @@
 								<span>SOLVE PAYOUT</span><span>+${payout.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
-								<span>👛 Wallet</span><span
+								<span>Cash</span><span
 									>${walletBefore.toLocaleString()} ▸ ${walletAfter.toLocaleString()}</span
 								>
 							</div>
@@ -4463,19 +4469,22 @@
 						{@const wiped = Math.round(climb?.wiped ?? 0)}
 						{@const ante = Math.round(climb?.buy_in ?? 0)}
 						<div class="receipt void">
-							<div class="rcpt-head">🏦 WORDBANK</div>
+							<div class="rcpt-brand">
+								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
+								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
+							</div>
 							<div class="rcpt-title void">⚠ VOID</div>
 							<div class="rcpt-meta">Wrong guess</div>
 							<div class="rcpt-rule"></div>
 							{#if wiped > 0}
 								<div class="rcpt-line">
-									<span>Wallet at risk</span><span>${wiped.toLocaleString()}</span>
+									<span>Cash at risk</span><span>${wiped.toLocaleString()}</span>
 								</div>
 								<div class="rcpt-line">
 									<span>Wrong guess</span><span class="neg">−${wiped.toLocaleString()}</span>
 								</div>
 								<div class="rcpt-rule double"></div>
-								<div class="rcpt-line total"><span>WALLET</span><span>$0</span></div>
+								<div class="rcpt-line total"><span>CASH</span><span>$0</span></div>
 							{/if}
 							<div class="rcpt-line">
 								<span>Buy-in lost</span><span class="neg">−${ante.toLocaleString()}</span>
@@ -8441,11 +8450,25 @@
 			linear-gradient(#000 0 0) top / 100% calc(100% - 7px) no-repeat,
 			radial-gradient(6px 7px at 6px 0, #0000 98%, #000) bottom left / 12px 7px repeat-x;
 	}
-	.rcpt-head {
-		text-align: center;
-		font-weight: 800;
-		font-size: 1.02rem;
-		letter-spacing: 0.14em;
+	.rcpt-brand {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 5px;
+		margin-bottom: 2px;
+	}
+	.rcpt-coin {
+		width: 40px;
+		height: 40px;
+		object-fit: contain;
+		filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+	}
+	.rcpt-mark {
+		width: 150px;
+		max-width: 72%;
+		height: auto;
+		/* the wordmark's silver half can wash out on cream — a hair of contrast/shadow keeps it crisp */
+		filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.28)) saturate(1.05) contrast(1.05);
 	}
 	.rcpt-title {
 		text-align: center;
