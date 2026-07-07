@@ -503,9 +503,7 @@
 		font-size: 0.9rem;
 		margin: 0.2rem 0 1rem;
 	}
-	.sub.top {
-		margin-top: 0;
-	}
+
 	.g-tabs {
 		display: flex;
 		gap: 8px;

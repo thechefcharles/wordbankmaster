@@ -414,10 +414,7 @@
 		cursor: pointer;
 		padding: 6px 0;
 	}
-	.tb-right {
-		display: flex;
-		gap: 6px;
-	}
+
 	.page-title {
 		font-family: var(--font-display);
 		font-size: 1.2rem;
@@ -440,24 +437,6 @@
 		padding: 2rem 0;
 	}
 
-	.head {
-		text-align: center;
-		margin: 8px 0 18px;
-	}
-	.coin {
-		width: 64px;
-		height: 64px;
-		margin: 0 auto 8px;
-		border-radius: 50%;
-		display: grid;
-		place-items: center;
-		font-family: var(--font-display);
-		font-weight: 800;
-		font-size: 1.6rem;
-		color: #3a2a00;
-		background: linear-gradient(135deg, var(--c, #fde047), #f59e0b);
-		box-shadow: 0 0 24px rgba(251, 191, 36, 0.4);
-	}
 	.uname {
 		font-family: var(--font-display);
 		font-weight: 700;
@@ -470,48 +449,6 @@
 		color: #fde047;
 		margin-top: 10px;
 		text-shadow: 0 0 18px rgba(251, 191, 36, 0.5);
-	}
-	.nw-sub {
-		font-size: 0.72rem;
-		color: var(--text-faint);
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-	}
-
-	.tabs {
-		display: flex;
-		gap: 8px;
-		margin: 0 0 16px;
-	}
-	.tab {
-		flex: 1;
-		padding: 9px 0;
-		border-radius: 12px;
-		border: 1px solid var(--border);
-		background: var(--surface);
-		color: var(--text-muted);
-		font-weight: 700;
-		font-size: 0.88rem;
-		cursor: pointer;
-	}
-	.tab.active {
-		background: linear-gradient(135deg, #fde047, #f59e0b);
-		color: #3a2a00;
-		border-color: transparent;
-	}
-	.tab-count {
-		display: inline-grid;
-		place-items: center;
-		min-width: 16px;
-		height: 16px;
-		padding: 0 4px;
-		margin-left: 3px;
-		border-radius: 999px;
-		background: #f43f5e;
-		color: #fff;
-		font-size: 0.62rem;
-		font-weight: 800;
-		vertical-align: middle;
 	}
 
 	.sec-title {
@@ -616,55 +553,11 @@
 	.ov-id .nw {
 		font-size: 1.7rem;
 	}
-	.ov-id .nw-sub {
-		font-size: 0.8rem;
-		color: var(--text-faint);
-		-webkit-text-fill-color: var(--text-faint);
-	}
-	.ov-people {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		margin-top: 6px;
-		padding: 7px 14px 7px 30px;
-		position: relative;
-		border-radius: 999px;
-		cursor: pointer;
-		font-weight: 800;
-		font-size: 0.85rem;
-		color: #3a2a00;
-		background: linear-gradient(135deg, #fde047, #f59e0b);
-		border: none;
-	}
-	.ov-people .vs-ppl {
-		position: absolute;
-		left: 11px;
-		font-size: 0.95rem;
-	}
-	.ov-people .vs-ppl-plus {
-		position: absolute;
-		left: 22px;
-		top: 6px;
-		font-size: 0.7rem;
-		font-weight: 900;
-	}
-	.ov-people:active {
-		transform: scale(0.97);
-	}
+
 	.ov-summary {
 		margin-bottom: 4px;
 	}
-	.sec-link {
-		float: right;
-		background: none;
-		border: none;
-		color: var(--brand-2);
-		font-weight: 700;
-		font-size: 0.72rem;
-		cursor: pointer;
-		text-transform: none;
-		letter-spacing: 0;
-	}
+
 	.nw-btn {
 		background: none;
 		border: none;
@@ -726,20 +619,7 @@
 		gap: 8px;
 		margin-top: 16px;
 	}
-	.ov-count {
-		margin-left: auto;
-		margin-right: 8px;
-		min-width: 20px;
-		height: 20px;
-		display: inline-grid;
-		place-items: center;
-		padding: 0 5px;
-		border-radius: 999px;
-		background: #dc2626;
-		color: #fff;
-		font-size: 0.72rem;
-		font-weight: 800;
-	}
+
 	.ov-link {
 		display: flex;
 		justify-content: space-between;

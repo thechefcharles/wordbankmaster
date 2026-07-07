@@ -18,14 +18,7 @@
 		margin: 0 auto;
 		padding: 16px 14px 60px;
 	}
-	.back-btn {
-		background: none;
-		border: none;
-		color: var(--text-muted);
-		font-size: 0.92rem;
-		cursor: pointer;
-		padding: 6px 0;
-	}
+
 	h1 {
 		font-family: var(--font-display);
 		font-size: 1.5rem;

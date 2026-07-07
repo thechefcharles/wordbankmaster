@@ -115,12 +115,7 @@
 		opacity: 1;
 		transform: scale(1);
 	}
-	.reveal-label {
-		font-size: 0.85rem;
-		letter-spacing: 0.18em;
-		text-transform: uppercase;
-		color: #b9962f;
-	}
+
 	.reveal-amount {
 		font-family: 'Orbitron', var(--font-display);
 		font-weight: 800;
@@ -130,12 +125,7 @@
 			0 0 18px rgba(251, 191, 36, 0.7),
 			0 0 40px rgba(251, 191, 36, 0.4);
 	}
-	.reveal-go {
-		margin-top: 1rem;
-		font-size: 0.82rem;
-		color: var(--text-faint);
-		animation: pulse 1.4s ease-in-out infinite;
-	}
+
 	@keyframes pulse {
 		0%,
 		100% {
