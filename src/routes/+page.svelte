@@ -3892,8 +3892,12 @@
 					showObjectiveFor($gameStore.gameMode, true);
 				}}
 			>
-				<span class="mp-emoji">{modeLabel.emoji}</span>{modeLabel.name}<span class="mp-info">ⓘ</span
-				>
+				<span class="mp-emoji">{modeLabel.emoji}</span
+				>{modeLabel.name}{#if isClimb && climb?.buy_in}<span class="mp-sub"
+						>· {(climb.tier ?? '').charAt(0).toUpperCase() + (climb.tier ?? '').slice(1)} · ${Math.round(
+							climb.buy_in ?? 0
+						).toLocaleString()}</span
+					>{/if}<span class="mp-info">ⓘ</span>
 			</button>
 		{/if}
 
@@ -4400,6 +4404,7 @@
 								<div class="rcpt-line answer"><span>Answer</span><span>{co.phrase}</span></div>
 							{/if}
 							<div class="rcpt-foot">✓ Deposited to your Available Balance</div>
+							<div class="rcpt-thanks">Thank you for banking with WordBank</div>
 						</div>
 						<div class="result-actions">
 							<button
@@ -4515,7 +4520,7 @@
 							<div class="rcpt-line answer">
 								<span>Answer</span><span>{$gameStore.currentPhrase}</span>
 							</div>
-							<div class="rcpt-foot">The Daily refills your Available Balance</div>
+							<div class="rcpt-thanks">Thank you for banking with WordBank</div>
 						</div>
 						<div class="result-actions">
 							<button
@@ -8167,6 +8172,15 @@
 		opacity: 0.6;
 		letter-spacing: 0;
 	}
+	/* subtle tier · principal appended to the Cash Game pill */
+	.mp-sub {
+		font-weight: 600;
+		font-size: 0.66rem;
+		letter-spacing: 0.02em;
+		text-transform: none;
+		opacity: 0.62;
+		color: var(--text-muted, #cbd5e1);
+	}
 
 	.game-logo {
 		display: block;
@@ -8558,6 +8572,15 @@
 		color: #6b6455;
 		margin-top: 12px;
 		letter-spacing: 0.03em;
+	}
+	.rcpt-thanks {
+		text-align: center;
+		font-family: 'Courier New', 'Courier', ui-monospace, monospace;
+		font-size: 0.72rem;
+		font-style: italic;
+		color: #4a4636;
+		margin-top: 12px;
+		letter-spacing: 0.02em;
 	}
 
 	.win-math {
