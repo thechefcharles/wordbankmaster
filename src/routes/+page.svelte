@@ -337,6 +337,7 @@
 			getMyUsername()
 				.then((u) => {
 					needsUsername = !u;
+					myUsername = u ?? '';
 				})
 				.catch(() => {});
 
@@ -485,6 +486,35 @@
 	}
 	$: isClimb = $gameStore.gameMode === 'climb';
 	$: climb = $gameStore.climbInfo; // { wallet, bounty, budget_left, solve_reward, spent, heat, must_guess, cheapest, last_gain, state, run_solves, wiped, pups_locked, equipped }
+
+	// 🧾 Bank-receipt meta — a stable masked account number derived from the user id
+	// (deterministic, no DB), the account holder, and a timestamp captured when a
+	// result slip opens so the printed DATE/TIME stays fixed while it's on screen.
+	let myUsername = '';
+	$: acctNo = (() => {
+		const id = $user?.id ?? '';
+		let h = 5381;
+		for (let i = 0; i < id.length; i++) h = ((h << 5) + h + id.charCodeAt(i)) >>> 0;
+		return String(h % 10000).padStart(4, '0');
+	})();
+	/** @type {Date|null} */
+	let receiptStamp = null;
+	$: if (showResultModal && !receiptStamp) receiptStamp = new Date();
+	$: if (!showResultModal && receiptStamp) receiptStamp = null;
+	$: rcptDate = receiptStamp
+		? `${String(receiptStamp.getMonth() + 1).padStart(2, '0')}/${String(
+				receiptStamp.getDate()
+			).padStart(2, '0')}/${String(receiptStamp.getFullYear()).slice(2)}`
+		: '';
+	$: rcptTime = receiptStamp
+		? (() => {
+				let h = receiptStamp.getHours();
+				const m = String(receiptStamp.getMinutes()).padStart(2, '0');
+				const ap = h < 12 ? 'AM' : 'PM';
+				h = h % 12 || 12;
+				return `${h}:${m} ${ap}`;
+			})()
+		: '';
 	// ⚡ Blitz — the live client clock counts down to blitzInfo.remaining_ms (server-authoritative);
 	// each action resyncs it. At 0 we call endBlitz() once.
 	$: isBlitz = $gameStore.gameMode === 'blitz';
@@ -4381,9 +4411,18 @@
 								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
 							</div>
 							<div class="rcpt-title">DEPOSIT SLIP</div>
-							<div class="rcpt-meta">
-								{(co.tier ?? '').charAt(0).toUpperCase() + (co.tier ?? '').slice(1)} · {co.solves ??
-									0} solve{co.solves === 1 ? '' : 's'}
+							<div class="rcpt-acct">WORDBANK CHECKING</div>
+							<div class="rcpt-sub">
+								ACCT ·········{acctNo}{#if myUsername}
+									· @{myUsername}{/if}
+							</div>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-info">
+								<div class="ri-row"><span>{rcptDate}</span><span>{rcptTime}</span></div>
+								<div class="ri-row">
+									<span>{(co.tier ?? '').charAt(0).toUpperCase() + (co.tier ?? '').slice(1)}</span
+									><span>{co.solves ?? 0} solve{co.solves === 1 ? '' : 's'}</span>
+								</div>
 							</div>
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line">
@@ -4407,7 +4446,12 @@
 								<div class="rcpt-rule"></div>
 								<div class="rcpt-line answer"><span>Answer</span><span>{co.phrase}</span></div>
 							{/if}
-							<div class="rcpt-foot">✓ Deposited to your Available Balance</div>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-line balance">
+								<span>AVAILABLE BALANCE</span><span
+									>${Math.round(menuBank ?? 0).toLocaleString()}</span
+								>
+							</div>
 							<div class="rcpt-thanks">Thank you for banking with WordBank</div>
 						</div>
 						<div class="result-actions">
@@ -4446,9 +4490,20 @@
 								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
 							</div>
 							<div class="rcpt-title">TRANSACTION</div>
-							<div class="rcpt-meta">
-								{(climb?.tier ?? '').charAt(0).toUpperCase() + (climb?.tier ?? '').slice(1)} · Puzzle
-								#{climb?.position ?? 1}
+							<div class="rcpt-acct">WORDBANK CHECKING</div>
+							<div class="rcpt-sub">
+								ACCT ·········{acctNo}{#if myUsername}
+									· @{myUsername}{/if}
+							</div>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-info">
+								<div class="ri-row"><span>{rcptDate}</span><span>{rcptTime}</span></div>
+								<div class="ri-row">
+									<span
+										>{(climb?.tier ?? '').charAt(0).toUpperCase() +
+											(climb?.tier ?? '').slice(1)}</span
+									><span>TRANS #{String(climb?.position ?? 1).padStart(4, '0')}</span>
+								</div>
 							</div>
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line">
@@ -4475,6 +4530,13 @@
 									>${pendBefore.toLocaleString()} ▸ ${pendAfter.toLocaleString()}</span
 								>
 							</div>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-line balance">
+								<span>AVAILABLE BALANCE</span><span
+									>${Math.round(menuBank ?? 0).toLocaleString()}</span
+								>
+							</div>
+							<div class="rcpt-foot">Pending Deposit is at risk until you Deposit it.</div>
 						</div>
 						<div class="result-actions">
 							<button
@@ -4512,7 +4574,21 @@
 								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
 							</div>
 							<div class="rcpt-title void">⚠ VOID</div>
-							<div class="rcpt-meta">Wrong guess</div>
+							<div class="rcpt-acct">WORDBANK CHECKING</div>
+							<div class="rcpt-sub">
+								ACCT ·········{acctNo}{#if myUsername}
+									· @{myUsername}{/if}
+							</div>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-info">
+								<div class="ri-row"><span>{rcptDate}</span><span>{rcptTime}</span></div>
+								<div class="ri-row">
+									<span
+										>{(climb?.tier ?? '').charAt(0).toUpperCase() +
+											(climb?.tier ?? '').slice(1)}</span
+									><span>WRONG GUESS</span>
+								</div>
+							</div>
 							<div class="rcpt-rule"></div>
 							{#if wiped > 0}
 								<div class="rcpt-line">
@@ -4530,6 +4606,12 @@
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line answer">
 								<span>Answer</span><span>{$gameStore.currentPhrase}</span>
+							</div>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-line balance">
+								<span>AVAILABLE BALANCE</span><span
+									>${Math.round(menuBank ?? 0).toLocaleString()}</span
+								>
 							</div>
 							<div class="rcpt-thanks">Thank you for banking with WordBank</div>
 						</div>
@@ -8586,11 +8668,38 @@
 	.rcpt-title.void {
 		color: #b91c1c;
 	}
-	.rcpt-meta {
+	/* 🏦 ATM-slip account header + meta rows */
+	.rcpt-acct {
 		text-align: center;
-		font-size: 0.72rem;
+		font-size: 0.74rem;
+		font-weight: 700;
+		letter-spacing: 0.12em;
+		color: #23201a;
+		margin: 5px 0 1px;
+	}
+	.rcpt-sub {
+		text-align: center;
+		font-size: 0.68rem;
+		letter-spacing: 0.04em;
 		color: #6b6455;
-		margin: 3px 0 6px;
+	}
+	.rcpt-info {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+	.rcpt-info .ri-row {
+		display: flex;
+		justify-content: space-between;
+		gap: 12px;
+		font-size: 0.7rem;
+		letter-spacing: 0.03em;
+		color: #6b6455;
+		font-variant-numeric: tabular-nums;
+	}
+	.rcpt-line.balance {
+		font-weight: 800;
+		letter-spacing: 0.02em;
 	}
 	.rcpt-rule {
 		border-top: 1px dashed #b3a88f;
