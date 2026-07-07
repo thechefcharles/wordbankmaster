@@ -2460,7 +2460,7 @@
 			<button class="modal-x" on:click={() => (showBank = false)} aria-label="Close">✕</button>
 			<p class="bm-label">💰 Available Balance</p>
 			<div class="info-big">{fmtCash(bankData?.bank ?? netWorth ?? 0)}</div>
-			<p class="info-sub">Your Bank Account — this is your score</p>
+			<p class="info-sub">Your Available Balance — this is your score</p>
 			<!-- 🦈 Borrow / Repay, inline -->
 			<LoanPanel bank={bankData} on:changed={reloadBank} />
 			{#if bankData}
@@ -2481,7 +2481,7 @@
 							</div>
 						{/each}
 					</div>
-					<button class="bm-fullledger" on:click={() => goto('/bank')}>See full ledger →</button>
+					<button class="bm-fullledger" on:click={() => goto('/bank')}>See full Statement →</button>
 				{/if}
 			{/if}
 			<button class="info-close" on:click={() => (showBank = false)}>Back to game</button>
@@ -4104,41 +4104,6 @@
 					class:ante-empty={isMatch && matchLeft <= 0}
 					class:count-pop={introCountPop}
 				>
-					{#if $gameStore.gameMode === 'daily'}
-						<button
-							class="bp-mult-badge"
-							title="How your multiplier works"
-							on:click={() => {
-								fx('tap');
-								dailyInfo = 'mult';
-							}}>×{Number($gameStore.bountyMult ?? 1).toFixed(1)}</button
-						>
-						<button
-							class="bp-winstreak"
-							title="Win streak"
-							on:click={() => {
-								fx('tap');
-								dailyInfo = 'streak';
-							}}>🏆 {dailyStatus?.win_streak ?? 0}</button
-						>
-					{:else if isClimb}
-						<button
-							class="bp-mult-badge"
-							title="Yield — your return rate, climbs with each solve"
-							on:click={() => {
-								fx('tap');
-								climbInfo = 'heat';
-							}}>📈 +{climbYield}%</button
-						>
-						<button
-							class="bp-winstreak"
-							title="Win streak"
-							on:click={() => {
-								fx('tap');
-								climbInfo = 'streak';
-							}}>🏆 {climbStreak}</button
-						>
-					{/if}
 					<span class="bp-label"
 						>{isMatch
 							? matchLeft > 0
@@ -4150,44 +4115,90 @@
 									? 'Solve → Credit'
 									: '⚠️ You’re losing money'}</span
 					>
-					{#if $gameStore.gameMode === 'daily'}
-						<button
-							class="bp-amount bp-amount-btn"
-							title="How this is calculated"
-							on:click={() => {
-								fx('tap');
-								dailyInfo = 'bounty';
-							}}
-							>{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(
-								Math.round($tweenNet)
-							).toLocaleString()}</button
-						>
-					{:else if isClimb}
-						<button
-							class="bp-amount bp-amount-btn"
-							title="How this is calculated"
-							on:click={() => {
-								fx('tap');
-								climbInfo = 'earn';
-							}}
-							>{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(
-								Math.round($tweenNet)
-							).toLocaleString()}</button
-						>
-					{:else if isMatch}
-						<button
-							class="bp-amount bp-amount-btn"
-							title="What is this?"
-							on:click={() => {
-								fx('tap');
-								showAnteInfo = true;
-							}}>${Math.max(0, Math.round($tweenNet)).toLocaleString()}</button
-						>
-					{:else}
-						<span class="bp-amount"
-							>{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(Math.round($tweenNet)).toLocaleString()}</span
-						>
-					{/if}
+					<div class="bp-row">
+						{#if $gameStore.gameMode === 'daily'}
+							<button
+								class="bp-mult-badge"
+								title="How your multiplier works"
+								on:click={() => {
+									fx('tap');
+									dailyInfo = 'mult';
+								}}>×{Number($gameStore.bountyMult ?? 1).toFixed(1)}</button
+							>
+						{:else if isClimb}
+							<button
+								class="bp-mult-badge"
+								title="Yield — your return rate, climbs with each solve"
+								on:click={() => {
+									fx('tap');
+									climbInfo = 'heat';
+								}}>📈 +{climbYield}%</button
+							>
+						{:else}
+							<span class="bp-badge-spacer"></span>
+						{/if}
+						{#if $gameStore.gameMode === 'daily'}
+							<button
+								class="bp-amount bp-amount-btn"
+								title="How this is calculated"
+								on:click={() => {
+									fx('tap');
+									dailyInfo = 'bounty';
+								}}
+								>{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(
+									Math.round($tweenNet)
+								).toLocaleString()}</button
+							>
+						{:else if isClimb}
+							<button
+								class="bp-amount bp-amount-btn"
+								title="How this is calculated"
+								on:click={() => {
+									fx('tap');
+									climbInfo = 'earn';
+								}}
+								>{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(
+									Math.round($tweenNet)
+								).toLocaleString()}</button
+							>
+						{:else if isMatch}
+							<button
+								class="bp-amount bp-amount-btn"
+								title="What is this?"
+								on:click={() => {
+									fx('tap');
+									showAnteInfo = true;
+								}}>${Math.max(0, Math.round($tweenNet)).toLocaleString()}</button
+							>
+						{:else}
+							<span class="bp-amount"
+								>{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(
+									Math.round($tweenNet)
+								).toLocaleString()}</span
+							>
+						{/if}
+						{#if $gameStore.gameMode === 'daily'}
+							<button
+								class="bp-winstreak"
+								title="Win streak"
+								on:click={() => {
+									fx('tap');
+									dailyInfo = 'streak';
+								}}>🏆 {dailyStatus?.win_streak ?? 0}</button
+							>
+						{:else if isClimb}
+							<button
+								class="bp-winstreak"
+								title="Deposit streak"
+								on:click={() => {
+									fx('tap');
+									climbInfo = 'streak';
+								}}>🏆 {climbStreak}</button
+							>
+						{:else}
+							<span class="bp-badge-spacer"></span>
+						{/if}
+					</div>
 					{#each spendFloaters as f (f.id)}<span class="spend-float">{f.text}</span>{/each}
 				</div>
 				{#if isMatch && matchLive}
@@ -7502,14 +7513,23 @@
 	}
 
 	/* lit gold bounty multiplier badge (left of the bounty) — ×1.0 today, boostable later */
+	/* badge · amount · badge row — a 3-col grid keeps the amount dead-centered and clear */
+	.bp-row {
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
+		width: 100%;
+		gap: 8px;
+		margin-top: 2px;
+	}
+	.bp-badge-spacer {
+		display: block;
+	}
 	.bp-mult-badge {
-		position: absolute;
-		left: 12px;
-		top: 50%;
-		transform: translateY(-50%);
+		justify-self: start;
 		font-family: 'Orbitron', var(--font-display);
 		font-weight: 800;
-		font-size: 1.05rem;
+		font-size: 0.9rem;
 		line-height: 1;
 		padding: 5px 9px;
 		border-radius: 9px;
@@ -7523,18 +7543,15 @@
 			inset 0 -2px 3px rgba(120, 80, 0, 0.35);
 	}
 	.bp-mult-badge:active {
-		transform: translateY(-50%) scale(0.94);
+		transform: scale(0.94);
 	}
 	/* 🏆 win streak — mirror of the multiplier badge, on the right of the bounty (boosts mult) */
 	.bp-winstreak {
-		position: absolute;
-		right: 12px;
-		top: 50%;
-		transform: translateY(-50%);
+		justify-self: end;
 		cursor: pointer;
 		font-family: 'Orbitron', var(--font-display);
 		font-weight: 800;
-		font-size: 0.95rem;
+		font-size: 0.9rem;
 		line-height: 1;
 		padding: 5px 9px;
 		border-radius: 9px;
@@ -7546,7 +7563,7 @@
 			inset 0 1px 0 rgba(255, 255, 255, 0.5);
 	}
 	.bp-winstreak:active {
-		transform: translateY(-50%) scale(0.94);
+		transform: scale(0.94);
 	}
 	/* ℹ️ Daily explainer modal (multiplier / Solve-to-Earn breakdown) */
 	.info-overlay {
