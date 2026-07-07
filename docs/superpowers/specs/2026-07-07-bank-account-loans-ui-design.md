@@ -14,10 +14,10 @@ No DB changes — the loan RPCs (`take_loan`, `repay_loan`, `get_bank`) already 
 
 ## Naming
 
-| Concept | Old | New |
-|---|---|---|
-| Persistent money / net worth | "Cash" 💰 | **Bank Account** 💰 |
-| Cash Game run number | "Stack" 🪙 | **Wallet** 👛 |
+| Concept                      | Old        | New                 |
+| ---------------------------- | ---------- | ------------------- |
+| Persistent money / net worth | "Cash" 💰  | **Bank Account** 💰 |
+| Cash Game run number         | "Stack" 🪙 | **Wallet** 👛       |
 
 Mental model: your **Bank Account** is safe savings; you move money into a **Wallet** to
 gamble in Cash Game; cashing out drops it back into your Bank Account. The Challenge ante
@@ -44,6 +44,7 @@ awkward "Not enough in your Bank Account" phrasing — those stay "Not enough Ca
 ## Buy-in wall → inline borrow
 
 When starting a Cash Game / challenge with too little Bank Account:
+
 - Compute `shortfall = buy_in − bank`.
 - If `shortfall > loan_cap` → block with "You can only borrow up to $X" (can't cover it).
 - Else prompt: shows shortfall, pre-fills `borrow = shortfall` (fee = 25%), `requirePin`,
