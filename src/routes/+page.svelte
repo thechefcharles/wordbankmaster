@@ -3993,18 +3993,22 @@
          Solve-to-Earn box; power-ups live in the vault beside Solve. -->
 		{#if isClimb && climb}
 			{#if climb.must_guess && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
-				<div class="climb-stuck">
+				<div class="bank-notif">
+					<div class="bn-head">
+						<span class="bn-app">🏦 WordBank</span><span class="bn-time">now</span>
+					</div>
+					<div class="bn-title">Cash Advance depleted</div>
 					{#if (climb.wallet ?? climb.bankroll ?? 0) > 0}
-						<span class="cs-text"
-							>🎯 Cash Advance spent — guess now, or Deposit your ${Math.round(
+						<div class="bn-body">
+							Solve to credit your account, or Deposit your ${Math.round(
 								climb.wallet ?? climb.bankroll ?? 0
-							).toLocaleString()} to bank it. A wrong guess VOIDs it.</span
-						>
+							).toLocaleString()} now to bank it. A wrong guess voids it.
+						</div>
 					{:else}
-						<span class="cs-text"
-							>🎯 Cash Advance spent — you must guess. Nothing's banked yet, so a wrong guess ends
-							the run and loses your Principal.</span
-						>
+						<div class="bn-body">
+							Solve to credit your account. A wrong guess voids the session and forfeits your
+							Principal.
+						</div>
 					{/if}
 				</div>
 			{/if}
@@ -4945,22 +4949,48 @@
 		white-space: nowrap;
 	}
 
-	.climb-stuck {
+	/* 🔔 Bank-app style push notification (out-of-Cash-Advance alert) */
+	.bank-notif {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: 3px;
 		width: 100%;
 		max-width: 360px;
 		margin: 0 auto 12px;
-		padding: 0.8rem;
-		border: 1px solid rgba(248, 113, 113, 0.45);
-		border-radius: 14px;
-		background: rgba(248, 113, 113, 0.08);
-		text-align: center;
+		padding: 11px 15px 13px;
+		border-radius: 16px;
+		border: 1px solid rgba(248, 113, 113, 0.32);
+		background: linear-gradient(180deg, rgba(32, 22, 24, 0.92), rgba(24, 17, 19, 0.92));
+		box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+		text-align: left;
 	}
-	.cs-text {
-		font-size: 0.82rem;
-		color: #fca5a5;
+	.bn-head {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 0.62rem;
+		font-weight: 800;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: #9a8f8f;
+	}
+	.bn-time {
+		margin-left: auto;
+		font-weight: 600;
+		letter-spacing: 0;
+		text-transform: none;
+		opacity: 0.75;
+	}
+	.bn-title {
+		font-weight: 800;
+		font-size: 0.9rem;
+		color: #fda4af;
+		letter-spacing: 0.01em;
+	}
+	.bn-body {
+		font-size: 0.78rem;
+		line-height: 1.35;
+		color: #d8cccc;
 	}
 
 	/* 🏦 Cash Out button (during a run) */
