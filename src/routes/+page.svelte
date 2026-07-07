@@ -651,11 +651,11 @@
 			daily_reward: 'Daily reward',
 			attendance: 'Daily attendance reward',
 			makeup_reward: 'Make-up Daily',
-			cashgame_buyin: 'Cash Game buy-in',
-			cashgame_cashout: 'Cash Game cash-out',
-			climb_bounty: 'Cash Game bounty',
+			cashgame_buyin: 'Cash Game invest',
+			cashgame_cashout: 'Cash Game deposit',
+			climb_bounty: 'Cash Game credit',
 			climb_letter: 'Cash Game letter',
-			blitz_buyin: 'Blitz buy-in',
+			blitz_buyin: 'Blitz entry',
 			blitz_payout: 'Blitz payout',
 			challenge_payout: 'Challenge payout',
 			cosmetic_buy: 'Store purchase',
@@ -1071,7 +1071,6 @@
 		matchExpiredFired = true;
 		await matchTimeoutCheck();
 	}
-	$: climbHeat = ((climb?.heat ?? 100) / 100).toFixed(1);
 	// Cash Game "Yield" = heat expressed as a % gain (heat ×1.3 → +30%).
 	$: climbYield = Math.round((climb?.heat ?? 100) - 100);
 	// Heat IS the Cash Game win streak: each solve +0.1× (cap ×2.0), reset to ×1.0 when stuck.
@@ -2562,7 +2561,7 @@
 				<h3 class="info-title">Bounty Multiplier</h3>
 				<p class="info-sub">Everything you can earn from this puzzle is multiplied by this.</p>
 				<div class="info-rows">
-					<div class="info-row"><span>Base</span><b>×1.0</b></div>
+					<div class="info-row"><span>Base</span><b>+0%</b></div>
 					{#if dlStreakBonus > 0}<div class="info-row">
 							<span>🏆 Win streak ({dlWinStreak} in a row)</span><b class="pos"
 								>+{dlStreakBonus.toFixed(1)}</b
@@ -2579,7 +2578,7 @@
 				<p class="info-note">
 					Grows with your <button
 						class="info-inline"
-						on:click|stopPropagation={() => (dailyInfo = 'streak')}>win streak</button
+						on:click|stopPropagation={() => (dailyInfo = 'streak')}>deposit streak</button
 					>
 					(<b>+0.1×</b>/solve, up to <b>×1.5</b>). Each wrong guess costs <b>−0.2×</b> (never below ×1.0).
 				</p>
@@ -2591,7 +2590,7 @@
 				<p class="info-note">A different special each weekday — same for everyone.</p>
 			{:else if dailyInfo === 'streak'}
 				<div class="info-big">🏆 {dlWinStreak}</div>
-				<h3 class="info-title">Win Streak</h3>
+				<h3 class="info-title">Deposit Streak</h3>
 				<p class="info-sub">Daily puzzles you've solved in a row.</p>
 				<div class="info-rows">
 					<div class="info-row"><span>Solve today's Daily</span><b class="pos">+1</b></div>
@@ -2649,57 +2648,59 @@
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (climbInfo = null)} aria-label="Close">✕</button>
 			{#if climbInfo === 'heat'}
-				<div class="info-big">🔥 ×{climbHeat}</div>
-				<h3 class="info-title">Heat — your multiplier</h3>
-				<p class="info-sub">Everything you earn from a puzzle is multiplied by your heat.</p>
+				<div class="info-big">📈 +{climbYield}%</div>
+				<h3 class="info-title">Yield — your return rate</h3>
+				<p class="info-sub">Everything you earn from a puzzle is boosted by your Yield rate.</p>
 				<div class="info-rows">
-					<div class="info-row"><span>Base</span><b>×1.0</b></div>
-					<div class="info-row"><span>Each solve in a row</span><b class="pos">+0.1×</b></div>
-					<div class="info-row"><span>Maxes out at</span><b>×2.0</b></div>
-					<div class="info-row total"><span>Your heat</span><b>×{climbHeat}</b></div>
+					<div class="info-row"><span>Base</span><b>+0%</b></div>
+					<div class="info-row"><span>Each solve in a row</span><b class="pos">+10%</b></div>
+					<div class="info-row">
+						<span>Maxes out at</span><b>+{(climb?.heat_cap ?? 200) - 100}%</b>
+					</div>
+					<div class="info-row total"><span>Your Yield</span><b>+{climbYield}%</b></div>
 				</div>
 				<p class="info-note">
-					Heat climbs with your <button
+					Yield climbs with your <button
 						class="info-inline"
-						on:click|stopPropagation={() => (climbInfo = 'streak')}>win streak</button
-					> and resets to ×1.0 if you bust or skip.
+						on:click|stopPropagation={() => (climbInfo = 'streak')}>deposit streak</button
+					> and resets to +0% on a VOID.
 				</p>
 			{:else if climbInfo === 'streak'}
 				<div class="info-big">🏆 {climbStreak}</div>
-				<h3 class="info-title">Win Streak</h3>
+				<h3 class="info-title">Deposit Streak</h3>
 				<p class="info-sub">Cash Game puzzles you've solved in a row.</p>
 				<div class="info-rows">
 					<div class="info-row"><span>Solve a puzzle</span><b class="pos">+1</b></div>
-					<div class="info-row"><span>Bust or skip</span><b class="neg">back to 0</b></div>
+					<div class="info-row"><span>VOID</span><b class="neg">back to 0</b></div>
 				</div>
 				<p class="info-note">
 					Powers your <button
 						class="info-inline"
-						on:click|stopPropagation={() => (climbInfo = 'heat')}>heat</button
+						on:click|stopPropagation={() => (climbInfo = 'heat')}>Yield</button
 					>
-					— <b>+0.1×</b> per win.
+					— <b>+10%</b> per solve.
 				</p>
 			{:else}
 				<div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
-				<h3 class="info-title">Solve to Earn</h3>
-				<p class="info-sub">What lands in your Wallet if you solve right now.</p>
+				<h3 class="info-title">Solve → Credit</h3>
+				<p class="info-sub">What lands in your Pending Deposit if you solve right now.</p>
 				<div class="info-rows">
 					<div class="info-row">
-						<span>🏆 Prize left <small>(spend it on letters)</small></span><b
+						<span>Cash Advance left <small>(spend on letters)</small></span><b
 							>${Math.round(climb?.budget_left ?? 0).toLocaleString()}</b
 						>
 					</div>
 					<div class="info-row">
-						<span>🔥 Heat</span><b class="pos">×{climbHeat}</b>
+						<span>📈 Yield</span><b class="pos">+{climbYield}%</b>
 					</div>
 					<div class="info-row total">
-						<span>Solve to bank</span><b class="green">${(climbLive?.net ?? 0).toLocaleString()}</b>
+						<span>Credit</span><b class="green">${(climbLive?.net ?? 0).toLocaleString()}</b>
 					</div>
 				</div>
 				<p class="info-note">
-					Each puzzle's <b>Prize</b> shrinks as you buy letters — solve to keep what's left ×
+					Each puzzle's <b>Cash Advance</b> shrinks as you buy letters — solve to keep what's left ×
 					<button class="info-inline" on:click|stopPropagation={() => (climbInfo = 'heat')}
-						>heat</button
+						>Yield</button
 					>. Reveal less, keep more.
 				</p>
 			{/if}
@@ -3311,8 +3312,8 @@
 					<button class="close-btn" on:click={() => (showTierSelect = false)}>❌</button>
 					<h2>🎰 Cash Game</h2>
 					<p class="cat-sub">
-						Stake a buy-in, grow the run, cash out — or bust. Higher tiers = bigger stakes, thinner
-						margins, bigger jackpots.
+						Invest your Principal, grow it, Deposit — or VOID. Higher tiers put more on the table
+						for a bigger Yield.
 					</p>
 					<div class="tier-grid">
 						{#each cgMeta?.tiers ?? [] as t}
@@ -3323,15 +3324,13 @@
 								on:click={() => pickTier(t.tier)}
 							>
 								<span class="tt-label">{t.label}</span>
-								<span class="tt-buyin">${t.buy_in.toLocaleString()} <small>buy-in</small></span>
-								<span class="tt-meta"
-									>k {Number(t.k).toFixed(2)} · heat ×{(t.heat_cap / 100).toFixed(1)}</span
-								>
+								<span class="tt-buyin">${t.buy_in.toLocaleString()} <small>principal</small></span>
+								<span class="tt-meta">yield to +{Math.round(t.heat_cap - 100)}%</span>
 								{#if !t.unlocked}<span class="tt-lock"
 										>🔒 {t.tier === 'silver'
-											? '3 Bronze wins'
+											? '3 Bronze deposits'
 											: t.tier === 'gold'
-												? '3 Silver wins'
+												? '3 Silver deposits'
 												: 'locked'}</span
 									>
 								{:else if (cgMeta?.bank ?? 0) < t.buy_in}<span class="tt-lock"
@@ -3342,9 +3341,9 @@
 					</div>
 					{#if (cgMeta?.best_run ?? 0) > 0}
 						<p class="tier-stats">
-							Best run <b>${cgMeta.best_run.toLocaleString()}</b> · best multiple
+							Best deposit <b>${cgMeta.best_run.toLocaleString()}</b> · best multiple
 							<b>{((cgMeta.best_multiple_x100 ?? 0) / 100).toFixed(1)}×</b>
-							· run streak <b>{cgMeta.run_streak ?? 0}</b>
+							· deposit streak <b>{cgMeta.run_streak ?? 0}</b>
 						</p>
 					{/if}
 				</div>
@@ -3993,8 +3992,8 @@
 			{#if climb.must_guess && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
 				<div class="climb-stuck">
 					<span class="cs-text"
-						>🎯 Out of budget — you must guess now, or Cash Out to bank your Wallet. A wrong guess
-						wipes it.</span
+						>🎯 Cash Advance spent — guess now, or Deposit your Pending Deposit to bank it. A wrong
+						guess VOIDs it.</span
 					>
 				</div>
 			{/if}
@@ -4148,7 +4147,7 @@
 							: $gameStore.gameMode === 'daily'
 								? "You'll bank"
 								: soloHero.net >= 0
-									? 'Solve to Earn'
+									? 'Solve → Credit'
 									: '⚠️ You’re losing money'}</span
 					>
 					{#if $gameStore.gameMode === 'daily'}
@@ -4265,7 +4264,7 @@
 
 		<!-- 🏆 Game Outcome Banner (win celebration handled by the slot-machine reveal) -->
 		{#if $gameStore.gameState === 'lost'}
-			<div class="banner lose">Bankrupt!</div>
+			<div class="banner lose">{isClimb ? '⚠ VOID' : 'No luck'}</div>
 		{/if}
 
 		<!-- 🎯 Result Modal -->

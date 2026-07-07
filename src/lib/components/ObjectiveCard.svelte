@@ -39,9 +39,9 @@
 				return {
 					icon: '🎰',
 					title: 'Cash Game',
-					goal: 'Stake a buy-in → grow a run bankroll by solving cheaply.',
-					win: 'Cash out anytime to bank it — heat multiplies each solve.',
-					bar: 'Bust (a wrong final guess) loses the buy-in.'
+					goal: 'Invest your Principal → grow it by solving puzzles cheaply.',
+					win: 'Deposit anytime to bank it — Yield climbs with each solve.',
+					bar: 'A wrong guess VOIDs your Pending Deposit.'
 				};
 			case 'makeup':
 				return {
