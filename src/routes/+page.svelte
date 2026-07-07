@@ -1076,15 +1076,6 @@
 	// Heat IS the Cash Game win streak: each solve +0.1× (cap ×2.0), reset to ×1.0 when stuck.
 	$: climbStreak = Math.max(0, Math.round(((climb?.heat ?? 100) - 100) / 10));
 	// 🔥 The run: solves + cumulative profit since heat last reset (run_profit can be negative early).
-	$: climbRun =
-		isClimb && climb
-			? {
-					solves: climb.run_solves ?? 0,
-					profit: climb.run_profit ?? 0,
-					best: climb.best_run_profit ?? 0
-				}
-			: null;
-	$: climbRunIsBest = climbRun != null && climbRun.profit > 0 && climbRun.profit >= climbRun.best;
 	// Owned, not-yet-used climb buffs — drives the vault badge by the Solve button.
 	$: usableClimbPups = isClimb
 		? selfPups.filter(
@@ -4030,10 +4021,9 @@
 			<!-- 🏦 Cash Out — bank the run bankroll anytime (the press-your-luck valve). -->
 			{#if climb.state === 'active' && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
 				{@const bankroll = Math.round(climb.bankroll ?? 0)}
-				{@const profit = bankroll - Math.round(climb.buy_in ?? 0)}
 				<button
 					class="cashout-btn"
-					class:up={profit > 0}
+					class:ready={bankroll > 0}
 					disabled={cgBusy || bankroll <= 0}
 					on:click={cashOut}
 				>
@@ -4245,16 +4235,6 @@
 								: 100}%"
 						></span>
 					</div>
-				{/if}
-				{#if isClimb && climbRun && climbRun.solves >= 2}
-					<p class="climb-run-line" class:best={climbRunIsBest}>
-						🔥 {climbRun.solves}-solve run ·
-						<b class="run-profit" class:neg={climbRun.profit < 0}
-							>{climbRun.profit >= 0 ? '+' : '−'}${Math.abs(climbRun.profit).toLocaleString()}</b
-						>
-						this run{#if climbRunIsBest}
-							· 🏆 personal best{/if}
-					</p>
 				{/if}
 			{/if}
 		</section>
@@ -4506,7 +4486,12 @@
 									// keeps this slip so the player can retry or hit Next (no soft-lock).
 									hasTriggeredModal = false;
 									cashOut();
-								}}>Deposit ${pendAfter.toLocaleString()} Now</button
+								}}
+								><svg class="dep-ic" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+									<path d="M12 4v10" />
+									<path d="M8 11l4 4 4-4" />
+									<path d="M5 17v2a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2" />
+								</svg>Deposit ${pendAfter.toLocaleString()}</button
 							>
 							<button
 								class="next-puzzle-button"
@@ -5015,7 +5000,9 @@
 		color: #d8cccc;
 	}
 
-	/* 🏦 Deposit button (during a run) — compact bank-app style action pill */
+	/* 🏦 Deposit button (during a run) — compact bank-app style action pill.
+	   Two states: muted/inactive at $0 Pending Deposit, solid+glowing once there's
+	   money to bank so it reads clearly clickable. */
 	.cashout-btn {
 		display: flex;
 		align-items: center;
@@ -5023,15 +5010,20 @@
 		gap: 7px;
 		width: fit-content;
 		margin: 0 auto 12px;
-		padding: 0.42rem 1.05rem;
+		padding: 0.44rem 1.2rem;
 		border-radius: 12px;
 		cursor: pointer;
-		border: 1px solid rgba(110, 231, 183, 0.5);
-		background: linear-gradient(135deg, rgba(110, 231, 183, 0.14), rgba(52, 211, 153, 0.05));
-		color: #6ee7b7;
+		border: 1px solid rgba(148, 163, 184, 0.3);
+		background: rgba(148, 163, 184, 0.08);
+		color: #7c8798;
 		font-family: var(--font-display);
 		font-weight: 800;
 		font-size: 0.9rem;
+		transition:
+			transform 0.15s var(--ease-spring),
+			box-shadow 0.2s,
+			background 0.2s,
+			color 0.2s;
 	}
 	.dep-ic {
 		width: 16px;
@@ -5041,15 +5033,44 @@
 		stroke-linecap: round;
 		stroke-linejoin: round;
 	}
-	.cashout-btn.up {
-		border-color: rgba(110, 231, 183, 0.8);
-		box-shadow: 0 0 16px rgba(52, 211, 153, 0.25);
+	/* Has Pending Deposit → filled, glowing, clearly actionable. */
+	.cashout-btn.ready {
+		border-color: transparent;
+		background: linear-gradient(135deg, #6ee7b7, #34d399);
+		color: #06281d;
+		box-shadow: 0 6px 18px rgba(52, 211, 153, 0.3);
+	}
+	.cashout-btn.ready:hover {
+		transform: translateY(-2px);
+		filter: brightness(1.05);
+	}
+	.cashout-btn.ready:active {
+		transform: scale(0.97);
+	}
+	@media (prefers-reduced-motion: no-preference) {
+		.cashout-btn.ready {
+			animation: depPulse 2.4s ease-in-out infinite;
+		}
+		@keyframes depPulse {
+			0%,
+			100% {
+				box-shadow: 0 6px 18px rgba(52, 211, 153, 0.28);
+			}
+			50% {
+				box-shadow: 0 6px 26px rgba(52, 211, 153, 0.5);
+			}
+		}
 	}
 	.cashout-btn:disabled {
-		opacity: 0.45;
+		opacity: 0.55;
 		cursor: default;
 	}
 	.co-inline {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 7px;
+		white-space: nowrap;
 		background: linear-gradient(135deg, #6ee7b7, #34d399) !important;
 		color: #06281d !important;
 	}
@@ -6606,22 +6627,6 @@
 	.don-cta-sub b,
 	.don-armed-sub b {
 		color: #fbbf24;
-	}
-	/* 🔥 Cash Game run line — momentum under the money hero */
-	.climb-run-line {
-		margin: 0.35rem auto 0;
-		text-align: center;
-		font-size: 0.8rem;
-		color: var(--text-muted);
-	}
-	.climb-run-line .run-profit {
-		color: #4ade80;
-	}
-	.climb-run-line .run-profit.neg {
-		color: #fca5a5;
-	}
-	.climb-run-line.best {
-		color: #fcd34d;
 	}
 	@keyframes donPulse {
 		0%,
