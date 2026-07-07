@@ -2682,7 +2682,7 @@
 				</p>
 			{:else}
 				<div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
-				<h3 class="info-title">Solve to earn</h3>
+				<h3 class="info-title">Potential Credit</h3>
 				<p class="info-sub">What lands in your Pending Deposit if you solve right now.</p>
 				<div class="info-rows">
 					<div class="info-row">
@@ -4111,7 +4111,7 @@
 							: $gameStore.gameMode === 'daily'
 								? "You'll bank"
 								: soloHero.net >= 0
-									? 'Solve to earn'
+									? 'Potential Credit'
 									: '⚠️ You’re losing money'}</span
 					>
 					<div class="bp-row">
