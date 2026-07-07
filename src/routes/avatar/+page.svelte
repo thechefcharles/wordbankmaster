@@ -6,6 +6,7 @@
 	import { getMyAvatar, setAvatar, buyCosmetic, getBank } from '$lib/stores/statsStore.js';
 	import { fx } from '$lib/sound.js';
 	import { track } from '$lib/analytics.js';
+	import { requirePin } from '$lib/pinConfirm.js';
 
 	/** @type {any} */ let config = { ...DEFAULT_AVATAR };
 	/** @type {string[]} */ let owned = [];
@@ -15,7 +16,6 @@
 	let activeCat = CATEGORIES[0].key;
 	let dirty = false;
 	let toast = '';
-	/** @type {any} */ let buying = null; // option pending purchase-confirm
 
 	onMount(async () => {
 		track('avatar_open');
@@ -28,8 +28,8 @@
 
 	$: cat = CATEGORIES.find((c) => c.key === activeCat) ?? CATEGORIES[0];
 	const fmt = (/** @type {number} */ n) => '$' + Math.round(n ?? 0).toLocaleString();
-	/** @param {any} o */
-	const locked = (o) => !!o.price && !owned.includes(o.cosmeticId);
+	// Reactive on `owned` so a tile's 🔒 clears the instant a purchase lands.
+	$: locked = (/** @type {any} */ o) => !!o.price && !owned.includes(o.cosmeticId);
 	/** preview config with one category overridden @param {string} key @param {string} value */
 	// a shirt design only shows on the Graphic Tee, so equipping a design auto-wears it
 	const withDeps = (/** @type {string} */ key, /** @type {string} */ value) =>
@@ -64,10 +64,10 @@
 		dirty = true;
 	}
 
-	/** @param {string} key @param {any} o */
+	/** Tap a tile face: equip if owned/free, otherwise buy. @param {string} key @param {any} o */
 	function choose(key, o) {
 		if (locked(o)) {
-			buying = { key, o };
+			buyNow(key, o);
 			return;
 		}
 		fx('tap');
@@ -75,20 +75,30 @@
 		dirty = true;
 	}
 
-	async function confirmBuy() {
-		if (!buying) return;
-		const { key, o } = buying;
+	/** Buy → PIN is the only confirmation (no separate sheet). @param {string} key @param {any} o */
+	async function buyNow(key, o) {
+		if (saving) return;
 		if (bank < o.price) {
 			flash('Not enough Cash');
-			buying = null;
 			return;
+		}
+		// 🔐 Vault code IS the confirm step — no intermediate "Unlock for $X" sheet.
+		try {
+			await requirePin(`Unlock ${o.label}`, [{ label: o.label, value: fmt(o.price) }]);
+		} catch {
+			return; // cancelled at the pad
 		}
 		saving = true;
 		const res = await buyCosmetic(o.cosmeticId);
 		saving = false;
 		if (!res.ok) {
-			flash(res.reason === 'insufficient' ? 'Not enough Cash' : 'Could not buy');
-			buying = null;
+			flash(
+				res.reason === 'insufficient'
+					? 'Not enough Cash'
+					: res.reason === 'in_debt'
+						? 'Pay off your loan first'
+						: 'Could not buy'
+			);
 			return;
 		}
 		fx('win');
@@ -96,7 +106,6 @@
 		bank -= o.price;
 		config = { ...config, ...withDeps(key, o.value) };
 		dirty = true;
-		buying = null;
 		flash('Unlocked!');
 	}
 
@@ -153,21 +162,21 @@
 
 		<div class="opt-grid" class:colors={cat.type === 'color'}>
 			{#each cat.options as o (o.value)}
-				<button
-					class="opt"
-					class:sel={config[cat.key] === o.value}
-					class:locked={locked(o)}
-					on:click={() => choose(cat.key, o)}
-					title={o.label}
-				>
-					{#if cat.type === 'color'}
-						<span class="sw" style="background:#{o.value}"></span>
-					{:else}
-						<Avatar config={preview(cat.key, o.value)} fx={cat.type === 'fx'} size={62} />
+				<div class="opt" class:sel={config[cat.key] === o.value} class:locked={locked(o)}>
+					<button class="opt-face" on:click={() => choose(cat.key, o)} title={o.label}>
+						{#if cat.type === 'color'}
+							<span class="sw" style="background:#{o.value}"></span>
+						{:else}
+							<Avatar config={preview(cat.key, o.value)} fx={cat.type === 'fx'} size={62} />
+						{/if}
+						<span class="opt-label">{o.label}</span>
+					</button>
+					{#if locked(o)}
+						<button class="opt-buy" on:click={() => buyNow(cat.key, o)}
+							>🔒 Buy {fmt(o.price)}</button
+						>
 					{/if}
-					<span class="opt-label">{o.label}</span>
-					{#if locked(o)}<span class="opt-price">🔒 {fmt(o.price)}</span>{/if}
-				</button>
+				</div>
 			{/each}
 		</div>
 	{/if}
@@ -178,30 +187,6 @@
 		>{saving ? 'Saving…' : dirty ? 'Save' : 'Saved'}</button
 	>
 </main>
-
-{#if buying}
-	<div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Unlock item">
-		<button
-			type="button"
-			class="modal-backdrop"
-			aria-label="Cancel"
-			on:click={() => (buying = null)}
-		></button>
-		<div class="buy-card">
-			<Avatar config={preview(buying.key, buying.o.value)} fx size={120} />
-			<h3>{buying.o.label}</h3>
-			<p class="buy-price">{fmt(buying.o.price)}</p>
-			<button class="buy-go" disabled={saving || bank < buying.o.price} on:click={confirmBuy}>
-				{bank < buying.o.price
-					? 'Not enough Cash'
-					: saving
-						? 'Unlocking…'
-						: `Unlock for ${fmt(buying.o.price)}`}
-			</button>
-			<button class="buy-cancel" on:click={() => (buying = null)}>Cancel</button>
-		</div>
-	</div>
-{/if}
 
 <style>
 	.av-page {
@@ -316,10 +301,22 @@
 		gap: 4px;
 		padding: 8px 4px;
 		border-radius: 14px;
-		cursor: pointer;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		color: var(--text);
+	}
+	.opt-face {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 4px;
+		width: 100%;
+		padding: 0;
+		background: none;
+		border: 0;
+		color: inherit;
+		font: inherit;
+		cursor: pointer;
 	}
 	.opt.sel {
 		border-color: var(--brand-2);
@@ -337,10 +334,20 @@
 		text-align: center;
 		line-height: 1.1;
 	}
-	.opt-price {
+	.opt-buy {
+		margin-top: 2px;
+		padding: 4px 12px;
+		border-radius: 999px;
+		border: 1px solid var(--brand-2);
+		background: rgba(251, 191, 36, 0.12);
+		color: var(--brand-2);
 		font-size: 0.68rem;
 		font-weight: 800;
-		color: var(--brand-2);
+		white-space: nowrap;
+		cursor: pointer;
+	}
+	.opt-buy:active {
+		transform: scale(0.96);
 	}
 	.sw {
 		width: 42px;
@@ -391,56 +398,5 @@
 	}
 	.av-save:disabled {
 		cursor: default;
-	}
-
-	.buy-card {
-		position: relative;
-		z-index: 1;
-		width: calc(100% - 3rem);
-		max-width: 320px;
-		margin: auto;
-		padding: 22px;
-		border-radius: 20px;
-		text-align: center;
-		background: var(--surface-strong, rgba(20, 26, 38, 0.95));
-		border: 1px solid var(--border-strong, var(--border));
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 8px;
-	}
-	.buy-card h3 {
-		margin: 6px 0 0;
-		font-family: var(--font-display);
-	}
-	.buy-price {
-		margin: 0;
-		font-family: var(--font-display);
-		font-weight: 800;
-		font-size: 1.3rem;
-		color: var(--brand-2);
-	}
-	.buy-go {
-		width: 100%;
-		height: 48px;
-		border-radius: 14px;
-		border: none;
-		cursor: pointer;
-		font-weight: 800;
-		font-size: 1rem;
-		color: #3a2a00;
-		background: linear-gradient(135deg, #fde047, #f59e0b);
-	}
-	.buy-go:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-	.buy-cancel {
-		background: none;
-		border: none;
-		color: var(--text-muted);
-		cursor: pointer;
-		font-weight: 600;
-		padding: 4px;
 	}
 </style>

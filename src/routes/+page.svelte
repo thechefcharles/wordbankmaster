@@ -479,7 +479,7 @@
 		_attTimer = setTimeout(() => gameStore.update((s) => ({ ...s, cashToast: null })), 4000);
 	}
 	$: isClimb = $gameStore.gameMode === 'climb';
-	$: climb = $gameStore.climbInfo; // { bounty, heat, spent, position, stuck, last_gain, state, pups_locked, equipped }
+	$: climb = $gameStore.climbInfo; // { bounty, heat, spent, position, bust_risk, wrong_penalty, last_gain, state, pups_locked, equipped }
 	// ⚡ Blitz — the live client clock counts down to blitzInfo.remaining_ms (server-authoritative);
 	// each action resyncs it. At 0 we call endBlitz() once.
 	$: isBlitz = $gameStore.gameMode === 'blitz';
@@ -2237,7 +2237,7 @@
 	<button class="giveup-btn" title="Give up" aria-label="Give up" on:click={confirmFold}>↪</button>
 {/if}
 <!-- ⏭️ Skip (top-right) — Cash Game only; resets heat. Hidden once Double-or-Nothing is armed (committed). -->
-{#if loggedIn && hasInitialized && !showMainMenu && isClimb && gameActive && !donArmed && (climb?.state === 'active' || climb?.state === 'stuck')}
+{#if loggedIn && hasInitialized && !showMainMenu && isClimb && gameActive && !donArmed && climb?.state === 'active'}
 	<button
 		class="giveup-btn"
 		title="Skip this puzzle"
@@ -2405,7 +2405,7 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card bank-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (showBank = false)} aria-label="Close">✕</button>
-			<p class="bm-label">Net Worth</p>
+			<p class="bm-label">Cash</p>
 			<div class="info-big">{fmtCash(bankData?.bank ?? netWorth ?? 0)}</div>
 			<p class="info-sub">Your Cash — this is your score</p>
 			{#if bankData}
@@ -2605,7 +2605,7 @@
 					Heat climbs with your <button
 						class="info-inline"
 						on:click|stopPropagation={() => (climbInfo = 'streak')}>win streak</button
-					> and resets to ×1.0 if you get stuck or skip.
+					> and resets to ×1.0 if you bust or skip.
 				</p>
 			{:else if climbInfo === 'streak'}
 				<div class="info-big">🏆 {climbStreak}</div>
@@ -2613,7 +2613,7 @@
 				<p class="info-sub">Cash Game puzzles you've solved in a row.</p>
 				<div class="info-rows">
 					<div class="info-row"><span>Solve a puzzle</span><b class="pos">+1</b></div>
-					<div class="info-row"><span>Get stuck or skip</span><b class="neg">back to 0</b></div>
+					<div class="info-row"><span>Bust or skip</span><b class="neg">back to 0</b></div>
 				</div>
 				<p class="info-note">
 					Powers your <button
@@ -3874,9 +3874,10 @@
 				>
 					{#if isMatch}<span class="tb-wallet-cap">💰 Wallet</span>{:else if isDailyLike}<span
 							class="tb-wallet-cap">🏆 Prize</span
-						>{/if}
+						>{:else if isClimb}<span class="tb-wallet-cap">🪙 Stack</span>{/if}
 					<span class="tb-solo"
 						>{#if isMatch}💰
+						{:else if isClimb}🪙
 						{:else if !isDailyLike}💰
 						{/if}${Math.round($tweenBank).toLocaleString()}</span
 					>
@@ -3926,13 +3927,15 @@
 		<!-- 🎰 Cash Game (Climb) HUD — number-free so it feels random. Heat lives in the
          Solve-to-Earn box; power-ups live in the vault beside Solve. -->
 		{#if isClimb && climb}
-			{#if climb.stuck && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
+			{#if climb.bust_risk && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
 				<div class="climb-stuck">
-					<span class="cs-text">🎯 Final guess — solve it or bust the run</span>
+					<span class="cs-text"
+						>⚠️ Low Stack — a wrong guess busts your run. Cash Out to bank it.</span
+					>
 				</div>
 			{/if}
 			<!-- 🏦 Cash Out — bank the run bankroll anytime (the press-your-luck valve). -->
-			{#if (climb.state === 'active' || climb.state === 'stuck') && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
+			{#if climb.state === 'active' && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
 				{@const bankroll = Math.round(climb.bankroll ?? 0)}
 				{@const profit = bankroll - Math.round(climb.buy_in ?? 0)}
 				<button
@@ -3941,10 +3944,7 @@
 					disabled={cgBusy || bankroll <= 0}
 					on:click={cashOut}
 				>
-					🏦 Cash Out <b>${bankroll.toLocaleString()}</b>
-					{#if profit !== 0}<span class="co-profit" class:neg={profit < 0}
-							>{profit > 0 ? '+' : '−'}${Math.abs(profit).toLocaleString()}</span
-						>{/if}
+					🏦 Cash Out
 				</button>
 			{/if}
 		{/if}
@@ -4343,7 +4343,7 @@
 								>
 							</div>
 							<div class="wm-row total">
-								<span>🎰 Run bankroll</span><b>${bankroll.toLocaleString()}</b>
+								<span>🪙 Stack</span><b>${bankroll.toLocaleString()}</b>
 							</div>
 						</div>
 						<p class="win-twist">
@@ -4845,17 +4845,6 @@
 	.cashout-btn:disabled {
 		opacity: 0.45;
 		cursor: default;
-	}
-	.cashout-btn b {
-		color: #d1fae5;
-	}
-	.co-profit {
-		font-size: 0.85rem;
-		color: #34d399;
-		font-weight: 700;
-	}
-	.co-profit.neg {
-		color: #fb7185;
 	}
 	.co-inline {
 		background: linear-gradient(135deg, #6ee7b7, #34d399) !important;
