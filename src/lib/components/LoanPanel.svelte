@@ -22,6 +22,8 @@
 	$: if (borrowAmt > loanCap) borrowAmt = loanCap;
 	$: if (borrowAmt < 10 && loanCap >= 10) borrowAmt = 10;
 	$: maxRepay = Math.max(0, Math.min(owed, bank?.bank ?? 0));
+	// Can you fully clear the loan right now? (Bank covers the whole owed amount.)
+	$: canClear = owed > 0 && (bank?.bank ?? 0) >= owed;
 	$: if (repayAmt > maxRepay) repayAmt = maxRepay;
 	// seed the repay dial when we (re)load into a debt state
 	$: if (bank) repayAmt = Math.min(repayAmt || maxRepay, maxRepay);
@@ -125,10 +127,23 @@
 					disabled={!!loanBusy || repayAmt <= 0}
 					on:click={() => repay(repayAmt)}>Repay {fmt(repayAmt)}</button
 				>
-				<button class="loan-btn pay" disabled={!!loanBusy} on:click={() => repay(null)}
-					>Pay max ({fmt(maxRepay)})</button
-				>
+				{#if canClear}
+					<button class="loan-btn pay" disabled={!!loanBusy} on:click={() => repay(owed)}
+						>Pay off ({fmt(owed)})</button
+					>
+				{:else}
+					<button class="loan-btn pay" disabled={!!loanBusy} on:click={() => repay(maxRepay)}
+						>Repay all ({fmt(maxRepay)})</button
+					>
+				{/if}
 			</div>
+			{#if !canClear}
+				<p class="loan-note" style="margin-bottom:0">
+					You don't have enough to clear it — paying all still leaves <b class="neg"
+						>{fmt(owed - maxRepay)}</b
+					> owed. Earn more Cash (play the Daily) to finish it off.
+				</p>
+			{/if}
 		{:else}
 			<p class="loan-note">Earn some Cash (play the Daily) then come back to repay.</p>
 		{/if}

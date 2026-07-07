@@ -203,13 +203,16 @@
 		if (resumables.length === 1) resumables[0].go();
 		else showResumeMenu = true;
 	}
-	/** Net Worth for the menu chip. */
+	/** Net Worth (bank − loan) — used for wager affordability; can go negative in debt. */
 	let netWorth = /** @type {number|null} */ (null);
-	let menuLoan = 0; // outstanding loan → drives the menu debt banner
+	/** Spendable Bank balance (never negative) — what the top chip shows. */
+	let menuBank = /** @type {number|null} */ (null);
+	let menuLoan = 0; // outstanding loan → drives the menu debt banner + chip badge
 	async function refreshBank() {
 		try {
 			const gb = await getBank();
 			netWorth = gb.net_worth;
+			menuBank = gb.bank ?? 0;
 			menuLoan = gb.loan ?? 0;
 		} catch {
 			/* non-fatal */
@@ -2677,27 +2680,25 @@
 			{:else}
 				<div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
 				<h3 class="info-title">Solve to Earn</h3>
-				<p class="info-sub">What you pocket if you solve right now.</p>
+				<p class="info-sub">What lands in your Wallet if you solve right now.</p>
 				<div class="info-rows">
 					<div class="info-row">
-						<span>Bounty × heat ({fmtMult(Number(climbHeat))})</span><b class="pos"
-							>${(climbLive?.payout ?? 0).toLocaleString()}</b
+						<span>🏆 Prize left <small>(spend it on letters)</small></span><b
+							>${Math.round(climb?.budget_left ?? 0).toLocaleString()}</b
 						>
 					</div>
 					<div class="info-row">
-						<span>− Spent on letters</span><b class="neg"
-							>−${(climbLive?.spent ?? 0).toLocaleString()}</b
-						>
+						<span>🔥 Heat</span><b class="pos">×{climbHeat}</b>
 					</div>
 					<div class="info-row total">
-						<span>You keep</span><b class="green">${(climbLive?.net ?? 0).toLocaleString()}</b>
+						<span>Solve to bank</span><b class="green">${(climbLive?.net ?? 0).toLocaleString()}</b>
 					</div>
 				</div>
 				<p class="info-note">
-					Spend less on letters to keep more — and grow your <button
-						class="info-inline"
-						on:click|stopPropagation={() => (climbInfo = 'heat')}>heat</button
-					>.
+					Each puzzle's <b>Prize</b> shrinks as you buy letters — solve to keep what's left ×
+					<button class="info-inline" on:click|stopPropagation={() => (climbInfo = 'heat')}
+						>heat</button
+					>. Reveal less, keep more.
 				</p>
 			{/if}
 			<button class="info-close" on:click={() => (climbInfo = null)}>Got it</button>
@@ -3006,10 +3007,18 @@
 								>{$unreadCount > 99 ? '99+' : $unreadCount}</span
 							>{/if}
 					</button>
-					<button class="bank-chip" on:click={openBankModal} title="Bank Account">
-						<span class="bc-coin">💰</span>{netWorth == null
+					<button
+						class="bank-chip"
+						class:in-debt={menuLoan > 0}
+						on:click={openBankModal}
+						title="Bank Account"
+					>
+						<span class="bc-coin">💰</span>{menuBank == null
 							? '—'
-							: '$' + Math.round(netWorth).toLocaleString()}
+							: '$' + Math.round(menuBank).toLocaleString()}
+						{#if menuLoan > 0}<span class="bc-debt" title="You owe the Loan Shark"
+								>🦈 −${Math.round(menuLoan).toLocaleString()}</span
+							>{/if}
 					</button>
 					<button
 						class="account-ic has-av"
@@ -4336,34 +4345,42 @@
 							>
 						</div>
 					{:else if isClimb && cashoutResult}
-						<!-- 🏦 Cash Game: cashed out — banked the run bankroll -->
+						<!-- 🧾 Cash-out receipt -->
 						{@const co = cashoutResult}
-						<h2 class="win-h">🏦 Cashed Out!</h2>
-						<p class="result-sub">
-							{(co.tier ?? '').charAt(0).toUpperCase() + (co.tier ?? '').slice(1)} run · {co.solves ??
-								0} solve{co.solves === 1 ? '' : 's'}
-						</p>
-						{#if co.phrase}<p class="result-sub">Answer: <b>{co.phrase}</b></p>{/if}
-						<div class="win-math">
-							<div class="wm-row">
-								<span>Banked</span><b>${(co.banked ?? 0).toLocaleString()}</b>
+						{@const prof = co.profit ?? 0}
+						<div class="receipt">
+							<div class="rcpt-head">🏦 WORDBANK</div>
+							<div class="rcpt-title">CASH OUT</div>
+							<div class="rcpt-meta">
+								{(co.tier ?? '').charAt(0).toUpperCase() + (co.tier ?? '').slice(1)} run · {co.solves ??
+									0} solve{co.solves === 1 ? '' : 's'}
 							</div>
-							<div class="wm-row">
-								<span>− Buy-in</span><b class="neg">−${(co.buy_in ?? 0).toLocaleString()}</b>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-line">
+								<span>Wallet banked</span><span>${(co.banked ?? 0).toLocaleString()}</span>
 							</div>
-							<div class="wm-row total">
-								<span>Profit</span><b class="profit"
-									>{(co.profit ?? 0) >= 0 ? '+' : '−'}${Math.abs(
-										co.profit ?? 0
-									).toLocaleString()}</b
+							<div class="rcpt-line">
+								<span>Buy-in (ante)</span><span class="neg"
+									>−${(co.buy_in ?? 0).toLocaleString()}</span
 								>
 							</div>
+							<div class="rcpt-rule double"></div>
+							<div class="rcpt-line total" class:profit={prof >= 0}>
+								<span>{prof >= 0 ? 'NET PROFIT' : 'NET LOSS'}</span><span
+									>{prof >= 0 ? '+' : '−'}${Math.abs(prof).toLocaleString()}</span
+								>
+							</div>
+							<div class="rcpt-note">
+								{((co.multiple_x100 ?? 0) / 100).toFixed(1)}× buy-in · 🔥 peak ×{(
+									(co.heat ?? 100) / 100
+								).toFixed(1)}
+							</div>
+							{#if co.phrase}
+								<div class="rcpt-rule"></div>
+								<div class="rcpt-line answer"><span>Answer</span><span>{co.phrase}</span></div>
+							{/if}
+							<div class="rcpt-foot">✓ Banked to your Bank Account</div>
 						</div>
-						<p class="win-twist">
-							{((co.multiple_x100 ?? 0) / 100).toFixed(1)}× your ante · 🔥 peak ×{(
-								(co.heat ?? 100) / 100
-							).toFixed(1)} — banked to your Bank Account
-						</p>
 						<div class="result-actions">
 							<button
 								class="share-btn"
@@ -4385,25 +4402,43 @@
 							>
 						</div>
 					{:else if isClimb && resultWon}
-						<!-- 🎰 Solved a puzzle → the payout grew your RUN bankroll (not Cash yet) -->
-						{@const payout = climb?.last_gain ?? 0}
-						{@const bankroll = Math.round(climb?.bankroll ?? 0)}
-						<h2 class="win-h">🎉 Solved!</h2>
-						<p class="result-sub">{$gameStore.currentPhrase}</p>
-						<div class="win-math">
-							<div class="wm-row">
-								<span>Payout <small>(🔥 ×{climbHeat} heat)</small></span><b class="profit"
-									>+${payout.toLocaleString()}</b
+						<!-- 🧾 Per-puzzle solve receipt -->
+						{@const prize = Math.round(climb?.bounty ?? 0)}
+						{@const letters = Math.round(climb?.spent ?? 0)}
+						{@const kept = Math.max(0, prize - letters)}
+						{@const payout = Math.round(climb?.last_gain ?? 0)}
+						{@const heatBonus = Math.max(0, payout - kept)}
+						{@const walletAfter = Math.round(climb?.bankroll ?? 0)}
+						{@const walletBefore = walletAfter - payout}
+						<div class="receipt">
+							<div class="rcpt-head">🏦 WORDBANK</div>
+							<div class="rcpt-title">CASH GAME</div>
+							<div class="rcpt-meta">
+								{(climb?.tier ?? '').charAt(0).toUpperCase() + (climb?.tier ?? '').slice(1)} · Puzzle
+								#{climb?.position ?? 1}
+							</div>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-line"><span>Prize</span><span>${prize.toLocaleString()}</span></div>
+							<div class="rcpt-line">
+								<span>Letters revealed</span><span class="neg">−${letters.toLocaleString()}</span>
+							</div>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-line"><span>Kept</span><span>${kept.toLocaleString()}</span></div>
+							<div class="rcpt-line">
+								<span>🔥 Heat ×{climbHeat}</span><span class="pos"
+									>+${heatBonus.toLocaleString()}</span
 								>
 							</div>
-							<div class="wm-row total">
-								<span>👛 Wallet</span><b>${bankroll.toLocaleString()}</b>
+							<div class="rcpt-rule double"></div>
+							<div class="rcpt-line total profit">
+								<span>SOLVE PAYOUT</span><span>+${payout.toLocaleString()}</span>
+							</div>
+							<div class="rcpt-line">
+								<span>👛 Wallet</span><span
+									>${walletBefore.toLocaleString()} ▸ ${walletAfter.toLocaleString()}</span
+								>
 							</div>
 						</div>
-						<p class="win-twist">
-							🔥 Heat now ×{climbHeat}{#if (climb?.run_solves ?? 0) > 1}
-								· {climb.run_solves}-solve run{/if} — bank it or push on?
-						</p>
 						<div class="result-actions">
 							<button
 								class="share-btn co-inline"
@@ -4412,7 +4447,7 @@
 									showResultModal = false;
 									hasTriggeredModal = false;
 									cashOut();
-								}}>🏦 Cash Out ${bankroll.toLocaleString()}</button
+								}}>🏦 Cash Out ${walletAfter.toLocaleString()}</button
 							>
 							<button
 								class="next-puzzle-button"
@@ -4424,19 +4459,33 @@
 							>
 						</div>
 					{:else if isClimb}
-						<!-- 💥 Wiped — a wrong guess emptied the Wallet -->
-						<div class="result-medal">💥</div>
-						<h2>Wiped Out</h2>
-						<p class="result-sub">The answer was {$gameStore.currentPhrase}</p>
-						<p class="arcade-gain">
-							{#if (climb?.wiped ?? 0) > 0}A wrong guess wiped your <b
-									>${(climb?.wiped ?? 0).toLocaleString()}</b
-								>
-								Wallet and your ${(climb?.buy_in ?? 0).toLocaleString()} ante.{:else}You lost your ${(
-									climb?.buy_in ?? 0
-								).toLocaleString()} ante.{/if} The Daily always refills your Bank Account — come back
-							for another run.
-						</p>
+						<!-- 🧾 Wipe (VOID) receipt -->
+						{@const wiped = Math.round(climb?.wiped ?? 0)}
+						{@const ante = Math.round(climb?.buy_in ?? 0)}
+						<div class="receipt void">
+							<div class="rcpt-head">🏦 WORDBANK</div>
+							<div class="rcpt-title void">⚠ VOID</div>
+							<div class="rcpt-meta">Wrong guess</div>
+							<div class="rcpt-rule"></div>
+							{#if wiped > 0}
+								<div class="rcpt-line">
+									<span>Wallet at risk</span><span>${wiped.toLocaleString()}</span>
+								</div>
+								<div class="rcpt-line">
+									<span>Wrong guess</span><span class="neg">−${wiped.toLocaleString()}</span>
+								</div>
+								<div class="rcpt-rule double"></div>
+								<div class="rcpt-line total"><span>WALLET</span><span>$0</span></div>
+							{/if}
+							<div class="rcpt-line">
+								<span>Buy-in lost</span><span class="neg">−${ante.toLocaleString()}</span>
+							</div>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-line answer">
+								<span>Answer</span><span>{$gameStore.currentPhrase}</span>
+							</div>
+							<div class="rcpt-foot">The Daily refills your Bank Account</div>
+						</div>
 						<div class="result-actions">
 							<button
 								class="share-btn"
@@ -5603,6 +5652,19 @@
 		transition:
 			transform 0.15s,
 			box-shadow 0.2s;
+	}
+	.bank-chip.in-debt {
+		border-color: rgba(248, 113, 113, 0.55);
+	}
+	.bc-debt {
+		font-family: var(--font-display);
+		font-size: 0.72rem;
+		font-weight: 800;
+		letter-spacing: 0;
+		color: #fb7185;
+		text-shadow: none;
+		padding-left: 6px;
+		border-left: 1px solid rgba(248, 113, 113, 0.4);
 	}
 	.bank-chip:hover {
 		transform: translateY(-1px);
@@ -8359,6 +8421,94 @@
 			transform: scale(1);
 		}
 	}
+	/* 🧾 Receipt-style Cash Game results */
+	.receipt {
+		font-family: 'Courier New', 'Courier', ui-monospace, monospace;
+		width: 100%;
+		max-width: 290px;
+		margin: 0.4rem auto 1.1rem;
+		padding: 18px 20px 20px;
+		background: #f6f1e6;
+		color: #23201a;
+		border-radius: 3px;
+		box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55);
+		text-align: left;
+		/* torn thermal-paper bottom edge */
+		-webkit-mask:
+			linear-gradient(#000 0 0) top / 100% calc(100% - 7px) no-repeat,
+			radial-gradient(6px 7px at 6px 0, #0000 98%, #000) bottom left / 12px 7px repeat-x;
+		mask:
+			linear-gradient(#000 0 0) top / 100% calc(100% - 7px) no-repeat,
+			radial-gradient(6px 7px at 6px 0, #0000 98%, #000) bottom left / 12px 7px repeat-x;
+	}
+	.rcpt-head {
+		text-align: center;
+		font-weight: 800;
+		font-size: 1.02rem;
+		letter-spacing: 0.14em;
+	}
+	.rcpt-title {
+		text-align: center;
+		font-weight: 700;
+		font-size: 0.76rem;
+		letter-spacing: 0.28em;
+		margin-top: 3px;
+	}
+	.rcpt-title.void {
+		color: #b91c1c;
+	}
+	.rcpt-meta {
+		text-align: center;
+		font-size: 0.72rem;
+		color: #6b6455;
+		margin: 3px 0 6px;
+	}
+	.rcpt-rule {
+		border-top: 1px dashed #b3a88f;
+		margin: 8px 0;
+	}
+	.rcpt-rule.double {
+		border-top: 2px solid #23201a;
+	}
+	.rcpt-line {
+		display: flex;
+		justify-content: space-between;
+		gap: 12px;
+		font-size: 0.82rem;
+		padding: 2px 0;
+		font-variant-numeric: tabular-nums;
+	}
+	.rcpt-line .neg {
+		color: #b91c1c;
+	}
+	.rcpt-line .pos {
+		color: #157a3a;
+	}
+	.rcpt-line.total {
+		font-weight: 800;
+		font-size: 0.94rem;
+	}
+	.rcpt-line.total.profit {
+		color: #157a3a;
+	}
+	.rcpt-line.answer {
+		font-weight: 700;
+		letter-spacing: 0.02em;
+	}
+	.rcpt-note {
+		text-align: center;
+		font-size: 0.72rem;
+		color: #6b6455;
+		margin: 6px 0 2px;
+	}
+	.rcpt-foot {
+		text-align: center;
+		font-size: 0.7rem;
+		color: #6b6455;
+		margin-top: 12px;
+		letter-spacing: 0.03em;
+	}
+
 	.win-math {
 		display: flex;
 		flex-direction: column;
@@ -8378,10 +8528,6 @@
 		gap: 10px;
 		font-size: 0.92rem;
 		color: var(--text);
-	}
-	.wm-row small {
-		color: var(--text-faint);
-		font-size: 0.72rem;
 	}
 	.wm-row b {
 		font-family: 'Orbitron', var(--font-display);
