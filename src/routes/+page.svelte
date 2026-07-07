@@ -1776,6 +1776,17 @@
 	}
 	async function cashOut() {
 		if (cgBusy) return;
+		// Depositing moves Cash into the Available Balance — a money-out commitment, so
+		// confirm with the PIN (a no-op if the player hasn't set one). Gating here covers
+		// every deposit point (in-run button + per-puzzle receipt).
+		const pend = Math.round(climb?.bankroll ?? 0);
+		try {
+			await requirePin('Deposit to your Available Balance', [
+				{ label: 'Pending Deposit', value: '$' + pend.toLocaleString() }
+			]);
+		} catch {
+			return; // cancelled at the pad
+		}
 		cgBusy = true;
 		const res = await cashOutClimb();
 		cgBusy = false;
@@ -4026,7 +4037,12 @@
 					disabled={cgBusy || bankroll <= 0}
 					on:click={cashOut}
 				>
-					🏦 Deposit
+					<svg class="dep-ic" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+						<path d="M12 4v10" />
+						<path d="M8 11l4 4 4-4" />
+						<path d="M5 17v2a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2" />
+					</svg>
+					Deposit
 				</button>
 			{/if}
 		{/if}
@@ -4485,10 +4501,12 @@
 								class="share-btn co-inline"
 								disabled={cgBusy}
 								on:click={() => {
-									showResultModal = false;
+									// Leave the modal up — cashOut() runs the PIN gate, then swaps this
+									// transaction slip for the cash-out slip on success. Cancelling the PIN
+									// keeps this slip so the player can retry or hit Next (no soft-lock).
 									hasTriggeredModal = false;
 									cashOut();
-								}}>🏦 Deposit ${pendAfter.toLocaleString()}</button
+								}}>Deposit ${pendAfter.toLocaleString()} Now</button
 							>
 							<button
 								class="next-puzzle-button"
@@ -4997,24 +5015,31 @@
 		color: #d8cccc;
 	}
 
-	/* 🏦 Cash Out button (during a run) */
+	/* 🏦 Deposit button (during a run) — compact bank-app style action pill */
 	.cashout-btn {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 8px;
-		width: 100%;
-		max-width: 360px;
+		gap: 7px;
+		width: fit-content;
 		margin: 0 auto 12px;
-		padding: 0.7rem 1rem;
-		border-radius: 14px;
+		padding: 0.42rem 1.05rem;
+		border-radius: 12px;
 		cursor: pointer;
 		border: 1px solid rgba(110, 231, 183, 0.5);
 		background: linear-gradient(135deg, rgba(110, 231, 183, 0.14), rgba(52, 211, 153, 0.05));
 		color: #6ee7b7;
 		font-family: var(--font-display);
 		font-weight: 800;
-		font-size: 1rem;
+		font-size: 0.9rem;
+	}
+	.dep-ic {
+		width: 16px;
+		height: 16px;
+		stroke: currentColor;
+		stroke-width: 2;
+		stroke-linecap: round;
+		stroke-linejoin: round;
 	}
 	.cashout-btn.up {
 		border-color: rgba(110, 231, 183, 0.8);
