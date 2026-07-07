@@ -1703,6 +1703,10 @@
 		const res = await fetchClimbGame();
 		if (res === 'needs_tier') {
 			cgMeta = await getCashgameMeta();
+			// The tier-select modal lives inside the main-menu branch, so it only renders
+			// when showMainMenu is true. Coming from a "New Run" button after a void/cash-out
+			// we're still in the game view — flip to the menu so the picker actually shows.
+			showMainMenu = true;
 			showTierSelect = true;
 		} else if (res) {
 			await enterClimbGame();
