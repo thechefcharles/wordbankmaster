@@ -1,5 +1,4 @@
 <script>
-	import { goto } from '$app/navigation';
 	import PageNav from '$lib/components/PageNav.svelte';
 	import HistoryList from '$lib/components/HistoryList.svelte';
 </script>

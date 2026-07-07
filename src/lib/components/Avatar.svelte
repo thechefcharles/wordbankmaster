@@ -26,10 +26,12 @@
 	<div class="wb-fx" style="--sz:{size}px" aria-hidden="true">
 		{#if aura !== 'none'}<div class="fx-aura aura-{aura}"></div>{/if}
 		{#if frame !== 'none'}<div class="fx-ring frame-{frame}"></div>{/if}
+		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 		<div class="fx-core">{@html coreSvg}</div>
 		{#if overlay !== 'none'}<img class="fx-overlay" src="/avatar/fx/{overlay}.svg" alt="" />{/if}
 	</div>
 {:else}
+	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 	<div class="wb-avatar" style="--sz:{size}px" aria-hidden="true">{@html coreSvg}</div>
 {/if}
 

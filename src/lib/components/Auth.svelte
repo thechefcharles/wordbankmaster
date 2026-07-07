@@ -190,7 +190,7 @@
 				isLoading = false;
 			}
 			// On success the browser navigates to Google — no further code runs here.
-		} catch (e) {
+		} catch {
 			errorMsg = 'Google sign-in failed. Try again, or use email & password.';
 			isLoading = false;
 		}
@@ -210,7 +210,7 @@
 				track('apple_signin_error', { message: error.message });
 				isLoading = false;
 			}
-		} catch (e) {
+		} catch {
 			errorMsg = 'Apple sign-in failed. Try again, or use email & password.';
 			isLoading = false;
 		}

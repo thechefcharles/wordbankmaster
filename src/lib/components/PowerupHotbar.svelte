@@ -124,7 +124,8 @@
 			<div class="ph-float" aria-live="polite">{floatMsg}</div>
 		{/key}
 	{/if}
-	{#if hint}<div class="ph-hint">{@html hint}</div>{/if}
+	{#if hint}<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+		<div class="ph-hint">{@html hint}</div>{/if}
 {/if}
 
 <style>

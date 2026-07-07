@@ -1,5 +1,4 @@
 <script>
-	import { goto } from '$app/navigation';
 	import PageNav from '$lib/components/PageNav.svelte';
 	import KitAvatar from '$lib/components/KitAvatar.svelte';
 	import { SLOTS, PARTS, DEFAULT_KIT, KIT_READY } from '$lib/avatarKit.js';

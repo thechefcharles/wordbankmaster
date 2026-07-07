@@ -1,5 +1,4 @@
 <script>
-	import { goto } from '$app/navigation';
 	import PageNav from '$lib/components/PageNav.svelte';
 	import BadgesPanel from '$lib/components/BadgesPanel.svelte';
 </script>

@@ -11,9 +11,6 @@
 		fetchDailyGame,
 		useDailyTwist,
 		useDailyBoost,
-		startChallenge,
-		acceptAndPlayChallenge,
-		resumeChallenge,
 		challengeTimeoutCheck,
 		fetchMakeupGame,
 		fetchClimbGame,
@@ -37,12 +34,10 @@
 		matchFold
 	} from '$lib/stores/GameStore.js';
 	import {
-		getMyChallenges,
 		getPowerups,
 		getDailyAvailBoosts,
 		getMyMatches,
 		getMyGroups,
-		getMatch,
 		getMatchDetail,
 		getMatchDebuffs,
 		getMatchOpponents,
@@ -59,7 +54,6 @@
 		getDailyStatus,
 		getOpenGames,
 		expireStaleDailies,
-		getDailyGhost,
 		getMyDailyRank,
 		addFriend,
 		searchUsers,
@@ -69,10 +63,7 @@
 		getDailyBoard,
 		getMatchMessages,
 		sendMatchMessage,
-		getFriendRequestCount,
-		respondFriendRequest,
 		listFriendRequests,
-		getDailyModifier,
 		deleteMyAccount,
 		getMyAvatar,
 		getCashgameMeta,
@@ -84,8 +75,7 @@
 		refreshNotifications,
 		inboxRequest,
 		inboxTarget,
-		markChallengeNotifRead,
-		markFriendNotifRead
+		markChallengeNotifRead
 	} from '$lib/stores/notificationStore.js';
 	import { track } from '$lib/analytics.js';
 	import { modifierInfo } from '$lib/powerups.js';
@@ -127,7 +117,6 @@
 	import VaultReveal from '$lib/components/VaultReveal.svelte';
 	import Keyboard from '$lib/components/Keyboard.svelte';
 	import GameButtons from '$lib/components/GameButtons.svelte';
-	import FlipDigit from '$lib/components/FlipDigit.svelte';
 	import Auth from '$lib/components/Auth.svelte';
 	import Tutorial from '$lib/components/Tutorial.svelte';
 	import ObjectiveCard from '$lib/components/ObjectiveCard.svelte';
@@ -143,7 +132,6 @@
 	let showTutorial = false;
 	let showLaunchWelcome = false;
 	let menuView = 'home'; // 'home' | 'play' | 'challenge' | 'progress'
-	let blitzSoon = false;
 	let showResultModal = false;
 	let hasTriggeredModal = false;
 	let hasInitialized = false;
@@ -424,13 +412,6 @@
 	}
 	// (Resume + challenge-invite + friend-request notifications now live as their own
 	//  top-of-menu buttons — see resumables / challengeInvites / friendRequests.)
-	/** @param {any} r */
-	async function acceptFriend(r) {
-		fx('tap');
-		await respondFriendRequest(r.id, true);
-		markFriendNotifRead(r.id);
-		await refreshChallengeCount();
-	}
 	function onPinUnlocked() {
 		markUnlocked();
 		pinLocked.set(false);
@@ -455,27 +436,8 @@
 	// Background music: play continuously through the whole session — menu AND in-game
 	// (it loops seamlessly across screens) — pausing only while locked / setting a PIN.
 	$: if (browser) {
-		loggedIn && hasInitialized && !showPinUnlock && !showPinSetup ? startMusic() : stopMusic();
-	}
-	$: bankroll = $gameStore.bankroll || 0;
-	$: digits = String(bankroll).split('');
-
-	// ✨ Bankroll change reaction (pulse + floating delta)
-	let bankrollPulse = '';
-	let bankrollDelta = 0;
-	/** @type {number | null} */
-	let _prevBankroll = null;
-	$: {
-		const b = $gameStore.bankroll;
-		if (_prevBankroll !== null && typeof b === 'number' && b !== _prevBankroll) {
-			bankrollDelta = b - _prevBankroll;
-			bankrollPulse = bankrollDelta > 0 ? 'up' : 'down';
-			const token = bankrollDelta;
-			setTimeout(() => {
-				if (bankrollDelta === token) bankrollPulse = '';
-			}, 950);
-		}
-		if (typeof b === 'number') _prevBankroll = b;
+		if (loggedIn && hasInitialized && !showPinUnlock && !showPinSetup) startMusic();
+		else stopMusic();
 	}
 
 	// ---- Daily result: shareable card ----
@@ -582,13 +544,6 @@
 					return { spent: sp, payout: pay, net: pay - sp };
 				})()
 			: null;
-	// Win banner needs to know the solve was a Double-or-Nothing (server clears don_armed on solve).
-	let donArmedThisPuzzle = false;
-	$: if (isClimb && climb) {
-		if (climb.don_armed) donArmedThisPuzzle = true;
-		else if (climb.state === 'stuck' || (climb.state === 'active' && (climb.spent ?? 0) === 0))
-			donArmedThisPuzzle = false;
-	}
 	// Challenge live: Spent of your ante budget — lowest spend wins (standard only).
 	$: matchLive =
 		isMatch && matchInfo && !matchInfo.done && matchInfo.mode !== 'blitz'
@@ -698,6 +653,10 @@
 	/** @type {Record<string,number>} */ let dailyAvailBoosts = {};
 	let vaultMsg = '';
 	/** @type {ReturnType<typeof setTimeout>|undefined} */ let _vaultMsgTimer;
+	const BOOST_META = /** @type {Record<string,{emoji:string,blurb:string}>} */ ({
+		bounty_boost: { emoji: '💥', blurb: 'Adds ×0.5 to your bounty' },
+		jackpot_boost: { emoji: '💎', blurb: 'Adds ×1.0 to your bounty' }
+	});
 	async function loadVault() {
 		try {
 			vaultOwned = ((await getPowerups()).items ?? []).filter(
@@ -720,16 +679,6 @@
 		loadVault();
 	}
 	// From the main menu: require the device PIN (if set), play the safe-open reveal, then open.
-	async function openVaultFromMenu() {
-		fx('tap');
-		try {
-			await requirePin('Open your Vault');
-		} catch {
-			return;
-		}
-		loadVault();
-		vaultVideo = true;
-	}
 	function onVaultVideoEnd() {
 		if (vaultVideo) {
 			vaultVideo = false;
@@ -892,7 +841,6 @@
 	$: dlMult = Number($gameStore.dailyLive?.mult ?? $gameStore.bountyMult ?? 1);
 	$: dlRemaining = $gameStore.dailyLive?.remaining ?? 0; // Prize budget left
 	$: dlWinnings = $gameStore.dailyLive?.winnings ?? Math.round(dlRemaining * dlMult); // banked if you solve now
-	$: dlNet = dlWinnings;
 	$: dlWinStreak = dailyStatus?.win_streak ?? 0;
 	$: dlStreakBonus = Math.min(0.1 * dlWinStreak, 0.5);
 	$: dlWrong = $gameStore.wrongGuesses ?? 0;
@@ -1192,7 +1140,6 @@
 		}
 	}
 	$: selfPups = climbPups.filter((/** @type {any} */ i) => i.kind === 'climb'); // buffs (use on yourself)
-	$: sabPups = climbPups.filter((/** @type {any} */ i) => i.kind === 'sabotage'); // sabotage (target an opponent)
 
 	// --- per-match chat (1v1 + group challenges) ---
 	let matchChatOpen = false;
@@ -1659,58 +1606,7 @@
 
 	// ⚡ Power-up hotbar feed. Daily: today's Twist (mode allows only the Twist).
 	// Cash Game / Challenges will feed mode-eligible inventory power-ups here later.
-	// Daily hotbar = today's Twist (if unused) + any owned Bounty Boosts you carry.
-	/** @type {{id:string,emoji:string,name:string,blurb:string,count:number}[]} */
-	let dailyBoosts = [];
-	const BOOST_META = /** @type {Record<string,{emoji:string,blurb:string}>} */ ({
-		bounty_boost: { emoji: '💥', blurb: 'Adds ×0.5 to your bounty' },
-		jackpot_boost: { emoji: '💎', blurb: 'Adds ×1.0 to your bounty' }
-	});
-	async function loadDailyBoosts() {
-		try {
-			const r = await getPowerups();
-			dailyBoosts = (r.items ?? [])
-				.filter((/** @type {any} */ i) => i.kind === 'daily' && (i.owned ?? 0) > 0)
-				.map((/** @type {any} */ i) => ({
-					id: i.id,
-					emoji: BOOST_META[i.id]?.emoji ?? '💥',
-					name: i.name,
-					blurb: BOOST_META[i.id]?.blurb ?? '',
-					count: i.owned
-				}));
-		} catch {
-			dailyBoosts = [];
-		}
-	}
-	$: trayPowerups =
-		$gameStore.gameMode === 'daily' && gameActive
-			? [
-					...(dailyMod && !$gameStore.twistUsed
-						? [
-								{
-									id: 'twist',
-									emoji: dailyMod.emoji,
-									name: dailyMod.name,
-									blurb: dailyMod.blurb,
-									count: 1
-								}
-							]
-						: []),
-					...dailyBoosts
-				]
-			: [];
 	/** @param {CustomEvent<any>} e */
-	function onUsePowerup(e) {
-		const item = e.detail;
-		if (item?.id === 'twist') {
-			useTwist();
-			return;
-		}
-		if (item?.id === 'bounty_boost' || item?.id === 'jackpot_boost') {
-			useBoost(item.id);
-			return;
-		}
-	}
 
 	// Use today's Daily Twist power-up (tap the tray slot).
 	let dailyTwistBusy = false;
@@ -1728,7 +1624,6 @@
 		dailyBoostBusy = true;
 		fx('multiplier');
 		await useDailyBoost(id);
-		await loadDailyBoosts();
 		dailyBoostBusy = false;
 	}
 	async function startDaily() {
@@ -1737,7 +1632,6 @@
 		if (ok) {
 			hasInitialized = true;
 			showMainMenu = false;
-			loadDailyBoosts(); // surface any owned Bounty Boosts in the hotbar
 			// refresh streaks so the 📅 attendance chip includes today's check-in
 			const uid = get(user)?.id;
 			if (uid)
@@ -1886,7 +1780,6 @@
 	let myMatches = [];
 	/** @type {any[]} */
 	let myGroups = [];
-	let challengeCount = 0; // matches awaiting my play (badge on the Challenges card)
 	let friendReqCount = 0; // incoming friend requests (badge on Friends)
 	/** @type {any|null} */
 	let matchResults = null; // a settled match's results being viewed
@@ -1930,7 +1823,6 @@
 			const [matches, reqs] = await Promise.all([getMyMatches(), listFriendRequests()]);
 			myMatches = matches;
 			friendRequests = reqs.incoming ?? [];
-			challengeCount = myMatches.filter((m) => m.status === 'open' && m.my_state !== 'done').length;
 			friendReqCount = friendRequests.length;
 		} catch {
 			/* non-fatal */
@@ -1957,7 +1849,6 @@
 		menuView = 'community';
 		showMainMenu = true;
 		[myMatches, myGroups] = await Promise.all([getMyMatches(), getMyGroups()]);
-		challengeCount = myMatches.filter((m) => m.status === 'open' && m.my_state !== 'done').length;
 	}
 	/** Back-compat shim for existing callers (banner "+N more", toasts, result modal). */
 	/** @param {string} [forceTab] */
@@ -2133,10 +2024,6 @@
 		refreshClimbPups(); // load owned power-ups for the match tray
 	}
 
-	function handleMenuLeaderboard() {
-		goto('/leaderboard');
-	}
-
 	/** Return to main menu from game (saves and refreshes menu state) */
 	function goToMainMenu() {
 		const currentUser = get(user);
@@ -2174,8 +2061,6 @@
 	let showMyAccount = false;
 	let showAudio = false; // in-game quick audio panel (sound / haptics / music / track)
 	let showStreakMessage = false;
-	let accountStreak = 0;
-	let accountFreezes = 0;
 	let maUsername = '';
 	/** @type {any} */ let myAvatar = null;
 	let _avatarLoaded = false;
@@ -2222,9 +2107,6 @@
 		maMsg = '';
 		const u = get(user);
 		if (u?.id) {
-			const status = await getDailyStatus(u.id);
-			accountStreak = status.current_streak ?? 0;
-			accountFreezes = status.streak_freezes ?? 0;
 			maUsername = (await getMyUsername()) ?? '';
 			maEditing = !maUsername;
 			maInput = maUsername;
@@ -2268,9 +2150,6 @@
 		gameWasRestored.set(false);
 		goto('/leaderboard?mode=daily');
 	};
-
-	/** @type {null | { yesterday_played: boolean, yesterday_banked: number|null, yesterday_won: boolean, today_banked: number|null, today_players: number, today_percentile: number|null }} */
-	let ghost = null;
 
 	const onPhraseRevealComplete = () => {
 		if (!hasTriggeredModal && ['won', 'lost'].includes($gameStore.gameState)) {
@@ -2523,6 +2402,7 @@
 			if (e.key === 'Escape' || e.key === 'Enter') showBank = false;
 		}}
 	>
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card bank-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (showBank = false)} aria-label="Close">✕</button>
 			<p class="bm-label">Net Worth</p>
@@ -2570,6 +2450,7 @@
 			if (e.key === 'Escape') showBag = false;
 		}}
 	>
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card bag-modal" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (showBag = false)} aria-label="Close">✕</button>
 			<h3 class="info-title"><img src="/vault.png" alt="" class="vault-ic-xs" /> My Vault</h3>
@@ -2616,6 +2497,7 @@
 			if (e.key === 'Escape' || e.key === 'Enter') dailyInfo = null;
 		}}
 	>
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (dailyInfo = null)} aria-label="Close">✕</button>
 			{#if dailyInfo === 'mult'}
@@ -2706,6 +2588,7 @@
 			if (e.key === 'Escape' || e.key === 'Enter') climbInfo = null;
 		}}
 	>
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (climbInfo = null)} aria-label="Close">✕</button>
 			{#if climbInfo === 'heat'}
@@ -2782,6 +2665,7 @@
 			if (e.key === 'Escape' || e.key === 'Enter') showAnteInfo = false;
 		}}
 	>
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (showAnteInfo = false)} aria-label="Close">✕</button>
 			<div class="info-big green">${Math.max(0, matchLeft).toLocaleString()}</div>
@@ -2818,6 +2702,7 @@
 			if (e.key === 'Escape' || e.key === 'Enter') debuffModal = null;
 		}}
 	>
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (debuffModal = null)} aria-label="Close">✕</button>
 			<div class="info-big">💥</div>
@@ -2855,6 +2740,7 @@
 			if (e.key === 'Escape') sabPicker = null;
 		}}
 	>
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (sabPicker = null)} aria-label="Cancel">✕</button>
 			<div class="info-big">{PUP_ICON[sabPicker.item.id] ?? '😈'}</div>
@@ -2918,6 +2804,7 @@
 			if (e.key === 'Escape' || e.key === 'Enter') showAudio = false;
 		}}
 	>
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card audio-panel" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (showAudio = false)} aria-label="Close">✕</button>
 			<h3 class="info-title">Sound &amp; Music</h3>

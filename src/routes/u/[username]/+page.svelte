@@ -63,7 +63,7 @@
 		load();
 	});
 	$effect(() => {
-		$page.params.username;
+		void $page.params.username;
 		load();
 	});
 </script>

@@ -1,7 +1,6 @@
 // src/lib/stores/GameStore.js
 
 import { writable, get } from 'svelte/store';
-import confetti from 'canvas-confetti';
 import { fx } from '$lib/sound.js';
 import {
 	dailyStart,
@@ -11,7 +10,6 @@ import {
 	dailyReveal,
 	dailySubmitGuess,
 	dailyFold as dailyFoldRpc,
-	getDailyModifier,
 	getDailyClue
 } from '$lib/stores/statsStore.js';
 import {
@@ -40,8 +38,6 @@ import {
 	climbLeave,
 	climbSkip,
 	climbDoubleOrNothing,
-	getPowerups,
-	buyPowerup,
 	climbUsePowerup,
 	getClimbClue
 } from '$lib/stores/statsStore.js';

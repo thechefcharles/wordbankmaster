@@ -36,7 +36,9 @@
 				supabase.auth.signOut().finally(() => {
 					try {
 						localStorage.removeItem('wb_keep');
-					} catch {}
+					} catch {
+						/* ignore */
+					}
 				});
 			} else {
 				sessionStorage.setItem('wb_sess', '1');

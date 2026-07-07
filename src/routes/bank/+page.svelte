@@ -353,6 +353,7 @@
 				if (e.key === 'Escape' || e.key === 'Enter') info = null;
 			}}
 		>
+			<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 			<div class="si-card" role="document" onclick={(e) => e.stopPropagation()}>
 				<h3 class="si-title">{info.title}</h3>
 				<p class="si-desc">{info.desc}</p>

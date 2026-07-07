@@ -107,7 +107,7 @@
 		};
 	});
 	$effect(() => {
-		messages;
+		void messages;
 		if (chatScroll) chatScroll.scrollTop = chatScroll.scrollHeight;
 	});
 
