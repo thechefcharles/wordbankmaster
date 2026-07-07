@@ -3990,10 +3990,18 @@
 		{#if isClimb && climb}
 			{#if climb.must_guess && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
 				<div class="climb-stuck">
-					<span class="cs-text"
-						>🎯 Cash Advance spent — guess now, or Deposit your Pending Deposit to bank it. A wrong
-						guess VOIDs it.</span
-					>
+					{#if (climb.wallet ?? climb.bankroll ?? 0) > 0}
+						<span class="cs-text"
+							>🎯 Cash Advance spent — guess now, or Deposit your ${Math.round(
+								climb.wallet ?? climb.bankroll ?? 0
+							).toLocaleString()} to bank it. A wrong guess VOIDs it.</span
+						>
+					{:else}
+						<span class="cs-text"
+							>🎯 Cash Advance spent — you must guess. Nothing's banked yet, so a wrong guess ends
+							the run and loses your Principal.</span
+						>
+					{/if}
 				</div>
 			{/if}
 			<!-- 🏦 Cash Out — bank the run bankroll anytime (the press-your-luck valve). -->
