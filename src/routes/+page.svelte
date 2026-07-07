@@ -481,7 +481,7 @@
 		_attTimer = setTimeout(() => gameStore.update((s) => ({ ...s, cashToast: null })), 4000);
 	}
 	$: isClimb = $gameStore.gameMode === 'climb';
-	$: climb = $gameStore.climbInfo; // { bounty, heat, spent, position, bust_risk, wrong_penalty, last_gain, state, pups_locked, equipped }
+	$: climb = $gameStore.climbInfo; // { bounty, heat, spent, position, final_guess, cheapest, wrong_penalty, last_gain, state, pups_locked, equipped }
 	// ⚡ Blitz — the live client clock counts down to blitzInfo.remaining_ms (server-authoritative);
 	// each action resyncs it. At 0 we call endBlitz() once.
 	$: isBlitz = $gameStore.gameMode === 'blitz';
@@ -3987,10 +3987,11 @@
 		<!-- 🎰 Cash Game (Climb) HUD — number-free so it feels random. Heat lives in the
          Solve-to-Earn box; power-ups live in the vault beside Solve. -->
 		{#if isClimb && climb}
-			{#if climb.bust_risk && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
+			{#if climb.final_guess && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
 				<div class="climb-stuck">
 					<span class="cs-text"
-						>⚠️ Low Wallet — a wrong guess busts your run. Cash Out to bank it.</span
+						>🎯 Final guess — can't afford another letter. Solve it, or Cash Out to bank your
+						Wallet. A wrong guess busts the run.</span
 					>
 				</div>
 			{/if}

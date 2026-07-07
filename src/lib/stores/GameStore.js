@@ -170,7 +170,7 @@ export const gameStore = writable(
 		clue: null, // witty one-line hint for the current puzzle
 		challengeInfo: null, // { mode, started_at, limit_seconds, play_state, score } for the active challenge
 		makeupDate: null, // YYYY-MM-DD of the make-up day being played (makeup mode only)
-		climbInfo: null, // { bounty, heat, spent, position, bust_risk, wrong_penalty, last_gain, state } (climb mode)
+		climbInfo: null, // { bounty, heat, spent, position, final_guess, cheapest, wrong_penalty, last_gain, state } (climb mode)
 		blitzInfo: null, // { remaining_ms, combo, solved, winnings, tier, buy_in, base, state } (blitz mode)
 		matchInfo: null, // { position, pack_size, total_score, last_score, done, status } (challenge match)
 		cashToast: null, // { amount, label } — transient Cash-earned toast (attendance / free-play reward)
