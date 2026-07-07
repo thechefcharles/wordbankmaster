@@ -60,6 +60,7 @@
 		getMyUsername,
 		setUsername,
 		getBank,
+		takeLoan,
 		getDailyBoard,
 		getMatchMessages,
 		sendMatchMessage,
@@ -115,6 +116,7 @@
 	import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
 	import InventoryList from '$lib/components/InventoryList.svelte';
 	import VaultReveal from '$lib/components/VaultReveal.svelte';
+	import LoanPanel from '$lib/components/LoanPanel.svelte';
 	import Keyboard from '$lib/components/Keyboard.svelte';
 	import GameButtons from '$lib/components/GameButtons.svelte';
 	import Auth from '$lib/components/Auth.svelte';
@@ -616,9 +618,9 @@
 		tick().then(playDailyIntroIfArmed);
 	}
 
-	// 💰 In-game bank: a modal (not a route) so closing it returns to the game, not the menu.
+	// 💰 Bank Account hub: a modal (not a route) so closing it returns to where you were.
 	let showBank = false;
-	/** @type {{ bank:number, net_worth:number, ledger:any[] }|null} */
+	/** @type {{ bank:number, net_worth:number, loan:number, loan_cap:number, in_the_red:boolean, ledger:any[] }|null} */
 	let bankData = null;
 	async function openBankModal() {
 		fx('tap');
@@ -629,6 +631,15 @@
 			bankData = null;
 		}
 	}
+	// After a borrow/repay inside the hub: refresh the sheet + the top Bank Account chip.
+	async function reloadBank() {
+		try {
+			bankData = await getBank();
+		} catch {
+			/* keep last */
+		}
+		refreshBank();
+	}
 	const fmtCash = (/** @type {number} */ n) => '$' + Math.round(n ?? 0).toLocaleString();
 	/** @param {string} reason */
 	const bankReason = (reason) =>
@@ -636,11 +647,19 @@
 			daily_win: 'Daily reward',
 			daily_reward: 'Daily reward',
 			attendance: 'Daily attendance reward',
-			arcade_cashout: 'Cash Game cash-out',
-			climb_bounty: 'Climb bounty',
-			freeplay_reward: 'Free Play reward',
-			cosmetic_buy: 'Shop purchase',
+			makeup_reward: 'Make-up Daily',
+			cashgame_buyin: 'Cash Game buy-in',
+			cashgame_cashout: 'Cash Game cash-out',
+			climb_bounty: 'Cash Game bounty',
+			climb_letter: 'Cash Game letter',
+			blitz_buyin: 'Blitz buy-in',
+			blitz_payout: 'Blitz payout',
+			challenge_payout: 'Challenge payout',
+			cosmetic_buy: 'Store purchase',
 			powerup_buy: 'Power-up purchase',
+			loan_take: 'Loan received',
+			loan_repay: 'Loan repayment',
+			loan_skim: 'Loan auto-payment',
 			wager_win: 'Won a wager',
 			wager_stake: 'Wager staked',
 			wager_refund: 'Wager refunded'
@@ -1696,16 +1715,54 @@
 		if (res?.ok) {
 			await enterClimbGame();
 		} else if (res?.reason === 'insufficient') {
-			// Can't afford the buy-in → offer the Loan Shark.
-			if (
-				confirm(
-					`You need $${(res.buy_in ?? 0).toLocaleString()} to buy in (you have $${(res.bank ?? 0).toLocaleString()}). Borrow from the Bank?`
-				)
-			) {
-				showTierSelect = false;
-				goto('/bank');
-			}
+			await borrowToBuyIn(tier, res.buy_in ?? 0, res.bank ?? 0);
 		} else if (res?.reason === 'locked') {
+			fx('wrong');
+		}
+	}
+	// 🦈 Buy-in wall → borrow exactly the shortfall (+25% fee), confirm with PIN, auto-start.
+	/** @param {string} tier @param {number} buyIn @param {number} have */
+	async function borrowToBuyIn(tier, buyIn, have) {
+		const shortfall = Math.max(10, Math.ceil((buyIn - have) / 10) * 10);
+		const info = await getBank().catch(() => null);
+		if ((info?.loan ?? 0) > 0) {
+			alert('Pay off your current loan first, then you can buy in.');
+			return;
+		}
+		const cap = info?.loan_cap ?? 0;
+		if (shortfall > cap) {
+			alert(
+				`You're $${(buyIn - have).toLocaleString()} short of the $${buyIn.toLocaleString()} buy-in and can only borrow up to $${cap.toLocaleString()}. Try a lower tier.`
+			);
+			return;
+		}
+		const fee = Math.round(shortfall * 0.25);
+		try {
+			await requirePin(`Borrow $${shortfall.toLocaleString()} to buy in`, [
+				{ label: 'Buy-in', value: '$' + buyIn.toLocaleString() },
+				{ label: 'You have', value: '$' + have.toLocaleString() },
+				{
+					label: 'Borrow (25% fee)',
+					value: `$${shortfall.toLocaleString()} → owe $${(shortfall + fee).toLocaleString()}`
+				}
+			]);
+		} catch {
+			return; // cancelled at the pad
+		}
+		cgBusy = true;
+		const loanRes = await takeLoan(shortfall);
+		if (!loanRes?.ok) {
+			cgBusy = false;
+			fx('wrong');
+			alert('Could not borrow right now.');
+			return;
+		}
+		const retry = await startCashGame(tier);
+		cgBusy = false;
+		if (retry?.ok) {
+			fx('win');
+			await enterClimbGame();
+		} else {
 			fx('wrong');
 		}
 	}
@@ -2405,15 +2462,17 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card bank-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (showBank = false)} aria-label="Close">✕</button>
-			<p class="bm-label">Cash</p>
+			<p class="bm-label">🏦 Bank Account</p>
 			<div class="info-big">{fmtCash(bankData?.bank ?? netWorth ?? 0)}</div>
-			<p class="info-sub">Your Cash — this is your score</p>
+			<p class="info-sub">Your Bank Account — this is your score</p>
+			<!-- 🦈 Borrow / Repay, inline -->
+			<LoanPanel bank={bankData} on:changed={reloadBank} />
 			{#if bankData}
 				<div class="bm-hist-h">Recent activity</div>
 				{#if (bankData.ledger ?? []).length === 0}
 					<p class="info-note" style="text-align:center">
 						No transactions yet. Win the Daily, show up for attendance, or climb the Cash Game to
-						grow your Cash.
+						grow your Bank Account.
 					</p>
 				{:else}
 					<div class="bm-ledger">
@@ -2426,6 +2485,7 @@
 							</div>
 						{/each}
 					</div>
+					<button class="bm-fullledger" on:click={() => goto('/bank')}>See full ledger →</button>
 				{/if}
 			{/if}
 			<button class="info-close" on:click={() => (showBank = false)}>Back to game</button>
@@ -2954,7 +3014,7 @@
 								>{$unreadCount > 99 ? '99+' : $unreadCount}</span
 							>{/if}
 					</button>
-					<button class="bank-chip" on:click={() => goto('/bank')} title="Your Cash">
+					<button class="bank-chip" on:click={openBankModal} title="Bank Account">
 						<span class="bc-coin">💰</span>{netWorth == null
 							? '—'
 							: '$' + Math.round(netWorth).toLocaleString()}
@@ -3869,15 +3929,15 @@
 					class="top-bank solo"
 					class:pop-up={bankFlash === 'up'}
 					class:pop-down={bankFlash === 'down'}
-					title={isDailyLike ? 'Prize remaining — spend it, keep the rest' : 'Your Cash'}
+					title={isDailyLike ? 'Prize remaining — spend it, keep the rest' : 'Bank Account'}
 					on:click={openBankModal}
 				>
-					{#if isMatch}<span class="tb-wallet-cap">💰 Wallet</span>{:else if isDailyLike}<span
+					{#if isMatch}<span class="tb-wallet-cap">👛 Wallet</span>{:else if isDailyLike}<span
 							class="tb-wallet-cap">🏆 Prize</span
-						>{:else if isClimb}<span class="tb-wallet-cap">🪙 Stack</span>{/if}
+						>{:else if isClimb}<span class="tb-wallet-cap">👛 Wallet</span>{/if}
 					<span class="tb-solo"
-						>{#if isMatch}💰
-						{:else if isClimb}🪙
+						>{#if isMatch}👛
+						{:else if isClimb}👛
 						{:else if !isDailyLike}💰
 						{/if}${Math.round($tweenBank).toLocaleString()}</span
 					>
@@ -3930,7 +3990,7 @@
 			{#if climb.bust_risk && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
 				<div class="climb-stuck">
 					<span class="cs-text"
-						>⚠️ Low Stack — a wrong guess busts your run. Cash Out to bank it.</span
+						>⚠️ Low Wallet — a wrong guess busts your run. Cash Out to bank it.</span
 					>
 				</div>
 			{/if}
@@ -4079,8 +4139,8 @@
 					<span class="bp-label"
 						>{isMatch
 							? matchLeft > 0
-								? '💰 Left to Spend'
-								: '🪙 Out of ante'
+								? '👛 Wallet'
+								: '👛 Wallet empty'
 							: $gameStore.gameMode === 'daily'
 								? "You'll bank"
 								: soloHero.net >= 0
@@ -4343,7 +4403,7 @@
 								>
 							</div>
 							<div class="wm-row total">
-								<span>🪙 Stack</span><b>${bankroll.toLocaleString()}</b>
+								<span>👛 Wallet</span><b>${bankroll.toLocaleString()}</b>
 							</div>
 						</div>
 						<p class="win-twist">
@@ -7645,6 +7705,19 @@
 		gap: 10px;
 		padding: 9px 11px;
 		background: var(--surface);
+	}
+	.bm-fullledger {
+		display: block;
+		width: 100%;
+		margin: -6px 0 12px;
+		padding: 4px;
+		background: none;
+		border: none;
+		color: var(--brand-2);
+		font-size: 0.82rem;
+		font-weight: 700;
+		cursor: pointer;
+		text-align: center;
 	}
 	.bm-reason {
 		color: var(--text-muted);
