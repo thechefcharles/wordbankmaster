@@ -2682,7 +2682,7 @@
 				</p>
 			{:else}
 				<div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
-				<h3 class="info-title">Solve → Credit</h3>
+				<h3 class="info-title">Solve to earn</h3>
 				<p class="info-sub">What lands in your Pending Deposit if you solve right now.</p>
 				<div class="info-rows">
 					<div class="info-row">
@@ -3936,11 +3936,10 @@
 				>
 					{#if isMatch}<span class="tb-wallet-cap">👛 Wallet</span>{:else if isDailyLike}<span
 							class="tb-wallet-cap">🏆 Prize</span
-						>{:else if isClimb}<span class="tb-wallet-cap">🧾 Pending Deposit</span>{/if}
+						>{:else if isClimb}<span class="tb-wallet-cap">Pending Deposit</span>{/if}
 					<span class="tb-solo"
 						>{#if isMatch}👛
-						{:else if isClimb}👛
-						{:else if !isDailyLike}💰
+						{:else if isClimb}{:else if !isDailyLike}💰
 						{/if}${Math.round($tweenBank).toLocaleString()}</span
 					>
 				</button>
@@ -4112,7 +4111,7 @@
 							: $gameStore.gameMode === 'daily'
 								? "You'll bank"
 								: soloHero.net >= 0
-									? 'Solve → Credit'
+									? 'Solve to earn'
 									: '⚠️ You’re losing money'}</span
 					>
 					<div class="bp-row">
