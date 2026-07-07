@@ -32,8 +32,8 @@
 					icon: '📅',
 					title: "Today's Daily",
 					goal: 'Solve the hidden phrase.',
-					win: 'Spend as little Cash as you can — your leftover is your score.',
-					bar: 'Just showing up pays a streak reward.'
+					win: 'Spend as little as you can — your leftover Deposits to your account.',
+					bar: 'A win streak pays Interest on every solve.'
 				};
 			case 'climb':
 				return {

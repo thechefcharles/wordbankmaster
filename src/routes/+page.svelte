@@ -2053,7 +2053,7 @@
 			{ label: 'Payout', value: m.payout === 'podium' ? 'Podium 3·2·1' : 'Winner takes all' }
 		];
 		if (Number(m.wager) > 0 && netWorth != null)
-			s.push({ label: 'Your Cash', value: '$' + Math.round(netWorth).toLocaleString() });
+			s.push({ label: 'Available Balance', value: '$' + Math.round(netWorth).toLocaleString() });
 		return s;
 	}
 	/** A challenge whose buy-in I can't fully afford — drives the play-or-decline sheet. */
@@ -2594,8 +2594,8 @@
 			<button class="modal-x" on:click={() => (dailyInfo = null)} aria-label="Close">✕</button>
 			{#if dailyInfo === 'mult'}
 				<div class="info-big">{fmtMult(dlMult)}</div>
-				<h3 class="info-title">Bounty Multiplier</h3>
-				<p class="info-sub">Everything you can earn from this puzzle is multiplied by this.</p>
+				<h3 class="info-title">Interest</h3>
+				<p class="info-sub">Boosts everything you Deposit from this puzzle.</p>
 				<div class="info-rows">
 					<div class="info-row"><span>Base</span><b>+0%</b></div>
 					{#if dlStreakBonus > 0}<div class="info-row">
@@ -2609,7 +2609,7 @@
 					{#if dlWrong > 0}<div class="info-row">
 							<span>❌ Wrong guesses ({dlWrong})</span><b class="neg">−{dlPenalty.toFixed(1)}</b>
 						</div>{/if}
-					<div class="info-row total"><span>Your multiplier</span><b>{fmtMult(dlMult)}</b></div>
+					<div class="info-row total"><span>Your Interest</span><b>{fmtMult(dlMult)}</b></div>
 				</div>
 				<p class="info-note">
 					Grows with your <button
@@ -2635,29 +2635,30 @@
 				<p class="info-note">
 					Also boosts your <button
 						class="info-inline"
-						on:click|stopPropagation={() => (dailyInfo = 'mult')}>multiplier</button
+						on:click|stopPropagation={() => (dailyInfo = 'mult')}>Interest</button
 					>
 					— <b>+0.1×</b> per win.
 				</p>
 			{:else}
 				<div class="info-big green">${Math.max(0, dlWinnings).toLocaleString()}</div>
-				<h3 class="info-title">You'll bank</h3>
+				<h3 class="info-title">You'll deposit</h3>
 				<p class="info-sub">
-					What you'd bank if you solve right now. Your Cash never drops — playing only adds to it.
+					What you'd Deposit if you solve right now. Your Available Balance never drops — solving
+					only adds to it.
 				</p>
 				<div class="info-rows">
 					<div class="info-row">
-						<span>🏆 Prize left</span><b class="pos">${dlRemaining.toLocaleString()}</b>
+						<span>Pending Deposit</span><b class="pos">${dlRemaining.toLocaleString()}</b>
 					</div>
 					{#if dlMult > 1}<div class="info-row">
-							<span>× Streak bonus</span><b>{fmtMult(dlMult)}</b>
+							<span>× Interest</span><b>{fmtMult(dlMult)}</b>
 						</div>{/if}
 					<div class="info-row total">
-						<span>You bank</span><b class="green">${dlWinnings.toLocaleString()}</b>
+						<span>You deposit</span><b class="green">${dlWinnings.toLocaleString()}</b>
 					</div>
 				</div>
 				<p class="info-note">
-					Deduce letters instead of buying them — keep more of the Prize. Grows your <button
+					Deduce letters instead of buying them — keep more of your Pending Deposit. Grows your <button
 						class="info-inline"
 						on:click|stopPropagation={() => (dailyInfo = 'mult')}>multiplier</button
 					> too.
@@ -3971,11 +3972,11 @@
 					class="top-bank solo"
 					class:pop-up={bankFlash === 'up'}
 					class:pop-down={bankFlash === 'down'}
-					title={isDailyLike ? 'Prize remaining — spend it, keep the rest' : 'Bank Account'}
+					title={isDailyLike ? 'Pending Deposit — spend it, keep the rest' : 'Available Balance'}
 					on:click={openBankModal}
 				>
 					{#if isMatch}<span class="tb-wallet-cap">👛 Wallet</span>{:else if isDailyLike}<span
-							class="tb-wallet-cap">🏆 Prize</span
+							class="tb-wallet-cap">Pending Deposit</span
 						>{:else if isClimb}<span class="tb-wallet-cap">Pending Deposit</span>{/if}
 					<span class="tb-solo"
 						>{#if isMatch}👛
@@ -4334,40 +4335,71 @@
 						{@const banked = Number(
 							dr.winnings ?? dr.banked ?? dr.reward ?? Math.round(kept * mult)
 						)}
-						<h2 class="win-h">🎉 Solved!</h2>
-						<p class="result-sub">{todayLabel}</p>
-						<!-- Prize − Spent = Kept ×mult = Banked -->
-						<div class="win-math">
-							<div class="wm-row"><span>🏆 Prize</span><b>${prize.toLocaleString()}</b></div>
-							<div class="wm-row">
-								<span>− Spent on letters</span><b class="neg"
-									>−${(dr.spent ?? 0).toLocaleString()}</b
+						{@const interestPct = Math.round((mult - 1) * 100)}
+						{@const interestBonus = Math.max(0, banked - kept)}
+						<!-- 🧾 Daily DEPOSIT slip: Pending Deposit − Letters = Subtotal ×Interest = Deposit -->
+						<div class="receipt">
+							<div class="rcpt-brand">
+								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
+								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
+							</div>
+							<div class="rcpt-title">DEPOSIT SLIP</div>
+							<div class="rcpt-acct">WORDBANK CHECKING</div>
+							<div class="rcpt-sub">
+								ACCT ·········{acctNo}{#if myUsername}
+									· @{myUsername}{/if}
+							</div>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-info">
+								<div class="ri-row"><span>{rcptDate}</span><span>{rcptTime}</span></div>
+								<div class="ri-row">
+									<span>DAILY</span><span
+										>{dlWinStreak > 0 ? `${dlWinStreak} DAY STREAK` : 'FIRST WIN'}</span
+									>
+								</div>
+							</div>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-line">
+								<span>Pending Deposit</span><span>${prize.toLocaleString()}</span>
+							</div>
+							<div class="rcpt-line">
+								<span>Letters (debit)</span><span class="neg"
+									>−${(dr.spent ?? 0).toLocaleString()}</span
 								>
 							</div>
-							<div class="wm-row"><span>= Kept</span><b>${kept.toLocaleString()}</b></div>
-							{#if mult > 1}<div class="wm-row">
-									<span>× Streak bonus</span><b>{fmtMult(mult)}</b>
-								</div>{/if}
-							<div class="wm-row total">
-								<span>💰 Banked</span><b class="profit">+${banked.toLocaleString()}</b>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-line">
+								<span>Subtotal</span><span>${kept.toLocaleString()}</span>
 							</div>
+							{#if interestPct > 0}
+								<div class="rcpt-line">
+									<span>Interest +{interestPct}%</span><span class="pos"
+										>+${interestBonus.toLocaleString()}</span
+									>
+								</div>
+							{/if}
+							<div class="rcpt-rule double"></div>
+							<div class="rcpt-line total profit">
+								<span>DEPOSIT</span><span>+${banked.toLocaleString()}</span>
+							</div>
+							<div class="rcpt-line balance">
+								<span>AVAILABLE BALANCE</span><span
+									>${Math.round($resultBankAnim).toLocaleString()}</span
+								>
+							</div>
+							{#if dailyMod}
+								<div class="rcpt-rule"></div>
+								<div class="rcpt-line">
+									<span>{dailyMod.emoji} {dailyMod.name}</span><span>applied</span>
+								</div>
+							{/if}
+							{#if resultRank && resultRank.total > 0}
+								<div class="rcpt-foot">
+									🏆 #{resultRank.rank} of {resultRank.total.toLocaleString()} today
+								</div>
+							{/if}
+							<div class="rcpt-thanks">Thank you for banking with WordBank</div>
 						</div>
-						{#if dailyMod}
-							<p class="win-twist">
-								{dailyMod.emoji} <b>{dailyMod.name}</b> — applied for everyone
-							</p>
-						{/if}
-						<!-- bankroll scrolls to the new total -->
-						<div class="win-bank">
-							<span class="wb-label">💰 Your Cash</span>
-							<span class="wb-amount">${Math.round($resultBankAnim).toLocaleString()}</span>
-						</div>
-						<p class="win-rank">
-							{#if resultRank && resultRank.total > 0}<b>🏆 #{resultRank.rank}</b> of {resultRank.total.toLocaleString()}
-								today{/if}
-							{#if (dailyStatus?.win_streak ?? 0) > 0}
-								· 🔥 {dailyStatus?.win_streak} win streak{/if}
-						</p>
 						<div class="result-actions">
 							<button class="share-btn" on:click={handleShare}
 								>{shareCopied ? '✓ Copied!' : 'Share'}</button
@@ -4384,16 +4416,36 @@
 							}}>Back to menu</button
 						>
 					{:else if isDailyResult}
-						<div class="result-medal lose">😖</div>
-						<h2>Busted</h2>
-						<p class="result-sub">{todayLabel}</p>
-						<div class="result-bankroll">
-							<span class="rb-label">Your Cash</span>
-							<span class="rb-amount">${resultBankroll.toLocaleString()}</span>
+						<!-- 🧾 Daily VOID slip: didn't solve → no deposit, balance untouched -->
+						<div class="receipt void">
+							<div class="rcpt-brand">
+								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
+								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
+							</div>
+							<div class="rcpt-title void">⚠ VOID</div>
+							<div class="rcpt-acct">WORDBANK CHECKING</div>
+							<div class="rcpt-sub">
+								ACCT ·········{acctNo}{#if myUsername}
+									· @{myUsername}{/if}
+							</div>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-info">
+								<div class="ri-row"><span>{rcptDate}</span><span>{rcptTime}</span></div>
+								<div class="ri-row"><span>DAILY</span><span>NO DEPOSIT</span></div>
+							</div>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-line total"><span>DEPOSIT</span><span>$0</span></div>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-line answer">
+								<span>Answer</span><span>{$gameStore.currentPhrase}</span>
+							</div>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-line balance">
+								<span>AVAILABLE BALANCE</span><span>${resultBankroll.toLocaleString()}</span>
+							</div>
+							<div class="rcpt-foot">No deposit today · win streak reset. Back tomorrow.</div>
+							<div class="rcpt-thanks">Thank you for banking with WordBank</div>
 						</div>
-						<p class="win-rank">
-							No profit this time — your win streak resets. Come back tomorrow.
-						</p>
 						<div class="result-actions">
 							<button class="share-btn" on:click={handleShare}
 								>{shareCopied ? '✓ Copied!' : 'Share'}</button
@@ -8572,31 +8624,6 @@
 		font-size: 0.92rem;
 		margin: 0 0 16px;
 	}
-	.result-bankroll {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 2px;
-		padding: 14px;
-		margin: 0 0 18px;
-		background: var(--surface);
-		border: 1px solid var(--border);
-		border-radius: var(--r-lg);
-	}
-	.rb-label {
-		font-size: 0.6rem;
-		letter-spacing: 0.2em;
-		text-transform: uppercase;
-		color: var(--text-faint);
-		font-weight: 600;
-	}
-	.rb-amount {
-		font-family: var(--font-display);
-		font-weight: 700;
-		font-size: 2rem;
-		color: #fcd34d;
-		text-shadow: 0 0 18px rgba(251, 191, 36, 0.4);
-	}
 	/* 🏆 Win banner */
 	.win-h {
 		font-family: var(--font-display);
@@ -8799,39 +8826,6 @@
 		font-size: 0.82rem;
 		color: var(--text-muted);
 		margin: 0 0 12px;
-	}
-	.win-twist b {
-		color: var(--brand-2);
-	}
-	.win-bank {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 2px;
-		margin: 0 0 10px;
-	}
-	.wb-label {
-		font-size: 0.66rem;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: var(--text-faint);
-	}
-	.wb-amount {
-		font-family: 'Orbitron', var(--font-display);
-		font-weight: 800;
-		font-size: 1.9rem;
-		color: #fde047;
-		text-shadow: 0 0 18px rgba(251, 191, 36, 0.45);
-		font-variant-numeric: tabular-nums;
-	}
-	.win-rank {
-		font-size: 0.86rem;
-		color: var(--text-muted);
-		margin: 0 0 14px;
-	}
-	.win-rank b {
-		color: #fde047;
-		font-family: var(--font-display);
 	}
 	.win-menu {
 		margin-top: 10px;
