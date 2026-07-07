@@ -99,11 +99,11 @@
 				class="bal cash"
 				onclick={() =>
 					(info = {
-						title: '💰 Bank Account',
+						title: '💰 Available Balance',
 						desc: 'Your main balance — and your score. Earn it by solving puzzles in the Daily, Cash Game, and challenges. You move some into a Wallet to play Cash Game, and spend it on power-ups & cosmetics in the Store. It can’t be bought with real money.'
 					})}
 			>
-				<span class="bal-label">💰 Bank Account <span class="bal-i">ⓘ</span></span>
+				<span class="bal-label">💰 Available Balance <span class="bal-i">ⓘ</span></span>
 				<span class="bal-value">{fmt(b.bank)}</span>
 			</button>
 		</div>
@@ -117,7 +117,7 @@
 
 		<!-- Ledger -->
 		<div class="led-head">
-			<h2 class="hist-title">📒 Ledger</h2>
+			<h2 class="hist-title">📄 Statement</h2>
 			{#if b.ledger.length}
 				<div class="led-filters">
 					<div class="led-dd">

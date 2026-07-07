@@ -1072,6 +1072,8 @@
 		await matchTimeoutCheck();
 	}
 	$: climbHeat = ((climb?.heat ?? 100) / 100).toFixed(1);
+	// Cash Game "Yield" = heat expressed as a % gain (heat ×1.3 → +30%).
+	$: climbYield = Math.round((climb?.heat ?? 100) - 100);
 	// Heat IS the Cash Game win streak: each solve +0.1× (cap ×2.0), reset to ×1.0 when stuck.
 	$: climbStreak = Math.max(0, Math.round(((climb?.heat ?? 100) - 100) / 10));
 	// 🔥 The run: solves + cumulative profit since heat last reset (run_profit can be negative early).
@@ -2457,7 +2459,7 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card bank-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (showBank = false)} aria-label="Close">✕</button>
-			<p class="bm-label">🏦 Bank Account</p>
+			<p class="bm-label">💰 Available Balance</p>
 			<div class="info-big">{fmtCash(bankData?.bank ?? netWorth ?? 0)}</div>
 			<p class="info-sub">Your Bank Account — this is your score</p>
 			<!-- 🦈 Borrow / Repay, inline -->
@@ -3935,7 +3937,7 @@
 				>
 					{#if isMatch}<span class="tb-wallet-cap">👛 Wallet</span>{:else if isDailyLike}<span
 							class="tb-wallet-cap">🏆 Prize</span
-						>{:else if isClimb}<span class="tb-wallet-cap">👛 Wallet</span>{/if}
+						>{:else if isClimb}<span class="tb-wallet-cap">🧾 Pending Deposit</span>{/if}
 					<span class="tb-solo"
 						>{#if isMatch}👛
 						{:else if isClimb}👛
@@ -4006,7 +4008,7 @@
 					disabled={cgBusy || bankroll <= 0}
 					on:click={cashOut}
 				>
-					🏦 Cash Out
+					🏦 Deposit
 				</button>
 			{/if}
 		{/if}
@@ -4123,11 +4125,11 @@
 					{:else if isClimb}
 						<button
 							class="bp-mult-badge"
-							title="Heat — your payout multiplier"
+							title="Yield — your return rate, climbs with each solve"
 							on:click={() => {
 								fx('tap');
 								climbInfo = 'heat';
-							}}>🔥 ×{climbHeat}</button
+							}}>📈 +{climbYield}%</button
 						>
 						<button
 							class="bp-winstreak"
@@ -4353,36 +4355,34 @@
 								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
 								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
 							</div>
-							<div class="rcpt-title">CASH OUT</div>
+							<div class="rcpt-title">DEPOSIT SLIP</div>
 							<div class="rcpt-meta">
-								{(co.tier ?? '').charAt(0).toUpperCase() + (co.tier ?? '').slice(1)} run · {co.solves ??
+								{(co.tier ?? '').charAt(0).toUpperCase() + (co.tier ?? '').slice(1)} · {co.solves ??
 									0} solve{co.solves === 1 ? '' : 's'}
 							</div>
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line">
-								<span>Cash banked</span><span>${(co.banked ?? 0).toLocaleString()}</span>
+								<span>Pending Deposit</span><span>${(co.banked ?? 0).toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
-								<span>Buy-in (ante)</span><span class="neg"
-									>−${(co.buy_in ?? 0).toLocaleString()}</span
-								>
+								<span>Principal</span><span class="neg">−${(co.buy_in ?? 0).toLocaleString()}</span>
 							</div>
 							<div class="rcpt-rule double"></div>
 							<div class="rcpt-line total" class:profit={prof >= 0}>
-								<span>{prof >= 0 ? 'NET PROFIT' : 'NET LOSS'}</span><span
+								<span>NET {prof >= 0 ? 'PROFIT' : 'LOSS'}</span><span
 									>{prof >= 0 ? '+' : '−'}${Math.abs(prof).toLocaleString()}</span
 								>
 							</div>
 							<div class="rcpt-note">
-								{((co.multiple_x100 ?? 0) / 100).toFixed(1)}× buy-in · 🔥 peak ×{(
-									(co.heat ?? 100) / 100
-								).toFixed(1)}
+								{((co.multiple_x100 ?? 0) / 100).toFixed(1)}× principal · peak yield +{Math.round(
+									(co.heat ?? 100) - 100
+								)}%
 							</div>
 							{#if co.phrase}
 								<div class="rcpt-rule"></div>
 								<div class="rcpt-line answer"><span>Answer</span><span>{co.phrase}</span></div>
 							{/if}
-							<div class="rcpt-foot">✓ Banked to your Bank Account</div>
+							<div class="rcpt-foot">✓ Deposited to your Available Balance</div>
 						</div>
 						<div class="result-actions">
 							<button
@@ -4405,43 +4405,48 @@
 							>
 						</div>
 					{:else if isClimb && resultWon}
-						<!-- 🧾 Per-puzzle solve receipt -->
-						{@const prize = Math.round(climb?.bounty ?? 0)}
+						<!-- 🧾 Per-puzzle TRANSACTION slip -->
+						{@const advance = Math.round(climb?.bounty ?? 0)}
 						{@const letters = Math.round(climb?.spent ?? 0)}
-						{@const kept = Math.max(0, prize - letters)}
+						{@const subtotal = Math.max(0, advance - letters)}
 						{@const payout = Math.round(climb?.last_gain ?? 0)}
-						{@const heatBonus = Math.max(0, payout - kept)}
-						{@const walletAfter = Math.round(climb?.bankroll ?? 0)}
-						{@const walletBefore = walletAfter - payout}
+						{@const yieldBonus = Math.max(0, payout - subtotal)}
+						{@const yieldPct = Math.round((climb?.heat ?? 100) - 100)}
+						{@const pendAfter = Math.round(climb?.bankroll ?? 0)}
+						{@const pendBefore = pendAfter - payout}
 						<div class="receipt">
 							<div class="rcpt-brand">
 								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
 								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
 							</div>
-							<div class="rcpt-title">CASH GAME</div>
+							<div class="rcpt-title">TRANSACTION</div>
 							<div class="rcpt-meta">
 								{(climb?.tier ?? '').charAt(0).toUpperCase() + (climb?.tier ?? '').slice(1)} · Puzzle
 								#{climb?.position ?? 1}
 							</div>
 							<div class="rcpt-rule"></div>
-							<div class="rcpt-line"><span>Prize</span><span>${prize.toLocaleString()}</span></div>
 							<div class="rcpt-line">
-								<span>Letters revealed</span><span class="neg">−${letters.toLocaleString()}</span>
+								<span>Cash Advance</span><span>${advance.toLocaleString()}</span>
+							</div>
+							<div class="rcpt-line">
+								<span>Letters (debit)</span><span class="neg">−${letters.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-rule"></div>
-							<div class="rcpt-line"><span>Kept</span><span>${kept.toLocaleString()}</span></div>
 							<div class="rcpt-line">
-								<span>🔥 Heat ×{climbHeat}</span><span class="pos"
-									>+${heatBonus.toLocaleString()}</span
+								<span>Subtotal</span><span>${subtotal.toLocaleString()}</span>
+							</div>
+							<div class="rcpt-line">
+								<span>Yield +{yieldPct}%</span><span class="pos"
+									>+${yieldBonus.toLocaleString()}</span
 								>
 							</div>
 							<div class="rcpt-rule double"></div>
 							<div class="rcpt-line total profit">
-								<span>SOLVE PAYOUT</span><span>+${payout.toLocaleString()}</span>
+								<span>CREDIT</span><span>+${payout.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
-								<span>Cash</span><span
-									>${walletBefore.toLocaleString()} ▸ ${walletAfter.toLocaleString()}</span
+								<span>Pending Deposit</span><span
+									>${pendBefore.toLocaleString()} ▸ ${pendAfter.toLocaleString()}</span
 								>
 							</div>
 						</div>
@@ -4453,7 +4458,7 @@
 									showResultModal = false;
 									hasTriggeredModal = false;
 									cashOut();
-								}}>🏦 Cash Out ${walletAfter.toLocaleString()}</button
+								}}>🏦 Deposit ${pendAfter.toLocaleString()}</button
 							>
 							<button
 								class="next-puzzle-button"
@@ -4478,22 +4483,22 @@
 							<div class="rcpt-rule"></div>
 							{#if wiped > 0}
 								<div class="rcpt-line">
-									<span>Cash at risk</span><span>${wiped.toLocaleString()}</span>
+									<span>Pending Deposit</span><span>${wiped.toLocaleString()}</span>
 								</div>
 								<div class="rcpt-line">
 									<span>Wrong guess</span><span class="neg">−${wiped.toLocaleString()}</span>
 								</div>
 								<div class="rcpt-rule double"></div>
-								<div class="rcpt-line total"><span>CASH</span><span>$0</span></div>
+								<div class="rcpt-line total"><span>DEPOSIT VOIDED</span><span>$0</span></div>
 							{/if}
 							<div class="rcpt-line">
-								<span>Buy-in lost</span><span class="neg">−${ante.toLocaleString()}</span>
+								<span>Principal lost</span><span class="neg">−${ante.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line answer">
 								<span>Answer</span><span>{$gameStore.currentPhrase}</span>
 							</div>
-							<div class="rcpt-foot">The Daily refills your Bank Account</div>
+							<div class="rcpt-foot">The Daily refills your Available Balance</div>
 						</div>
 						<div class="result-actions">
 							<button
