@@ -41,6 +41,11 @@ broke player can always do, without needing the thing that's locked.
 Everyone starts at a neutral **650**. Range **[300, 850]**. Recent behavior is weighted
 heavily so the score is volatile *and* recoverable.
 
+**New-player grace (locked):** for the first **7 days** after account creation (or until
+the player's first loan, whichever comes first) the score is **pinned at 650** and the
+player is treated as the **Good** band — so newcomers aren't punished before they've had a
+chance to learn the system. After grace, normal recompute takes over.
+
 ### 3.1 Components (each normalized to 0..1, higher = better)
 
 Discipline-weighted:
@@ -181,10 +186,9 @@ Each phase is its own PR(s) with the standard gates + QA smoke.
 ## 10. Risks & open questions
 
 - **Death spiral** — mitigated by: loans are optional, recovery = play clean, `DROP_CAP`
-  floor, recent-weighting. Watch new-player experience; may need a grace window (first N
-  days pinned at 650) so newcomers aren't punished before they understand it.
-- **Derogatory-mark decay** — the user liked a repo-man style permanent-ish mark; spec'd as
-  a 30-day decay. Confirm duration.
+  floor, recent-weighting, and the **7-day new-player grace** (locked, §3).
+- **Derogatory-mark decay** — **locked at 30 days** (repo-man style): a default caps the
+  Repayment component and blocks Good+ until it decays.
 - **Constants** (weights, caps, band cutoffs, jolt sizes) are first-draft; will be tuned
   against real ledgers during Phase 1–2.
 - **Utilization derivation** — if a rolling ledger derivation is too coarse, add a daily
