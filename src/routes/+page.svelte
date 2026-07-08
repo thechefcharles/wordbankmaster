@@ -1871,6 +1871,26 @@
 	let showChallenges = false; // the New-Challenge builder modal
 	/** Which Community hub tab is showing. */
 	let communityTab = /** @type {'challenges'|'leaderboard'|'activity'|'people'} */ ('challenges');
+	// ⚡ Quick-tiles horizontal scroll state — drives the "more to swipe" fade + chevron.
+	let qtEl = /** @type {HTMLElement|null} */ (null);
+	let qtAtEnd = false; // true once scrolled to the end (or when the row fits with no overflow)
+	function updateQt() {
+		if (!qtEl) return;
+		qtAtEnd = qtEl.scrollLeft + qtEl.clientWidth >= qtEl.scrollWidth - 4;
+	}
+	/** Svelte action: capture the scroller, size the hint on mount + resize. */
+	function qtInit(/** @type {HTMLElement} */ node) {
+		qtEl = node;
+		updateQt();
+		const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateQt) : null;
+		ro?.observe(node);
+		return {
+			destroy() {
+				ro?.disconnect();
+				if (qtEl === node) qtEl = null;
+			}
+		};
+	}
 	/** Which People sub-tab (when communityTab === 'people'). */
 	let peopleTab = /** @type {'friends'|'groups'} */ ('friends');
 	/** Start a challenge with a friend from the People list. @param {string} username */
@@ -3126,64 +3146,68 @@
 					{/if}
 				</div>
 				<!-- ⚡ Bank-app quick actions — horizontally swipeable (flat line icons) -->
-				<div class="quick-tiles">
-					<button class="qt" on:click={() => openCommunity('people')}>
-						<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
-							<circle cx="9" cy="7" r="3" />
-							<path d="M3 20a6 6 0 0 1 12 0" />
-							<path d="M16 4.5a3 3 0 0 1 0 5.5" />
-							<path d="M18 13.5a6 6 0 0 1 3 5.5" />
-						</svg><span class="qt-l">Friends</span>
-					</button>
-					<button class="qt" on:click={() => goto('/shop')}>
-						<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
-							<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
-							<path d="M3 6h18" />
-							<path d="M16 10a4 4 0 0 1-8 0" />
-						</svg><span class="qt-l">Store</span>
-					</button>
-					<button class="qt" on:click={() => openCommunity('leaderboard')}>
-						<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
-							<path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" />
-							<path d="M8 5.5H5.2A1.2 1.2 0 0 0 4 6.7C4 8.8 5.8 10 8 10" />
-							<path d="M16 5.5h2.8A1.2 1.2 0 0 1 20 6.7C20 8.8 18.2 10 16 10" />
-							<path d="M12 13v3" /><path d="M9.5 20h5" /><path d="M10 20a2 2 0 0 1 4 0" />
-						</svg><span class="qt-l">Ranks</span>
-					</button>
-					<button class="qt" on:click={() => goto('/loans')}>
-						<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
-							<rect x="3" y="6.5" width="18" height="11" rx="2" />
-							<circle cx="12" cy="12" r="2.3" />
-							<path d="M6 10.5v3M18 10.5v3" />
-						</svg><span class="qt-l">Loans</span>
-					</button>
-					<button class="qt" on:click={openBag}>
-						<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
-							<rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
-							<rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
-							<rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
-							<rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
-						</svg><span class="qt-l">Items</span>
-					</button>
-					<button class="qt" on:click={() => goto('/streak')}>
-						<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
-							<path d="M12 3s5 3.8 5 9a5 5 0 0 1-10 0c0-2 .9-3.5 2.4-4.6C10.2 8.7 12 7 12 3Z" />
-						</svg><span class="qt-l">Streak</span>
-					</button>
-					<button class="qt" on:click={() => goto('/badges')}>
-						<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
-							<circle cx="12" cy="9" r="5" />
-							<path d="M8.5 13 7 21l5-2.7L17 21l-1.5-8" />
-							<path
-								d="m12 6.9.85 1.7 1.9.28-1.37 1.32.32 1.9L12 11.4l-1.7.9.32-1.9L9.25 8.88l1.9-.28Z"
-							/>
-						</svg><span class="qt-l">Badges</span>
-					</button>
-					<button class="qt" on:click={() => goto('/activity')}>
-						<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
-							<path d="M3 12h3.5l2-6 4 13 2.5-7H21" />
-						</svg><span class="qt-l">Activity</span>
-					</button>
+				<div class="qt-wrap" class:qt-end={qtAtEnd}>
+					<div class="quick-tiles" use:qtInit on:scroll={updateQt}>
+						<button class="qt" on:click={() => openCommunity('people')}>
+							<span class="qt-plus" aria-hidden="true">+</span>
+							<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
+								<circle cx="9" cy="7" r="3" />
+								<path d="M3 20a6 6 0 0 1 12 0" />
+								<path d="M16 4.5a3 3 0 0 1 0 5.5" />
+								<path d="M18 13.5a6 6 0 0 1 3 5.5" />
+							</svg><span class="qt-l">Friends</span>
+						</button>
+						<button class="qt" on:click={() => goto('/shop')}>
+							<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+								<path d="M3 6h18" />
+								<path d="M16 10a4 4 0 0 1-8 0" />
+							</svg><span class="qt-l">Store</span>
+						</button>
+						<button class="qt" on:click={() => openCommunity('leaderboard')}>
+							<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" />
+								<path d="M8 5.5H5.2A1.2 1.2 0 0 0 4 6.7C4 8.8 5.8 10 8 10" />
+								<path d="M16 5.5h2.8A1.2 1.2 0 0 1 20 6.7C20 8.8 18.2 10 16 10" />
+								<path d="M12 13v3" /><path d="M9.5 20h5" /><path d="M10 20a2 2 0 0 1 4 0" />
+							</svg><span class="qt-l">Ranks</span>
+						</button>
+						<button class="qt" on:click={() => goto('/loans')}>
+							<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
+								<rect x="3" y="6.5" width="18" height="11" rx="2" />
+								<circle cx="12" cy="12" r="2.3" />
+								<path d="M6 10.5v3M18 10.5v3" />
+							</svg><span class="qt-l">Loans</span>
+						</button>
+						<button class="qt" on:click={openBag}>
+							<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
+								<rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+								<rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
+								<rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
+								<rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
+							</svg><span class="qt-l">Items</span>
+						</button>
+						<button class="qt" on:click={() => goto('/streak')}>
+							<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M12 3s5 3.8 5 9a5 5 0 0 1-10 0c0-2 .9-3.5 2.4-4.6C10.2 8.7 12 7 12 3Z" />
+							</svg><span class="qt-l">Streak</span>
+						</button>
+						<button class="qt" on:click={() => goto('/badges')}>
+							<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
+								<circle cx="12" cy="9" r="5" />
+								<path d="M8.5 13 7 21l5-2.7L17 21l-1.5-8" />
+								<path
+									d="m12 6.9.85 1.7 1.9.28-1.37 1.32.32 1.9L12 11.4l-1.7.9.32-1.9L9.25 8.88l1.9-.28Z"
+								/>
+							</svg><span class="qt-l">Badges</span>
+						</button>
+						<button class="qt" on:click={() => goto('/activity')}>
+							<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M3 12h3.5l2-6 4 13 2.5-7H21" />
+							</svg><span class="qt-l">Activity</span>
+						</button>
+					</div>
+					<span class="qt-more" aria-hidden="true">›</span>
 				</div>
 				<div class="main-menu-buttons stagger">
 					<!-- 🦈 Debt banner — you owe the Loan Shark; Store locked + payouts auto-skim. -->
@@ -5977,25 +6001,89 @@
 		font-size: 0.72rem;
 	}
 	/* ⚡ Quick-action tiles — horizontally swipeable */
+	.qt-wrap {
+		position: relative;
+		width: 100%;
+		max-width: 360px;
+		margin: 0 auto 1.4rem;
+	}
 	.quick-tiles {
 		display: flex;
 		gap: 9px;
 		width: 100%;
-		max-width: 360px;
-		margin: 0 auto 1.4rem;
 		overflow-x: auto;
 		scroll-snap-type: x proximity;
 		-webkit-overflow-scrolling: touch;
 		scrollbar-width: none;
 		padding-bottom: 2px;
-		/* fade the right edge to hint there's more to swipe */
-		-webkit-mask: linear-gradient(90deg, #000 88%, transparent);
-		mask: linear-gradient(90deg, #000 88%, transparent);
+	}
+	/* Fade the right edge only while there's more to swipe — clears fully at the end
+	   so the last tile (Activity) is never cut off. */
+	.qt-wrap:not(.qt-end) .quick-tiles {
+		-webkit-mask: linear-gradient(90deg, #000 86%, transparent);
+		mask: linear-gradient(90deg, #000 86%, transparent);
+	}
+	/* "+" badge on the Friends tile — hints you can add friends. */
+	.qt-plus {
+		position: absolute;
+		top: 5px;
+		right: 5px;
+		display: grid;
+		place-items: center;
+		width: 16px;
+		height: 16px;
+		border-radius: 50%;
+		background: linear-gradient(135deg, #fbbf24, #f59e0b);
+		color: #2a1e00;
+		font-family: var(--font-display, sans-serif);
+		font-size: 0.72rem;
+		font-weight: 800;
+		line-height: 1;
+		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+	}
+	/* Animated "swipe for more" chevron; hidden once scrolled to the end. */
+	.qt-more {
+		position: absolute;
+		top: 50%;
+		right: 4px;
+		transform: translateY(-50%);
+		display: grid;
+		place-items: center;
+		width: 22px;
+		height: 22px;
+		border-radius: 999px;
+		background: rgba(0, 0, 0, 0.35);
+		color: var(--brand-2, #fde047);
+		font-size: 1.2rem;
+		font-weight: 700;
+		line-height: 1;
+		pointer-events: none;
+		opacity: 0.9;
+		transition: opacity 0.25s;
+		animation: qtNudge 1.5s ease-in-out infinite;
+	}
+	.qt-wrap.qt-end .qt-more {
+		opacity: 0;
+	}
+	@keyframes qtNudge {
+		0%,
+		100% {
+			transform: translate(0, -50%);
+		}
+		50% {
+			transform: translate(3px, -50%);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.qt-more {
+			animation: none;
+		}
 	}
 	.quick-tiles::-webkit-scrollbar {
 		display: none;
 	}
 	.qt {
+		position: relative;
 		flex: 0 0 auto;
 		width: 76px;
 		scroll-snap-align: start;
