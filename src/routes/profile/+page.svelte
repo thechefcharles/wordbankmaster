@@ -5,6 +5,7 @@
 	import { getProfileDetail, getMyAvatar, getUserBadges } from '$lib/stores/statsStore.js';
 	import { badgeInfo } from '$lib/badges.js';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import AccountCard from '$lib/components/AccountCard.svelte';
 	import NotificationsPanel from '$lib/components/NotificationsPanel.svelte';
 	import { unreadCount, requestInbox } from '$lib/stores/notificationStore.js';
 	import { track } from '$lib/analytics.js';
@@ -142,6 +143,16 @@
 						<button class="ov-social-btn" onclick={() => goto('/my-groups')}>👥 My Groups ›</button>
 					</div>
 				</div>
+			</div>
+
+			<!-- 💳 Account card -->
+			<div class="prof-card-wrap">
+				<AccountCard
+					holder={d.username}
+					account={d.account_number}
+					member={d.member_no}
+					balance={d.net_worth}
+				/>
 			</div>
 
 			<div class="grid ov-summary">
@@ -555,6 +566,10 @@
 		font-size: 1.7rem;
 	}
 
+	.prof-card-wrap {
+		margin: 4px auto 16px;
+		max-width: 360px;
+	}
 	.ov-summary {
 		margin-bottom: 4px;
 	}
