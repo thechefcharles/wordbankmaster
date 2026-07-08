@@ -3124,14 +3124,14 @@
 					class="menu-card-wrap"
 					role="button"
 					tabindex="0"
-					on:click={openBankModal}
+					on:click={() => goto('/bank')}
 					on:keydown={(e) => {
 						if (e.key === 'Enter' || e.key === ' ') {
 							e.preventDefault();
-							openBankModal();
+							goto('/bank');
 						}
 					}}
-					aria-label="Open Bank"
+					aria-label="Open My Account"
 				>
 					<AccountCard
 						holder={$userProfile?.username ?? myUsername}
