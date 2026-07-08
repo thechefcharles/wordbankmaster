@@ -3587,14 +3587,13 @@
 									class="ch-mode"
 									class:active={mbMode === 'standard'}
 									on:click={() => (mbMode = 'standard')}
-									>🧠 Standard<small>efficiency · spend less</small></button
+									>🧠 Standard<small>spend less</small></button
 								>
 								<button
 									type="button"
 									class="ch-mode"
 									class:active={mbMode === 'blitz'}
-									on:click={() => (mbMode = 'blitz')}
-									>⚡ Blitz<small>timed · combo speed</small></button
+									on:click={() => (mbMode = 'blitz')}>⚡ Blitz<small>timed · combos</small></button
 								>
 							</div>
 
@@ -7128,6 +7127,7 @@
 		font-weight: 500;
 		font-size: 0.68rem;
 		color: var(--text-muted);
+		white-space: nowrap;
 	}
 	.ch-mode.active {
 		border-color: rgba(251, 191, 36, 0.6);
@@ -7346,7 +7346,7 @@
 		font-size: 0.72rem;
 		color: var(--text-faint);
 		text-align: center;
-		margin: 0;
+		margin: 10px 0 0;
 	}
 	.ch-field {
 		flex: 1;
