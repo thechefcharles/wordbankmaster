@@ -5,22 +5,40 @@
 	import { track } from '$lib/analytics.js';
 	import { fx } from '$lib/sound.js';
 
-	/** The get_bank payload: { bank, loan, loan_cap, in_the_red, net_worth }
-	 * @type {{ bank:number, net_worth:number, loan:number, loan_cap:number, in_the_red:boolean }|null} */
+	/** The get_bank payload (loan detail added in loans-v3)
+	 * @type {{ bank:number, net_worth:number, loan:number, loan_cap:number, in_the_red:boolean,
+	 *   loan_principal?:number, loan_rate_bp?:number, loan_days?:number, loan_owed_tomorrow?:number }|null} */
 	export let bank = null;
+	/** Open the borrow panel by default (used on the dedicated /loans page). */
+	export let expanded = false;
 
 	const dispatch = createEventDispatcher();
 
-	// 💸 Loan Shark
+	// 🦈 Loan Shark — progressive daily interest (rate scales with amount vs cap; mirrors _loan_daily_rate_bp)
+	const MIN_BORROW = 50;
 	let borrowAmt = 100; // $ to borrow (dial)
 	let repayAmt = 0; // $ to repay (dial)
 	let loanBusy = '';
 	let loanMsg = '';
 	$: loanCap = bank?.loan_cap ?? 0;
 	$: owed = bank?.loan ?? 0;
-	$: feeOnBorrow = Math.round(borrowAmt * 0.25);
+	/** @param {number} amt @param {number} cap */
+	function rateBpFor(amt, cap) {
+		if (cap <= 0) return 800;
+		const p = amt / cap;
+		return p <= 0.25 ? 200 : p <= 0.5 ? 400 : p <= 0.75 ? 600 : 800;
+	}
+	$: rateBp = rateBpFor(borrowAmt, loanCap);
+	$: ratePct = rateBp / 100; // 2 / 4 / 6 / 8 (%/day)
+	$: proj7 = Math.min(
+		Math.round(borrowAmt * Math.pow(1 + rateBp / 10000, 7)),
+		Math.round(borrowAmt * 2.5)
+	);
+	$: activeRatePct = (bank?.loan_rate_bp ?? 0) / 100;
+	$: owedTomorrow = bank?.loan_owed_tomorrow ?? owed;
+	$: loanDays = bank?.loan_days ?? 0;
 	$: if (borrowAmt > loanCap) borrowAmt = loanCap;
-	$: if (borrowAmt < 10 && loanCap >= 10) borrowAmt = 10;
+	$: if (borrowAmt < MIN_BORROW && loanCap >= MIN_BORROW) borrowAmt = MIN_BORROW;
 	$: maxRepay = Math.max(0, Math.min(owed, bank?.bank ?? 0));
 	// Can you fully clear the loan right now? (Bank covers the whole owed amount.)
 	$: canClear = owed > 0 && (bank?.bank ?? 0) >= owed;
@@ -31,17 +49,13 @@
 	const fmt = (/** @type {number} */ n) => '$' + Math.round(n ?? 0).toLocaleString();
 
 	async function borrow() {
-		if (loanBusy || borrowAmt < 10) return;
-		const total = borrowAmt + Math.round(borrowAmt * 0.25);
+		if (loanBusy || borrowAmt < MIN_BORROW) return;
 		try {
-			await requirePin(
-				`Borrow $${borrowAmt.toLocaleString()} — you'll owe $${total.toLocaleString()}`,
-				[
-					{ label: 'You receive', value: '$' + borrowAmt.toLocaleString() },
-					{ label: 'Fee (25%)', value: '$' + Math.round(borrowAmt * 0.25).toLocaleString() },
-					{ label: 'You owe', value: '$' + total.toLocaleString() }
-				]
-			);
+			await requirePin(`Borrow $${borrowAmt.toLocaleString()} from the Shark`, [
+				{ label: 'You receive', value: '$' + borrowAmt.toLocaleString() },
+				{ label: 'Interest', value: ratePct + '%/day, compounding' },
+				{ label: '~Owe in a week', value: '$' + proj7.toLocaleString() }
+			]);
 		} catch {
 			return;
 		}
@@ -89,9 +103,14 @@
 			<span class="loan-title">🦈 You owe the Shark</span>
 			<span class="loan-owed">{fmt(owed)}</span>
 		</div>
+		<div class="loan-facts">
+			<span>📈 {activeRatePct}%/day</span>
+			<span>⏳ {loanDays}d out</span>
+			<span>→ {fmt(owedTomorrow)} tomorrow</span>
+		</div>
 		<p class="loan-note">
-			Store is locked and half of every payout auto-pays your debt until it's clear. Your net worth
-			is <b class="neg">{fmt(bank.net_worth)}</b>.
+			Interest compounds daily. The Store is locked and half of every payout auto-pays your debt
+			until it's clear. Your net worth is <b class="neg">{fmt(bank.net_worth)}</b>.
 		</p>
 		{#if maxRepay > 0}
 			<div class="loan-dial">
@@ -151,24 +170,24 @@
 	</div>
 {:else if loanCap > 0}
 	<!-- No debt: borrow panel -->
-	<details class="loan-card">
+	<details class="loan-card" open={expanded}>
 		<summary class="loan-summary"
 			>🦈 Need Cash? Borrow up to {fmt(loanCap)} <span class="loan-cv">▾</span></summary
 		>
 		<p class="loan-note">
-			A 25% fee, one loan at a time. While you owe, the Store locks and half of every payout
-			auto-pays it down.
+			Interest compounds daily — the more you take, the higher the rate. One loan at a time; while
+			you owe, the Store locks and half of every payout auto-pays it down.
 		</p>
 		<div class="loan-dial">
 			<button
 				class="loan-step"
-				on:click={() => (borrowAmt = Math.max(10, borrowAmt - 50))}
+				on:click={() => (borrowAmt = Math.max(MIN_BORROW, borrowAmt - 50))}
 				aria-label="Less"
-				disabled={borrowAmt <= 10}>−</button
+				disabled={borrowAmt <= MIN_BORROW}>−</button
 			>
 			<div class="loan-amt">
 				<span class="loan-usd">{fmt(borrowAmt)}</span><span class="loan-sub"
-					>you'll owe {fmt(borrowAmt + feeOnBorrow)}</span
+					>{ratePct}%/day · ~{fmt(proj7)} in a week</span
 				>
 			</div>
 			<button
@@ -181,13 +200,15 @@
 		<input
 			class="loan-slider"
 			type="range"
-			min="10"
+			min={MIN_BORROW}
 			max={loanCap}
 			step="10"
 			bind:value={borrowAmt}
 		/>
-		<button class="loan-btn borrow" disabled={!!loanBusy || borrowAmt < 10} on:click={borrow}
-			>🦈 Borrow {fmt(borrowAmt)} (fee {fmt(feeOnBorrow)})</button
+		<button
+			class="loan-btn borrow"
+			disabled={!!loanBusy || borrowAmt < MIN_BORROW}
+			on:click={borrow}>🦈 Borrow {fmt(borrowAmt)}</button
 		>
 		{#if loanMsg}<p class="msg">{loanMsg}</p>{/if}
 	</details>
@@ -247,6 +268,16 @@
 	}
 	.loan-note .neg {
 		color: #fb7185;
+	}
+	.loan-facts {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px 14px;
+		margin: 8px 0 2px;
+		font-family: var(--font-display);
+		font-size: 0.76rem;
+		font-weight: 700;
+		color: #fca5a5;
 	}
 	.loan-dial {
 		display: flex;

@@ -3102,8 +3102,11 @@
 				</div>
 				<!-- ⚡ Bank-app quick actions — horizontally swipeable -->
 				<div class="quick-tiles">
-					<button class="qt" on:click={() => goto('/bank')}>
-						<span class="qt-ic">💵</span><span class="qt-l">Loans</span>
+					<button class="qt" on:click={openBankModal}>
+						<span class="qt-ic">🔒</span><span class="qt-l">Vault</span>
+					</button>
+					<button class="qt" on:click={() => goto('/loans')}>
+						<span class="qt-ic">🦈</span><span class="qt-l">Loans</span>
 					</button>
 					<button class="qt" on:click={() => goto('/shop')}>
 						<span class="qt-ic">🛍️</span><span class="qt-l">Store</span>
