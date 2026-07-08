@@ -3100,10 +3100,10 @@
 						>
 					{/if}
 				</div>
-				<!-- ⚡ Bank-app quick actions -->
+				<!-- ⚡ Bank-app quick actions — horizontally swipeable -->
 				<div class="quick-tiles">
 					<button class="qt" on:click={() => goto('/bank')}>
-						<span class="qt-ic">📄</span><span class="qt-l">Statement</span>
+						<span class="qt-ic">💵</span><span class="qt-l">Loans</span>
 					</button>
 					<button class="qt" on:click={() => goto('/shop')}>
 						<span class="qt-ic">🛍️</span><span class="qt-l">Store</span>
@@ -3113,6 +3113,15 @@
 					</button>
 					<button class="qt" on:click={() => openCommunity('people')}>
 						<span class="qt-ic">👥</span><span class="qt-l">Friends</span>
+					</button>
+					<button class="qt" on:click={() => goto('/streak')}>
+						<span class="qt-ic">🔥</span><span class="qt-l">Streak</span>
+					</button>
+					<button class="qt" on:click={() => goto('/badges')}>
+						<span class="qt-ic">🎖️</span><span class="qt-l">Badges</span>
+					</button>
+					<button class="qt" on:click={() => goto('/activity')}>
+						<span class="qt-ic">📜</span><span class="qt-l">Activity</span>
 					</button>
 				</div>
 				<div class="main-menu-buttons stagger">
@@ -3145,38 +3154,27 @@
 						</button>
 					{/if}
 					<button
-						class="menu-card primary"
+						class="play-cta"
 						style="--i: 0"
 						on:click={() => {
 							menuView = 'play';
 							fx('tap');
 						}}
 					>
-						<span class="mc-title">Play Now!</span>
+						<span class="pc-ic">▶</span>
+						<span class="pc-label">Play Now</span>
 					</button>
 					<!-- ⚔️ Challenges hub (list + New). Incoming invites alert via the bell → tap routes here. -->
-					<div class="vs-cta-group">
-						<button
-							class="vs-main"
-							on:click={() => {
-								fx('tap');
-								openCommunity('challenges');
-							}}
-						>
-							⚔️ Challenge Friends
-						</button>
-						<button
-							class="vs-people"
-							title="Friends &amp; Groups"
-							aria-label="Friends and groups"
-							on:click={() => {
-								fx('tap');
-								openCommunity('people');
-							}}
-						>
-							<span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span>
-						</button>
-					</div>
+					<button
+						class="challenge-cta"
+						style="--i: 1"
+						on:click={() => {
+							fx('tap');
+							openCommunity('challenges');
+						}}
+					>
+						<span class="cc-ic">⚔️</span> Challenge Friends
+					</button>
 				</div>
 			{:else if menuView === 'play'}
 				<div class="sub-head">
@@ -5642,72 +5640,68 @@
 
 	/* Subtle "play with friends" nudge under the solo modes */
 	/* Challenge A Friend — one on-brand gold pill, split by a divider into CTA + friends */
-	.vs-cta-group {
+	/* ▶ Play — primary gold CTA (bank-app style, replaces the arcade bullion bar) */
+	.play-cta {
 		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 10px;
 		width: 100%;
-		margin-top: 8px;
-		border-radius: 12px;
-		overflow: hidden;
-		box-shadow:
-			0 3px 10px rgba(245, 158, 11, 0.3),
-			inset 0 1px 0 rgba(255, 255, 255, 0.4);
-	}
-	.vs-main,
-	.vs-people {
+		height: 62px;
 		border: none;
+		border-radius: 18px;
 		cursor: pointer;
-		color: #3a2a00;
-		background: linear-gradient(135deg, #fde047, #f59e0b);
-	}
-	.vs-main {
-		flex: 1;
-		padding: 12px 14px 12px 72px;
-		text-align: center; /* left pad offsets the people button so the label centers over the whole group */
+		color: #2a1e00;
+		background: linear-gradient(135deg, #fbbf24, #f59e0b);
 		font-family: var(--font-display);
 		font-weight: 800;
-		font-size: 0.94rem;
+		font-size: 1.2rem;
 		letter-spacing: 0.01em;
+		box-shadow: 0 10px 26px rgba(245, 158, 11, 0.32);
+		transition:
+			transform 0.15s var(--ease-spring, ease),
+			filter 0.2s;
 	}
-	.vs-main:hover {
+	.play-cta:hover {
+		transform: translateY(-2px);
 		filter: brightness(1.05);
 	}
-	.vs-main:active {
-		transform: scale(0.99);
+	.play-cta:active {
+		transform: scale(0.98);
 	}
-
-	.vs-people {
-		position: relative;
-		width: 58px;
-		flex: none;
-		display: grid;
-		place-items: center;
-		border-left: 1.5px solid rgba(120, 80, 0, 0.45);
-	} /* just the vertical divider line */
-	.vs-people:hover {
-		filter: brightness(1.06);
+	.pc-ic {
+		font-size: 0.9rem;
 	}
-	.vs-people:active {
-		transform: scale(0.97);
+	/* ⚔️ Challenge — secondary dark button */
+	.challenge-cta {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 9px;
+		width: 100%;
+		height: 56px;
+		border-radius: 16px;
+		cursor: pointer;
+		background: var(--surface, rgba(255, 255, 255, 0.06));
+		border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.14));
+		color: var(--text, #f4f6fb);
+		font-family: var(--font-display);
+		font-weight: 700;
+		font-size: 1.02rem;
+		transition:
+			transform 0.15s,
+			border-color 0.2s,
+			background 0.2s;
 	}
-	.vs-ppl {
-		font-size: 1.35rem;
-		line-height: 1;
+	.challenge-cta:hover {
+		transform: translateY(-2px);
+		border-color: rgba(251, 191, 36, 0.4);
 	}
-	.vs-ppl-plus {
-		position: absolute;
-		top: 7px;
-		right: 9px;
-		width: 14px;
-		height: 14px;
-		border-radius: 50%;
-		background: #3a2a00;
-		color: #fde047;
-		font-weight: 900;
-		font-size: 0.6rem;
-		line-height: 1;
-		display: grid;
-		place-items: center;
-		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+	.challenge-cta:active {
+		transform: scale(0.98);
+	}
+	.cc-ic {
+		font-size: 1.1rem;
 	}
 	.ch-new-btn {
 		width: 100%;
@@ -5915,21 +5909,34 @@
 		font-weight: 800;
 		font-size: 0.72rem;
 	}
-	/* ⚡ Quick-action tiles */
+	/* ⚡ Quick-action tiles — horizontally swipeable */
 	.quick-tiles {
 		display: flex;
 		gap: 9px;
 		width: 100%;
 		max-width: 360px;
-		margin: 0 auto 1.2rem;
+		margin: 0 auto 1.4rem;
+		overflow-x: auto;
+		scroll-snap-type: x proximity;
+		-webkit-overflow-scrolling: touch;
+		scrollbar-width: none;
+		padding-bottom: 2px;
+		/* fade the right edge to hint there's more to swipe */
+		-webkit-mask: linear-gradient(90deg, #000 88%, transparent);
+		mask: linear-gradient(90deg, #000 88%, transparent);
+	}
+	.quick-tiles::-webkit-scrollbar {
+		display: none;
 	}
 	.qt {
-		flex: 1;
+		flex: 0 0 auto;
+		width: 76px;
+		scroll-snap-align: start;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 4px;
-		padding: 12px 4px 10px;
+		gap: 5px;
+		padding: 13px 4px 11px;
 		border-radius: 14px;
 		cursor: pointer;
 		background: var(--surface, rgba(255, 255, 255, 0.05));
@@ -5948,7 +5955,7 @@
 		transform: scale(0.96);
 	}
 	.qt-ic {
-		font-size: 1.2rem;
+		font-size: 1.3rem;
 		line-height: 1;
 	}
 	.qt-l {
@@ -6069,17 +6076,6 @@
 			0 0 22px rgba(255, 220, 110, 0.7),
 			0 6px 14px rgba(0, 0, 0, 0.5);
 	}
-	.menu-card.primary {
-		filter: brightness(1.04);
-		box-shadow:
-			inset 0 0 0 1.5px rgba(255, 255, 255, 0.9),
-			inset 0 0 0 3.5px rgba(92, 106, 122, 0.28),
-			inset 0 2px 2px rgba(255, 255, 255, 0.9),
-			inset 0 -3px 6px rgba(70, 85, 100, 0.45),
-			0 6px 14px rgba(0, 0, 0, 0.55),
-			0 0 22px rgba(210, 225, 240, 0.4);
-	}
-
 	.mc-title {
 		position: relative;
 		z-index: 1;

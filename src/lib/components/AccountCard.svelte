@@ -16,7 +16,10 @@
 	<div class="ac-sheen"></div>
 	<div class="ac-inner">
 		<div class="ac-top">
-			<span class="ac-brand"><span class="ac-gold">WORD</span>BANK</span>
+			<span class="ac-brand">
+				<img class="ac-coin" src="/logo-coin.png" alt="" width="22" height="22" />
+				<span><span class="ac-gold">WORD</span>BANK</span>
+			</span>
 			<span class="ac-chip" aria-hidden="true"></span>
 		</div>
 		<div class="ac-bal">
@@ -74,10 +77,19 @@
 		align-items: center;
 	}
 	.ac-brand {
+		display: flex;
+		align-items: center;
+		gap: 7px;
 		font-family: var(--font-display, sans-serif);
 		font-weight: 800;
 		letter-spacing: 0.14em;
 		font-size: 0.82rem;
+	}
+	.ac-coin {
+		width: 22px;
+		height: 22px;
+		object-fit: contain;
+		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
 	}
 	.ac-gold {
 		color: #fbbf24;
