@@ -328,23 +328,7 @@
 				</div>
 			{/if}
 
-			{#if (d.categories ?? []).length}
-				<div class="sec-title">🗂️ Categories <span class="sec-hint">(tap for tiers)</span></div>
-				<div class="cats">
-					{#each d.categories as c}
-						<button
-							class="cat-row cat-link"
-							onclick={() => goto('/badges?cat=' + encodeURIComponent(c.category))}
-						>
-							<span class="cat-name">{c.category}</span>
-							<span class="cat-meta"
-								>{c.solves} solved{#if c.best_multiple}
-									· best {mult(c.best_multiple)}{/if}<span class="arrow"> ›</span></span
-							>
-						</button>
-					{/each}
-				</div>
-			{/if}
+			<!-- Per-category progress + tiers now live on the Badges page (linked from Overview). -->
 		{:else}
 			<NotificationsPanel onNavigate={notifNav} />
 		{/if}
@@ -801,31 +785,10 @@
 		border: 1px solid var(--border);
 		border-radius: 10px;
 	}
-	.cat-link {
-		width: 100%;
-		cursor: pointer;
-		text-align: left;
-		font: inherit;
-		color: inherit;
-		transition:
-			transform 0.15s,
-			border-color 0.2s;
-	}
-	.cat-link:hover {
-		transform: translateX(2px);
-		border-color: rgba(251, 191, 36, 0.4);
-	}
-	.cat-link:active {
-		transform: scale(0.99);
-	}
 	.cat-name {
 		font-weight: 600;
 		color: var(--text);
 		font-size: 0.86rem;
-	}
-	.cat-meta {
-		color: var(--text-faint);
-		font-size: 0.74rem;
 	}
 	.sec-hint {
 		font-family: var(--font-ui);
