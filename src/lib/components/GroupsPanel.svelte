@@ -29,6 +29,19 @@
 	/** @type {any|null} */
 	let open = $state(null);
 	let loading = $state(true);
+
+	// Long-list handling: alphabetize groups + live filter (shown once you have a few).
+	let groupFilter = $state('');
+	const sortedGroups = $derived(
+		[...groups].sort((a, b) =>
+			(a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+		)
+	);
+	const shownGroups = $derived.by(() => {
+		const q = groupFilter.trim().toLowerCase();
+		if (!q) return sortedGroups;
+		return sortedGroups.filter((g) => (g.name || '').toLowerCase().includes(q));
+	});
 	let busy = $state(false);
 	let newName = $state('');
 	let msg = $state('');
@@ -442,8 +455,20 @@
 			<p class="loading">Loading…</p>
 		{:else}
 			{#if groups.length}
+				{#if groups.length > 8}
+					<input
+						class="g-filter"
+						type="text"
+						placeholder="Filter your groups…"
+						bind:value={groupFilter}
+						aria-label="Filter your groups"
+					/>
+					{#if groupFilter.trim()}
+						<div class="g-filter-count">Showing {shownGroups.length} of {groups.length}</div>
+					{/if}
+				{/if}
 				<div class="g-list">
-					{#each groups as g}
+					{#each shownGroups as g}
 						<button class="g-card" onclick={() => view(g.id)}>
 							<div class="gc-body">
 								<span class="gc-name">{g.name}</span><span class="gc-meta"
@@ -453,6 +478,9 @@
 							<span class="gc-arrow">→</span>
 						</button>
 					{/each}
+					{#if shownGroups.length === 0}
+						<p class="empty">No groups match “{groupFilter.trim()}”.</p>
+					{/if}
 				</div>
 			{:else}
 				<p class="empty">No groups yet — create one and add your friends.</p>
@@ -603,6 +631,25 @@
 		font-size: 1.1rem;
 		font-family: var(--font-display);
 		font-weight: 700;
+	}
+	.g-filter {
+		width: 100%;
+		margin-bottom: 0.6rem;
+		padding: 0.6rem 0.9rem;
+		border-radius: 12px;
+		font-size: 0.9rem;
+		background: var(--surface);
+		border: 1px solid var(--border);
+		color: var(--text);
+	}
+	.g-filter:focus {
+		outline: none;
+		border-color: rgba(251, 191, 36, 0.5);
+	}
+	.g-filter-count {
+		font-size: 0.72rem;
+		color: var(--text-muted);
+		margin: -0.2rem 0 0.5rem 0.2rem;
 	}
 	.g-list {
 		display: flex;
