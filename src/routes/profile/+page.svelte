@@ -95,7 +95,7 @@
 	/** @type {() => void} */ action
 )}
 	<button class="stat stat-link" onclick={action}
-		><span class="sv">{value}</span><span class="sc">{label} ⓘ</span></button
+		><span class="sv">{value}</span><span class="sc">{label}</span></button
 	>
 {/snippet}
 
@@ -133,7 +133,10 @@
 							aria-label="Notifications"
 							title="Notifications"
 						>
-							🔔{#if $unreadCount > 0}<span class="bell-count"
+							<svg class="bell-ic" viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+								<path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+							</svg>{#if $unreadCount > 0}<span class="bell-count"
 									>{$unreadCount > 99 ? '99+' : $unreadCount}</span
 								>{/if}
 						</button>
@@ -152,13 +155,16 @@
 			<button class="acct-card" onclick={() => goto('/bank')}>
 				<span class="acct-name"
 					>WordBank Checking{#if d.account_number}
-						····{String(d.account_number).slice(-4)}{/if}<span class="arrow"> ›</span></span
+						····{String(d.account_number).slice(-4)}{/if}</span
 				>
 				<span class="acct-bal">{fmt(d.net_worth)}</span>
 				<span class="acct-lbl">Available Balance</span>
 			</button>
 
-			<div class="ov-sec-title">Account Summary</div>
+			<button class="ov-sec-link" onclick={() => (tab = 'stats')}>
+				<span>Account Summary</span>
+				<span class="arrow">›</span>
+			</button>
 			<div class="grid ov-summary">
 				{@render chipAct(
 					(d.overall.puzzles_solved ?? 0).toLocaleString(),
@@ -222,7 +228,6 @@
 
 			<button class="ov-sec-link" onclick={() => goto('/badges')}>
 				<span>Badges</span>
-				<span class="ov-sec-count">{earnedBadges.length}</span>
 				<span class="arrow">›</span>
 			</button>
 			{#if earnedBadges.length}
@@ -242,7 +247,10 @@
 				>
 			{/if}
 
-			<div class="ov-sec-title">My Items</div>
+			<button class="ov-sec-link" onclick={() => goto('/shop?from=profile')}>
+				<span>My Items</span>
+				<span class="arrow">›</span>
+			</button>
 			<div class="ov-items">
 				<InventoryList addHref="/shop?from=profile" />
 			</div>
@@ -615,12 +623,24 @@
 	}
 	.bell-btn {
 		position: relative;
+		display: inline-flex;
 		background: none;
 		border: none;
 		cursor: pointer;
-		font-size: 1.3rem;
-		line-height: 1;
 		padding: 2px;
+		color: var(--text-muted);
+	}
+	.bell-btn:hover {
+		color: var(--text);
+	}
+	.bell-ic {
+		width: 21px;
+		height: 21px;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.8;
+		stroke-linecap: round;
+		stroke-linejoin: round;
 	}
 	.bell-count {
 		position: absolute;
@@ -672,16 +692,6 @@
 		margin-bottom: 4px;
 	}
 
-	.ov-sec-title {
-		font-family: var(--font-display);
-		font-size: 0.72rem;
-		font-weight: 700;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		color: var(--gold);
-		text-align: left;
-		margin: 18px 2px 8px;
-	}
 	/* 🏦 Available Balance account row (bank-app style) */
 	.acct-card {
 		display: flex;
@@ -706,9 +716,6 @@
 		font-weight: 600;
 		font-size: 0.86rem;
 		color: var(--text-muted);
-	}
-	.acct-name .arrow {
-		color: var(--text-faint);
 	}
 	.acct-bal {
 		text-align: right;
@@ -744,14 +751,6 @@
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
 		color: var(--gold);
-	}
-	.ov-sec-count {
-		font-size: 0.62rem;
-		font-weight: 800;
-		color: #0b0f16;
-		background: var(--brand-2, #fde047);
-		padding: 1px 8px;
-		border-radius: 999px;
 	}
 	.ov-sec-link .arrow {
 		margin-left: auto;
