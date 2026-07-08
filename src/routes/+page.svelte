@@ -6046,7 +6046,7 @@
 		height: 22px;
 		border-radius: 999px;
 		background: rgba(0, 0, 0, 0.35);
-		color: var(--brand-2, #fde047);
+		color: #fff;
 		font-size: 1.2rem;
 		font-weight: 700;
 		line-height: 1;
