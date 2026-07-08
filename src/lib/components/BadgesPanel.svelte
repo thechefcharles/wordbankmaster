@@ -82,6 +82,43 @@
 	);
 	let rankedCats = $derived(rows.filter((r) => r.current).length);
 
+	// 🎯 Closest unearned badge — smallest remaining across milestones, the collector,
+	// and category tier-ups. Drives the "N more … → Badge" nudge on the hero.
+	let closest = $derived.by(() => {
+		/** @type {{remaining:number, label:string, target:string}[]} */
+		const cands = [];
+		for (const m of SOLVE_MILESTONES) {
+			if (total < m.at) {
+				const n = m.at - total;
+				cands.push({
+					remaining: n,
+					label: `${n} more ${n === 1 ? 'solve' : 'solves'}`,
+					target: `${m.emoji} ${m.name}`
+				});
+			}
+		}
+		if (goldCount < 12) {
+			const n = 12 - goldCount;
+			cands.push({
+				remaining: n,
+				label: `${n} more Gold categor${n === 1 ? 'y' : 'ies'}`,
+				target: `${COLLECTOR.emoji} ${COLLECTOR.name}`
+			});
+		}
+		for (const r of rows) {
+			if (r.next) {
+				const n = r.toNext;
+				cands.push({
+					remaining: n,
+					label: `${n} more ${r.label} solve${n === 1 ? '' : 's'}`,
+					target: `${r.next.medal} ${r.next.name}`
+				});
+			}
+		}
+		cands.sort((a, b) => a.remaining - b.remaining);
+		return cands[0] ?? null;
+	});
+
 	// SVG progress ring geometry (r = 19 → circumference ≈ 119.38)
 	const CIRC = 2 * Math.PI * 19;
 </script>
@@ -105,6 +142,9 @@
 			{total}
 			{total === 1 ? 'puzzle' : 'puzzles'} solved · {rankedCats}/{rows.length} categories ranked
 		</div>
+		{#if closest}
+			<div class="bp-nudge">🎯 {closest.label} → <b>{closest.target}</b></div>
+		{/if}
 	</div>
 
 	<!-- Tabs -->
@@ -230,6 +270,21 @@
 	.bp-hero-sub {
 		font-size: 0.74rem;
 		color: var(--text-muted);
+	}
+	.bp-nudge {
+		display: inline-block;
+		margin-top: 11px;
+		padding: 6px 13px;
+		border-radius: 999px;
+		background: rgba(251, 191, 36, 0.14);
+		border: 1px solid rgba(251, 191, 36, 0.32);
+		font-size: 0.75rem;
+		color: var(--text);
+	}
+	.bp-nudge b {
+		font-family: var(--font-display);
+		font-weight: 800;
+		color: #fde047;
 	}
 
 	/* Tabs */
