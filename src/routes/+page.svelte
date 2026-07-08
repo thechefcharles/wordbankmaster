@@ -4908,7 +4908,6 @@
 </main>
 
 <style>
-
 	.attendance-toast {
 		position: fixed;
 		top: 14px;
