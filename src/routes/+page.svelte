@@ -57,6 +57,7 @@
 		getMyDailyRank,
 		addFriend,
 		searchUsers,
+		listFriends,
 		getMyUsername,
 		setUsername,
 		getBank,
@@ -1921,6 +1922,9 @@
 				: `You both ante $${mbWager.toLocaleString()} → $${(mbWager * 2).toLocaleString()} pot · winner takes all.`;
 	/** @type {{username:string,is_friend:boolean}[]} */
 	let mbResults = [];
+	let mbSearch = ''; // opponent search box (separate from the selected mbOpponent)
+	/** @type {{username:string,name?:string}[]} */
+	let mbFriends = []; // your friends, for the tap-to-pick list
 	/** @type {ReturnType<typeof setTimeout>|undefined} */
 	let mbSearchTimer;
 	const WINDOWS = [
@@ -1948,8 +1952,10 @@
 		if (!get(user)?.id) return;
 		mbMsg = '';
 		mbStep = 1;
-		myGroups = await getMyGroups();
+		mbSearch = '';
+		mbResults = [];
 		showChallenges = true;
+		[myGroups, mbFriends] = await Promise.all([getMyGroups(), listFriends()]);
 	}
 	/** Go to the Community hub. @param {'challenges'|'leaderboard'|'activity'|'people'} [tab] */
 	// When the People tab is opened straight from the home menu (👥+ button), its
@@ -1991,7 +1997,7 @@
 
 	function onMbOppInput() {
 		clearTimeout(mbSearchTimer);
-		const q = mbOpponent.trim();
+		const q = mbSearch.trim();
 		if (q.length < 2) {
 			mbResults = [];
 			return;
@@ -2000,9 +2006,20 @@
 			mbResults = await searchUsers(q);
 		}, 220);
 	}
+	/** Friends filtered by the search box (shown when not actively searching non-friends). */
+	$: mbFriendsShown = mbSearch.trim()
+		? mbFriends.filter((f) =>
+				(f.username + ' ' + (f.name ?? '')).toLowerCase().includes(mbSearch.trim().toLowerCase())
+			)
+		: mbFriends;
+	/** Search results that aren't already in your friends list (bundled: pick to challenge + friend). */
+	$: mbNonFriends = mbResults.filter(
+		(r) => !mbFriends.some((f) => f.username?.toLowerCase() === r.username?.toLowerCase())
+	);
 	/** @param {string} username */
 	function pickMbOpp(username) {
 		mbOpponent = username;
+		mbSearch = '';
 		mbResults = [];
 	}
 	/** @param {string} c */
@@ -3550,28 +3567,51 @@
 								>
 							</div>
 							{#if mbTarget === 'friend'}
-								<div class="ch-search-wrap">
+								{#if mbOpponent}
+									<div class="ch-opp-picked">
+										<span>vs <b>@{mbOpponent}</b></span>
+										<button type="button" class="ch-opp-change" on:click={() => (mbOpponent = '')}
+											>Change</button
+										>
+									</div>
+								{:else}
 									<input
 										class="ch-input"
-										placeholder="Opponent username"
-										bind:value={mbOpponent}
+										placeholder="Search friends or players"
+										bind:value={mbSearch}
 										on:input={onMbOppInput}
 										autocomplete="off"
 									/>
-									{#if mbResults.length}
-										<div class="ch-results">
-											{#each mbResults as r}
-												<button
-													type="button"
-													class="ch-result-item"
-													on:click={() => pickMbOpp(r.username)}
-													>@{r.username}{#if r.is_friend}
-														<span class="ch-friend-tag">friend</span>{/if}</button
-												>
-											{/each}
-										</div>
-									{/if}
-								</div>
+									<div class="ch-picklist">
+										{#each mbFriendsShown as f}
+											<button
+												type="button"
+												class="ch-pickrow"
+												on:click={() => pickMbOpp(f.username)}
+											>
+												<span class="ch-pickname">@{f.username}</span>
+												<span class="ch-picktag friend">friend</span>
+											</button>
+										{/each}
+										{#each mbNonFriends as r}
+											<button
+												type="button"
+												class="ch-pickrow"
+												on:click={() => pickMbOpp(r.username)}
+											>
+												<span class="ch-pickname">@{r.username}</span>
+												<span class="ch-picktag">+ add</span>
+											</button>
+										{/each}
+										{#if !mbFriendsShown.length && !mbNonFriends.length}
+											<p class="ch-hint" style="margin:8px 0 0">
+												{mbSearch.trim()
+													? 'No players found.'
+													: 'No friends yet — search a username to challenge anyone.'}
+											</p>
+										{/if}
+									</div>
+								{/if}
 							{:else}
 								<select class="ch-input" bind:value={mbGroupId}>
 									<option value="" disabled selected>Pick a group</option>
@@ -7134,42 +7174,65 @@
 		background: linear-gradient(135deg, rgba(251, 191, 36, 0.14), rgba(251, 191, 36, 0.04));
 		box-shadow: 0 0 12px rgba(251, 191, 36, 0.15);
 	}
-	.ch-search-wrap {
-		position: relative;
+	.ch-opp-picked {
 		display: flex;
-		flex-direction: column;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		padding: 12px 14px;
+		border-radius: 12px;
+		border: 1px solid var(--brand-2);
+		background: rgba(251, 191, 36, 0.1);
+		font-size: 0.95rem;
 	}
-	.ch-search-wrap .ch-input {
-		width: 100%;
+	.ch-opp-picked b {
+		color: var(--brand-2);
 	}
-	.ch-results {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		margin-top: 4px;
-		border: 1px solid var(--border);
-		border-radius: 10px;
-		padding: 4px;
-		background: var(--surface);
-	}
-	.ch-result-item {
-		text-align: left;
-		padding: 0.45rem 0.6rem;
-		border: none;
-		border-radius: 8px;
-		cursor: pointer;
+	.ch-opp-change {
 		background: none;
+		border: none;
+		color: var(--text-muted);
+		font-weight: 700;
+		font-size: 0.82rem;
+		cursor: pointer;
+		text-decoration: underline;
+	}
+	.ch-picklist {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		max-height: 240px;
+		overflow-y: auto;
+		margin-top: 8px;
+	}
+	.ch-pickrow {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		width: 100%;
+		padding: 10px 12px;
+		border-radius: 12px;
+		border: 1px solid var(--border);
+		background: var(--surface);
 		color: var(--text);
+		cursor: pointer;
+		text-align: left;
+	}
+	.ch-pickrow:hover {
+		border-color: var(--brand-2);
+	}
+	.ch-pickname {
 		font-weight: 600;
 		font-size: 0.9rem;
 	}
-	.ch-result-item:hover {
-		background: rgba(255, 255, 255, 0.06);
-	}
-	.ch-friend-tag {
+	.ch-picktag {
 		font-size: 0.7rem;
-		color: var(--brand-2);
 		font-weight: 700;
+		color: var(--text-faint);
+	}
+	.ch-picktag.friend {
+		color: var(--brand-2);
 	}
 	.ch-input {
 		flex: 1;
