@@ -98,7 +98,7 @@
 <svelte:head><title>WordBank — Daily Calendar</title></svelte:head>
 
 <main class="streak-page">
-	<PageNav />
+	<PageNav back="/" />
 
 	{#if loading}
 		<p class="loading">Loading…</p>
