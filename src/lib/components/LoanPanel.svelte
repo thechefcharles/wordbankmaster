@@ -212,9 +212,6 @@
 	<!-- No debt: borrow panel -->
 	<details class="loan-card" open={expanded}>
 		<summary class="loan-summary">Apply for a Loan <span class="loan-cv">▾</span></summary>
-		<p class="loan-note">
-			One loan at a time. While you owe, the Store locks and half of every payout auto-repays it.
-		</p>
 		<p class="loan-tier">
 			Credit <b>{creditTier}</b> ({creditScore}) — sets your ${loanCap.toLocaleString()} limit{#if creditAdjBp(creditTier) !== 0}
 				and a {creditAdjBp(creditTier) > 0 ? '+' : ''}{creditAdjBp(creditTier) / 100}%/day rate{/if}.

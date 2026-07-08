@@ -20,8 +20,6 @@
 			loading = false;
 		}
 	});
-
-	$: inDebt = !!b?.in_the_red;
 </script>
 
 <svelte:head><title>WordBank — Loans</title></svelte:head>
@@ -31,13 +29,6 @@
 
 	<div class="loan-hero">
 		<h1 class="loan-title">Loans</h1>
-		<p class="loan-sub">
-			{#if inDebt}
-				Interest grows every day it's out — pay it down soon.
-			{:else}
-				Borrow Cash instantly. Daily interest scales with how much you take.
-			{/if}
-		</p>
 	</div>
 
 	{#if loading}
@@ -53,7 +44,6 @@
 				<div class="rc-row"><span>Up to 75%</span><b class="hot">12% / day</b></div>
 				<div class="rc-row"><span>Above 75%</span><b class="hot">15% / day</b></div>
 			</div>
-			<p class="rc-note">Caps at <b>2.5×</b> what you borrow · half of each payout auto-repays.</p>
 		</div>
 	{/if}
 </main>
@@ -74,13 +64,6 @@
 		font-size: 1.7rem;
 		margin: 0 0 4px;
 		color: var(--text, #f4f6fb);
-	}
-	.loan-sub {
-		font-size: 0.9rem;
-		line-height: 1.45;
-		color: var(--text-muted, #aeb8c6);
-		max-width: 340px;
-		margin: 0 auto;
 	}
 	.loading {
 		text-align: center;
@@ -119,14 +102,5 @@
 	}
 	.rc-row b.hot {
 		color: #fb7185;
-	}
-	.rc-note {
-		font-size: 0.74rem;
-		line-height: 1.45;
-		color: var(--text-faint, #8a93a3);
-		margin: 10px 0 0;
-	}
-	.rc-note b {
-		color: var(--text-muted, #aeb8c6);
 	}
 </style>
