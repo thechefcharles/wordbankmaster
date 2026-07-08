@@ -93,5 +93,10 @@ BEGIN
   RETURN v_new;
 END; $fn$;
 
-GRANT EXECUTE ON FUNCTION public._recompute_credit(UUID, TEXT, INT) TO authenticated;
+-- SECURITY: internal-only. Clients must NOT call this directly — it accepts an
+-- arbitrary p_uid and p_event_delta, so a GRANT to authenticated would allow score
+-- tampering/IDOR. It is invoked solely by SECURITY DEFINER wrappers (get_bank,
+-- get_credit_detail, and — in later phases — loan lifecycle functions) which run as
+-- the owner and derive the uid from auth.uid(). Revoke from all client roles.
+REVOKE ALL ON FUNCTION public._recompute_credit(UUID, TEXT, INT) FROM PUBLIC, anon, authenticated;
 COMMIT;
