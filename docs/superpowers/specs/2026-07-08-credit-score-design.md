@@ -110,10 +110,12 @@ All computation lives in a single `SECURITY DEFINER` function
 | Tier          | Range   | Loan cap             | Interest rate           | Notes                               |
 | ------------- | ------- | -------------------- | ----------------------- | ----------------------------------- |
 | **Excellent** | 780–850 | `_loan_cap × 1.25`   | base − 300bp (softened) | unlocks black card skin (Phase 4)   |
-| **Good**      | 670–779 | `_loan_cap × 1.0`    | base                    | the neutral baseline                |
-| **Fair**      | 580–669 | `_loan_cap × 0.5`    | base + 300bp            | reduced access                      |
-| **Poor**      | 400–579 | floor $250 only      | max rate (1500bp)       | "the shark barely trusts you"       |
+| **Good**      | 650–779 | `_loan_cap × 1.0`    | base                    | neutral start 650 lands here        |
+| **Fair**      | 560–649 | `_loan_cap × 0.5`    | base + 300bp            | reduced access                      |
+| **Poor**      | 400–559 | floor $250 only      | max rate (1500bp)       | "the shark barely trusts you"       |
 | **Bad**       | 300–399 | **borrowing LOCKED** | —                       | `take_loan` returns `credit_locked` |
+
+_(Good's floor is 650 — the neutral start — so a grace newcomer is Good, not Fair.)_
 
 Integration:
 
