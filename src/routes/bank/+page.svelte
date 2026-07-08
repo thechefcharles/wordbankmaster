@@ -34,11 +34,12 @@
 	const dateOnly = (/** @type {string} */ at) =>
 		at ? new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
 
-	// Ledger filters: by type, and sort by date/amount. Custom dropdowns so the menu
-	// opens downward over the ledger.
+	// Ledger filters: by statement period (month/year), by type, and sort by date/amount.
+	// Custom dropdowns so the menu opens downward over the ledger.
 	let typeFilter = 'all';
+	let periodFilter = 'all'; // 'all' | 'YYYY-MM'
 	let sortBy = 'newest';
-	/** @type {null|'type'|'sort'} */
+	/** @type {null|'type'|'period'|'sort'} */
 	let openMenu = null;
 	const SORTS = [
 		{ k: 'newest', label: 'Newest' },
@@ -46,10 +47,30 @@
 		{ k: 'largest', label: 'Largest' },
 		{ k: 'smallest', label: 'Smallest' }
 	];
+	const monthKey = (/** @type {string} */ at) => {
+		const d = new Date(at);
+		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+	};
 	$: sortLabel = SORTS.find((s) => s.k === sortBy)?.label ?? 'Newest';
 	$: ledgerTypes = b ? [...new Set(b.ledger.map((/** @type {any} */ e) => e.reason))] : [];
+	// Distinct statement periods present in the ledger, newest first: [[key, label], …]
+	$: periods = b
+		? [
+				...new Map(
+					b.ledger.map((/** @type {any} */ e) => [
+						monthKey(e.at),
+						new Date(e.at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+					])
+				).entries()
+			].sort((a, b) => b[0].localeCompare(a[0]))
+		: [];
+	$: periodLabel =
+		periodFilter === 'all'
+			? 'All dates'
+			: (periods.find((p) => p[0] === periodFilter)?.[1] ?? 'All dates');
 	$: shownLedger = (b ? [...b.ledger] : [])
 		.filter((/** @type {any} */ e) => typeFilter === 'all' || e.reason === typeFilter)
+		.filter((/** @type {any} */ e) => periodFilter === 'all' || monthKey(e.at) === periodFilter)
 		.sort((/** @type {any} */ x, /** @type {any} */ y) => {
 			if (sortBy === 'oldest') return new Date(x.at).getTime() - new Date(y.at).getTime();
 			if (sortBy === 'largest') return Math.abs(y.delta) - Math.abs(x.delta);
@@ -97,6 +118,31 @@
 			<h2 class="hist-title">Statement</h2>
 			{#if b.ledger.length}
 				<div class="led-filters">
+					<div class="led-dd">
+						<button
+							class="led-sel"
+							onclick={() => (openMenu = openMenu === 'period' ? null : 'period')}
+							>{periodLabel} <span class="dd-cv">▾</span></button
+						>
+						{#if openMenu === 'period'}
+							<div class="led-menu">
+								<button
+									class:on={periodFilter === 'all'}
+									onclick={() => {
+										periodFilter = 'all';
+										openMenu = null;
+									}}>All dates</button
+								>
+								{#each periods as p}<button
+										class:on={periodFilter === p[0]}
+										onclick={() => {
+											periodFilter = p[0];
+											openMenu = null;
+										}}>{p[1]}</button
+									>{/each}
+							</div>
+						{/if}
+					</div>
 					<div class="led-dd">
 						<button class="led-sel" onclick={() => (openMenu = openMenu === 'type' ? null : 'type')}
 							>{typeFilter === 'all' ? 'All types' : reasonLabel(typeFilter)}
@@ -151,6 +197,8 @@
 				No transactions yet. Win the Daily, show up for attendance, or climb the Cash Game to grow
 				your Cash.
 			</p>
+		{:else if shownLedger.length === 0}
+			<p class="empty">No transactions for these filters.</p>
 		{:else}
 			<div class="ledger scroll">
 				{#each shownLedger as e}
