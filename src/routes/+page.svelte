@@ -3080,7 +3080,10 @@
 						title="Notifications"
 						aria-label="Notifications"
 					>
-						🔔{#if $unreadCount > 0}<span class="account-count" title="{$unreadCount} new"
+						<svg class="hero-bell-ic" viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+							<path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+						</svg>{#if $unreadCount > 0}<span class="account-count" title="{$unreadCount} new"
 								>{$unreadCount > 99 ? '99+' : $unreadCount}</span
 							>{/if}
 					</button>
@@ -5886,6 +5889,15 @@
 		transition:
 			transform 0.15s,
 			border-color 0.2s;
+	}
+	.hero-bell-ic {
+		width: 22px;
+		height: 22px;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.8;
+		stroke-linecap: round;
+		stroke-linejoin: round;
 	}
 	.hero-ic:hover {
 		transform: translateY(-1px);
