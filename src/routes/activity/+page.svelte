@@ -9,7 +9,7 @@
 <svelte:head><title>WordBank — Activity</title></svelte:head>
 
 <main class="a-page">
-	<PageNav />
+	<PageNav back="/" />
 	<h1>📣 Activity</h1>
 	<p class="sub">You, your friends, and your groups.</p>
 	<ActivityPanel />

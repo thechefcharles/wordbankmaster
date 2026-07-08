@@ -6,7 +6,7 @@
 <svelte:head><title>WordBank — Badges</title></svelte:head>
 
 <main class="badges-page">
-	<PageNav />
+	<PageNav back="/" />
 	<h1>🏅 Badges</h1>
 	<BadgesPanel />
 </main>
