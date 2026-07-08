@@ -32,6 +32,15 @@
 		loaded = true;
 		await tick();
 		celebrateNewUnlocks();
+		// Deep link from Full Stats: /badges?cat=<value> opens that category's detail.
+		const cat = new URLSearchParams(location.search).get('cat');
+		if (cat) {
+			const row = rows.find((r) => r.value === cat);
+			if (row) {
+				tab = 'categories';
+				detail = row;
+			}
+		}
 	});
 
 	// 🎉 Celebrate badges earned since the last visit. First visit seeds silently so
