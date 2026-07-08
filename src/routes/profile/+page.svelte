@@ -5,7 +5,6 @@
 	import { getProfileDetail, getMyAvatar, getUserBadges } from '$lib/stores/statsStore.js';
 	import { badgeInfo } from '$lib/badges.js';
 	import Avatar from '$lib/components/Avatar.svelte';
-	import AccountCard from '$lib/components/AccountCard.svelte';
 	import NotificationsPanel from '$lib/components/NotificationsPanel.svelte';
 	import { unreadCount, requestInbox } from '$lib/stores/notificationStore.js';
 	import { track } from '$lib/analytics.js';
@@ -133,6 +132,9 @@
 								>{/if}
 						</button>
 					</div>
+					{#if d.member_no}
+						<div class="ov-member">Member #{String(d.member_no).padStart(4, '0')}</div>
+					{/if}
 					<button class="nw nw-btn" onclick={() => goto('/bank')}
 						>{fmt(d.net_worth)}<span class="nw-go"> ›</span></button
 					>
@@ -143,16 +145,6 @@
 						<button class="ov-social-btn" onclick={() => goto('/my-groups')}>👥 My Groups ›</button>
 					</div>
 				</div>
-			</div>
-
-			<!-- 💳 Account card -->
-			<div class="prof-card-wrap">
-				<AccountCard
-					holder={d.username}
-					account={d.account_number}
-					member={d.member_no}
-					balance={d.net_worth}
-				/>
 			</div>
 
 			<div class="grid ov-summary">
@@ -566,9 +558,13 @@
 		font-size: 1.7rem;
 	}
 
-	.prof-card-wrap {
-		margin: 4px auto 16px;
-		max-width: 360px;
+	.ov-member {
+		font-family: var(--font-display, sans-serif);
+		font-weight: 700;
+		font-size: 0.78rem;
+		letter-spacing: 0.03em;
+		color: #fcd34d;
+		margin: 2px 0 6px;
 	}
 	.ov-summary {
 		margin-bottom: 4px;
