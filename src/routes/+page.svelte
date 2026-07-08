@@ -3270,13 +3270,13 @@
 						{#if communityTab === 'challenges'}
 							<button
 								class="sub-people"
-								title="Friends & Groups"
-								aria-label="Friends & Groups"
+								title="Add Friends"
+								aria-label="Add Friends"
 								on:click={() => {
 									communityTab = 'people';
 									peopleBackToHome = false;
 									fx('tap');
-								}}><span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span></button
+								}}><span class="sp-plus">+</span> Add Friends</button
 							>
 						{/if}
 					{/if}
@@ -5596,20 +5596,35 @@
 		grid-column: 2;
 	}
 	.sub-people {
-		position: relative;
 		justify-self: end;
-		width: 40px;
-		height: 40px;
-		display: grid;
-		place-items: center;
-		font-size: 1.1rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		padding: 0.5rem 0.8rem;
+		font-family: var(--font-display);
+		font-weight: 700;
+		font-size: 0.84rem;
+		white-space: nowrap;
+		color: var(--text);
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: 12px;
 		cursor: pointer;
+		transition:
+			transform 0.15s,
+			border-color 0.2s,
+			background 0.2s;
 	}
 	.sub-people:hover {
+		transform: translateY(-1px);
 		border-color: var(--brand-2);
+		background: var(--surface-2);
+	}
+	.sp-plus {
+		font-size: 1.05rem;
+		font-weight: 800;
+		line-height: 1;
+		color: var(--brand-2, #fcd34d);
 	}
 	/* Community hub tabs + body */
 	.comm-tabs {
