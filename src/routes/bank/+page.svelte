@@ -1,15 +1,18 @@
 <script>
 	import { onMount } from 'svelte';
 	import PageNav from '$lib/components/PageNav.svelte';
-	import { getBank, getProfileDetail } from '$lib/stores/statsStore.js';
+	import { getBank, getProfileDetail, getCreditDetail } from '$lib/stores/statsStore.js';
 	import AccountCard from '$lib/components/AccountCard.svelte';
+	import CreditGauge from '$lib/components/CreditGauge.svelte';
 	import LoanPanel from '$lib/components/LoanPanel.svelte';
 	import { track } from '$lib/analytics.js';
 
-	/** @type {{ bank:number, net_worth:number, loan:number, loan_cap:number, in_the_red:boolean, ledger:any[] }|null} */
+	/** @type {{ bank:number, net_worth:number, loan:number, loan_cap:number, in_the_red:boolean, ledger:any[], credit_score:number, credit_tier:string, credit_delta:number }|null} */
 	let b = null;
 	/** @type {any} */
 	let prof = null;
+	/** @type {any} */
+	let cd = null;
 	let loading = true;
 
 	async function load() {
@@ -18,7 +21,9 @@
 	onMount(async () => {
 		track('bank_view');
 		try {
-			[prof] = await Promise.all([getProfileDetail(), load()]);
+			const [p, c] = await Promise.all([getProfileDetail(), getCreditDetail(), load()]);
+			prof = p;
+			cd = c;
 		} finally {
 			loading = false;
 		}
@@ -102,6 +107,17 @@
 				balance={b.bank}
 			/>
 		</div>
+
+		<!-- 💳 Credit score -->
+		<section class="credit-sec">
+			<h2 class="hist-title">Credit Score</h2>
+			<CreditGauge
+				score={b.credit_score ?? 650}
+				tier={b.credit_tier ?? 'Good'}
+				delta={b.credit_delta ?? 0}
+				detail={cd}
+			/>
+		</section>
 
 		<!-- 💸 Loan Shark -->
 		<LoanPanel bank={b} on:changed={load} />
@@ -201,6 +217,13 @@
 
 	.ac-hero {
 		margin-bottom: 14px;
+	}
+	.credit-sec {
+		margin: 4px 0 16px;
+	}
+	.credit-sec .hist-title {
+		text-align: center;
+		margin-bottom: 8px;
 	}
 
 	.led-head {

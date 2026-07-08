@@ -70,14 +70,24 @@ export async function getDailyStatus(userId) {
 	};
 }
 
-/** My Cash: balance (= Net Worth) and recent ledger. (v3: loans removed.)
- * @returns {Promise<{ bank:number, net_worth:number, ledger:any[] }>} */
-/** @param {number} [limit] ledger rows to return (default 12; pass a big number for full history) */
+/** My Cash: balance (= Net Worth), recent ledger, and credit summary.
+ * Credit fields (credit_score/credit_tier/credit_delta) ride along from get_bank.
+ * @param {number} [limit] ledger rows to return (default 12; pass a big number for full history) */
 export async function getBank(limit) {
 	const { data, error } = await supabase.rpc('get_bank', limit ? { p_limit: limit } : {});
 	if (error || !data) {
 		if (error) console.error('❌ get_bank:', error);
-		return { bank: 0, net_worth: 0, loan: 0, loan_cap: 0, in_the_red: false, ledger: [] };
+		return {
+			bank: 0,
+			net_worth: 0,
+			loan: 0,
+			loan_cap: 0,
+			in_the_red: false,
+			ledger: [],
+			credit_score: 650,
+			credit_tier: 'Good',
+			credit_delta: 0
+		};
 	}
 	return {
 		bank: data.bank ?? 0,
@@ -85,8 +95,22 @@ export async function getBank(limit) {
 		loan: data.loan ?? 0,
 		loan_cap: data.loan_cap ?? 0,
 		in_the_red: !!data.in_the_red,
-		ledger: Array.isArray(data.ledger) ? data.ledger : []
+		ledger: Array.isArray(data.ledger) ? data.ledger : [],
+		credit_score: data.credit_score ?? 650,
+		credit_tier: data.credit_tier ?? 'Good',
+		credit_delta: data.credit_delta ?? 0
 	};
+}
+
+/** Full credit-score breakdown for the gauge detail view. Returns null if signed out.
+ * @returns {Promise<null|{ score:number, target:number, tier:string, history:any[], components:Record<string,{value:number,label:string,hint:string}> }>} */
+export async function getCreditDetail() {
+	const { data, error } = await supabase.rpc('get_credit_detail');
+	if (error) {
+		console.error('❌ get_credit_detail:', error);
+		return null;
+	}
+	return data;
 }
 
 /** Borrow from the Loan Shark (25% fee, one at a time, ≤ credit limit). @param {number} amount */
