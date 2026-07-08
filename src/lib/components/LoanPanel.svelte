@@ -77,7 +77,7 @@
 	async function borrow() {
 		if (loanBusy || borrowAmt < MIN_BORROW) return;
 		try {
-			await requirePin(`Borrow $${borrowAmt.toLocaleString()} from the Shark`, [
+			await requirePin(`Borrow $${borrowAmt.toLocaleString()}`, [
 				{ label: 'You receive', value: '$' + borrowAmt.toLocaleString() },
 				{ label: 'Interest', value: ratePct + '%/day, compounding' },
 				{ label: '~Owe in a week', value: '$' + proj7.toLocaleString() }
@@ -140,7 +140,7 @@
 	<!-- In debt: repay panel + the teeth -->
 	<div class="loan-card debt">
 		<div class="loan-head">
-			<span class="loan-title">🦈 You owe the Shark</span>
+			<span class="loan-title">You owe</span>
 			<span class="loan-owed">{fmt(owed)}</span>
 		</div>
 		<div class="loan-facts">
@@ -149,8 +149,8 @@
 			<span>→ {fmt(owedTomorrow)} tomorrow</span>
 		</div>
 		<p class="loan-note">
-			Interest compounds daily. The Store is locked and half of every payout auto-pays your debt
-			until it's clear. Your net worth is <b class="neg">{fmt(bank.net_worth)}</b>.
+			The Store is locked and half of every payout auto-repays this. Net worth
+			<b class="neg">{fmt(bank.net_worth)}</b>.
 		</p>
 		{#if maxRepay > 0}
 			<div class="loan-dial">
@@ -213,8 +213,7 @@
 	<details class="loan-card" open={expanded}>
 		<summary class="loan-summary">Apply for a Loan <span class="loan-cv">▾</span></summary>
 		<p class="loan-note">
-			Interest compounds daily — the more you take, the higher the rate. One loan at a time; while
-			you owe, the Store locks and half of every payout auto-pays it down.
+			One loan at a time. While you owe, the Store locks and half of every payout auto-repays it.
 		</p>
 		<p class="loan-tier">
 			Credit <b>{creditTier}</b> ({creditScore}) — sets your ${loanCap.toLocaleString()} limit{#if creditAdjBp(creditTier) !== 0}
@@ -250,18 +249,18 @@
 		<button
 			class="loan-btn borrow"
 			disabled={!!loanBusy || borrowAmt < MIN_BORROW}
-			on:click={borrow}>🦈 Borrow {fmt(borrowAmt)}</button
+			on:click={borrow}>Borrow {fmt(borrowAmt)}</button
 		>
 		{#if loanMsg}<p class="msg">{loanMsg}</p>{/if}
 	</details>
 {:else}
 	<!-- Bad tier: borrowing locked -->
 	<div class="loan-card locked">
-		<div class="loan-locked-h">🦈 Borrowing locked</div>
+		<div class="loan-locked-h">Borrowing locked</div>
 		<p class="loan-note" style="margin:0">
-			Your credit is <b class="neg">{creditTier}</b> ({creditScore}). The Shark won't lend to you
-			right now — repay on time, stay out of the red, and keep utilization low to climb back to
-			<b>Poor</b> (400+) and unlock loans again.
+			Your credit is <b class="neg">{creditTier}</b> ({creditScore}). You can't borrow right now —
+			repay on time, stay out of the red, and keep utilization low to climb back to <b>Poor</b>
+			(400+) and unlock loans.
 		</p>
 	</div>
 {/if}
