@@ -136,15 +136,22 @@
 					{#if d.member_no}
 						<div class="ov-member">Member #{String(d.member_no).padStart(4, '0')}</div>
 					{/if}
-					<button class="nw nw-btn" onclick={() => goto('/bank')}
-						>{fmt(d.net_worth)}<span class="nw-go"> ›</span></button
-					>
 					<div class="ov-social">
 						<!-- One entry to the People screen (toggles Friends / Groups, like the home menu). -->
 						<button class="ov-social-btn" onclick={() => goto('/?people=1')}>👥 Friends ›</button>
 					</div>
 				</div>
 			</div>
+
+			<!-- 🏦 Available Balance account row (bank-app style) -->
+			<button class="acct-card" onclick={() => goto('/bank')}>
+				<span class="acct-name"
+					>WordBank Checking{#if d.account_number}
+						····{String(d.account_number).slice(-4)}{/if}<span class="arrow"> ›</span></span
+				>
+				<span class="acct-bal">{fmt(d.net_worth)}</span>
+				<span class="acct-lbl">Available Balance</span>
+			</button>
 
 			<div class="ov-sec-title">📊 Account Summary</div>
 			<div class="grid ov-summary">
@@ -208,28 +215,29 @@
 				)}
 			</div>
 
-			<div class="ov-sec-title">🏅 Trophy Case</div>
-			<button class="ov-badges-card" onclick={() => goto('/badges')}>
-				<div class="ov-badges-h">
-					<span class="ov-badges-title">Badges</span>
-					<span class="ov-badges-count">{earnedBadges.length} earned</span>
-					<span class="arrow">›</span>
-				</div>
-				{#if earnedBadges.length}
-					<div class="ov-badge-shelf">
-						{#each earnedBadges.slice(0, 7) as bdg}
-							<span class="ov-medal" title={bdg.name}>{bdg.emoji}</span>
-						{/each}
-						{#if earnedBadges.length > 7}
-							<span class="ov-medal more">+{earnedBadges.length - 7}</span>
-						{/if}
-					</div>
-				{:else}
-					<span class="ov-badges-empty">None yet — play to earn them</span>
-				{/if}
+			<button class="ov-sec-link" onclick={() => goto('/badges')}>
+				<span>🏅 Badges</span>
+				<span class="ov-sec-count">{earnedBadges.length}</span>
+				<span class="arrow">›</span>
 			</button>
+			{#if earnedBadges.length}
+				<div class="ov-badge-grid">
+					{#each earnedBadges as bdg}
+						<button
+							class="ov-badge-tile"
+							title={bdg.name}
+							onclick={() => (statInfo = { title: `${bdg.emoji} ${bdg.name}`, desc: bdg.desc })}
+							>{bdg.emoji}</button
+						>
+					{/each}
+				</div>
+			{:else}
+				<button class="st-empty" onclick={() => goto('/badges')}
+					>No badges yet — play to earn them <span class="arrow">›</span></button
+				>
+			{/if}
 
-			<div class="ov-sec-title">🎒 Your Items</div>
+			<div class="ov-sec-title">🎒 My Items</div>
 			<div class="ov-items">
 				<InventoryList addHref="/shop?from=profile" />
 			</div>
@@ -477,15 +485,6 @@
 		font-weight: 700;
 		font-size: 1.3rem;
 	}
-	.nw {
-		font-family: 'Orbitron', var(--font-display);
-		font-weight: 800;
-		font-size: 2.1rem;
-		color: #fde047;
-		margin-top: 10px;
-		text-shadow: 0 0 18px rgba(251, 191, 36, 0.5);
-	}
-
 	/* 💹 Lifetime net hero */
 	.st-hero {
 		text-align: center;
@@ -644,10 +643,6 @@
 	.ov-social-btn:hover {
 		border-color: var(--brand-2);
 	}
-	.ov-id .nw {
-		font-size: 1.7rem;
-	}
-
 	.ov-member {
 		font-family: var(--font-display, sans-serif);
 		font-weight: 700;
@@ -660,19 +655,6 @@
 		margin-bottom: 4px;
 	}
 
-	.nw-btn {
-		background: none;
-		border: none;
-		padding: 0;
-		cursor: pointer;
-		display: inline-flex;
-		align-items: baseline;
-	}
-	.nw-go {
-		font-size: 1rem;
-		color: var(--text-faint);
-		font-family: var(--font-display);
-	}
 	.ov-sec-title {
 		font-family: var(--font-display);
 		font-size: 0.72rem;
@@ -683,81 +665,109 @@
 		text-align: left;
 		margin: 18px 2px 8px;
 	}
-	.ov-badges-card {
-		display: block;
+	/* 🏦 Available Balance account row (bank-app style) */
+	.acct-card {
+		display: flex;
+		flex-direction: column;
 		width: 100%;
-		text-align: left;
+		margin: 4px 0 6px;
+		padding: 14px 16px 15px;
+		border-radius: 16px;
 		cursor: pointer;
-		padding: 13px 15px;
-		border-radius: 14px;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		transition:
 			border-color 0.2s,
 			transform 0.15s;
 	}
-	.ov-badges-card:hover {
+	.acct-card:hover {
 		border-color: var(--brand-2);
 		transform: translateY(-1px);
 	}
-	.ov-badges-h {
+	.acct-name {
+		text-align: left;
+		font-weight: 600;
+		font-size: 0.86rem;
+		color: var(--text-muted);
+	}
+	.acct-name .arrow {
+		color: var(--text-faint);
+	}
+	.acct-bal {
+		text-align: right;
+		font-family: 'Orbitron', var(--font-display);
+		font-weight: 800;
+		font-size: 2.4rem;
+		line-height: 1.1;
+		color: var(--text);
+		margin-top: 6px;
+	}
+	.acct-lbl {
+		text-align: right;
+		font-size: 0.66rem;
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--text-faint);
+	}
+	/* Badges: header link + item-style tiles */
+	.ov-sec-link {
 		display: flex;
 		align-items: center;
-		gap: 9px;
+		gap: 8px;
+		width: 100%;
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: 0;
+		margin: 18px 2px 8px;
 		font-family: var(--font-display);
+		font-size: 0.72rem;
 		font-weight: 700;
-		font-size: 0.95rem;
-		color: var(--text);
-		margin-bottom: 11px;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--gold);
 	}
-	.ov-badges-count {
-		font-size: 0.66rem;
+	.ov-sec-count {
+		font-size: 0.62rem;
 		font-weight: 800;
 		color: #0b0f16;
 		background: var(--brand-2, #fde047);
-		padding: 2px 9px;
+		padding: 1px 8px;
 		border-radius: 999px;
 	}
-	.ov-badges-h .arrow {
+	.ov-sec-link .arrow {
 		margin-left: auto;
 		color: var(--text-faint);
 	}
-	.ov-badge-shelf {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 9px;
-		padding: 2px 0;
+	.ov-badge-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+		gap: 8px;
 	}
-	.ov-medal {
-		width: 46px;
-		height: 46px;
+	.ov-badge-tile {
+		aspect-ratio: 1;
 		display: grid;
 		place-items: center;
-		font-size: 1.45rem;
-		line-height: 1;
-		border-radius: 50%;
+		font-size: 1.55rem;
+		border-radius: 12px;
+		cursor: pointer;
 		background: radial-gradient(
-			circle at 50% 32%,
-			rgba(251, 191, 36, 0.24),
-			rgba(251, 191, 36, 0.05)
+			circle at 50% 35%,
+			rgba(251, 191, 36, 0.16),
+			rgba(251, 191, 36, 0.04)
 		);
-		border: 1.5px solid rgba(251, 191, 36, 0.5);
-		box-shadow:
-			0 0 12px rgba(251, 191, 36, 0.2),
-			inset 0 1px 2px rgba(255, 255, 255, 0.15);
+		border: 1px solid rgba(251, 191, 36, 0.4);
+		transition:
+			transform 0.15s,
+			border-color 0.2s;
 	}
-	.ov-medal.more {
-		font-family: var(--font-display);
-		font-size: 0.85rem;
-		font-weight: 800;
-		color: #fde047;
-		background: var(--surface-2, rgba(255, 255, 255, 0.06));
-		border-color: var(--border);
-		box-shadow: none;
+	.ov-badge-tile:hover {
+		transform: translateY(-2px);
+		border-color: rgba(251, 191, 36, 0.7);
 	}
-	.ov-badges-empty {
-		font-size: 0.85rem;
-		color: var(--text-muted);
+	.ov-badge-tile:active {
+		transform: scale(0.95);
 	}
 	.ov-items {
 		margin-top: 2px;
