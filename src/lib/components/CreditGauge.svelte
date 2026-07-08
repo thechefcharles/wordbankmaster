@@ -1,11 +1,14 @@
 <script>
 	// 💳 Credit score gauge — 300–850 arc dial + tier + delta, tap for breakdown.
+	import { cardName, tierEffect } from '$lib/creditTiers.js';
 	export let score = 650;
 	export let tier = 'Good';
 	export let delta = 0;
 	/** @type {any} */ export let detail = null;
 
 	let open = false;
+	$: card = cardName(tier);
+	$: effect = tierEffect(tier);
 	const MIN = 300,
 		MAX = 850;
 	const R = 80,
@@ -65,6 +68,16 @@
 			{/if}
 		</div>
 	</button>
+	<button class="cg-toggle" on:click={() => (open = !open)} aria-expanded={open}>
+		{open ? 'Hide details ▴' : 'Tap for details ▾'}
+	</button>
+	{#if open}
+		<!-- 💳 Which card you have + how the tier affects your loans -->
+		<div class="cg-cardinfo" style="border-color:{tierColor}33">
+			<div class="cg-cardname">WordBank <b style="color:{tierColor}">{card}</b></div>
+			<div class="cg-cardeff">{effect}</div>
+		</div>
+	{/if}
 	{#if open && comps.length}
 		<div class="cg-breakdown">
 			{#each comps as c}
@@ -145,6 +158,40 @@
 	}
 	.cg-delta.neg {
 		color: #fb7185;
+	}
+	.cg-toggle {
+		display: block;
+		margin: 8px auto 0;
+		background: none;
+		border: none;
+		cursor: pointer;
+		font-family: var(--font-ui, sans-serif);
+		font-size: 0.74rem;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		color: var(--text-muted);
+	}
+	.cg-toggle:hover {
+		color: var(--text);
+	}
+	.cg-cardinfo {
+		margin-top: 10px;
+		padding: 10px 12px;
+		border: 1px solid var(--border);
+		border-radius: 12px;
+		text-align: center;
+		background: rgba(255, 255, 255, 0.02);
+	}
+	.cg-cardname {
+		font-family: var(--font-display, sans-serif);
+		font-weight: 800;
+		font-size: 0.95rem;
+		letter-spacing: 0.02em;
+	}
+	.cg-cardeff {
+		margin-top: 2px;
+		font-size: 0.76rem;
+		color: var(--text-muted);
 	}
 	.cg-breakdown {
 		display: flex;
