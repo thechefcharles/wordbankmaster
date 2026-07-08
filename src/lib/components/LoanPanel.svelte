@@ -184,7 +184,7 @@
 {:else if loanCap > 0}
 	<!-- No debt: borrow panel -->
 	<details class="loan-card" open={expanded}>
-		<summary class="loan-summary">🦈 Apply for a Loan <span class="loan-cv">▾</span></summary>
+		<summary class="loan-summary">Apply for a Loan <span class="loan-cv">▾</span></summary>
 		<p class="loan-note">
 			Interest compounds daily — the more you take, the higher the rate. One loan at a time; while
 			you owe, the Store locks and half of every payout auto-pays it down.
@@ -287,6 +287,7 @@
 		color: #fb7185;
 	}
 	.loan-summary {
+		position: relative;
 		cursor: pointer;
 		font-family: var(--font-display);
 		font-weight: 700;
@@ -294,12 +295,15 @@
 		list-style: none;
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
+		justify-content: center;
+		text-align: center;
 	}
 	.loan-summary::-webkit-details-marker {
 		display: none;
 	}
 	.loan-cv {
+		position: absolute;
+		right: 0;
 		color: var(--text-faint);
 		font-size: 0.8rem;
 	}
