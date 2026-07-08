@@ -3051,7 +3051,7 @@
 			<!-- 🏦 Bank-app header: greeting + notifications + profile monogram -->
 			<div class="menu-hero">
 				<div class="hero-greet">
-					Hi, <span class="hg-name">@{$userProfile?.username ?? myUsername ?? 'wordbanker'}</span>
+					Hi, <span class="hg-name">{$userProfile?.username ?? myUsername ?? 'wordbanker'}</span>
 				</div>
 				<div class="hero-actions">
 					<button
@@ -6361,7 +6361,7 @@
 	}
 	.rs-label {
 		flex: 1;
-		text-align: left;
+		text-align: center;
 		color: #d1fae5;
 	}
 	.rs-go {
