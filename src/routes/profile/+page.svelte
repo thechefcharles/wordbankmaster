@@ -231,13 +231,24 @@
 				>
 			</div>
 		{:else if tab === 'stats'}
+			{@const net = Number(d.overall.earned ?? 0) - Number(d.overall.spent ?? 0)}
+			<!-- 💹 Lifetime net hero -->
+			<div class="st-hero">
+				<div class="st-hero-lbl">Lifetime Net</div>
+				<div class="st-hero-net" class:pos={net >= 0} class:neg={net < 0}>
+					{net >= 0 ? '+' : '−'}{fmt(Math.abs(net))}
+				</div>
+				<div class="st-hero-sub">
+					<span class="up">▲ earned {fmt(d.overall.earned)}</span>
+					<span class="down">▼ spent {fmt(d.overall.spent)}</span>
+				</div>
+			</div>
+
 			<div class="sec-title">📊 Overall</div>
 			<div class="grid">
 				{@render chip((d.overall.puzzles_solved ?? 0).toLocaleString(), 'Puzzles solved')}
 				{@render chip(d.overall.games_played ?? 0, 'Games played')}
 				{@render chip(d.overall.clean_solves ?? 0, 'Clean solves')}
-				{@render chip(fmt(d.overall.earned), 'Lifetime earned')}
-				{@render chip(fmt(d.overall.spent), 'Lifetime spent')}
 			</div>
 
 			<div class="sec-title">📅 Daily</div>
@@ -248,7 +259,7 @@
 				{@render chip(d.daily.best_win_streak ?? 0, 'Best win')}
 				{@render chip(pct(d.daily.won ?? 0, d.daily.played ?? 0), 'Win rate')}
 				{@render chip(d.daily.won ?? 0, 'Dailies won')}
-				{@render chip(fmt(d.daily.best_bounty), 'Best bounty')}
+				{@render chip(fmt(d.daily.best_bounty), 'Best day')}
 			</div>
 
 			<div class="sec-title">🎰 Cash Game</div>
@@ -261,21 +272,33 @@
 			</div>
 
 			<div class="sec-title">⚔️ 1-on-1</div>
-			<div class="grid">
-				{@render chip(
-					`${d.challenges_1v1.wins ?? 0}-${d.challenges_1v1.losses ?? 0}-${d.challenges_1v1.ties ?? 0}`,
-					'W-L-T'
-				)}
-				{@render chip(pct(d.challenges_1v1.wins ?? 0, d.challenges_1v1.played ?? 0), 'Win rate')}
-				{@render chip(fmt(d.challenges_1v1.biggest_pot), 'Biggest pot')}
-			</div>
+			{#if (d.challenges_1v1.played ?? 0) > 0}
+				<div class="grid">
+					{@render chip(
+						`${d.challenges_1v1.wins ?? 0}-${d.challenges_1v1.losses ?? 0}-${d.challenges_1v1.ties ?? 0}`,
+						'W-L-T'
+					)}
+					{@render chip(pct(d.challenges_1v1.wins ?? 0, d.challenges_1v1.played ?? 0), 'Win rate')}
+					{@render chip(fmt(d.challenges_1v1.biggest_pot), 'Biggest pot')}
+				</div>
+			{:else}
+				<button class="st-empty" onclick={() => goto('/')}
+					>No duels yet — challenge a friend <span class="arrow">›</span></button
+				>
+			{/if}
 
 			<div class="sec-title">👥 Group challenges</div>
-			<div class="grid">
-				{@render chip(d.challenges_group.played ?? 0, 'Played')}
-				{@render chip(d.challenges_group.wins ?? 0, 'Wins (1st)')}
-				{@render chip(d.challenges_group.podiums ?? 0, 'Podiums')}
-			</div>
+			{#if (d.challenges_group.played ?? 0) > 0}
+				<div class="grid">
+					{@render chip(d.challenges_group.played ?? 0, 'Played')}
+					{@render chip(d.challenges_group.wins ?? 0, 'Wins (1st)')}
+					{@render chip(d.challenges_group.podiums ?? 0, 'Podiums')}
+				</div>
+			{:else}
+				<button class="st-empty" onclick={() => goto('/my-groups')}
+					>No group games yet — join or start a group <span class="arrow">›</span></button
+				>
+			{/if}
 
 			{#if (d.rivals ?? []).length}
 				<div class="sec-title">
@@ -455,6 +478,65 @@
 		text-shadow: 0 0 18px rgba(251, 191, 36, 0.5);
 	}
 
+	/* 💹 Lifetime net hero */
+	.st-hero {
+		text-align: center;
+		padding: 16px 18px 16px;
+		border-radius: 18px;
+		margin-bottom: 6px;
+		background: linear-gradient(180deg, rgba(251, 191, 36, 0.1), rgba(251, 191, 36, 0.02));
+		border: 1px solid rgba(251, 191, 36, 0.26);
+	}
+	.st-hero-lbl {
+		font-size: 0.68rem;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: var(--text-muted, #aeb8c6);
+	}
+	.st-hero-net {
+		font-family: var(--font-display);
+		font-weight: 800;
+		font-size: 2.5rem;
+		line-height: 1.05;
+		margin: 2px 0 6px;
+	}
+	.st-hero-net.pos {
+		color: #4ade80;
+	}
+	.st-hero-net.neg {
+		color: #fb7185;
+	}
+	.st-hero-sub {
+		display: flex;
+		justify-content: center;
+		gap: 16px;
+		font-size: 0.76rem;
+		font-variant-numeric: tabular-nums;
+	}
+	.st-hero-sub .up {
+		color: #86efac;
+	}
+	.st-hero-sub .down {
+		color: #fca5a5;
+	}
+	.st-empty {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		padding: 16px;
+		border-radius: 14px;
+		background: var(--surface, rgba(255, 255, 255, 0.04));
+		border: 1px dashed var(--border, rgba(255, 255, 255, 0.14));
+		color: var(--text-muted, #aeb8c6);
+		font-size: 0.86rem;
+		cursor: pointer;
+	}
+	.st-empty:hover {
+		border-color: rgba(251, 191, 36, 0.4);
+		color: var(--text, #f3f6fb);
+	}
 	.sec-title {
 		font-family: var(--font-display);
 		font-size: 0.78rem;
