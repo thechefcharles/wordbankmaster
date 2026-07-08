@@ -1,9 +1,15 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { getCategoryStats, getUserBadges } from '$lib/stores/statsStore.js';
 	import { CATEGORIES } from '$lib/categories.js';
-	import { categoryProgress, SOLVE_MILESTONES, COLLECTOR } from '$lib/categoryBadges.js';
+	import {
+		categoryProgress,
+		CATEGORY_TIERS,
+		SOLVE_MILESTONES,
+		COLLECTOR
+	} from '$lib/categoryBadges.js';
 	import { BADGES, badgeInfo } from '$lib/badges.js';
+	import { fx } from '$lib/sound.js';
 
 	/** @type {{category: string, solves: number}[]} */
 	let categoryStats = $state([]);
@@ -12,13 +18,58 @@
 	let loaded = $state(false);
 	/** @type {'categories'|'achievements'} */
 	let tab = $state('categories');
+	/** Category row shown in the detail modal (null = closed). @type {any} */
+	let detail = $state(null);
+	/** Badge ids unlocked since last visit — celebrated + pulsed. @type {string[]} */
+	let newlyEarned = $state([]);
 
 	onMount(async () => {
 		const [stats, earned] = await Promise.all([getCategoryStats(), getUserBadges()]);
 		categoryStats = stats;
 		earnedBadges = earned;
 		loaded = true;
+		await tick();
+		celebrateNewUnlocks();
 	});
+
+	// 🎉 Celebrate badges earned since the last visit. First visit seeds silently so
+	// we only ever party for FUTURE unlocks, never retroactively.
+	function celebrateNewUnlocks() {
+		try {
+			const earnedIds = achievements.filter((a) => a.earned).map((a) => a.id);
+			const KEY = 'wb_seen_badges';
+			const raw = localStorage.getItem(KEY);
+			localStorage.setItem(KEY, JSON.stringify(earnedIds));
+			if (raw == null) return; // first visit → seed silently
+			const seen = new Set(JSON.parse(raw));
+			const fresh = earnedIds.filter((id) => !seen.has(id));
+			if (!fresh.length) return;
+			newlyEarned = fresh;
+			if (fresh.some((id) => achievements.find((a) => a.id === id))) tab = 'achievements';
+			fx('win');
+			if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) burstConfetti();
+			setTimeout(() => (newlyEarned = []), 6500);
+		} catch {
+			/* non-fatal */
+		}
+	}
+
+	// Lightweight one-shot confetti (badges are rare, so this stays tasteful).
+	function burstConfetti() {
+		const colors = ['#fbbf24', '#fde047', '#34d399', '#60a5fa', '#f472b6', '#ffffff'];
+		const c = document.createElement('div');
+		c.className = 'wb-confetti';
+		for (let i = 0; i < 40; i++) {
+			const p = document.createElement('span');
+			p.style.left = Math.round(Math.random() * 100) + 'vw';
+			p.style.background = colors[i % colors.length];
+			p.style.animationDelay = (Math.random() * 0.35).toFixed(2) + 's';
+			p.style.animationDuration = (2.2 + Math.random() * 1.2).toFixed(2) + 's';
+			c.appendChild(p);
+		}
+		document.body.appendChild(c);
+		setTimeout(() => c.remove(), 4000);
+	}
 
 	let solvesByCat = $derived(Object.fromEntries(categoryStats.map((r) => [r.category, r.solves])));
 	let total = $derived(categoryStats.reduce((n, r) => n + (r.solves || 0), 0));
@@ -158,7 +209,19 @@
 	{#if tab === 'categories'}
 		<div class="cat-grid">
 			{#each rows as r (r.value)}
-				<div class="cat-tile" class:ranked={r.current}>
+				<div
+					class="cat-tile"
+					class:ranked={r.current}
+					role="button"
+					tabindex="0"
+					onclick={() => (detail = r)}
+					onkeydown={(e) => {
+						if (e.key === 'Enter' || e.key === ' ') {
+							e.preventDefault();
+							detail = r;
+						}
+					}}
+				>
 					<div class="ring-wrap">
 						<svg class="ring" viewBox="0 0 44 44">
 							<circle class="ring-bg" cx="22" cy="22" r="19" />
@@ -194,6 +257,7 @@
 					<div
 						class="ach {a.earned ? 'earned' : 'locked'}"
 						class:has-prog={a.progText && !a.earned && (a.progress ?? 0) > 0}
+						class:just={newlyEarned.includes(a.id)}
 						title={a.desc}
 					>
 						<span class="ach-emoji">{a.emoji}</span>
@@ -216,6 +280,42 @@
 
 	{#if !loaded}<p class="bp-loading">Loading…</p>{/if}
 </div>
+
+<!-- 🎉 New-unlock banner -->
+{#if newlyEarned.length}
+	<div class="bp-unlock" role="status">
+		🎉 New badge{newlyEarned.length > 1 ? 's' : ''} unlocked!
+	</div>
+{/if}
+
+<!-- 🗂️ Category detail modal -->
+<svelte:window onkeydown={(e) => detail && e.key === 'Escape' && (detail = null)} />
+{#if detail}
+	<div class="cd-overlay">
+		<button class="cd-backdrop" aria-label="Close" onclick={() => (detail = null)}></button>
+		<div class="cd-card" role="dialog" aria-modal="true">
+			<button class="cd-x" onclick={() => (detail = null)} aria-label="Close">✕</button>
+			<div class="cd-emoji">{detail.emoji}</div>
+			<h3 class="cd-name">{detail.label}</h3>
+			<p class="cd-solves">
+				{detail.solves}
+				{detail.solves === 1 ? 'solve' : 'solves'}
+			</p>
+			<div class="cd-ladder">
+				{#each CATEGORY_TIERS as t}
+					{@const got = detail.solves >= t.at}
+					<div class="cd-tier" class:got>
+						<span class="cd-medal">{t.medal}</span>
+						<span class="cd-tname">{t.name}</span>
+						<span class="cd-treq"
+							>{#if got}✓ Unlocked{:else}{t.at - detail.solves} more{/if}</span
+						>
+					</div>
+				{/each}
+			</div>
+		</div>
+	</div>
+{/if}
 
 <style>
 	/* 🏅 Progress hero */
@@ -349,6 +449,17 @@
 		background: var(--surface, rgba(255, 255, 255, 0.05));
 		border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
 		text-align: center;
+		cursor: pointer;
+		transition:
+			transform 0.15s,
+			border-color 0.2s;
+	}
+	.cat-tile:hover {
+		transform: translateY(-2px);
+		border-color: rgba(251, 191, 36, 0.5);
+	}
+	.cat-tile:active {
+		transform: scale(0.97);
 	}
 	.cat-tile.ranked {
 		border-color: rgba(251, 191, 36, 0.35);
@@ -490,5 +601,177 @@
 		color: var(--text-muted);
 		font-size: 0.85rem;
 		text-align: center;
+	}
+
+	/* 🎉 Newly-unlocked pulse + banner */
+	.ach.just {
+		opacity: 1;
+		filter: none;
+		border-color: rgba(253, 224, 71, 0.85);
+		animation: bp-pop 0.7s var(--ease-spring, ease) 1;
+		box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+	}
+	@keyframes bp-pop {
+		0% {
+			transform: scale(0.85);
+		}
+		55% {
+			transform: scale(1.08);
+		}
+		100% {
+			transform: scale(1);
+		}
+	}
+	.bp-unlock {
+		position: fixed;
+		left: 50%;
+		bottom: 26px;
+		transform: translateX(-50%);
+		z-index: 10000;
+		padding: 10px 18px;
+		border-radius: 999px;
+		background: linear-gradient(135deg, #fbbf24, #f59e0b);
+		color: #2a1e00;
+		font-family: var(--font-display);
+		font-weight: 800;
+		font-size: 0.9rem;
+		box-shadow: 0 10px 28px rgba(245, 158, 11, 0.45);
+		animation: bp-toast 0.4s var(--ease-spring, ease) 1;
+	}
+	@keyframes bp-toast {
+		from {
+			transform: translate(-50%, 16px);
+			opacity: 0;
+		}
+		to {
+			transform: translate(-50%, 0);
+			opacity: 1;
+		}
+	}
+
+	/* 🗂️ Category detail modal */
+	.cd-overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 9990;
+		display: grid;
+		place-items: center;
+		padding: 22px;
+	}
+	.cd-backdrop {
+		position: absolute;
+		inset: 0;
+		border: none;
+		cursor: default;
+		background: rgba(4, 8, 14, 0.72);
+		backdrop-filter: blur(6px);
+	}
+	.cd-card {
+		position: relative;
+		z-index: 1;
+		width: 100%;
+		max-width: 320px;
+		padding: 24px 22px 20px;
+		border-radius: 20px;
+		text-align: center;
+		background: var(--surface-strong, rgba(20, 26, 38, 0.96));
+		border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16));
+		box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+	}
+	.cd-x {
+		position: absolute;
+		top: 10px;
+		right: 10px;
+		width: 30px;
+		height: 30px;
+		border-radius: 50%;
+		border: none;
+		cursor: pointer;
+		font-weight: 900;
+		color: #fff;
+		background: rgba(255, 255, 255, 0.1);
+	}
+	.cd-emoji {
+		font-size: 2.6rem;
+		line-height: 1;
+	}
+	.cd-name {
+		font-family: var(--font-display);
+		font-weight: 800;
+		font-size: 1.2rem;
+		margin: 8px 0 2px;
+		color: var(--text);
+	}
+	.cd-solves {
+		font-size: 0.8rem;
+		color: var(--text-muted);
+		margin: 0 0 14px;
+	}
+	.cd-ladder {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.cd-tier {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 9px 12px;
+		border-radius: 12px;
+		background: var(--surface, rgba(255, 255, 255, 0.05));
+		border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+		opacity: 0.55;
+	}
+	.cd-tier.got {
+		opacity: 1;
+		border-color: rgba(251, 191, 36, 0.4);
+	}
+	.cd-medal {
+		font-size: 1.3rem;
+	}
+	.cd-tname {
+		flex: 1;
+		text-align: left;
+		font-family: var(--font-display);
+		font-weight: 700;
+		font-size: 0.9rem;
+		color: var(--text);
+	}
+	.cd-treq {
+		font-size: 0.76rem;
+		font-weight: 700;
+		color: var(--text-muted);
+	}
+	.cd-tier.got .cd-treq {
+		color: #6ee7b7;
+	}
+
+	/* 🎊 Confetti (appended to <body>, so styled globally) */
+	:global(.wb-confetti) {
+		position: fixed;
+		inset: 0;
+		z-index: 10001;
+		pointer-events: none;
+		overflow: hidden;
+	}
+	:global(.wb-confetti span) {
+		position: absolute;
+		top: -14px;
+		width: 9px;
+		height: 15px;
+		border-radius: 2px;
+		animation-name: -global-wb-fall;
+		animation-timing-function: ease-in;
+		animation-fill-mode: forwards;
+	}
+	@keyframes -global-wb-fall {
+		0% {
+			transform: translateY(-10px) rotate(0deg);
+			opacity: 1;
+		}
+		100% {
+			transform: translateY(105vh) rotate(720deg);
+			opacity: 0.9;
+		}
 	}
 </style>
