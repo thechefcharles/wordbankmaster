@@ -105,6 +105,7 @@
 				account={prof?.account_number ?? ''}
 				member={prof?.member_no ?? null}
 				balance={b.bank}
+				tier={b.credit_tier ?? 'Good'}
 			/>
 		</div>
 

@@ -209,12 +209,14 @@
 	/** Spendable Bank balance (never negative) — what the top chip shows. */
 	let menuBank = /** @type {number|null} */ (null);
 	let menuLoan = 0; // outstanding loan → drives the menu debt banner + chip badge
+	let menuCreditTier = /** @type {string} */ ('Good'); // skins the menu account card
 	async function refreshBank() {
 		try {
 			const gb = await getBank();
 			netWorth = gb.net_worth;
 			menuBank = gb.bank ?? 0;
 			menuLoan = gb.loan ?? 0;
+			menuCreditTier = gb.credit_tier ?? 'Good';
 		} catch {
 			/* non-fatal */
 		}
@@ -656,7 +658,7 @@
 
 	// 💰 Bank Account hub: a modal (not a route) so closing it returns to where you were.
 	let showBank = false;
-	/** @type {{ bank:number, net_worth:number, loan:number, loan_cap:number, in_the_red:boolean, ledger:any[] }|null} */
+	/** @type {{ bank:number, net_worth:number, loan:number, loan_cap:number, in_the_red:boolean, ledger:any[], credit_tier?:string }|null} */
 	let bankData = null;
 	async function openBankModal() {
 		fx('tap');
@@ -2546,6 +2548,7 @@
 					account={$userProfile?.account_number ?? ''}
 					member={$userProfile?.member_no ?? null}
 					balance={bankData?.bank ?? menuBank ?? netWorth ?? 0}
+					tier={bankData?.credit_tier ?? menuCreditTier ?? 'Good'}
 				/>
 			</div>
 			<!-- 🦈 Borrow / Repay, inline -->
@@ -3138,6 +3141,7 @@
 						account={$userProfile?.account_number ?? ''}
 						member={$userProfile?.member_no ?? null}
 						balance={menuBank ?? $userProfile?.bank ?? 0}
+						tier={menuCreditTier ?? 'Good'}
 					/>
 					{#if menuLoan > 0}
 						<span class="mcw-debt" title="You owe the Loan Shark"

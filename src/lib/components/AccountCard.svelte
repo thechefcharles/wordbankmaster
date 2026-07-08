@@ -5,15 +5,26 @@
 	/** @type {any} */ export let account = '';
 	/** @type {any} */ export let member = null;
 	/** @type {any} */ export let balance = 0;
+	/** Credit tier — skins the card (Excellent = black card; Poor/Bad = distressed). */
+	/** @type {string} */ export let tier = 'Good';
 
+	$: tierClass =
+		tier === 'Excellent'
+			? 'ac-excellent'
+			: tier === 'Poor'
+				? 'ac-poor'
+				: tier === 'Bad'
+					? 'ac-bad'
+					: '';
 	$: last4 = (account ?? '').toString().slice(-4) || '••••';
 	$: holderName = (holder ? String(holder) : 'Wordbanker').toUpperCase();
 	$: memberLabel = member != null ? '#' + String(member).padStart(4, '0') : '—';
 	$: amount = Math.round(Number(balance) || 0).toLocaleString();
 </script>
 
-<div class="acct-card">
+<div class="acct-card {tierClass}">
 	<div class="ac-sheen"></div>
+	{#if tier === 'Excellent'}<span class="ac-tier-mark" aria-hidden="true">◆ ELITE</span>{/if}
 	<div class="ac-inner">
 		<div class="ac-top">
 			<span class="ac-brand">
@@ -62,6 +73,37 @@
 		box-shadow:
 			0 18px 44px rgba(0, 0, 0, 0.55),
 			inset 0 1px 0 rgba(255, 255, 255, 0.08);
+	}
+	/* 💳 Excellent — matte "black card" with a brighter gold edge. */
+	.acct-card.ac-excellent {
+		background: linear-gradient(135deg, #08080b 0%, #1a1a20 45%, #0c0c10 100%);
+		border-color: rgba(251, 191, 36, 0.6);
+		box-shadow:
+			0 18px 44px rgba(0, 0, 0, 0.7),
+			inset 0 1px 0 rgba(255, 255, 255, 0.12),
+			0 0 0 1px rgba(251, 191, 36, 0.18);
+	}
+	/* Poor / Bad — distressed, red-tinted. */
+	.acct-card.ac-poor {
+		background: linear-gradient(135deg, #241c1c 0%, #2a2226 45%, #1c1616 100%);
+		border-color: rgba(248, 113, 113, 0.42);
+	}
+	.acct-card.ac-bad {
+		background: linear-gradient(135deg, #251818 0%, #2a1b1b 45%, #190f0f 100%);
+		border-color: rgba(248, 113, 113, 0.62);
+		filter: saturate(0.92);
+	}
+	.ac-tier-mark {
+		position: absolute;
+		top: 14px;
+		left: 50%;
+		transform: translateX(-50%);
+		font-family: var(--font-display, sans-serif);
+		font-size: 0.52rem;
+		font-weight: 800;
+		letter-spacing: 0.32em;
+		color: rgba(251, 191, 36, 0.75);
+		z-index: 2;
 	}
 	.ac-sheen {
 		position: absolute;
