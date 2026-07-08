@@ -628,7 +628,7 @@
 		border: none;
 		cursor: pointer;
 		padding: 2px;
-		color: var(--text-muted);
+		color: #fff;
 	}
 	.bell-btn:hover {
 		color: var(--text);

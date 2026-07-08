@@ -5891,10 +5891,10 @@
 			border-color 0.2s;
 	}
 	.hero-bell-ic {
-		width: 22px;
-		height: 22px;
+		width: 21px;
+		height: 21px;
 		fill: none;
-		stroke: currentColor;
+		stroke: #fff;
 		stroke-width: 1.8;
 		stroke-linecap: round;
 		stroke-linejoin: round;
