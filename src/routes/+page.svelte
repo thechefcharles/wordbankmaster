@@ -7972,7 +7972,7 @@
 		color: #fb7185;
 	}
 	.bp-amount {
-		font-family: 'Orbitron', var(--font-display);
+		font-family: var(--font-display, sans-serif);
 		font-weight: 800;
 		font-size: 2.3rem;
 		line-height: 1.05;
@@ -8610,7 +8610,7 @@
 		}
 	}
 	.tb-solo {
-		font-family: 'Orbitron', var(--font-display);
+		font-family: var(--font-display, sans-serif);
 		font-weight: 800;
 		font-size: 1.55rem;
 		color: #fcd34d;
