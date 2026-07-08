@@ -3100,31 +3100,59 @@
 						>
 					{/if}
 				</div>
-				<!-- ⚡ Bank-app quick actions — horizontally swipeable -->
+				<!-- ⚡ Bank-app quick actions — horizontally swipeable (flat line icons) -->
 				<div class="quick-tiles">
 					<button class="qt" on:click={() => openCommunity('people')}>
-						<span class="qt-ic">👥</span><span class="qt-l">Friends</span>
+						<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
+							<circle cx="9" cy="7" r="3" />
+							<path d="M3 20a6 6 0 0 1 12 0" />
+							<path d="M16 4.5a3 3 0 0 1 0 5.5" />
+							<path d="M18 13.5a6 6 0 0 1 3 5.5" />
+						</svg><span class="qt-l">Friends</span>
 					</button>
 					<button class="qt" on:click={() => goto('/shop')}>
-						<span class="qt-ic">🛍️</span><span class="qt-l">Store</span>
+						<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+							<path d="M3 6h18" />
+							<path d="M16 10a4 4 0 0 1-8 0" />
+						</svg><span class="qt-l">Store</span>
 					</button>
 					<button class="qt" on:click={() => openCommunity('leaderboard')}>
-						<span class="qt-ic">🏆</span><span class="qt-l">Ranks</span>
+						<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" />
+							<path d="M8 5.5H5.2A1.2 1.2 0 0 0 4 6.7C4 8.8 5.8 10 8 10" />
+							<path d="M16 5.5h2.8A1.2 1.2 0 0 1 20 6.7C20 8.8 18.2 10 16 10" />
+							<path d="M12 13v3" /><path d="M9.5 20h5" /><path d="M10 20a2 2 0 0 1 4 0" />
+						</svg><span class="qt-l">Ranks</span>
 					</button>
 					<button class="qt" on:click={() => goto('/loans')}>
-						<span class="qt-ic">🦈</span><span class="qt-l">Loans</span>
+						<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
+							<rect x="3" y="6.5" width="18" height="11" rx="2" />
+							<circle cx="12" cy="12" r="2.3" />
+							<path d="M6 10.5v3M18 10.5v3" />
+						</svg><span class="qt-l">Loans</span>
 					</button>
 					<button class="qt" on:click={openBag}>
 						<img class="qt-img" src="/vault.png" alt="" /><span class="qt-l">Vault</span>
 					</button>
 					<button class="qt" on:click={() => goto('/streak')}>
-						<span class="qt-ic">🔥</span><span class="qt-l">Streak</span>
+						<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M12 3s5 3.8 5 9a5 5 0 0 1-10 0c0-2 .9-3.5 2.4-4.6C10.2 8.7 12 7 12 3Z" />
+						</svg><span class="qt-l">Streak</span>
 					</button>
 					<button class="qt" on:click={() => goto('/badges')}>
-						<span class="qt-ic">🎖️</span><span class="qt-l">Badges</span>
+						<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
+							<circle cx="12" cy="9" r="5" />
+							<path d="M8.5 13 7 21l5-2.7L17 21l-1.5-8" />
+							<path
+								d="m12 6.9.85 1.7 1.9.28-1.37 1.32.32 1.9L12 11.4l-1.7.9.32-1.9L9.25 8.88l1.9-.28Z"
+							/>
+						</svg><span class="qt-l">Badges</span>
 					</button>
 					<button class="qt" on:click={() => goto('/activity')}>
-						<span class="qt-ic">📜</span><span class="qt-l">Activity</span>
+						<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M3 12h3.5l2-6 4 13 2.5-7H21" />
+						</svg><span class="qt-l">Activity</span>
 					</button>
 				</div>
 				<div class="main-menu-buttons stagger">
@@ -5972,15 +6000,20 @@
 	.qt:active {
 		transform: scale(0.96);
 	}
-	.qt-ic {
-		font-size: 1.3rem;
-		line-height: 1;
-	}
 	.qt-img {
 		width: 26px;
 		height: 26px;
 		object-fit: contain;
 		filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+	}
+	.qt-svg {
+		width: 25px;
+		height: 25px;
+		fill: none;
+		stroke: #dfe4ee;
+		stroke-width: 1.8;
+		stroke-linecap: round;
+		stroke-linejoin: round;
 	}
 	.qt-l {
 		font-size: 0.66rem;
