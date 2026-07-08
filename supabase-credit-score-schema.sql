@@ -23,8 +23,8 @@ CREATE OR REPLACE FUNCTION public._credit_tier(p_score INT)
   RETURNS TEXT LANGUAGE sql IMMUTABLE AS $fn$
   SELECT CASE
     WHEN p_score >= 780 THEN 'Excellent'
-    WHEN p_score >= 670 THEN 'Good'
-    WHEN p_score >= 580 THEN 'Fair'
+    WHEN p_score >= 650 THEN 'Good'      -- neutral start (650) lands in Good, not Fair
+    WHEN p_score >= 560 THEN 'Fair'
     WHEN p_score >= 400 THEN 'Poor'
     ELSE 'Bad'
   END;

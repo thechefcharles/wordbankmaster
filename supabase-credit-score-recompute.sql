@@ -21,8 +21,11 @@ DECLARE
   v_had_loan BOOLEAN;
 BEGIN
   PERFORM public._ensure_bank(p_uid);
-  SELECT p.bank, p.loan, p.credit_score, p.credit_updated_at, p.credit_derog_until,
-         COALESCE(p.current_daily_play_streak, 0)
+  -- COALESCE loan/bank to 0: a player who never borrowed has loan = NULL, and NULL
+  -- would (a) make `v_loan > 0` NULL so grace is skipped and (b) make LEAST(NULL/cap,1)
+  -- collapse to 1 → utilization 0, wrongly deflating a debt-free newcomer.
+  SELECT COALESCE(p.bank, 0), COALESCE(p.loan, 0), p.credit_score, p.credit_updated_at,
+         p.credit_derog_until, COALESCE(p.current_daily_play_streak, 0)
     INTO v_bank, v_loan, v_prev, v_updated, v_derog, v_streak
     FROM public.profiles p WHERE p.id = p_uid;
   SELECT u.created_at INTO v_created FROM auth.users u WHERE u.id = p_uid;
