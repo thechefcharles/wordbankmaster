@@ -184,17 +184,21 @@
 						<button class="soc-main" onclick={() => goto('/u/' + encodeURIComponent(f.username))}
 							>@{f.username}<span class="soc-go">›</span></button
 						>
-						<button
-							class="soc-act"
-							disabled={!!busyFriend[f.username]}
-							onclick={() => addOne(f.username)}
-						>
-							{busyFriend[f.username] === 'sent'
-								? '✓ Sent'
-								: busyFriend[f.username] === 'err'
-									? 'Failed'
-									: '+ Add'}
-						</button>
+						{#if f.is_self}
+							<span class="soc-tag">You</span>
+						{:else if f.status === 'friends'}
+							<span class="soc-tag ok">✓ Friend</span>
+						{:else if f.status === 'pending_out' || busyFriend[f.username] === 'sent'}
+							<span class="soc-tag">Requested</span>
+						{:else}
+							<button
+								class="soc-act"
+								disabled={!!busyFriend[f.username]}
+								onclick={() => addOne(f.username)}
+							>
+								{busyFriend[f.username] === 'err' ? 'Retry' : '+ Add'}
+							</button>
+						{/if}
 					</div>
 				{/each}
 			</section>
@@ -486,6 +490,25 @@
 		color: #3a2a00;
 		background: var(--brand-grad, linear-gradient(135deg, #fbbf24, #fde047));
 		border: none;
+	}
+	.soc-act:disabled {
+		opacity: 0.5;
+		cursor: default;
+	}
+	.soc-tag {
+		flex: none;
+		padding: 8px 13px;
+		border-radius: 12px;
+		font-weight: 700;
+		font-size: 0.8rem;
+		color: var(--text-muted, #aeb8c6);
+		background: var(--surface-2, rgba(255, 255, 255, 0.06));
+		border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+	}
+	.soc-tag.ok {
+		color: #6ee7b7;
+		border-color: rgba(110, 231, 183, 0.4);
+		background: rgba(110, 231, 183, 0.1);
 	}
 	.soc-act:disabled {
 		opacity: 0.6;
