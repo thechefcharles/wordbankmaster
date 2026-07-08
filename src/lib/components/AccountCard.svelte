@@ -5,9 +5,11 @@
 	/** @type {any} */ export let account = '';
 	/** @type {any} */ export let member = null;
 	/** @type {any} */ export let balance = 0;
+	import { cardName } from '$lib/creditTiers.js';
 	/** Credit tier — skins the card (Excellent = black card; Poor/Bad = distressed). */
 	/** @type {string} */ export let tier = 'Good';
 
+	$: cardTitle = cardName(tier);
 	$: tierClass =
 		tier === 'Excellent'
 			? 'ac-excellent'
@@ -24,12 +26,12 @@
 
 <div class="acct-card {tierClass}">
 	<div class="ac-sheen"></div>
-	{#if tier === 'Excellent'}<span class="ac-tier-mark" aria-hidden="true">◆ ELITE</span>{/if}
 	<div class="ac-inner">
 		<div class="ac-top">
 			<span class="ac-brand">
 				<img class="ac-coin" src="/logo-coin.png" alt="" width="22" height="22" />
 				<span><span class="ac-gold">WORD</span>BANK</span>
+				<span class="ac-cardname">{cardTitle}</span>
 			</span>
 			<span class="ac-chip" aria-hidden="true"></span>
 		</div>
@@ -93,17 +95,17 @@
 		border-color: rgba(248, 113, 113, 0.62);
 		filter: saturate(0.92);
 	}
-	.ac-tier-mark {
-		position: absolute;
-		top: 14px;
-		left: 50%;
-		transform: translateX(-50%);
+	.ac-cardname {
 		font-family: var(--font-display, sans-serif);
-		font-size: 0.52rem;
+		font-size: 0.56rem;
 		font-weight: 800;
-		letter-spacing: 0.32em;
-		color: rgba(251, 191, 36, 0.75);
-		z-index: 2;
+		letter-spacing: 0.22em;
+		text-transform: uppercase;
+		color: rgba(251, 191, 36, 0.85);
+		padding-left: 7px;
+		margin-left: 1px;
+		border-left: 1px solid rgba(251, 191, 36, 0.35);
+		align-self: center;
 	}
 	.ac-sheen {
 		position: absolute;
