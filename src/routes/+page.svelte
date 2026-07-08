@@ -3102,11 +3102,8 @@
 				</div>
 				<!-- ⚡ Bank-app quick actions — horizontally swipeable -->
 				<div class="quick-tiles">
-					<button class="qt" on:click={openBankModal}>
-						<span class="qt-ic">🔒</span><span class="qt-l">Vault</span>
-					</button>
-					<button class="qt" on:click={() => goto('/loans')}>
-						<span class="qt-ic">🦈</span><span class="qt-l">Loans</span>
+					<button class="qt" on:click={() => openCommunity('people')}>
+						<span class="qt-ic">👥</span><span class="qt-l">Friends</span>
 					</button>
 					<button class="qt" on:click={() => goto('/shop')}>
 						<span class="qt-ic">🛍️</span><span class="qt-l">Store</span>
@@ -3114,8 +3111,11 @@
 					<button class="qt" on:click={() => openCommunity('leaderboard')}>
 						<span class="qt-ic">🏆</span><span class="qt-l">Ranks</span>
 					</button>
-					<button class="qt" on:click={() => openCommunity('people')}>
-						<span class="qt-ic">👥</span><span class="qt-l">Friends</span>
+					<button class="qt" on:click={() => goto('/loans')}>
+						<span class="qt-ic">🦈</span><span class="qt-l">Loans</span>
+					</button>
+					<button class="qt" on:click={openBag}>
+						<img class="qt-img" src="/vault.png" alt="" /><span class="qt-l">Vault</span>
 					</button>
 					<button class="qt" on:click={() => goto('/streak')}>
 						<span class="qt-ic">🔥</span><span class="qt-l">Streak</span>
@@ -5975,6 +5975,12 @@
 	.qt-ic {
 		font-size: 1.3rem;
 		line-height: 1;
+	}
+	.qt-img {
+		width: 26px;
+		height: 26px;
+		object-fit: contain;
+		filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
 	}
 	.qt-l {
 		font-size: 0.66rem;
