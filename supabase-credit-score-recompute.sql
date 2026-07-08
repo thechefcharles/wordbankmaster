@@ -90,6 +90,10 @@ BEGIN
     VALUES (p_uid, v_new, v_target, public._credit_tier(v_new),
       jsonb_build_object('U',round(u,3),'S',round(s,3),'R',round(r,3),
                          'B',round(b,3),'C',round(c,3),'event',p_event));
+  -- Credit-tier badge milestones (700 / 800 / perfect 850).
+  IF v_new >= 700 THEN PERFORM public._award_badge(p_uid, 'credit_700'); END IF;
+  IF v_new >= 800 THEN PERFORM public._award_badge(p_uid, 'credit_800'); END IF;
+  IF v_new >= 850 THEN PERFORM public._award_badge(p_uid, 'credit_850'); END IF;
   RETURN v_new;
 END; $fn$;
 

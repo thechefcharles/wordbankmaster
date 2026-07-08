@@ -16,7 +16,7 @@
 
 	// Sortable columns (client-side). Default: by place, best → worst. Tap # again to
 	// flip and bring LAST place to the top.
-	/** @typedef {'place'|'name'|'net_worth'|'score'|'efficiency'|'play_streak'|'win_streak'} SortKey */
+	/** @typedef {'place'|'name'|'net_worth'|'credit'|'score'|'efficiency'|'play_streak'|'win_streak'} SortKey */
 	let sortKey = $state(/** @type {SortKey} */ ('place'));
 	let sortDir = $state(/** @type {'asc'|'desc'} */ ('asc'));
 	/** @param {SortKey} k */
@@ -129,6 +129,15 @@
 						></th
 					>
 					<th class="num"
+						><button
+							class="sort"
+							class:on={sortKey === 'credit'}
+							onclick={() => setSort('credit')}
+							title="Credit score — reputation from responsible money management (300–850)"
+							>💳 Credit{arrow('credit')}</button
+						></th
+					>
+					<th class="num"
 						><button class="sort" class:on={sortKey === 'score'} onclick={() => setSort('score')}
 							>Bounty Earned{arrow('score')}</button
 						></th
@@ -179,6 +188,7 @@
 							{#if r.title}<span class="title">{r.title}</span>{/if}
 						</td>
 						<td class="metric">{fmt(r.net_worth)}</td>
+						<td class="metric">{r.credit ?? 650}</td>
 						<td class="metric gold">{r.played ? Number(r.score).toLocaleString() : '—'}</td>
 						<td class="metric eff">{r.efficiency != null ? r.efficiency + '%' : '—'}</td>
 						<td class="metric small">{r.play_streak > 0 ? '🔥' + r.play_streak : '—'}</td>

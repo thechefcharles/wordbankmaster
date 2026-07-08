@@ -42,7 +42,10 @@ export const BADGES = {
 	hustler: { emoji: '🤝', name: 'Hustler', desc: 'Won 10 challenges' },
 
 	// 💸 Economy
-	paid_in_full: { emoji: '🧾', name: 'Paid in Full', desc: 'Cleared a loan from the Shark' }
+	paid_in_full: { emoji: '🧾', name: 'Paid in Full', desc: 'Cleared a loan from the Shark' },
+	credit_700: { emoji: '💳', name: '700 Club', desc: 'Reached a 700 credit score' },
+	credit_800: { emoji: '🏦', name: '800 Club', desc: 'Reached an 800 credit score' },
+	credit_850: { emoji: '💎', name: 'Perfect 850', desc: 'Hit a perfect 850 credit score' }
 };
 
 /** @param {string} id */
