@@ -122,6 +122,7 @@
 	import Auth from '$lib/components/Auth.svelte';
 	import Tutorial from '$lib/components/Tutorial.svelte';
 	import ObjectiveCard from '$lib/components/ObjectiveCard.svelte';
+	import AccountCard from '$lib/components/AccountCard.svelte';
 	import StandingStrip from '$lib/components/StandingStrip.svelte';
 	import MatchDetailModal from '$lib/components/MatchDetailModal.svelte';
 	import LeaderboardPanel from '$lib/components/LeaderboardPanel.svelte';
@@ -491,12 +492,14 @@
 	// (deterministic, no DB), the account holder, and a timestamp captured when a
 	// result slip opens so the printed DATE/TIME stays fixed while it's on screen.
 	let myUsername = '';
-	$: acctNo = (() => {
-		const id = $user?.id ?? '';
-		let h = 5381;
-		for (let i = 0; i < id.length; i++) h = ((h << 5) + h + id.charCodeAt(i)) >>> 0;
-		return String(h % 10000).padStart(4, '0');
-	})();
+	$: acctNo =
+		($userProfile?.account_number ?? '').toString().slice(-4) ||
+		(() => {
+			const id = $user?.id ?? '';
+			let h = 5381;
+			for (let i = 0; i < id.length; i++) h = ((h << 5) + h + id.charCodeAt(i)) >>> 0;
+			return String(h % 10000).padStart(4, '0');
+		})();
 	/** @type {Date|null} */
 	let receiptStamp = null;
 	$: if (showResultModal && !receiptStamp) receiptStamp = new Date();
@@ -2185,6 +2188,9 @@
 		claimBusy = false;
 		if (res.ok) {
 			maUsername = res.username ?? name;
+			myUsername = res.username ?? name;
+			// Reflect the freshly-claimed name on the Account card without a reload.
+			userProfile.update((p) => ({ ...p, username: res.username ?? name }));
 			needsUsername = false;
 			track('username_set', { at: 'signup' });
 			fx('win');
@@ -2494,9 +2500,14 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card bank-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (showBank = false)} aria-label="Close">✕</button>
-			<p class="bm-label">💰 Available Balance</p>
-			<div class="info-big">{fmtCash(bankData?.bank ?? netWorth ?? 0)}</div>
-			<p class="info-sub">Your Available Balance — this is your score</p>
+			<div class="bm-card-wrap">
+				<AccountCard
+					holder={$userProfile?.username ?? myUsername}
+					account={$userProfile?.account_number ?? ''}
+					member={$userProfile?.member_no ?? null}
+					balance={bankData?.bank ?? menuBank ?? netWorth ?? 0}
+				/>
+			</div>
 			<!-- 🦈 Borrow / Repay, inline -->
 			<LoanPanel bank={bankData} on:changed={reloadBank} />
 			{#if bankData}
@@ -3086,6 +3097,15 @@
 				/>
 			</div>
 			{#if menuView === 'home'}
+				<!-- 💳 Account card -->
+				<div class="menu-card-wrap">
+					<AccountCard
+						holder={$userProfile?.username ?? myUsername}
+						account={$userProfile?.account_number ?? ''}
+						member={$userProfile?.member_no ?? null}
+						balance={menuBank ?? $userProfile?.bank ?? 0}
+					/>
+				</div>
 				<div class="main-menu-buttons stagger">
 					<!-- 🦈 Debt banner — you owe the Loan Shark; Store locked + payouts auto-skim. -->
 					{#if menuLoan > 0}
@@ -5964,6 +5984,11 @@
 		margin: 2px 0 0;
 		filter: drop-shadow(0 2px 14px rgba(0, 0, 0, 0.5));
 	}
+	.menu-card-wrap {
+		width: 100%;
+		max-width: 360px;
+		margin: 0 auto 1.1rem;
+	}
 	.main-menu-buttons {
 		display: flex;
 		flex-direction: column;
@@ -7972,12 +7997,8 @@
 		background: linear-gradient(135deg, #fde047, #f59e0b);
 	}
 	/* in-game bank modal */
-	.bm-label {
-		font-size: 0.72rem;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--text-faint);
-		margin: 0 0 2px;
+	.bm-card-wrap {
+		margin: 4px 0 14px;
 	}
 	.bm-hist-h {
 		font-family: var(--font-display);
