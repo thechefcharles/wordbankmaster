@@ -40,11 +40,10 @@
 		200,
 		Math.min(2500, rateBpFor(borrowAmt, loanCap) + creditAdjBp(creditTier))
 	);
-	$: ratePct = rateBp / 100; // 2 / 4 / 6 / 8 (%/day)
-	$: proj7 = Math.min(
-		Math.round(borrowAmt * Math.pow(1 + rateBp / 10000, 7)),
-		Math.round(borrowAmt * 2.5)
-	);
+	$: ratePct = rateBp / 100; // %/day
+	// Upfront charge at borrow (mirrors take_loan): GREATEST(one day's interest, 10% floor).
+	$: upfront = Math.max(Math.round((borrowAmt * rateBp) / 10000), Math.round(borrowAmt * 0.1));
+	$: owedNow = borrowAmt + upfront;
 	$: activeRatePct = (bank?.loan_rate_bp ?? 0) / 100;
 	$: owedTomorrow = bank?.loan_owed_tomorrow ?? owed;
 	$: loanDays = bank?.loan_days ?? 0;
@@ -79,8 +78,8 @@
 		try {
 			await requirePin(`Borrow $${borrowAmt.toLocaleString()}`, [
 				{ label: 'You receive', value: '$' + borrowAmt.toLocaleString() },
-				{ label: 'Interest', value: ratePct + '%/day, compounding' },
-				{ label: '~Owe in a week', value: '$' + proj7.toLocaleString() }
+				{ label: 'You owe', value: '$' + owedNow.toLocaleString() },
+				{ label: 'Then', value: ratePct + '%/day, compounding' }
 			]);
 		} catch {
 			return;
@@ -225,7 +224,7 @@
 			>
 			<div class="loan-amt">
 				<span class="loan-usd">{fmt(borrowAmt)}</span><span class="loan-sub"
-					>{ratePct}%/day · ~{fmt(proj7)} in a week</span
+					>owe {fmt(owedNow)} · {ratePct}%/day</span
 				>
 			</div>
 			<button
@@ -280,7 +279,8 @@
 					{fmt(applyResult?.borrowed ?? borrowAmt)} deposited to your account.
 				</div>
 				<div class="la-terms">
-					{(applyResult?.rate_bp ?? rateBp) / 100}%/day · repay anytime
+					You owe {fmt(applyResult?.owed ?? owedNow)} · {(applyResult?.rate_bp ?? rateBp) /
+						100}%/day
 				</div>
 				<button class="loan-btn borrow la-btn" on:click={closeApply}>Done</button>
 			{:else}
