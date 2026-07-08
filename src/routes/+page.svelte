@@ -1437,13 +1437,17 @@
 				handleMenuMyAccount();
 				params.delete('account');
 			}
-			// Friends & Groups deep link (Profile 👥+ button → /?people=1).
-			// Keep the param in the URL so browser-back restores the People view.
-			if (params.get('people')) {
-				openCommunity('people');
+			// Community-tab deep link / browser-back restore: ?c=<tab> (or legacy ?people=1).
+			// openCommunity re-syncs the URL, so we skip the generic strip when it fires.
+			const cTab = params.get('c') || (params.get('people') ? 'people' : '');
+			if (['people', 'leaderboard', 'challenges', 'activity'].includes(cTab)) {
+				openCommunity(cTab);
+			} else {
+				params.delete('people');
+				params.delete('c');
+				const qs = params.toString();
+				replaceState(window.location.pathname + (qs ? '?' + qs : ''), {});
 			}
-			const qs = params.toString();
-			window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
 		} catch {
 			/* non-fatal */
 		}
@@ -1948,18 +1952,21 @@
 		communityTab = /** @type {any} */ (tab ?? 'challenges');
 		menuView = 'community';
 		showMainMenu = true;
-		// Reflect the People view in the URL (router-safe) so a profile opened from here
-		// can be returned to via the browser Back button (history restores /?people=1).
-		if (typeof window !== 'undefined') {
-			replaceState(tab === 'people' ? '/?people=1' : '/', {});
+		// Reflect the community tab in the URL (router-safe) so a profile opened from here
+		// can be returned to via the browser Back button (history restores /?c=<tab>).
+		if (typeof window !== 'undefined' && tab) {
+			replaceState(`/?c=${tab}`, {});
 		}
 		[myMatches, myGroups] = await Promise.all([getMyMatches(), getMyGroups()]);
 	}
-	// Leave the community view → home, clearing the ?people=1 flag from the URL.
+	// Leave the community view → home, clearing the ?c=/?people= flag from the URL.
 	function exitCommunity() {
 		menuView = 'home';
 		fx('tap');
-		if (typeof window !== 'undefined' && window.location.search.includes('people=')) {
+		if (
+			typeof window !== 'undefined' &&
+			(window.location.search.includes('c=') || window.location.search.includes('people='))
+		) {
 			replaceState('/', {});
 		}
 	}
