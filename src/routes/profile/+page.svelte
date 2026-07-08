@@ -105,9 +105,14 @@
 		<h1 class="page-title">
 			{tab === 'overview' ? 'Profile' : tab === 'stats' ? 'Full Stats' : 'Notifications'}
 		</h1>
-		<button class="gear" onclick={() => goto('/?account=1')} title="Settings" aria-label="Settings"
-			>⚙️</button
-		>
+		<button class="gear" onclick={() => goto('/?account=1')} title="Settings" aria-label="Settings">
+			<svg class="gear-ic" viewBox="0 0 24 24" aria-hidden="true">
+				<circle cx="12" cy="12" r="3" />
+				<path
+					d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+				/>
+			</svg>
+		</button>
 	</div>
 
 	{#if loading}
@@ -117,7 +122,7 @@
 			<div class="ov-hero">
 				<button class="prof-avatar" onclick={() => goto('/avatar')}>
 					<Avatar config={avatar} fx size={120} />
-					<span class="prof-avatar-edit">🎨 Edit Avatar</span>
+					<span class="prof-avatar-edit">Edit Avatar</span>
 				</button>
 				<div class="ov-id">
 					<div class="uname-row">
@@ -138,7 +143,7 @@
 					{/if}
 					<div class="ov-social">
 						<!-- One entry to the People screen (toggles Friends / Groups, like the home menu). -->
-						<button class="ov-social-btn" onclick={() => goto('/?people=1')}>👥 Friends ›</button>
+						<button class="ov-social-btn" onclick={() => goto('/?people=1')}>Friends ›</button>
 					</div>
 				</div>
 			</div>
@@ -153,7 +158,7 @@
 				<span class="acct-lbl">Available Balance</span>
 			</button>
 
-			<div class="ov-sec-title">📊 Account Summary</div>
+			<div class="ov-sec-title">Account Summary</div>
 			<div class="grid ov-summary">
 				{@render chipAct(
 					(d.overall.puzzles_solved ?? 0).toLocaleString(),
@@ -174,22 +179,22 @@
 						})
 				)}
 				{@render chipAct(
-					'🔥 ' + (d.daily.current_streak ?? 0),
+					d.daily.current_streak ?? 0,
 					'Play Streak',
 					() =>
 						(statInfo = {
-							title: '🔥 Play streak',
+							title: 'Play streak',
 							desc: 'Days in a row you’ve shown up for the Daily. Miss a day and it resets (a freeze can save it).',
 							link: '/streak',
 							linkLabel: 'View Daily Calendar'
 						})
 				)}
 				{@render chipAct(
-					'🏆 ' + (d.daily.win_streak ?? 0),
+					d.daily.win_streak ?? 0,
 					'Win Streak',
 					() =>
 						(statInfo = {
-							title: '🏆 Win streak',
+							title: 'Win streak',
 							desc: 'Daily puzzles you’ve solved in a row. Powers your bounty multiplier — the longer it runs, the more you earn.',
 							link: '/streak',
 							linkLabel: 'View Daily Calendar'
@@ -216,7 +221,7 @@
 			</div>
 
 			<button class="ov-sec-link" onclick={() => goto('/badges')}>
-				<span>🏅 Badges</span>
+				<span>Badges</span>
 				<span class="ov-sec-count">{earnedBadges.length}</span>
 				<span class="arrow">›</span>
 			</button>
@@ -237,20 +242,20 @@
 				>
 			{/if}
 
-			<div class="ov-sec-title">🎒 My Items</div>
+			<div class="ov-sec-title">My Items</div>
 			<div class="ov-items">
 				<InventoryList addHref="/shop?from=profile" />
 			</div>
 
 			<div class="ov-nav">
 				<button class="ov-link" onclick={() => (tab = 'stats')}
-					>📊 Full stats <span class="arrow">›</span></button
+					>Full stats <span class="arrow">›</span></button
 				>
 				<button class="ov-link" onclick={() => goto('/history')}
-					>📜 Play history <span class="arrow">›</span></button
+					>Play history <span class="arrow">›</span></button
 				>
 				<button class="ov-link" onclick={() => goto('/streak')}
-					>📅 Daily Calendar <span class="arrow">›</span></button
+					>Daily Calendar <span class="arrow">›</span></button
 				>
 			</div>
 		{:else if tab === 'stats'}
@@ -268,25 +273,25 @@
 				</div>
 			</div>
 
-			<div class="sec-title">📊 Overall</div>
+			<div class="sec-title">Overall</div>
 			<div class="grid">
 				{@render chip((d.overall.puzzles_solved ?? 0).toLocaleString(), 'Puzzles solved')}
 				{@render chip(d.overall.games_played ?? 0, 'Games played')}
 				{@render chip(d.overall.clean_solves ?? 0, 'Clean solves')}
 			</div>
 
-			<div class="sec-title">📅 Daily</div>
+			<div class="sec-title">Daily</div>
 			<div class="grid">
-				{@render chipLink('🔥 ' + (d.daily.current_streak ?? 0), 'Play streak', '/streak')}
+				{@render chipLink(d.daily.current_streak ?? 0, 'Play streak', '/streak')}
 				{@render chip(d.daily.best_streak ?? 0, 'Best play')}
-				{@render chipLink('🏆 ' + (d.daily.win_streak ?? 0), 'Win streak', '/streak')}
+				{@render chipLink(d.daily.win_streak ?? 0, 'Win streak', '/streak')}
 				{@render chip(d.daily.best_win_streak ?? 0, 'Best win')}
 				{@render chip(pct(d.daily.won ?? 0, d.daily.played ?? 0), 'Win rate')}
 				{@render chip(d.daily.won ?? 0, 'Dailies won')}
 				{@render chip(fmt(d.daily.best_bounty), 'Best day')}
 			</div>
 
-			<div class="sec-title">🎰 Cash Game</div>
+			<div class="sec-title">Cash Game</div>
 			<div class="grid">
 				{@render chip('#' + (d.cash_game.position ?? 0), 'Furthest')}
 				{@render chip(d.cash_game.solved ?? 0, 'Solved')}
@@ -300,7 +305,7 @@
 				{@render chip(time(d.cash_game.fastest_ms), 'Fastest')}
 			</div>
 
-			<div class="sec-title">⚔️ 1-on-1</div>
+			<div class="sec-title">1-on-1</div>
 			{#if (d.challenges_1v1.played ?? 0) > 0}
 				<div class="grid">
 					{@render chip(
@@ -316,7 +321,7 @@
 				>
 			{/if}
 
-			<div class="sec-title">👥 Group challenges</div>
+			<div class="sec-title">Group challenges</div>
 			{#if (d.challenges_group.played ?? 0) > 0}
 				<div class="grid">
 					{@render chip(d.challenges_group.played ?? 0, 'Played')}
@@ -331,7 +336,7 @@
 
 			{#if (d.rivals ?? []).length}
 				<div class="sec-title">
-					🤺 Rivals <span class="sec-hint">(tap for the full head-to-head)</span>
+					Rivals <span class="sec-hint">(tap for the full head-to-head)</span>
 				</div>
 				<div class="cats">
 					{#each d.rivals as r}
@@ -466,10 +471,22 @@
 	.gear {
 		background: none;
 		border: none;
-		font-size: 1.1rem;
 		cursor: pointer;
 		padding: 6px;
-		opacity: 0.85;
+		display: inline-flex;
+		color: var(--text-muted);
+	}
+	.gear:hover {
+		color: var(--text);
+	}
+	.gear-ic {
+		width: 21px;
+		height: 21px;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.8;
+		stroke-linecap: round;
+		stroke-linejoin: round;
 	}
 	.gear:hover {
 		opacity: 1;
@@ -695,7 +712,7 @@
 	}
 	.acct-bal {
 		text-align: right;
-		font-family: 'Orbitron', var(--font-display);
+		font-family: var(--font-display);
 		font-weight: 800;
 		font-size: 2.4rem;
 		line-height: 1.1;
