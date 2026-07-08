@@ -58,6 +58,21 @@
 	$: if (bank) repayAmt = Math.min(repayAmt || maxRepay, maxRepay);
 
 	const fmt = (/** @type {number} */ n) => '$' + Math.round(n ?? 0).toLocaleString();
+	const delay = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
+
+	// 🏦 Loan application flow: a short underwriting animation over the (deterministic)
+	// server decision — dramatizes the real credit/limit/amount checks, then approves/declines.
+	let applyState = ''; // '' | 'reviewing' | 'approved' | 'declined'
+	let applyStep = 0; // how many check lines have appeared
+	/** @type {any} */ let applyResult = null;
+	$: declineReason =
+		applyResult?.reason === 'credit_locked'
+			? 'Your credit is too low to borrow. Raise it to Poor (400+) to reapply.'
+			: applyResult?.reason === 'over_cap'
+				? `That exceeds your ${fmt(applyResult?.cap ?? loanCap)} limit.`
+				: applyResult?.reason === 'active_loan'
+					? 'You already have an active loan to pay off first.'
+					: 'We couldn’t approve this application right now.';
 
 	async function borrow() {
 		if (loanBusy || borrowAmt < MIN_BORROW) return;
@@ -72,22 +87,34 @@
 		}
 		loanBusy = 'borrow';
 		loanMsg = '';
-		const res = await takeLoan(borrowAmt);
+		applyResult = null;
+		applyStep = 0;
+		applyState = 'reviewing';
+		const timers = [
+			setTimeout(() => (applyStep = 1), 450),
+			setTimeout(() => (applyStep = 2), 950),
+			setTimeout(() => (applyStep = 3), 1450)
+		];
+		// Run the real decision, but hold the verdict until the ~2s review has played.
+		const [res] = await Promise.all([takeLoan(borrowAmt), delay(2000)]);
+		timers.forEach(clearTimeout);
+		applyStep = 3;
+		applyResult = res;
 		loanBusy = '';
 		if (res?.ok) {
+			applyState = 'approved';
 			fx('win');
 			track('take_loan', { amount: borrowAmt, owed: res.owed });
-			dispatch('changed');
 		} else {
-			loanMsg =
-				res?.reason === 'active_loan'
-					? 'Pay off your current loan first.'
-					: res?.reason === 'credit_locked'
-						? 'Borrowing is locked — raise your credit score to borrow again.'
-						: res?.reason === 'over_cap'
-							? `Over your $${(res.cap ?? loanCap).toLocaleString()} limit.`
-							: 'Could not borrow right now.';
+			applyState = 'declined';
+			fx('tap');
 		}
+	}
+	function closeApply() {
+		const wasApproved = applyState === 'approved';
+		applyState = '';
+		applyStep = 0;
+		if (wasApproved) dispatch('changed'); // reload into the debt/repay state
 	}
 
 	async function repay(/** @type {number|null} */ amt) {
@@ -239,7 +266,128 @@
 	</div>
 {/if}
 
+{#if applyState}
+	<!-- 🏦 Loan application review overlay -->
+	<div class="la-overlay" role="dialog" aria-modal="true" aria-label="Loan application">
+		<div class="la-card">
+			{#if applyState === 'reviewing'}
+				<div class="la-spinner" aria-hidden="true"></div>
+				<div class="la-title">Reviewing your application…</div>
+				<ul class="la-checks">
+					{#if applyStep >= 1}<li>✓ Credit — {creditScore} {creditTier}</li>{/if}
+					{#if applyStep >= 2}<li>✓ Limit — up to {fmt(loanCap)}</li>{/if}
+					{#if applyStep >= 3}<li>✓ Amount — {fmt(borrowAmt)}</li>{/if}
+				</ul>
+			{:else if applyState === 'approved'}
+				<div class="la-verdict ok">✓ Approved</div>
+				<div class="la-sub">
+					{fmt(applyResult?.borrowed ?? borrowAmt)} deposited to your account.
+				</div>
+				<div class="la-terms">
+					{(applyResult?.rate_bp ?? rateBp) / 100}%/day · repay anytime
+				</div>
+				<button class="loan-btn borrow la-btn" on:click={closeApply}>Done</button>
+			{:else}
+				<div class="la-verdict no">✗ Not Approved</div>
+				<div class="la-sub">{declineReason}</div>
+				<button class="loan-btn ghost la-btn" on:click={closeApply}>Close</button>
+			{/if}
+		</div>
+	</div>
+{/if}
+
 <style>
+	/* 🏦 Loan application overlay */
+	.la-overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 4000;
+		display: grid;
+		place-items: center;
+		padding: 24px;
+		background: rgba(4, 8, 14, 0.72);
+		backdrop-filter: blur(6px);
+	}
+	.la-card {
+		width: 100%;
+		max-width: 320px;
+		padding: 26px 22px;
+		border-radius: 18px;
+		text-align: center;
+		background: var(--surface-strong, rgba(20, 26, 38, 0.96));
+		border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16));
+		box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+	}
+	.la-spinner {
+		width: 34px;
+		height: 34px;
+		margin: 0 auto 14px;
+		border-radius: 50%;
+		border: 3px solid var(--border, rgba(255, 255, 255, 0.14));
+		border-top-color: var(--brand-2, #fde047);
+		animation: la-spin 0.8s linear infinite;
+	}
+	@keyframes la-spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+	.la-title {
+		font-family: var(--font-display, sans-serif);
+		font-weight: 700;
+		font-size: 1rem;
+	}
+	.la-checks {
+		list-style: none;
+		margin: 12px 0 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 7px;
+		text-align: left;
+	}
+	.la-checks li {
+		font-size: 0.85rem;
+		color: var(--text);
+		animation: la-in 0.25s ease;
+	}
+	@keyframes la-in {
+		from {
+			opacity: 0;
+			transform: translateY(4px);
+		}
+	}
+	.la-verdict {
+		font-family: var(--font-display, sans-serif);
+		font-weight: 800;
+		font-size: 1.7rem;
+	}
+	.la-verdict.ok {
+		color: #34d399;
+	}
+	.la-verdict.no {
+		color: #fb7185;
+	}
+	.la-sub {
+		margin-top: 8px;
+		color: var(--text-muted);
+		font-size: 0.9rem;
+		line-height: 1.4;
+	}
+	.la-terms {
+		margin-top: 4px;
+		font-size: 0.78rem;
+		color: var(--text-faint);
+	}
+	.la-btn {
+		margin-top: 18px;
+		width: 100%;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.la-spinner {
+			animation: none;
+		}
+	}
 	.loan-card {
 		border-radius: 16px;
 		padding: 14px 16px;
