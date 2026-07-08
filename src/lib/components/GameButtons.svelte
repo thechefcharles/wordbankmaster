@@ -116,8 +116,6 @@
 </div>
 
 <style>
-	@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
-
 	@keyframes solvePulse {
 		0%,
 		100% {

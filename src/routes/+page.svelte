@@ -4908,8 +4908,6 @@
 </main>
 
 <style>
-	@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
-	@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700&display=swap');
 
 	.attendance-toast {
 		position: fixed;
@@ -4942,9 +4940,6 @@
 			opacity: 1;
 		}
 	}
-	@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
-	@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-
 	main {
 		max-width: 600px;
 		margin: 0 auto;
