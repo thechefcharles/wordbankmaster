@@ -7,7 +7,8 @@
 
 	/** The get_bank payload (loan detail added in loans-v3)
 	 * @type {{ bank:number, net_worth:number, loan:number, loan_cap:number, in_the_red:boolean,
-	 *   loan_principal?:number, loan_rate_bp?:number, loan_days?:number, loan_owed_tomorrow?:number }|null} */
+	 *   loan_principal?:number, loan_rate_bp?:number, loan_days?:number, loan_owed_tomorrow?:number,
+	 *   credit_score?:number, credit_tier?:string, credit_delta?:number }|null} */
 	export let bank = null;
 	/** Open the borrow panel by default (used on the dedicated /loans page). */
 	export let expanded = false;
@@ -22,13 +23,23 @@
 	let loanMsg = '';
 	$: loanCap = bank?.loan_cap ?? 0;
 	$: owed = bank?.loan ?? 0;
+	// 💳 Credit tier sets your cap + a rate adjustment (mirrors _credit_effective_cap / _credit_rate_adjust).
+	$: creditTier = bank?.credit_tier ?? 'Good';
+	$: creditScore = bank?.credit_score ?? 650;
+	/** @param {string} tier */
+	function creditAdjBp(tier) {
+		return tier === 'Excellent' ? -300 : tier === 'Fair' ? 300 : tier === 'Poor' ? 600 : 0;
+	}
 	/** @param {number} amt @param {number} cap */
 	function rateBpFor(amt, cap) {
 		if (cap <= 0) return 1500;
 		const p = amt / cap;
 		return p <= 0.25 ? 500 : p <= 0.5 ? 800 : p <= 0.75 ? 1200 : 1500;
 	}
-	$: rateBp = rateBpFor(borrowAmt, loanCap);
+	$: rateBp = Math.max(
+		200,
+		Math.min(2500, rateBpFor(borrowAmt, loanCap) + creditAdjBp(creditTier))
+	);
 	$: ratePct = rateBp / 100; // 2 / 4 / 6 / 8 (%/day)
 	$: proj7 = Math.min(
 		Math.round(borrowAmt * Math.pow(1 + rateBp / 10000, 7)),
@@ -71,9 +82,11 @@
 			loanMsg =
 				res?.reason === 'active_loan'
 					? 'Pay off your current loan first.'
-					: res?.reason === 'over_cap'
-						? `Over your $${(res.cap ?? loanCap).toLocaleString()} limit.`
-						: 'Could not borrow right now.';
+					: res?.reason === 'credit_locked'
+						? 'Borrowing is locked — raise your credit score to borrow again.'
+						: res?.reason === 'over_cap'
+							? `Over your $${(res.cap ?? loanCap).toLocaleString()} limit.`
+							: 'Could not borrow right now.';
 		}
 	}
 
@@ -178,6 +191,10 @@
 			Interest compounds daily — the more you take, the higher the rate. One loan at a time; while
 			you owe, the Store locks and half of every payout auto-pays it down.
 		</p>
+		<p class="loan-tier">
+			Credit <b>{creditTier}</b> ({creditScore}) — sets your ${loanCap.toLocaleString()} limit{#if creditAdjBp(creditTier) !== 0}
+				and a {creditAdjBp(creditTier) > 0 ? '+' : ''}{creditAdjBp(creditTier) / 100}%/day rate{/if}.
+		</p>
 		<div class="loan-dial">
 			<button
 				class="loan-step"
@@ -212,6 +229,16 @@
 		>
 		{#if loanMsg}<p class="msg">{loanMsg}</p>{/if}
 	</details>
+{:else}
+	<!-- Bad tier: borrowing locked -->
+	<div class="loan-card locked">
+		<div class="loan-locked-h">🦈 Borrowing locked</div>
+		<p class="loan-note" style="margin:0">
+			Your credit is <b class="neg">{creditTier}</b> ({creditScore}). The Shark won't lend to you
+			right now — repay on time, stay out of the red, and keep utilization low to climb back to
+			<b>Poor</b> (400+) and unlock loans again.
+		</p>
+	</div>
 {/if}
 
 <style>
@@ -225,6 +252,24 @@
 	.loan-card.debt {
 		border-color: rgba(248, 113, 113, 0.5);
 		background: linear-gradient(135deg, rgba(248, 113, 113, 0.12), rgba(248, 113, 113, 0.03));
+	}
+	.loan-card.locked {
+		border-color: rgba(248, 113, 113, 0.45);
+		background: linear-gradient(135deg, rgba(248, 113, 113, 0.1), rgba(248, 113, 113, 0.02));
+	}
+	.loan-locked-h {
+		font-family: var(--font-display);
+		font-weight: 800;
+		font-size: 1rem;
+		margin-bottom: 6px;
+	}
+	.loan-tier {
+		margin: 0 0 10px;
+		font-size: 0.76rem;
+		color: var(--text-muted);
+	}
+	.loan-tier b {
+		color: var(--brand-2, #fde047);
 	}
 	.loan-head {
 		display: flex;
