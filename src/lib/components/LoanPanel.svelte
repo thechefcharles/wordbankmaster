@@ -24,9 +24,9 @@
 	$: owed = bank?.loan ?? 0;
 	/** @param {number} amt @param {number} cap */
 	function rateBpFor(amt, cap) {
-		if (cap <= 0) return 800;
+		if (cap <= 0) return 1500;
 		const p = amt / cap;
-		return p <= 0.25 ? 200 : p <= 0.5 ? 400 : p <= 0.75 ? 600 : 800;
+		return p <= 0.25 ? 500 : p <= 0.5 ? 800 : p <= 0.75 ? 1200 : 1500;
 	}
 	$: rateBp = rateBpFor(borrowAmt, loanCap);
 	$: ratePct = rateBp / 100; // 2 / 4 / 6 / 8 (%/day)
