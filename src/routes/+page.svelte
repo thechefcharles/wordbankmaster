@@ -3046,10 +3046,14 @@
 	{:else if showMainMenu}
 		<!-- 🏠 Main Menu (after sign-in) -->
 		<div class="main-menu fade-up">
+			<!-- 🏦 Bank-app header: greeting + notifications + profile monogram -->
 			<div class="menu-hero">
-				<div class="hero-top">
+				<div class="hero-greet">
+					Hi, <span class="hg-name">@{$userProfile?.username ?? myUsername ?? 'wordbanker'}</span>
+				</div>
+				<div class="hero-actions">
 					<button
-						class="bell-ic"
+						class="hero-ic"
 						on:click={() => goto('/profile?tab=alerts')}
 						title="Notifications"
 						aria-label="Notifications"
@@ -3059,52 +3063,57 @@
 							>{/if}
 					</button>
 					<button
-						class="bank-chip"
-						class:in-debt={menuLoan > 0}
-						on:click={openBankModal}
-						title="Bank Account"
-					>
-						<span class="bc-coin">💰</span>{menuBank == null
-							? '—'
-							: '$' + Math.round(menuBank).toLocaleString()}
-						{#if menuLoan > 0}<span class="bc-debt" title="You owe the Loan Shark"
-								>🦈 −${Math.round(menuLoan).toLocaleString()}</span
-							>{/if}
-					</button>
-					<button
-						class="account-ic has-av"
+						class="hero-mono"
 						on:click={() => goto('/profile')}
 						title="Profile"
 						aria-label="Profile"
 					>
-						<Avatar config={myAvatar} mode="head" fx size={50} />
+						{(String($userProfile?.username ?? myUsername ?? 'W').charAt(0) || 'W').toUpperCase()}
 					</button>
 				</div>
-				<video
-					class="menu-mark"
-					src="/coin.mp4"
-					poster="/coin-poster.jpg"
-					autoplay
-					loop
-					muted
-					playsinline
-					disablepictureinpicture
-				></video>
-				<img
-					class="menu-wordmark"
-					src="/wordmark-slogan.png"
-					alt="WordBank — Spend Less. Think More."
-				/>
 			</div>
 			{#if menuView === 'home'}
-				<!-- 💳 Account card -->
-				<div class="menu-card-wrap">
+				<!-- 💳 Account card — tap to open the Bank hub -->
+				<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+				<div
+					class="menu-card-wrap"
+					role="button"
+					tabindex="0"
+					on:click={openBankModal}
+					on:keydown={(e) => {
+						if (e.key === 'Enter' || e.key === ' ') {
+							e.preventDefault();
+							openBankModal();
+						}
+					}}
+					aria-label="Open Bank"
+				>
 					<AccountCard
 						holder={$userProfile?.username ?? myUsername}
 						account={$userProfile?.account_number ?? ''}
 						member={$userProfile?.member_no ?? null}
 						balance={menuBank ?? $userProfile?.bank ?? 0}
 					/>
+					{#if menuLoan > 0}
+						<span class="mcw-debt" title="You owe the Loan Shark"
+							>🦈 −${Math.round(menuLoan).toLocaleString()}</span
+						>
+					{/if}
+				</div>
+				<!-- ⚡ Bank-app quick actions -->
+				<div class="quick-tiles">
+					<button class="qt" on:click={() => goto('/bank')}>
+						<span class="qt-ic">📄</span><span class="qt-l">Statement</span>
+					</button>
+					<button class="qt" on:click={() => goto('/shop')}>
+						<span class="qt-ic">🛍️</span><span class="qt-l">Store</span>
+					</button>
+					<button class="qt" on:click={() => openCommunity('leaderboard')}>
+						<span class="qt-ic">🏆</span><span class="qt-l">Ranks</span>
+					</button>
+					<button class="qt" on:click={() => openCommunity('people')}>
+						<span class="qt-ic">👥</span><span class="qt-l">Friends</span>
+					</button>
 				</div>
 				<div class="main-menu-buttons stagger">
 					<!-- 🦈 Debt banner — you owe the Loan Shark; Store locked + payouts auto-skim. -->
@@ -3168,19 +3177,6 @@
 							<span class="vs-ppl">👥</span><span class="vs-ppl-plus">+</span>
 						</button>
 					</div>
-					<button
-						class="menu-card"
-						style="--i: 1"
-						on:click={() => {
-							fx('tap');
-							openCommunity('leaderboard');
-						}}
-					>
-						<span class="mc-title">🏆 Leaderboard</span>
-					</button>
-					<button class="menu-card" style="--i: 2" on:click={() => goto('/shop')}>
-						<span class="mc-title">Store</span>
-					</button>
 				</div>
 			{:else if menuView === 'play'}
 				<div class="sub-head">
@@ -5802,192 +5798,163 @@
 	.sm-decline:disabled {
 		opacity: 0.5;
 	}
+	/* 🏦 Bank-app menu header */
 	.menu-hero {
 		display: flex;
-		flex-direction: column;
 		align-items: center;
-		text-align: center;
-		width: 100%;
-	}
-	.hero-top {
-		display: grid;
-		grid-template-columns: 1fr auto 1fr;
-		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
 		width: 100%;
 		max-width: 360px;
-		margin-bottom: 1.4rem;
+		margin: 2px auto 1.1rem;
 	}
-
-	.hero-top .bank-chip {
-		justify-self: center;
+	.hero-greet {
+		font-family: var(--font-display);
+		font-size: 1.5rem;
+		font-weight: 800;
+		color: var(--text, #f4f6fb);
+		letter-spacing: 0.01em;
 	}
-	.hero-top .bell-ic {
-		justify-self: start;
+	.hero-greet .hg-name {
+		color: #fbbf24;
 	}
-	.bell-ic {
+	.hero-actions {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+	.hero-ic {
 		position: relative;
+		width: 42px;
+		height: 42px;
+		border-radius: 14px;
+		display: grid;
+		place-items: center;
+		cursor: pointer;
+		background: var(--surface, rgba(255, 255, 255, 0.05));
+		border: 1px solid var(--border);
+		font-size: 1.1rem;
+		transition:
+			transform 0.15s,
+			border-color 0.2s;
+	}
+	.hero-ic:hover {
+		transform: translateY(-1px);
+		border-color: rgba(251, 191, 36, 0.5);
+	}
+	.hero-ic:active {
+		transform: scale(0.94);
+	}
+	.hero-mono {
 		width: 42px;
 		height: 42px;
 		border-radius: 50%;
 		display: grid;
 		place-items: center;
 		cursor: pointer;
-		background: var(--surface, rgba(255, 255, 255, 0.05));
-		border: 1px solid var(--border);
-		font-size: 1.15rem;
+		font-family: var(--font-display);
+		font-weight: 800;
+		font-size: 1.05rem;
+		color: #fbbf24;
+		background: linear-gradient(135deg, #3a2a40, #2a2140);
+		border: 1px solid rgba(251, 191, 36, 0.4);
 		transition:
 			transform 0.15s,
 			border-color 0.2s;
 	}
-	.bell-ic:hover {
+	.hero-mono:hover {
 		transform: translateY(-1px);
-		border-color: rgba(251, 191, 36, 0.5);
+		border-color: rgba(251, 191, 36, 0.7);
 	}
-	.bell-ic:active {
+	.hero-mono:active {
 		transform: scale(0.94);
 	}
-	.account-ic {
-		position: relative;
-		justify-self: end;
-		display: inline-grid;
-		place-items: center;
-		width: 54px;
-		height: 54px;
-		border-radius: 50%;
-		background: var(--surface, rgba(255, 255, 255, 0.05));
-		border: 1px solid var(--border);
-		cursor: pointer;
-		font-size: 1.7rem;
-		transition:
-			transform 0.15s,
-			border-color 0.2s;
-	}
-	.account-ic:hover {
-		transform: translateY(-1px);
-		border-color: rgba(251, 191, 36, 0.5);
-	}
-	.account-ic.has-av {
-		overflow: visible;
-		padding: 0;
-	}
-	.account-ic.has-av :global(.wb-avatar) {
-		width: 100%;
-		height: 100%;
-		border: none;
-		border-radius: 50%;
-		overflow: hidden;
-	}
-	/* My Account → avatar / edit-avatar entry */
-
-	.account-ic:active {
-		transform: scale(0.94);
-	}
-	/* unread notification count, off the top-right of the avatar */
 	.account-count {
 		position: absolute;
-		top: -4px;
-		right: -4px;
+		top: -5px;
+		right: -5px;
 		display: grid;
 		place-items: center;
-		min-width: 19px;
-		height: 19px;
+		min-width: 18px;
+		height: 18px;
 		padding: 0 5px;
 		border-radius: 999px;
 		background: #f43f5e;
 		color: #fff;
 		font-family: var(--font-display);
 		font-weight: 800;
-		font-size: 0.68rem;
+		font-size: 0.64rem;
 		box-shadow: 0 0 0 2px var(--bg, #0a0e14);
 	}
-	.bank-chip {
-		display: inline-flex;
-		align-items: center;
-		gap: 7px;
-		padding: 8px 16px;
-		border-radius: 12px;
-		background: rgba(0, 0, 0, 0.38);
-		border: 1px solid rgba(251, 191, 36, 0.5);
-		color: #fde047;
-		font-family: 'Orbitron', var(--font-display);
-		font-weight: 700;
-		font-size: 1.25rem;
-		letter-spacing: 0.04em;
-		font-variant-numeric: tabular-nums;
-		text-shadow:
-			0 0 10px rgba(251, 191, 36, 0.65),
-			0 0 22px rgba(251, 191, 36, 0.35);
-		box-shadow: inset 0 0 14px rgba(251, 191, 36, 0.1);
-		cursor: pointer;
-		transition:
-			transform 0.15s,
-			box-shadow 0.2s;
-	}
-	.bank-chip.in-debt {
-		border-color: rgba(248, 113, 113, 0.55);
-	}
-	.bc-debt {
-		font-family: var(--font-display);
-		font-size: 0.72rem;
-		font-weight: 800;
-		letter-spacing: 0;
-		color: #fb7185;
-		text-shadow: none;
-		padding-left: 6px;
-		border-left: 1px solid rgba(248, 113, 113, 0.4);
-	}
-	.bank-chip:hover {
-		transform: translateY(-1px);
-	}
-	.bank-chip:active {
-		transform: scale(0.96);
-	}
-	.bank-chip .bc-coin {
-		font-size: 1.1rem;
-		text-shadow: none;
-	}
-
-	.menu-mark {
-		width: min(46vw, 172px);
-		aspect-ratio: 1;
-		height: auto;
-		object-fit: cover;
-		border-radius: 50%;
-		margin-bottom: 4px;
-		box-shadow:
-			0 0 26px rgba(251, 191, 36, 0.55),
-			0 10px 44px rgba(251, 191, 36, 0.4);
-	}
-	/* Mario-style coin spin: flat horizontal flip (edge-on at 90°/270°) + a gentle bob */
-
-	@keyframes coinSpin {
-		0% {
-			transform: translateY(0) rotateY(0deg);
-		}
-		25% {
-			transform: translateY(-5px) rotateY(90deg);
-		}
-		50% {
-			transform: translateY(-7px) rotateY(180deg);
-		}
-		75% {
-			transform: translateY(-5px) rotateY(270deg);
-		}
-		100% {
-			transform: translateY(0) rotateY(360deg);
-		}
-	}
-
-	.menu-wordmark {
-		width: min(80vw, 300px);
-		height: auto;
-		margin: 2px 0 0;
-		filter: drop-shadow(0 2px 14px rgba(0, 0, 0, 0.5));
-	}
+	/* 💳 Account card wrapper — tappable → Bank hub */
 	.menu-card-wrap {
+		position: relative;
+		display: block;
 		width: 100%;
 		max-width: 360px;
-		margin: 0 auto 1.1rem;
+		margin: 0 auto 1rem;
+		padding: 0;
+		border: none;
+		background: none;
+		cursor: pointer;
+		transition: transform 0.15s;
+	}
+	.menu-card-wrap:active {
+		transform: scale(0.985);
+	}
+	.mcw-debt {
+		position: absolute;
+		top: 10px;
+		right: 12px;
+		padding: 3px 9px;
+		border-radius: 999px;
+		background: rgba(20, 12, 12, 0.8);
+		border: 1px solid rgba(248, 113, 113, 0.5);
+		color: #fb7185;
+		font-family: var(--font-display);
+		font-weight: 800;
+		font-size: 0.72rem;
+	}
+	/* ⚡ Quick-action tiles */
+	.quick-tiles {
+		display: flex;
+		gap: 9px;
+		width: 100%;
+		max-width: 360px;
+		margin: 0 auto 1.2rem;
+	}
+	.qt {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 4px;
+		padding: 12px 4px 10px;
+		border-radius: 14px;
+		cursor: pointer;
+		background: var(--surface, rgba(255, 255, 255, 0.05));
+		border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+		color: var(--text, #dfe4ee);
+		transition:
+			transform 0.15s,
+			border-color 0.2s,
+			background 0.2s;
+	}
+	.qt:hover {
+		transform: translateY(-2px);
+		border-color: rgba(251, 191, 36, 0.4);
+	}
+	.qt:active {
+		transform: scale(0.96);
+	}
+	.qt-ic {
+		font-size: 1.2rem;
+		line-height: 1;
+	}
+	.qt-l {
+		font-size: 0.66rem;
+		font-weight: 600;
+		color: var(--text-muted, #aeb8c6);
 	}
 	.main-menu-buttons {
 		display: flex;
