@@ -43,10 +43,15 @@
 <style>
 	.acct-card {
 		position: relative;
+		display: flex;
+		flex-direction: column;
 		width: 100%;
 		max-width: 360px;
 		margin: 0 auto;
-		aspect-ratio: 1.586;
+		/* Credit-card proportion via a min-height floor (not a fixed aspect-ratio) so the
+		   card can grow taller when the text is scaled up (large-text accessibility) and
+		   the holder name never clips. */
+		min-height: 212px;
 		border-radius: 18px;
 		padding: 20px 22px;
 		overflow: hidden;
@@ -68,7 +73,8 @@
 		position: relative;
 		display: flex;
 		flex-direction: column;
-		height: 100%;
+		flex: 1 1 auto;
+		gap: 6px;
 		justify-content: space-between;
 	}
 	.ac-top {
