@@ -5,6 +5,7 @@
 	import AccountCard from '$lib/components/AccountCard.svelte';
 	import CreditGauge from '$lib/components/CreditGauge.svelte';
 	import LoanPanel from '$lib/components/LoanPanel.svelte';
+	import { reasonLabel } from '$lib/bankReasons.js';
 	import { track } from '$lib/analytics.js';
 
 	/** @type {{ bank:number, net_worth:number, loan:number, loan_cap:number, in_the_red:boolean, ledger:any[], credit_score:number, credit_tier:string, credit_delta:number }|null} */
@@ -55,38 +56,6 @@
 			if (sortBy === 'smallest') return Math.abs(x.delta) - Math.abs(y.delta);
 			return new Date(y.at).getTime() - new Date(x.at).getTime();
 		});
-
-	/** @param {string} reason */
-	function reasonLabel(reason) {
-		return (
-			{
-				daily_win: 'Daily reward',
-				daily_reward: 'Daily reward',
-				attendance: 'Attendance reward',
-				makeup_reward: 'Make-up Daily',
-				cashgame_buyin: 'Cash Game invest',
-				cashgame_cashout: 'Cash Game deposit',
-				climb_bounty: 'Cash Game credit',
-				climb_letter: 'Cash Game letter',
-				blitz_buyin: 'Blitz entry',
-				blitz_payout: 'Blitz payout',
-				challenge_payout: 'Challenge payout',
-				wager_win: 'Won a wager',
-				wager_stake: 'Wager staked',
-				wager_refund: 'Wager refunded',
-				cosmetic_buy: 'Store purchase',
-				powerup_buy: 'Power-up purchase',
-				loan_take: 'Loan received',
-				loan_repay: 'Loan repayment',
-				loan_skim: 'Loan auto-payment',
-				quest_reward: 'Quest reward',
-				buy_credits: 'Bought credits',
-				arcade_cashout: 'Arcade cash-out',
-				freeplay_reward: 'Free Play reward',
-				freeplay_cashout: 'Exchanged credits'
-			}[reason] || reason.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-		);
-	}
 </script>
 
 <svelte:head><title>WordBank — My Account</title></svelte:head>

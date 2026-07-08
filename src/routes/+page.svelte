@@ -79,6 +79,7 @@
 		markChallengeNotifRead
 	} from '$lib/stores/notificationStore.js';
 	import { track } from '$lib/analytics.js';
+	import { reasonLabel } from '$lib/bankReasons.js';
 	import { modifierInfo } from '$lib/powerups.js';
 	import {
 		saveGameToLocalStorage,
@@ -680,28 +681,7 @@
 	}
 	const fmtCash = (/** @type {number} */ n) => '$' + Math.round(n ?? 0).toLocaleString();
 	/** @param {string} reason */
-	const bankReason = (reason) =>
-		/** @type {Record<string,string>} */ ({
-			daily_win: 'Daily reward',
-			daily_reward: 'Daily reward',
-			attendance: 'Daily attendance reward',
-			makeup_reward: 'Make-up Daily',
-			cashgame_buyin: 'Cash Game invest',
-			cashgame_cashout: 'Cash Game deposit',
-			climb_bounty: 'Cash Game credit',
-			climb_letter: 'Cash Game letter',
-			blitz_buyin: 'Blitz entry',
-			blitz_payout: 'Blitz payout',
-			challenge_payout: 'Challenge payout',
-			cosmetic_buy: 'Store purchase',
-			powerup_buy: 'Power-up purchase',
-			loan_take: 'Loan received',
-			loan_repay: 'Loan repayment',
-			loan_skim: 'Loan auto-payment',
-			wager_win: 'Won a wager',
-			wager_stake: 'Wager staked',
-			wager_refund: 'Wager refunded'
-		})[reason] || reason;
+	const bankReason = reasonLabel;
 
 	// 🔐 My Vault — owned inventory; use power-ups in-game (mode-eligible only).
 	let showBag = false;
