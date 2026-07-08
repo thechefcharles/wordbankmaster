@@ -17,7 +17,7 @@
 	/** Optional: called to start a challenge with a friend (username). */
 	let { onChallenge = null } = $props();
 
-	/** @type {{id?:string,username:string,name:string}[]} */
+	/** @type {{id?:string,username:string,name:string,added_at?:string}[]} */
 	let friends = $state([]);
 	/** @type {{id?:string,username:string,name:string}[]} */
 	let incoming = $state([]);
@@ -123,16 +123,23 @@
 
 	const label = (/** @type {any} */ u) => (u.username ? '@' + u.username : u.name || 'Player');
 
-	// Long-list handling: alphabetize your friends and let you filter them live.
+	// Long-list handling: sort your friends (A–Z or recently added) + filter live.
 	// The top search box adds NEW people; this narrows the ones you already have.
 	let listFilter = $state('');
-	const sortedFriends = $derived(
-		[...friends].sort((a, b) =>
+	/** @type {'az'|'recent'} */
+	let sortMode = $state('az');
+	const sortedFriends = $derived.by(() => {
+		const arr = [...friends];
+		if (sortMode === 'recent') {
+			// added_at is an ISO string → lexical compare desc = newest first
+			return arr.sort((a, b) => (b.added_at || '').localeCompare(a.added_at || ''));
+		}
+		return arr.sort((a, b) =>
 			(a.username || a.name || '').localeCompare(b.username || b.name || '', undefined, {
 				sensitivity: 'base'
 			})
-		)
-	);
+		);
+	});
 	const shownFriends = $derived.by(() => {
 		const q = listFilter.trim().toLowerCase();
 		if (!q) return sortedFriends;
@@ -207,7 +214,17 @@
 		</div>
 	{/if}
 
-	<h2 class="sec">Your Friends <span class="count">{friends.length}</span></h2>
+	<div class="sec-row">
+		<h2 class="sec">Your Friends <span class="count">{friends.length}</span></h2>
+		{#if friends.length > 1}
+			<div class="sort-toggle" role="group" aria-label="Sort friends">
+				<button class:on={sortMode === 'az'} onclick={() => (sortMode = 'az')}>A–Z</button>
+				<button class:on={sortMode === 'recent'} onclick={() => (sortMode = 'recent')}
+					>Recent</button
+				>
+			</div>
+		{/if}
+	</div>
 	{#if friends.length === 0}
 		<p class="muted small pad">No friends yet — search above to add some.</p>
 	{:else}
@@ -298,6 +315,35 @@
 		font-size: 0.72rem;
 		color: var(--text-muted);
 		margin: -0.2rem 0 0.5rem 0.2rem;
+	}
+	.sec-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+	}
+	.sort-toggle {
+		display: inline-flex;
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		overflow: hidden;
+		flex: none;
+	}
+	.sort-toggle button {
+		padding: 4px 10px;
+		font-size: 0.74rem;
+		font-weight: 700;
+		background: var(--surface);
+		color: var(--text-muted);
+		border: none;
+		cursor: pointer;
+	}
+	.sort-toggle button + button {
+		border-left: 1px solid var(--border);
+	}
+	.sort-toggle button.on {
+		background: rgba(251, 191, 36, 0.18);
+		color: #fcd34d;
 	}
 	.results {
 		margin-top: 0.5rem;

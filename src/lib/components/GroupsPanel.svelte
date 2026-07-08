@@ -30,13 +30,19 @@
 	let open = $state(null);
 	let loading = $state(true);
 
-	// Long-list handling: alphabetize groups + live filter (shown once you have a few).
+	// Long-list handling: sort groups (A–Z or recently added) + live filter.
 	let groupFilter = $state('');
-	const sortedGroups = $derived(
-		[...groups].sort((a, b) =>
+	/** @type {'az'|'recent'} */
+	let groupSort = $state('az');
+	const sortedGroups = $derived.by(() => {
+		const arr = [...groups];
+		if (groupSort === 'recent') {
+			return arr.sort((a, b) => (b.added_at || '').localeCompare(a.added_at || ''));
+		}
+		return arr.sort((a, b) =>
 			(a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
-		)
-	);
+		);
+	});
 	const shownGroups = $derived.by(() => {
 		const q = groupFilter.trim().toLowerCase();
 		if (!q) return sortedGroups;
@@ -455,6 +461,17 @@
 			<p class="loading">Loading…</p>
 		{:else}
 			{#if groups.length}
+				{#if groups.length > 1}
+					<div class="g-sec-row">
+						<span class="g-count">{groups.length} group{groups.length === 1 ? '' : 's'}</span>
+						<div class="sort-toggle" role="group" aria-label="Sort groups">
+							<button class:on={groupSort === 'az'} onclick={() => (groupSort = 'az')}>A–Z</button>
+							<button class:on={groupSort === 'recent'} onclick={() => (groupSort = 'recent')}
+								>Recent</button
+							>
+						</div>
+					</div>
+				{/if}
 				{#if groups.length > 8}
 					<input
 						class="g-filter"
@@ -650,6 +667,41 @@
 		font-size: 0.72rem;
 		color: var(--text-muted);
 		margin: -0.2rem 0 0.5rem 0.2rem;
+	}
+	.g-sec-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		margin-bottom: 0.6rem;
+	}
+	.g-count {
+		font-size: 0.8rem;
+		font-weight: 700;
+		color: var(--text-muted);
+	}
+	.sort-toggle {
+		display: inline-flex;
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		overflow: hidden;
+		flex: none;
+	}
+	.sort-toggle button {
+		padding: 4px 10px;
+		font-size: 0.74rem;
+		font-weight: 700;
+		background: var(--surface);
+		color: var(--text-muted);
+		border: none;
+		cursor: pointer;
+	}
+	.sort-toggle button + button {
+		border-left: 1px solid var(--border);
+	}
+	.sort-toggle button.on {
+		background: rgba(251, 191, 36, 0.18);
+		color: #fcd34d;
 	}
 	.g-list {
 		display: flex;
