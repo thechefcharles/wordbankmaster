@@ -20,6 +20,8 @@
 	let tab = $state('categories');
 	/** Category row shown in the detail modal (null = closed). @type {any} */
 	let detail = $state(null);
+	/** Achievement shown in the detail modal (null = closed). @type {any} */
+	let achDetail = $state(null);
 	/** Badge ids unlocked since last visit — celebrated + pulsed. @type {string[]} */
 	let newlyEarned = $state([]);
 
@@ -55,11 +57,13 @@
 	}
 
 	// Lightweight one-shot confetti (badges are rare, so this stays tasteful).
-	function burstConfetti() {
+	/** @param {number} [count] */
+	function burstConfetti(count = 40) {
+		if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
 		const colors = ['#fbbf24', '#fde047', '#34d399', '#60a5fa', '#f472b6', '#ffffff'];
 		const c = document.createElement('div');
 		c.className = 'wb-confetti';
-		for (let i = 0; i < 40; i++) {
+		for (let i = 0; i < count; i++) {
 			const p = document.createElement('span');
 			p.style.left = Math.round(Math.random() * 100) + 'vw';
 			p.style.background = colors[i % colors.length];
@@ -69,6 +73,13 @@
 		}
 		document.body.appendChild(c);
 		setTimeout(() => c.remove(), 4000);
+	}
+
+	// Open an achievement's detail — earned ones get a celebratory confetti pop.
+	/** @param {any} a */
+	function openAch(a) {
+		achDetail = a;
+		if (a.earned) burstConfetti(24);
 	}
 
 	let solvesByCat = $derived(Object.fromEntries(categoryStats.map((r) => [r.category, r.solves])));
@@ -258,7 +269,16 @@
 						class="ach {a.earned ? 'earned' : 'locked'}"
 						class:has-prog={a.progText && !a.earned && (a.progress ?? 0) > 0}
 						class:just={newlyEarned.includes(a.id)}
+						role="button"
+						tabindex="0"
 						title={a.desc}
+						onclick={() => openAch(a)}
+						onkeydown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								openAch(a);
+							}
+						}}
 					>
 						<span class="ach-emoji">{a.emoji}</span>
 						<span class="ach-name">{a.name}</span>
@@ -289,7 +309,14 @@
 {/if}
 
 <!-- 🗂️ Category detail modal -->
-<svelte:window onkeydown={(e) => detail && e.key === 'Escape' && (detail = null)} />
+<svelte:window
+	onkeydown={(e) => {
+		if (e.key === 'Escape') {
+			detail = null;
+			achDetail = null;
+		}
+	}}
+/>
 {#if detail}
 	<div class="cd-overlay">
 		<button class="cd-backdrop" aria-label="Close" onclick={() => (detail = null)}></button>
@@ -313,6 +340,33 @@
 					</div>
 				{/each}
 			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- 🏅 Achievement detail modal -->
+{#if achDetail}
+	<div class="cd-overlay">
+		<button class="cd-backdrop" aria-label="Close" onclick={() => (achDetail = null)}></button>
+		<div class="cd-card" role="dialog" aria-modal="true">
+			<button class="cd-x" onclick={() => (achDetail = null)} aria-label="Close">✕</button>
+			<div class="cd-emoji" class:ad-dim={!achDetail.earned}>{achDetail.emoji}</div>
+			<h3 class="cd-name">{achDetail.name}</h3>
+			<p class="cd-solves">{achDetail.desc}</p>
+			{#if achDetail.earned}
+				<div class="ad-status earned">✓ Unlocked</div>
+			{:else}
+				{#if achDetail.progText}
+					<div class="ad-prog">
+						<div
+							class="ad-prog-fill"
+							style="width:{Math.round((achDetail.progress ?? 0) * 100)}%"
+						></div>
+					</div>
+					<div class="ad-prog-t">{achDetail.progText}</div>
+				{/if}
+				<div class="ad-status locked">🔒 Locked</div>
+			{/if}
 		</div>
 	</div>
 {/if}
@@ -568,6 +622,16 @@
 		border-radius: 14px;
 		background: var(--surface, rgba(255, 255, 255, 0.05));
 		border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+		cursor: pointer;
+		transition:
+			transform 0.15s,
+			border-color 0.2s;
+	}
+	.ach:hover {
+		transform: translateY(-2px);
+	}
+	.ach:active {
+		transform: scale(0.97);
 	}
 	.ach.earned {
 		border-color: rgba(253, 224, 71, 0.5);
@@ -744,6 +808,50 @@
 	}
 	.cd-tier.got .cd-treq {
 		color: #6ee7b7;
+	}
+
+	/* Achievement detail modal extras */
+	.cd-emoji.ad-dim {
+		filter: grayscale(0.6);
+		opacity: 0.7;
+	}
+	.ad-status {
+		margin-top: 14px;
+		padding: 8px 16px;
+		border-radius: 999px;
+		font-family: var(--font-display);
+		font-weight: 800;
+		font-size: 0.82rem;
+		display: inline-block;
+	}
+	.ad-status.earned {
+		background: rgba(110, 231, 183, 0.16);
+		border: 1px solid rgba(110, 231, 183, 0.45);
+		color: #6ee7b7;
+	}
+	.ad-status.locked {
+		background: rgba(255, 255, 255, 0.06);
+		border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+		color: var(--text-muted);
+	}
+	.ad-prog {
+		width: 70%;
+		height: 7px;
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.14);
+		overflow: hidden;
+		margin: 14px auto 5px;
+	}
+	.ad-prog-fill {
+		height: 100%;
+		border-radius: 999px;
+		background: linear-gradient(90deg, #fbbf24, #fde047);
+	}
+	.ad-prog-t {
+		font-family: var(--font-display);
+		font-weight: 700;
+		font-size: 0.78rem;
+		color: var(--text-muted);
 	}
 
 	/* 🎊 Confetti (appended to <body>, so styled globally) */
