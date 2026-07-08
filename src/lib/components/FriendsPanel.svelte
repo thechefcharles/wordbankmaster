@@ -122,6 +122,24 @@
 	}
 
 	const label = (/** @type {any} */ u) => (u.username ? '@' + u.username : u.name || 'Player');
+
+	// Long-list handling: alphabetize your friends and let you filter them live.
+	// The top search box adds NEW people; this narrows the ones you already have.
+	let listFilter = $state('');
+	const sortedFriends = $derived(
+		[...friends].sort((a, b) =>
+			(a.username || a.name || '').localeCompare(b.username || b.name || '', undefined, {
+				sensitivity: 'base'
+			})
+		)
+	);
+	const shownFriends = $derived.by(() => {
+		const q = listFilter.trim().toLowerCase();
+		if (!q) return sortedFriends;
+		return sortedFriends.filter((u) =>
+			((u.username || '') + ' ' + (u.name || '')).toLowerCase().includes(q)
+		);
+	});
 </script>
 
 <div class="search-wrap">
@@ -193,8 +211,20 @@
 	{#if friends.length === 0}
 		<p class="muted small pad">No friends yet — search above to add some.</p>
 	{:else}
+		{#if friends.length > 8}
+			<input
+				class="list-filter"
+				type="text"
+				placeholder="Filter your friends…"
+				bind:value={listFilter}
+				aria-label="Filter your friends"
+			/>
+			{#if listFilter.trim()}
+				<div class="filter-count">Showing {shownFriends.length} of {friends.length}</div>
+			{/if}
+		{/if}
 		<div class="list">
-			{#each friends as u}
+			{#each shownFriends as u}
 				<div class="row card">
 					<button
 						class="uname namelink"
@@ -215,6 +245,9 @@
 					</div>
 				</div>
 			{/each}
+			{#if shownFriends.length === 0}
+				<p class="muted small pad">No friends match “{listFilter.trim()}”.</p>
+			{/if}
 		</div>
 	{/if}
 
@@ -246,6 +279,25 @@
 	.search:focus {
 		outline: none;
 		border-color: rgba(251, 191, 36, 0.5);
+	}
+	.list-filter {
+		width: 100%;
+		margin-bottom: 0.6rem;
+		padding: 0.6rem 0.9rem;
+		border-radius: 12px;
+		font-size: 0.9rem;
+		background: var(--surface);
+		border: 1px solid var(--border);
+		color: var(--text);
+	}
+	.list-filter:focus {
+		outline: none;
+		border-color: rgba(251, 191, 36, 0.5);
+	}
+	.filter-count {
+		font-size: 0.72rem;
+		color: var(--text-muted);
+		margin: -0.2rem 0 0.5rem 0.2rem;
 	}
 	.results {
 		margin-top: 0.5rem;
