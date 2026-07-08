@@ -111,7 +111,7 @@
 	} from '$lib/pin.js';
 	import { requirePin } from '$lib/pinConfirm.js';
 	import { requireConfirm } from '$lib/confirm.js';
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
 
 	import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
 	import InventoryList from '$lib/components/InventoryList.svelte';
@@ -1437,10 +1437,10 @@
 				handleMenuMyAccount();
 				params.delete('account');
 			}
-			// Friends & Groups deep link (Profile 👥+ button → /?people=1)
+			// Friends & Groups deep link (Profile 👥+ button → /?people=1).
+			// Keep the param in the URL so browser-back restores the People view.
 			if (params.get('people')) {
 				openCommunity('people');
-				params.delete('people');
 			}
 			const qs = params.toString();
 			window.history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
@@ -1948,7 +1948,20 @@
 		communityTab = /** @type {any} */ (tab ?? 'challenges');
 		menuView = 'community';
 		showMainMenu = true;
+		// Reflect the People view in the URL (router-safe) so a profile opened from here
+		// can be returned to via the browser Back button (history restores /?people=1).
+		if (typeof window !== 'undefined') {
+			replaceState(tab === 'people' ? '/?people=1' : '/', {});
+		}
 		[myMatches, myGroups] = await Promise.all([getMyMatches(), getMyGroups()]);
+	}
+	// Leave the community view → home, clearing the ?people=1 flag from the URL.
+	function exitCommunity() {
+		menuView = 'home';
+		fx('tap');
+		if (typeof window !== 'undefined' && window.location.search.includes('people=')) {
+			replaceState('/', {});
+		}
 	}
 	/** Back-compat shim for existing callers (banner "+N more", toasts, result modal). */
 	/** @param {string} [forceTab] */
@@ -3274,13 +3287,7 @@
 				<div class="sub-head">
 					{#if communityTab === 'people'}
 						{#if peopleBackToHome}
-							<button
-								class="sub-back"
-								on:click={() => {
-									menuView = 'home';
-									fx('tap');
-								}}>← Back</button
-							>
+							<button class="sub-back" on:click={exitCommunity}>← Back</button>
 						{:else}
 							<button
 								class="sub-back"
@@ -3292,13 +3299,7 @@
 						{/if}
 						<h2 class="sub-title">People</h2>
 					{:else}
-						<button
-							class="sub-back"
-							on:click={() => {
-								menuView = 'home';
-								fx('tap');
-							}}>← Back</button
-						>
+						<button class="sub-back" on:click={exitCommunity}>← Back</button>
 						<h2 class="sub-title">
 							{communityTab === 'leaderboard' ? '🏆 Leaderboard' : '⚔️ Challenges'}
 						</h2>
