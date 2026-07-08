@@ -52,10 +52,10 @@
 		<div class="rate-card">
 			<div class="rc-head">Daily interest — the more you borrow, the higher the rate</div>
 			<div class="rc-rows">
-				<div class="rc-row"><span>Up to 25% of your limit</span><b>2% / day</b></div>
-				<div class="rc-row"><span>Up to 50%</span><b>4% / day</b></div>
-				<div class="rc-row"><span>Up to 75%</span><b>6% / day</b></div>
-				<div class="rc-row"><span>Above 75%</span><b class="hot">8% / day</b></div>
+				<div class="rc-row"><span>Up to 25% of your limit</span><b>5% / day</b></div>
+				<div class="rc-row"><span>Up to 50%</span><b>8% / day</b></div>
+				<div class="rc-row"><span>Up to 75%</span><b class="hot">12% / day</b></div>
+				<div class="rc-row"><span>Above 75%</span><b class="hot">15% / day</b></div>
 			</div>
 			<p class="rc-note">
 				Compounds daily · never grows past <b>2.5×</b> what you borrowed · half of every payout auto-pays
