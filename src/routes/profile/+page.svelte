@@ -232,6 +232,7 @@
 			</div>
 		{:else if tab === 'stats'}
 			{@const net = Number(d.overall.earned ?? 0) - Number(d.overall.spent ?? 0)}
+			{@const cgNet = Number(d.cash_game.net ?? 0)}
 			<!-- 💹 Lifetime net hero -->
 			<div class="st-hero">
 				<div class="st-hero-lbl">Lifetime Net</div>
@@ -267,6 +268,11 @@
 				{@render chip('#' + (d.cash_game.position ?? 0), 'Furthest')}
 				{@render chip(d.cash_game.solved ?? 0, 'Solved')}
 				{@render chip(fmt(d.cash_game.earned), 'Earned')}
+				<div class="stat">
+					<span class="sv" class:pos={cgNet >= 0} class:neg={cgNet < 0}
+						>{cgNet >= 0 ? '+' : '−'}{fmt(Math.abs(cgNet))}</span
+					><span class="sc">Net P&amp;L</span>
+				</div>
 				{@render chip(mult(d.cash_game.best_multiple), 'Best ×')}
 				{@render chip(time(d.cash_game.fastest_ms), 'Fastest')}
 			</div>
@@ -323,16 +329,19 @@
 			{/if}
 
 			{#if (d.categories ?? []).length}
-				<div class="sec-title">🗂️ Categories</div>
+				<div class="sec-title">🗂️ Categories <span class="sec-hint">(tap for tiers)</span></div>
 				<div class="cats">
 					{#each d.categories as c}
-						<div class="cat-row">
+						<button
+							class="cat-row cat-link"
+							onclick={() => goto('/badges?cat=' + encodeURIComponent(c.category))}
+						>
 							<span class="cat-name">{c.category}</span>
 							<span class="cat-meta"
 								>{c.solves} solved{#if c.best_multiple}
-									· best {mult(c.best_multiple)}{/if}</span
+									· best {mult(c.best_multiple)}{/if}<span class="arrow"> ›</span></span
 							>
-						</div>
+						</button>
 					{/each}
 				</div>
 			{/if}
@@ -764,6 +773,12 @@
 		font-size: 1.02rem;
 		color: var(--text);
 	}
+	.sv.pos {
+		color: #4ade80;
+	}
+	.sv.neg {
+		color: #fb7185;
+	}
 	.sc {
 		font-size: 0.58rem;
 		text-transform: uppercase;
@@ -785,6 +800,23 @@
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: 10px;
+	}
+	.cat-link {
+		width: 100%;
+		cursor: pointer;
+		text-align: left;
+		font: inherit;
+		color: inherit;
+		transition:
+			transform 0.15s,
+			border-color 0.2s;
+	}
+	.cat-link:hover {
+		transform: translateX(2px);
+		border-color: rgba(251, 191, 36, 0.4);
+	}
+	.cat-link:active {
+		transform: scale(0.99);
 	}
 	.cat-name {
 		font-weight: 600;
