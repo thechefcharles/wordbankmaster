@@ -2556,7 +2556,9 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card bag-modal" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (showBag = false)} aria-label="Close">✕</button>
-			<h3 class="info-title"><img src="/vault.png" alt="" class="vault-ic-xs" /> My Vault</h3>
+			<h3 class="info-title">
+				{#if showMainMenu}Items{:else}<img src="/vault.png" alt="" class="vault-ic-xs" /> My Vault{/if}
+			</h3>
 			{#if showMainMenu}
 				<div class="bag-inv"><InventoryList /></div>
 				<button class="bag-store" on:click={() => goto('/shop')}>🛍️ Go to the Store →</button>
@@ -3133,7 +3135,12 @@
 						</svg><span class="qt-l">Loans</span>
 					</button>
 					<button class="qt" on:click={openBag}>
-						<img class="qt-img" src="/vault.png" alt="" /><span class="qt-l">Vault</span>
+						<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
+							<rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+							<rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
+							<rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
+							<rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
+						</svg><span class="qt-l">Items</span>
 					</button>
 					<button class="qt" on:click={() => goto('/streak')}>
 						<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
@@ -5999,12 +6006,6 @@
 	}
 	.qt:active {
 		transform: scale(0.96);
-	}
-	.qt-img {
-		width: 26px;
-		height: 26px;
-		object-fit: contain;
-		filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
 	}
 	.qt-svg {
 		width: 25px;
