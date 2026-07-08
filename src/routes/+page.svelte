@@ -6026,20 +6026,13 @@
 	/* "+" badge on the Friends tile — hints you can add friends. */
 	.qt-plus {
 		position: absolute;
-		top: 5px;
-		right: 5px;
-		display: grid;
-		place-items: center;
-		width: 16px;
-		height: 16px;
-		border-radius: 50%;
-		background: linear-gradient(135deg, #fbbf24, #f59e0b);
-		color: #2a1e00;
+		top: 4px;
+		right: 6px;
+		color: #fff;
 		font-family: var(--font-display, sans-serif);
-		font-size: 0.72rem;
-		font-weight: 800;
+		font-size: 0.85rem;
+		font-weight: 700;
 		line-height: 1;
-		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 	}
 	/* Animated "swipe for more" chevron; hidden once scrolled to the end. */
 	.qt-more {
