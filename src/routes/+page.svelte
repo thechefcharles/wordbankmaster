@@ -1891,6 +1891,7 @@
 	let matchResults = null; // a settled match's results being viewed
 	// Builder form
 	let mbTarget = 'friend'; // 'friend' | 'group'
+	let mbStep = 1; // wizard step: 1 Who · 2 Match · 3 Stakes
 	let mbMode = 'standard'; // 'standard' | 'blitz'
 	let mbOpponent = '';
 	let mbGroupId = '';
@@ -1910,6 +1911,14 @@
 	let mbItemsAllowed = false; // host toggle: allow power-ups in this challenge
 	let mbMsg = '';
 	let mbBusy = false;
+	// Wizard: step 1 (Who) needs an opponent before Continue is allowed.
+	$: mbStep1Ok = mbTarget === 'friend' ? mbOpponent.trim().length > 0 : !!mbGroupId;
+	$: potSummary =
+		mbWager === 0
+			? 'Friendly — no stakes, just bragging rights.'
+			: mbTarget === 'group'
+				? `Everyone antes $${mbWager.toLocaleString()} → the pot; top finishers split it. Spend less to keep more.`
+				: `You both ante $${mbWager.toLocaleString()} → $${(mbWager * 2).toLocaleString()} pot · winner takes all.`;
 	/** @type {{username:string,is_friend:boolean}[]} */
 	let mbResults = [];
 	/** @type {ReturnType<typeof setTimeout>|undefined} */
@@ -1938,6 +1947,7 @@
 	async function newChallenge() {
 		if (!get(user)?.id) return;
 		mbMsg = '';
+		mbStep = 1;
 		myGroups = await getMyGroups();
 		showChallenges = true;
 	}
@@ -3513,145 +3523,171 @@
 					<button class="close-btn" on:click={() => (showChallenges = false)}>❌</button>
 
 					<h2>⚔️ New Challenge</h2>
-					<p class="cat-sub">
-						Build a match — a pack of puzzles vs a friend or a group. Same puzzles for everyone.
-					</p>
+					<div class="ch-steps" aria-hidden="true">
+						<span class="ch-dot" class:on={mbStep >= 1}></span>
+						<span class="ch-dot" class:on={mbStep >= 2}></span>
+						<span class="ch-dot" class:on={mbStep >= 3}></span>
+					</div>
 
 					<div class="ch-new">
-						<!-- Opponent: friend or group -->
-						<div class="ch-modes">
-							<button
-								type="button"
-								class="ch-mode"
-								class:active={mbTarget === 'friend'}
-								on:click={() => (mbTarget = 'friend')}>👤 A friend<small>by username</small></button
-							>
-							<button
-								type="button"
-								class="ch-mode"
-								class:active={mbTarget === 'group'}
-								on:click={() => (mbTarget = 'group')}
-								>👥 A group<small>everyone in it</small></button
-							>
-						</div>
-						{#if mbTarget === 'friend'}
-							<div class="ch-search-wrap">
-								<input
-									class="ch-input"
-									placeholder="Opponent username"
-									bind:value={mbOpponent}
-									on:input={onMbOppInput}
-									autocomplete="off"
-								/>
-								{#if mbResults.length}
-									<div class="ch-results">
-										{#each mbResults as r}
-											<button
-												type="button"
-												class="ch-result-item"
-												on:click={() => pickMbOpp(r.username)}
-												>@{r.username}{#if r.is_friend}
-													<span class="ch-friend-tag">friend</span>{/if}</button
-											>
-										{/each}
-									</div>
-								{/if}
-							</div>
-						{:else}
-							<select class="ch-input" bind:value={mbGroupId}>
-								<option value="" disabled selected>Pick a group</option>
-								{#each myGroups as g}<option value={g.id}>{g.name} ({g.members})</option>{/each}
-							</select>
-						{/if}
-
-						<!-- Standard vs Blitz -->
-						<div class="ch-modes">
-							<button
-								type="button"
-								class="ch-mode"
-								class:active={mbMode === 'standard'}
-								on:click={() => (mbMode = 'standard')}
-								>🧠 Standard<small>efficiency · spend less</small></button
-							>
-							<button
-								type="button"
-								class="ch-mode"
-								class:active={mbMode === 'blitz'}
-								on:click={() => (mbMode = 'blitz')}
-								>⚡ Blitz<small>timed · combo speed</small></button
-							>
-						</div>
-
-						<!-- Categories (optional) -->
-						<div class="ch-cats">
-							{#each CATEGORIES as c}
+						{#if mbStep === 1}
+							<!-- Step 1 · Who -->
+							<div class="ch-step-title">Who are you challenging?</div>
+							<div class="ch-modes">
 								<button
 									type="button"
-									class="ch-cat"
-									class:on={mbCategories.includes(c.value)}
-									on:click={() => toggleCategory(c.value)}>{c.emoji}</button
+									class="ch-mode"
+									class:active={mbTarget === 'friend'}
+									on:click={() => (mbTarget = 'friend')}
+									>👤 A friend<small>by username</small></button
 								>
-							{/each}
-						</div>
-						<p class="ch-hint">
-							{mbCategories.length ? mbCategories.length + ' categories' : 'Any category'}
-						</p>
+								<button
+									type="button"
+									class="ch-mode"
+									class:active={mbTarget === 'group'}
+									on:click={() => (mbTarget = 'group')}
+									>👥 A group<small>everyone in it</small></button
+								>
+							</div>
+							{#if mbTarget === 'friend'}
+								<div class="ch-search-wrap">
+									<input
+										class="ch-input"
+										placeholder="Opponent username"
+										bind:value={mbOpponent}
+										on:input={onMbOppInput}
+										autocomplete="off"
+									/>
+									{#if mbResults.length}
+										<div class="ch-results">
+											{#each mbResults as r}
+												<button
+													type="button"
+													class="ch-result-item"
+													on:click={() => pickMbOpp(r.username)}
+													>@{r.username}{#if r.is_friend}
+														<span class="ch-friend-tag">friend</span>{/if}</button
+												>
+											{/each}
+										</div>
+									{/if}
+								</div>
+							{:else}
+								<select class="ch-input" bind:value={mbGroupId}>
+									<option value="" disabled selected>Pick a group</option>
+									{#each myGroups as g}<option value={g.id}>{g.name} ({g.members})</option>{/each}
+								</select>
+							{/if}
+						{:else if mbStep === 2}
+							<!-- Step 2 · Match -->
+							<div class="ch-step-title">The match</div>
+							<div class="ch-modes">
+								<button
+									type="button"
+									class="ch-mode"
+									class:active={mbMode === 'standard'}
+									on:click={() => (mbMode = 'standard')}
+									>🧠 Standard<small>efficiency · spend less</small></button
+								>
+								<button
+									type="button"
+									class="ch-mode"
+									class:active={mbMode === 'blitz'}
+									on:click={() => (mbMode = 'blitz')}
+									>⚡ Blitz<small>timed · combo speed</small></button
+								>
+							</div>
 
-						<!-- Pack size + payout + window -->
-						<div class="ch-row">
-							<label class="ch-field"
-								><span>Puzzles</span>
-								<select class="ch-input" bind:value={mbPackSize}
-									>{#each [1, 3, 5, 10] as n}<option value={n}>{n}</option>{/each}</select
-								>
-							</label>
+							<div class="ch-field">
+								<span>Categories <em class="ch-opt">(optional)</em></span>
+								<div class="ch-catlist">
+									{#each CATEGORIES as c}
+										<button
+											type="button"
+											class="ch-catrow"
+											class:on={mbCategories.includes(c.value)}
+											on:click={() => toggleCategory(c.value)}
+										>
+											<span class="ch-catemoji">{c.emoji}</span>
+											<span class="ch-catname">{c.label}</span>
+											<span class="ch-catcheck">{mbCategories.includes(c.value) ? '✓' : ''}</span>
+										</button>
+									{/each}
+								</div>
+								<p class="ch-hint">
+									{mbCategories.length ? mbCategories.length + ' selected' : 'Any category'}
+								</p>
+							</div>
+
+							<div class="ch-field">
+								<span>Puzzles</span>
+								<div class="ch-seg">
+									{#each [1, 3, 5, 10] as n}<button
+											type="button"
+											class="ch-seg-btn"
+											class:on={mbPackSize === n}
+											on:click={() => (mbPackSize = n)}>{n}</button
+										>{/each}
+								</div>
+							</div>
+						{:else}
+							<!-- Step 3 · Stakes -->
+							<div class="ch-step-title">The stakes</div>
+							<div class="ch-field ch-ante">
+								<span>Ante</span>
+								<div class="ante-chips">
+									{#each CHALLENGE_TIERS as t}
+										<button
+											class="ante-chip"
+											class:on={mbWager === t.v}
+											type="button"
+											on:click={() => {
+												mbWager = t.v;
+												fx('tap');
+											}}>{t.label}</button
+										>
+									{/each}
+								</div>
+							</div>
 							<label class="ch-field"
 								><span>Respond within</span>
 								<select class="ch-input" bind:value={mbWindow}
 									>{#each WINDOWS as w}<option value={w.s}>{w.l}</option>{/each}</select
 								>
 							</label>
-						</div>
-						<div class="ch-field ch-ante">
-							<span>Ante — the stakes</span>
-							<div class="ante-chips">
-								{#each CHALLENGE_TIERS as t}
-									<button
-										class="ante-chip"
-										class:on={mbWager === t.v}
-										type="button"
-										on:click={() => {
-											mbWager = t.v;
-											fx('tap');
-										}}>{t.label}</button
-									>
-								{/each}
-							</div>
-							<p class="ch-hint">
-								{mbWager > 0
-									? 'Each player antes this → the pot. Duel: winner takes all. Group: podium (3 → 70/30 · 4+ → 60/30/10). Spend less to keep more — that’s your score.'
-									: 'Friendly — no stakes, just bragging rights.'}
-							</p>
-						</div>
-						<button
-							class="ch-toggle"
-							class:on={mbItemsAllowed}
-							on:click={() => {
-								mbItemsAllowed = !mbItemsAllowed;
-								fx('tap');
-							}}
-						>
-							<span class="ch-tog-box">{mbItemsAllowed ? '✓' : ''}</span>
-							⚡ Allow power-ups
-						</button>
-						<p class="ch-objective"><strong>Spend the least — winner takes the pot.</strong></p>
-						<button
-							class="ch-create"
-							disabled={mbBusy}
-							on:click={submitNewMatch}
-							style="width:100%;">Send challenge ⚔️</button
-						>
+							<button
+								class="ch-toggle"
+								class:on={mbItemsAllowed}
+								on:click={() => {
+									mbItemsAllowed = !mbItemsAllowed;
+									fx('tap');
+								}}
+							>
+								<span class="ch-tog-box">{mbItemsAllowed ? '✓' : ''}</span>
+								⚡ Allow power-ups
+							</button>
+							<p class="ch-objective">{potSummary}</p>
+						{/if}
+
 						{#if mbMsg}<p class="add-msg">{mbMsg}</p>{/if}
+
+						<div class="ch-nav">
+							{#if mbStep > 1}
+								<button type="button" class="ch-back" on:click={() => (mbStep -= 1)}>Back</button>
+							{/if}
+							{#if mbStep < 3}
+								<button
+									type="button"
+									class="ch-create ch-grow"
+									disabled={mbStep === 1 && !mbStep1Ok}
+									on:click={() => (mbStep += 1)}>Continue</button
+								>
+							{:else}
+								<button class="ch-create ch-grow" disabled={mbBusy} on:click={submitNewMatch}
+									>Send challenge ⚔️</button
+								>
+							{/if}
+						</div>
 					</div>
 				</div>
 			</div>
@@ -7135,10 +7171,6 @@
 		color: var(--brand-2);
 		font-weight: 700;
 	}
-	.ch-row {
-		display: flex;
-		gap: 0.5rem;
-	}
 	.ch-input {
 		flex: 1;
 		min-width: 0;
@@ -7167,8 +7199,113 @@
 		color: var(--text-muted);
 		margin: 0 0 10px;
 	}
-	.ch-objective strong {
+	/* 🧭 Challenge wizard */
+	.ch-steps {
+		display: flex;
+		justify-content: center;
+		gap: 7px;
+		margin: 2px 0 14px;
+	}
+	.ch-dot {
+		width: 7px;
+		height: 7px;
+		border-radius: 50%;
+		background: var(--border-strong, rgba(255, 255, 255, 0.18));
+		transition:
+			background 0.2s,
+			transform 0.2s;
+	}
+	.ch-dot.on {
+		background: var(--brand-2, #fde047);
+		transform: scale(1.15);
+	}
+	.ch-step-title {
+		font-family: var(--font-display, sans-serif);
+		font-weight: 700;
+		font-size: 1.05rem;
+		text-align: center;
+		margin: 0 0 12px;
+	}
+	.ch-opt {
+		font-style: normal;
+		font-weight: 400;
+		font-size: 0.72rem;
+		color: var(--text-faint);
+	}
+	.ch-catlist {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		max-height: 244px;
+		overflow-y: auto;
+		margin-top: 6px;
+	}
+	.ch-catrow {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		width: 100%;
+		padding: 10px 12px;
+		border-radius: 12px;
+		border: 1px solid var(--border);
+		background: var(--surface);
+		color: var(--text);
+		cursor: pointer;
+		font-size: 0.9rem;
+		text-align: left;
+	}
+	.ch-catrow.on {
+		border-color: var(--brand-2);
+		background: rgba(251, 191, 36, 0.1);
+	}
+	.ch-catemoji {
+		font-size: 1.05rem;
+	}
+	.ch-catname {
+		flex: 1;
+		font-weight: 600;
+	}
+	.ch-catcheck {
+		width: 14px;
+		color: var(--brand-2, #fde047);
+		font-weight: 800;
+	}
+	.ch-seg {
+		display: flex;
+		gap: 6px;
+		margin-top: 6px;
+	}
+	.ch-seg-btn {
+		flex: 1;
+		padding: 10px 0;
+		border-radius: 10px;
+		border: 1px solid var(--border);
+		background: var(--surface);
+		color: var(--text);
+		cursor: pointer;
+		font-weight: 700;
+	}
+	.ch-seg-btn.on {
+		border-color: var(--brand-2);
+		background: rgba(251, 191, 36, 0.12);
 		color: var(--brand-2);
+	}
+	.ch-nav {
+		display: flex;
+		gap: 10px;
+		margin-top: 14px;
+	}
+	.ch-back {
+		padding: 0.6rem 1.1rem;
+		border-radius: 10px;
+		border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16));
+		background: var(--surface);
+		color: var(--text);
+		cursor: pointer;
+		font-weight: 700;
+	}
+	.ch-grow {
+		flex: 1;
 	}
 	.ch-toggle {
 		display: flex;
@@ -7204,30 +7341,6 @@
 	.ch-toggle.on .ch-tog-box {
 		background: var(--brand-grad, linear-gradient(135deg, #fbbf24, #fde047));
 		border-color: transparent;
-	}
-	.ch-cats {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 4px;
-		justify-content: center;
-	}
-	.ch-cat {
-		width: 34px;
-		height: 34px;
-		border-radius: 9px;
-		cursor: pointer;
-		font-size: 1rem;
-		border: 1px solid var(--border);
-		background: var(--surface);
-		opacity: 0.5;
-		transition:
-			opacity 0.15s,
-			border-color 0.15s;
-	}
-	.ch-cat.on {
-		opacity: 1;
-		border-color: rgba(253, 224, 71, 0.55);
-		background: rgba(253, 224, 71, 0.08);
 	}
 	.ch-hint {
 		font-size: 0.72rem;
@@ -7276,11 +7389,6 @@
 		border-color: var(--brand-2);
 		background: linear-gradient(135deg, rgba(251, 191, 36, 0.16), rgba(253, 224, 71, 0.05));
 		color: var(--brand-2);
-	}
-	.ch-ante .ch-hint {
-		text-align: left;
-		margin-top: 4px;
-		line-height: 1.4;
 	}
 	.ch-field > span {
 		font-size: 0.62rem;
