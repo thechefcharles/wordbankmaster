@@ -26,21 +26,60 @@
 		CATEGORIES.map((c) => ({ ...c, ...categoryProgress(solvesByCat[c.value] ?? 0) }))
 	);
 	let goldCount = $derived(rows.filter((r) => (r.solves ?? 0) >= 25).length);
+
+	// Theme groups for the Achievements tab — inferred from the badge id.
+	const GROUP_ORDER = ['Milestones', 'Daily', 'Cash Game', 'Blitz', 'Challenges', 'Bank'];
+	/** @param {string} id */
+	function groupFor(id) {
+		if (id.startsWith('cg_')) return 'Cash Game';
+		if (id.startsWith('bz_')) return 'Blitz';
+		if (['flawless', 'streak_7', 'streak_30', 'week_complete', 'month_complete'].includes(id))
+			return 'Daily';
+		if (['first_blood', 'gold_duelist', 'hustler'].includes(id)) return 'Challenges';
+		if (id === 'paid_in_full') return 'Bank';
+		return 'Milestones';
+	}
+
 	let achievements = $derived([
-		...Object.keys(BADGES).map((id) => ({ ...badgeInfo(id), earned: earnedBadges.includes(id) })),
+		...Object.keys(BADGES).map((id) => ({
+			id,
+			...badgeInfo(id),
+			earned: earnedBadges.includes(id),
+			group: groupFor(id),
+			/** @type {number|undefined} */ progress: undefined,
+			/** @type {string|undefined} */ progText: undefined
+		})),
 		...SOLVE_MILESTONES.map((m) => ({
+			id: m.id,
 			emoji: m.emoji,
 			name: m.name,
 			desc: m.desc,
-			earned: total >= m.at
+			earned: total >= m.at,
+			group: 'Milestones',
+			progress: Math.min(1, total / m.at),
+			progText: `${Math.min(total, m.at)}/${m.at}`
 		})),
-		{ emoji: COLLECTOR.emoji, name: COLLECTOR.name, desc: COLLECTOR.desc, earned: goldCount >= 12 }
+		{
+			id: 'collector',
+			emoji: COLLECTOR.emoji,
+			name: COLLECTOR.name,
+			desc: COLLECTOR.desc,
+			earned: goldCount >= 12,
+			group: 'Milestones',
+			progress: Math.min(1, goldCount / 12),
+			progText: `${Math.min(goldCount, 12)}/12`
+		}
 	]);
-	// Earned first, so unlocked badges lead instead of being buried under locked ones.
-	let achSorted = $derived(
-		[...achievements].sort((a, b) => (b.earned ? 1 : 0) - (a.earned ? 1 : 0))
-	);
 	let earnedCount = $derived(achievements.filter((a) => a.earned).length);
+	// Grouped by theme, earned-first within each group.
+	let grouped = $derived(
+		GROUP_ORDER.map((name) => {
+			const items = achievements
+				.filter((a) => a.group === name)
+				.sort((a, b) => (b.earned ? 1 : 0) - (a.earned ? 1 : 0));
+			return { name, items, earned: items.filter((a) => a.earned).length };
+		}).filter((g) => g.items.length)
+	);
 	let rankedCats = $derived(rows.filter((r) => r.current).length);
 
 	// SVG progress ring geometry (r = 19 → circumference ≈ 119.38)
@@ -106,15 +145,33 @@
 			{/each}
 		</div>
 	{:else}
-		<div class="ach-grid">
-			{#each achSorted as a}
-				<div class="ach {a.earned ? 'earned' : 'locked'}" title={a.desc}>
-					<span class="ach-emoji">{a.emoji}</span>
-					<span class="ach-name">{a.name}</span>
-					<span class="ach-desc">{a.desc}</span>
-				</div>
-			{/each}
-		</div>
+		{#each grouped as g}
+			<div class="ach-group-h">
+				{g.name}<span class="ach-group-count">{g.earned}/{g.items.length}</span>
+			</div>
+			<div class="ach-grid">
+				{#each g.items as a}
+					<div
+						class="ach {a.earned ? 'earned' : 'locked'}"
+						class:has-prog={a.progText && !a.earned && (a.progress ?? 0) > 0}
+						title={a.desc}
+					>
+						<span class="ach-emoji">{a.emoji}</span>
+						<span class="ach-name">{a.name}</span>
+						<span class="ach-desc">{a.desc}</span>
+						{#if a.progText && !a.earned}
+							<div class="ach-prog">
+								<div
+									class="ach-prog-fill"
+									style="width:{Math.round((a.progress ?? 0) * 100)}%"
+								></div>
+							</div>
+							<span class="ach-prog-t">{a.progText}</span>
+						{/if}
+					</div>
+				{/each}
+			</div>
+		{/each}
 	{/if}
 
 	{#if !loaded}<p class="bp-loading">Loading…</p>{/if}
@@ -289,11 +346,51 @@
 		color: var(--text-muted);
 	}
 
-	/* Achievement grid */
+	/* Achievement groups */
+	.ach-group-h {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-family: var(--font-display);
+		font-weight: 800;
+		font-size: 0.72rem;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--brand-2, #fde047);
+		margin: 18px 0 9px;
+	}
+	.ach-group-h:first-child {
+		margin-top: 0;
+	}
+	.ach-group-count {
+		font-size: 0.66rem;
+		font-weight: 700;
+		color: var(--text-muted);
+		letter-spacing: 0.02em;
+	}
 	.ach-grid {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
 		gap: 8px;
+	}
+	.ach-prog {
+		width: 70%;
+		height: 4px;
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.14);
+		overflow: hidden;
+		margin: 5px 0 1px;
+	}
+	.ach-prog-fill {
+		height: 100%;
+		border-radius: 999px;
+		background: linear-gradient(90deg, #fbbf24, #fde047);
+	}
+	.ach-prog-t {
+		font-family: var(--font-display);
+		font-size: 0.62rem;
+		font-weight: 700;
+		color: var(--text-muted);
 	}
 	.ach {
 		display: flex;
@@ -313,6 +410,12 @@
 	.ach.locked {
 		opacity: 0.45;
 		filter: grayscale(0.7);
+	}
+	/* In-progress locked badges stay more visible so the progress bar reads. */
+	.ach.locked.has-prog {
+		opacity: 0.8;
+		filter: grayscale(0.25);
+		border-color: rgba(251, 191, 36, 0.22);
 	}
 	.ach-emoji {
 		font-size: 1.6rem;
