@@ -21,7 +21,7 @@
 			class="pn-home"
 			on:click={() => goto(home)}
 			aria-label="Main menu"
-			title="Main menu">🏠</button
+			title="Main menu">Main Menu</button
 		>{/if}
 </nav>
 
@@ -47,11 +47,10 @@
 		font-size: 0.9rem;
 	}
 	.pn-home {
-		width: 42px;
-		height: 38px;
-		display: grid;
-		place-items: center;
-		font-size: 1.1rem;
+		padding: 0.5rem 1rem;
+		font-size: 0.9rem;
+		font-weight: 700;
+		color: var(--brand-2, #fde047);
 	}
 	.pn-btn:hover,
 	.pn-home:hover {
