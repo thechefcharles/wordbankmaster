@@ -128,6 +128,7 @@
 		font-family: var(--font-display, sans-serif);
 		font-size: 2rem;
 		font-weight: 800;
+		color: #fff;
 	}
 	.cg-tier {
 		font-size: 0.8rem;
