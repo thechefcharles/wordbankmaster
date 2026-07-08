@@ -10,19 +10,20 @@ Add a **credit score** to WordBank — a 300–850 reputation number that reflec
 responsibly a player manages their money, and that **hard-gates the loan system** (cap +
 interest rate + lockouts) and becomes a **leaderboard stat + badge tier**.
 
-It introduces a second status axis orthogonal to net worth: today the only flex is *how
-much Cash you have*; credit score rewards *how disciplined you are*. A careful player who
+It introduces a second status axis orthogonal to net worth: today the only flex is _how
+much Cash you have_; credit score rewards _how disciplined you are_. A careful player who
 never gets rich can top the credit leaderboard; a reckless whale can tank their score.
 
-**Why hardcore is safe here:** loans are a *booster*, not a necessity — the core loop
+**Why hardcore is safe here:** loans are a _booster_, not a necessity — the core loop
 (solve puzzles → earn Cash in Daily / Cash Game) never requires credit. So a low score
 that locks borrowing removes a tool, it doesn't brick the account. And because the score
-rewards discipline, the recovery path is simply *play clean and stay solvent* — which a
+rewards discipline, the recovery path is simply _play clean and stay solvent_ — which a
 broke player can always do, without needing the thing that's locked.
 
 ## 2. Goals / non-goals
 
 **Goals**
+
 - A legible 300–850 score driven mainly by financial discipline (utilization, solvency,
   restraint), computed server-side from data we already have.
 - Hardcore effects: score bands set loan cap, interest rate, and lockouts.
@@ -31,6 +32,7 @@ broke player can always do, without needing the thing that's locked.
   badge tiers.
 
 **Non-goals (v1)**
+
 - Real-money anything (score is virtual, like all WordBank Cash — see
   `wordbank-virtual-currency`).
 - Gating non-loan systems (Daily, Cash Game stakes, Store) on score. Loans only, for now.
@@ -39,7 +41,7 @@ broke player can always do, without needing the thing that's locked.
 ## 3. The score model (300–850)
 
 Everyone starts at a neutral **650**. Range **[300, 850]**. Recent behavior is weighted
-heavily so the score is volatile *and* recoverable.
+heavily so the score is volatile _and_ recoverable.
 
 **New-player grace (locked):** for the first **7 days** after account creation (or until
 the player's first loan, whichever comes first) the score is **pinned at 650** and the
@@ -50,18 +52,20 @@ chance to learn the system. After grace, normal recompute takes over.
 
 Discipline-weighted:
 
-| Component | Weight | Signal | Source |
-|---|---|---|---|
-| **Utilization** `U` | 35% | `1 − avg(loan/cap)` over the last 14 days. No debt → 1. Sitting maxed → 0. | daily util from `profiles.loan` / `_loan_cap`, or ledger-derived |
-| **Solvency** `S` | 25% | fraction of last 14 days **not in the red** (net_worth ≥ 0). | red-day counter / net_worth checks |
-| **Repayment** `R` | 20% | self-repaid vs defaulted loans in window; defaults drag hard. | `bank_ledger` reasons `loan_repay` vs `loan_skim` |
-| **Restraint** `B` | 10% | penalize serial borrowing (many `loan_take` in window) + always grabbing near-max loans. | `bank_ledger` `loan_take` count + sizes |
-| **Consistency** `C` | 10% | play streak / attendance over window. | existing streak fields |
+| Component           | Weight | Signal                                                                                   | Source                                                           |
+| ------------------- | ------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| **Utilization** `U` | 35%    | `1 − avg(loan/cap)` over the last 14 days. No debt → 1. Sitting maxed → 0.               | daily util from `profiles.loan` / `_loan_cap`, or ledger-derived |
+| **Solvency** `S`    | 25%    | fraction of last 14 days **not in the red** (net_worth ≥ 0).                             | red-day counter / net_worth checks                               |
+| **Repayment** `R`   | 20%    | self-repaid vs defaulted loans in window; defaults drag hard.                            | `bank_ledger` reasons `loan_repay` vs `loan_skim`                |
+| **Restraint** `B`   | 10%    | penalize serial borrowing (many `loan_take` in window) + always grabbing near-max loans. | `bank_ledger` `loan_take` count + sizes                          |
+| **Consistency** `C` | 10%    | play streak / attendance over window.                                                    | existing streak fields                                           |
 
 **Behavioral target:**
+
 ```
 T = 300 + 550 × (0.35·U + 0.25·S + 0.20·R + 0.10·B + 0.10·C)
 ```
+
 All-perfect → 850, all-zero → 300.
 
 ### 3.2 Movement (ease-to-target + event jolts)
@@ -73,11 +77,13 @@ and a per-day floor:
 Δ_daily = clamp(T − score, −DROP_CAP, +RISE_CAP)
 score  += Δ_daily
 ```
+
 - `DROP_CAP = 120` / day — brutal but not a cliff.
 - `RISE_CAP = 40` / day — climbing is a grind (hardcore); ~8 clean days to climb a full tier.
 
-**Catastrophic events** apply an *immediate* extra penalty on top of the eased drop (this
+**Catastrophic events** apply an _immediate_ extra penalty on top of the eased drop (this
 is the intended "cliff" the daily cap otherwise smooths):
+
 - **Default** (`loan_skim` forced / loan auto-collected while unpaid): **−100** and set a
   **derogatory mark** that decays over 30 days (repo-man style) — while active it caps the
   Repayment component and prevents reaching Good+.
@@ -89,6 +95,7 @@ capped event penalty. Constants above are **tunable** and finalized during imple
 ### 3.3 Recompute strategy — lazy, no cron dependency
 
 Store `credit_updated_at`. Recompute is triggered:
+
 - **On loan lifecycle events** — `take_loan`, `repay_loan`, `_accrue_loan` (default path),
   bankruptcy → recompute + apply any event jolt.
 - **Lazily on read** — `get_bank()` (and login) checks elapsed days since
@@ -100,15 +107,16 @@ All computation lives in a single `SECURITY DEFINER` function
 
 ## 4. Bands & hardcore effects
 
-| Tier | Range | Loan cap | Interest rate | Notes |
-|---|---|---|---|---|
-| **Excellent** | 780–850 | `_loan_cap × 1.25` | base − 300bp (softened) | unlocks black card skin (Phase 4) |
-| **Good** | 670–779 | `_loan_cap × 1.0` | base | the neutral baseline |
-| **Fair** | 580–669 | `_loan_cap × 0.5` | base + 300bp | reduced access |
-| **Poor** | 400–579 | floor $250 only | max rate (1500bp) | "the shark barely trusts you" |
-| **Bad** | 300–399 | **borrowing LOCKED** | — | `take_loan` returns `credit_locked` |
+| Tier          | Range   | Loan cap             | Interest rate           | Notes                               |
+| ------------- | ------- | -------------------- | ----------------------- | ----------------------------------- |
+| **Excellent** | 780–850 | `_loan_cap × 1.25`   | base − 300bp (softened) | unlocks black card skin (Phase 4)   |
+| **Good**      | 670–779 | `_loan_cap × 1.0`    | base                    | the neutral baseline                |
+| **Fair**      | 580–669 | `_loan_cap × 0.5`    | base + 300bp            | reduced access                      |
+| **Poor**      | 400–579 | floor $250 only      | max rate (1500bp)       | "the shark barely trusts you"       |
+| **Bad**       | 300–399 | **borrowing LOCKED** | —                       | `take_loan` returns `credit_locked` |
 
 Integration:
+
 - `_loan_cap(uid)` result is multiplied by `_credit_cap_factor(score)` → new effective cap
   surfaced in `get_bank` as `loan_cap`.
 - `_loan_daily_rate_bp(amount, cap)` gets `+ _credit_rate_adjust(score)` added to the base
@@ -129,6 +137,7 @@ Integration:
 ## 6. Data model
 
 **`profiles`** (new columns):
+
 - `credit_score INT NOT NULL DEFAULT 650`
 - `credit_updated_at TIMESTAMPTZ`
 - `credit_derog_until TIMESTAMPTZ` (derogatory-mark expiry; null = clean)
@@ -168,7 +177,7 @@ DB workflow (`wordbank-db-management`).
   the Credit-Karma-style breakdown ("Utilization: High — repay your loan to regain ~40
   pts") + a sparkline of recent history. Legibility is non-negotiable in a hardcore system.
 - **Loans (`/loans`)** — show current tier → your cap + rate right now; if Fair/Poor/Bad,
-  show *why* and the concrete way to recover.
+  show _why_ and the concrete way to recover.
 - **Leaderboard** — add a **Credit** sortable column / mode via `get_credit_leaderboard`.
 - **Badges** — 700 / 800 / 850 "club" milestones + an Excellent-tier badge.
 

@@ -35,11 +35,14 @@
 - Modify `src/routes/bank/+page.svelte` — mount `<CreditGauge>` under the account card; load `getCreditDetail()`.
 
 Helper for all DB steps — open a psql session with:
+
 ```bash
 set -a; . ./.env; set +a
 psql "$SUPABASE_DB_URL"
 ```
+
 Simulate a user inside psql with:
+
 ```sql
 SELECT set_config('request.jwt.claims', json_build_object('sub', '<UID>')::text, true);
 ```
@@ -49,14 +52,17 @@ SELECT set_config('request.jwt.claims', json_build_object('sub', '<UID>')::text,
 ## Task 1: DB schema + tier helper
 
 **Files:**
+
 - Create: `supabase-credit-score-schema.sql`
 
 **Interfaces:**
+
 - Produces: `profiles.credit_score int`, `profiles.credit_updated_at timestamptz`, `profiles.credit_derog_until timestamptz`; table `public.credit_history(user_id, at, score, target, tier, components)`; function `public._credit_tier(int) → text` returning one of `Excellent|Good|Fair|Poor|Bad`.
 
 - [ ] **Step 1: Write the migration file**
 
 Create `supabase-credit-score-schema.sql`:
+
 ```sql
 -- Credit Score Phase 1 — storage + tier helper. Read-only; no loan effects yet.
 -- PITR point logged before apply (see below).
@@ -96,11 +102,13 @@ COMMIT;
 - [ ] **Step 2: Log the PITR point (verify-it-fails analogue)**
 
 Run in psql — capture the current time so we can roll back if needed, and prove the columns do NOT yet exist:
+
 ```sql
 SELECT now() AT TIME ZONE 'utc' AS pitr_point;
 SELECT column_name FROM information_schema.columns
  WHERE table_name='profiles' AND column_name LIKE 'credit%';
 ```
+
 Expected: `pitr_point` prints; the second query returns **0 rows**.
 
 - [ ] **Step 3: Apply the migration**
@@ -109,11 +117,13 @@ Expected: `pitr_point` prints; the second query returns **0 rows**.
 set -a; . ./.env; set +a
 psql "$SUPABASE_DB_URL" -f supabase-credit-score-schema.sql
 ```
+
 Expected: `BEGIN … COMMIT`, no errors.
 
 - [ ] **Step 4: Verify schema + tier boundaries**
 
 Run in psql:
+
 ```sql
 SELECT column_name FROM information_schema.columns
  WHERE table_name='profiles' AND column_name LIKE 'credit%' ORDER BY 1;
@@ -122,6 +132,7 @@ SELECT public._credit_tier(850) AS s850, public._credit_tier(780) AS s780,
        public._credit_tier(580) AS s580, public._credit_tier(400) AS s400,
        public._credit_tier(399) AS s399;
 ```
+
 Expected: 3 credit columns listed; tiers = `Excellent, Excellent, Good, Good, Fair, Poor, Bad`.
 
 - [ ] **Step 5: Commit**
@@ -136,15 +147,18 @@ git commit -m "Credit score: profiles columns + credit_history + _credit_tier"
 ## Task 2: `_recompute_credit` function
 
 **Files:**
+
 - Create: `supabase-credit-score-recompute.sql`
 
 **Interfaces:**
+
 - Consumes: `_credit_tier(int)`, `_loan_cap(uuid)`, `_ensure_bank(uuid)`, `bank_ledger`, `profiles(credit_score, credit_updated_at, credit_derog_until, created_at, bank, loan, streak)`.
 - Produces: `public._recompute_credit(p_uid UUID, p_event TEXT DEFAULT NULL, p_event_delta INT DEFAULT 0) → INT` (new score). Writes `profiles.credit_score`/`credit_updated_at`, appends `credit_history`. Applies grace, per-day ease clamp, and multi-day catch-up (≤7 eases).
 
 - [ ] **Step 1: Write the function file**
 
 Create `supabase-credit-score-recompute.sql`:
+
 ```sql
 -- Credit Score Phase 1 — core recompute. Derives 5 discipline components from a
 -- 14-day bank_ledger window, eases the stored score toward a target (bounded per
@@ -255,10 +269,12 @@ COMMIT;
 - [ ] **Step 2: Log PITR + prove it fails**
 
 In psql:
+
 ```sql
 SELECT now() AT TIME ZONE 'utc' AS pitr_point;
 SELECT public._recompute_credit('00000000-0000-0000-0000-000000000000');
 ```
+
 Expected: `pitr_point` prints; the call ERRORs with `function public._recompute_credit(...) does not exist`.
 
 - [ ] **Step 3: Apply**
@@ -266,11 +282,13 @@ Expected: `pitr_point` prints; the call ERRORs with `function public._recompute_
 ```bash
 psql "$SUPABASE_DB_URL" -f supabase-credit-score-recompute.sql
 ```
+
 Expected: `BEGIN … COMMIT`.
 
 - [ ] **Step 4: Verify with a real user (grace + normal paths)**
 
 Pick a real UID (`SELECT id, created_at FROM public.profiles LIMIT 1;`). Then:
+
 ```sql
 -- Force out of grace so we exercise the real math: backdate created_at in a tx we roll back.
 BEGIN;
@@ -282,6 +300,7 @@ SELECT score, target, tier, components FROM public.credit_history
  WHERE user_id = '<UID>' ORDER BY at DESC LIMIT 1;
 ROLLBACK;
 ```
+
 Expected: `new_score` in [300,850]; a `credit_history` row with `components` containing `U/S/R/B/C`; `tier` matching the score band. (ROLLBACK restores `created_at`.)
 
 - [ ] **Step 5: Verify the daily-drop cap**
@@ -295,6 +314,7 @@ UPDATE public.profiles SET created_at = now() - INTERVAL '30 days',
 SELECT public._recompute_credit('<UID>') AS after_one_day;  -- expect ~820-120=700, not a full crash
 ROLLBACK;
 ```
+
 Expected: `after_one_day` ≈ `700` (drop clamped to 120), **not** near 300.
 
 - [ ] **Step 6: Commit**
@@ -309,9 +329,11 @@ git commit -m "Credit score: _recompute_credit (components, ease, grace, derog)"
 ## Task 3: Lazy recompute in `get_bank` + `get_credit_detail()`
 
 **Files:**
+
 - Create: `supabase-credit-score-getbank.sql`
 
 **Interfaces:**
+
 - Consumes: `_recompute_credit`, `_credit_tier`, existing `get_bank(p_limit)`.
 - Produces: `get_bank` JSON gains `credit_score INT`, `credit_tier TEXT`, `credit_delta INT` (vs the prior `credit_history` row). New RPC `public.get_credit_detail() → JSONB` = `{ score, target, tier, delta, components:{utilization,solvency,repayment,restraint,consistency}, history:[{at,score}] }` where each component is `{ value:0..1, label, hint }`.
 
@@ -322,6 +344,7 @@ Run: `psql "$SUPABASE_DB_URL" -c "\sf public.get_bank"` (note: there is a `p_lim
 - [ ] **Step 2: Write the patch file**
 
 Create `supabase-credit-score-getbank.sql` (adjust the `get_bank` signature/body to match Step 1's output; the credit additions are the point):
+
 ```sql
 -- Credit Score Phase 1 — surface credit in get_bank (lazy daily recompute) and add
 -- get_credit_detail() for the gauge breakdown. PITR point logged before apply.
@@ -404,17 +427,20 @@ COMMIT;
 psql "$SUPABASE_DB_URL" -c "SELECT now() AT TIME ZONE 'utc';"
 psql "$SUPABASE_DB_URL" -f supabase-credit-score-getbank.sql
 ```
+
 Expected: `BEGIN … COMMIT`.
 
 - [ ] **Step 4: Verify payload + detail as a real user**
 
 In psql:
+
 ```sql
 SELECT set_config('request.jwt.claims', json_build_object('sub','<UID>')::text, true);
 SELECT public.get_bank(5) -> 'credit_score' AS score,
        public.get_bank(5) -> 'credit_tier'  AS tier;
 SELECT public.get_credit_detail() -> 'components' -> 'utilization';
 ```
+
 Expected: `score` is a number 300–850; `tier` a band string; the component object has `value/label/hint`.
 
 - [ ] **Step 5: Commit**
@@ -429,15 +455,18 @@ git commit -m "Credit score: lazy recompute in get_bank + get_credit_detail RPC"
 ## Task 4: Store getter + types
 
 **Files:**
+
 - Modify: `src/lib/stores/statsStore.js`
 
 **Interfaces:**
+
 - Consumes: `get_bank` (now returns credit fields), `get_credit_detail`.
 - Produces: `getCreditDetail()` → the detail object (or `null`); `getBank`'s JSDoc return type documents `credit_score`, `credit_tier`, `credit_delta`.
 
 - [ ] **Step 1: Add the getter next to `getBank`**
 
 In `src/lib/stores/statsStore.js`, immediately after the `getBank` function, add:
+
 ```js
 /** Full credit-score breakdown for the gauge detail view. Returns null if signed out. */
 export async function getCreditDetail() {
@@ -457,10 +486,12 @@ Find the JSDoc `@returns` (or the type comment) on `getBank` and append the thre
 - [ ] **Step 3: Gate**
 
 Run:
+
 ```bash
 npx prettier --write src/lib/stores/statsStore.js
 npm run check
 ```
+
 Expected: prettier reformats/clean; svelte-check `0 errors`.
 
 - [ ] **Step 4: Commit**
@@ -475,15 +506,18 @@ git commit -m "Credit score: getCreditDetail() store getter"
 ## Task 5: `CreditGauge.svelte` component
 
 **Files:**
+
 - Create: `src/lib/components/CreditGauge.svelte`
 
 **Interfaces:**
+
 - Consumes (props): `score:number`, `tier:string`, `delta:number = 0`, and `detail` (the `getCreditDetail()` object, or `null` while loading).
 - Produces: a self-contained gauge; tapping it toggles an inline breakdown panel built from `detail.components`. No external calls (parent passes data in).
 
 - [ ] **Step 1: Write the component**
 
 Create `src/lib/components/CreditGauge.svelte`:
+
 ```svelte
 <script>
 	// 💳 Credit score gauge — 300–850 arc dial + tier + delta, tap for breakdown.
@@ -493,37 +527,63 @@ Create `src/lib/components/CreditGauge.svelte`:
 	/** @type {any} */ export let detail = null;
 
 	let open = false;
-	const MIN = 300, MAX = 850;
+	const MIN = 300,
+		MAX = 850;
 	// Arc: 300° sweep from 120° (bottom-left) clockwise. Map score → angle → dash.
 	$: pct = Math.max(0, Math.min(1, (score - MIN) / (MAX - MIN)));
-	const R = 80, C = 2 * Math.PI * R, SWEEP = 0.75; // 3/4 circle
+	const R = 80,
+		C = 2 * Math.PI * R,
+		SWEEP = 0.75; // 3/4 circle
 	$: dash = pct * C * SWEEP;
 	$: tierColor =
-		tier === 'Excellent' ? '#34d399'
-		: tier === 'Good' ? '#fbbf24'
-		: tier === 'Fair' ? '#f59e0b'
-		: tier === 'Poor' ? '#fb7185'
-		: '#ef4444';
+		tier === 'Excellent'
+			? '#34d399'
+			: tier === 'Good'
+				? '#fbbf24'
+				: tier === 'Fair'
+					? '#f59e0b'
+					: tier === 'Poor'
+						? '#fb7185'
+						: '#ef4444';
 	$: comps = detail?.components
-		? [detail.components.utilization, detail.components.solvency, detail.components.repayment,
-		   detail.components.restraint, detail.components.consistency].filter(Boolean)
+		? [
+				detail.components.utilization,
+				detail.components.solvency,
+				detail.components.repayment,
+				detail.components.restraint,
+				detail.components.consistency
+			].filter(Boolean)
 		: [];
 </script>
 
 <div class="cg">
 	<button class="cg-face" on:click={() => (open = !open)} aria-expanded={open}>
 		<svg viewBox="0 0 200 200" class="cg-svg">
-			<circle class="cg-track" cx="100" cy="100" r="80"
-				stroke-dasharray="{C * 0.75} {C}" transform="rotate(135 100 100)" />
-			<circle class="cg-fill" cx="100" cy="100" r="80" stroke={tierColor}
-				stroke-dasharray="{dash} {C}" transform="rotate(135 100 100)" />
+			<circle
+				class="cg-track"
+				cx="100"
+				cy="100"
+				r="80"
+				stroke-dasharray="{C * 0.75} {C}"
+				transform="rotate(135 100 100)"
+			/>
+			<circle
+				class="cg-fill"
+				cx="100"
+				cy="100"
+				r="80"
+				stroke={tierColor}
+				stroke-dasharray="{dash} {C}"
+				transform="rotate(135 100 100)"
+			/>
 		</svg>
 		<div class="cg-center">
 			<span class="cg-score">{score}</span>
 			<span class="cg-tier" style="color:{tierColor}">{tier}</span>
 			{#if delta !== 0}
 				<span class="cg-delta" class:pos={delta > 0} class:neg={delta < 0}
-					>{delta > 0 ? '▲' : '▼'} {Math.abs(delta)}</span>
+					>{delta > 0 ? '▲' : '▼'} {Math.abs(delta)}</span
+				>
 			{/if}
 		</div>
 	</button>
@@ -532,8 +592,12 @@ Create `src/lib/components/CreditGauge.svelte`:
 			{#each comps as c}
 				<div class="cg-row">
 					<span class="cg-rlabel">{c.label}</span>
-					<span class="cg-bar"><span class="cg-barfill"
-						style="width:{Math.round((c.value ?? 0) * 100)}%; background:{tierColor}"></span></span>
+					<span class="cg-bar"
+						><span
+							class="cg-barfill"
+							style="width:{Math.round((c.value ?? 0) * 100)}%; background:{tierColor}"
+						></span></span
+					>
 					<span class="cg-rhint">{c.hint}</span>
 				</div>
 			{/each}
@@ -542,40 +606,114 @@ Create `src/lib/components/CreditGauge.svelte`:
 </div>
 
 <style>
-	.cg { width: 100%; }
+	.cg {
+		width: 100%;
+	}
 	.cg-face {
-		position: relative; width: 200px; max-width: 60%; margin: 0 auto; display: block;
-		background: none; border: none; cursor: pointer; padding: 0;
+		position: relative;
+		width: 200px;
+		max-width: 60%;
+		margin: 0 auto;
+		display: block;
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: 0;
 	}
-	.cg-svg { width: 100%; height: auto; display: block; }
-	.cg-track { fill: none; stroke: var(--border, rgba(255,255,255,0.1)); stroke-width: 14; stroke-linecap: round; }
-	.cg-fill { fill: none; stroke-width: 14; stroke-linecap: round; transition: stroke-dasharray 0.6s var(--ease-spring, ease); }
+	.cg-svg {
+		width: 100%;
+		height: auto;
+		display: block;
+	}
+	.cg-track {
+		fill: none;
+		stroke: var(--border, rgba(255, 255, 255, 0.1));
+		stroke-width: 14;
+		stroke-linecap: round;
+	}
+	.cg-fill {
+		fill: none;
+		stroke-width: 14;
+		stroke-linecap: round;
+		transition: stroke-dasharray 0.6s var(--ease-spring, ease);
+	}
 	.cg-center {
-		position: absolute; inset: 0; display: flex; flex-direction: column;
-		align-items: center; justify-content: center; gap: 2px;
+		position: absolute;
+		inset: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 2px;
 	}
-	.cg-score { font-family: var(--font-display, sans-serif); font-size: 2rem; font-weight: 800; }
-	.cg-tier { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-	.cg-delta { font-size: 0.72rem; font-weight: 700; }
-	.cg-delta.pos { color: #34d399; } .cg-delta.neg { color: #fb7185; }
-	.cg-breakdown { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
-	.cg-row { display: grid; grid-template-columns: 84px 1fr; grid-template-rows: auto auto;
-		gap: 2px 8px; align-items: center; }
-	.cg-rlabel { font-size: 0.78rem; font-weight: 700; color: var(--text); }
-	.cg-bar { height: 7px; border-radius: 999px; background: var(--border, rgba(255,255,255,0.1)); overflow: hidden; }
-	.cg-barfill { display: block; height: 100%; border-radius: 999px; }
-	.cg-rhint { grid-column: 1 / -1; font-size: 0.72rem; color: var(--text-muted); }
+	.cg-score {
+		font-family: var(--font-display, sans-serif);
+		font-size: 2rem;
+		font-weight: 800;
+	}
+	.cg-tier {
+		font-size: 0.8rem;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+	.cg-delta {
+		font-size: 0.72rem;
+		font-weight: 700;
+	}
+	.cg-delta.pos {
+		color: #34d399;
+	}
+	.cg-delta.neg {
+		color: #fb7185;
+	}
+	.cg-breakdown {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		margin-top: 10px;
+	}
+	.cg-row {
+		display: grid;
+		grid-template-columns: 84px 1fr;
+		grid-template-rows: auto auto;
+		gap: 2px 8px;
+		align-items: center;
+	}
+	.cg-rlabel {
+		font-size: 0.78rem;
+		font-weight: 700;
+		color: var(--text);
+	}
+	.cg-bar {
+		height: 7px;
+		border-radius: 999px;
+		background: var(--border, rgba(255, 255, 255, 0.1));
+		overflow: hidden;
+	}
+	.cg-barfill {
+		display: block;
+		height: 100%;
+		border-radius: 999px;
+	}
+	.cg-rhint {
+		grid-column: 1 / -1;
+		font-size: 0.72rem;
+		color: var(--text-muted);
+	}
 </style>
 ```
 
 - [ ] **Step 2: Gate the build**
 
 Run:
+
 ```bash
 npx prettier --write src/lib/components/CreditGauge.svelte
 npm run check
 npm run build
 ```
+
 Expected: prettier clean; svelte-check `0 errors`; build OK.
 
 - [ ] **Step 3: Commit**
@@ -590,29 +728,37 @@ git commit -m "Credit score: CreditGauge component (dial + breakdown)"
 ## Task 6: Mount on My Account + verify end-to-end
 
 **Files:**
+
 - Modify: `src/routes/bank/+page.svelte`
 
 **Interfaces:**
+
 - Consumes: `getCreditDetail()`, the `credit_score`/`credit_tier`/`credit_delta` fields already on the `getBank` result (`b`), `CreditGauge.svelte`.
 
 - [ ] **Step 1: Import + load the detail**
 
 In `src/routes/bank/+page.svelte` `<script>`, add the imports and a `cd` (credit detail) load alongside the existing `getProfileDetail`/`getBank`:
+
 ```js
 import CreditGauge from '$lib/components/CreditGauge.svelte';
 import { getBank, getProfileDetail, getCreditDetail } from '$lib/stores/statsStore.js';
 ```
+
 Add state `let cd = null;` and load it in `onMount` — extend the existing `Promise.all`:
+
 ```js
-[prof, cd] = await Promise.all([getProfileDetail(), getCreditDetail(), load()]).then(
-	(r) => [r[0], r[1]]
-);
+[prof, cd] = await Promise.all([getProfileDetail(), getCreditDetail(), load()]).then((r) => [
+	r[0],
+	r[1]
+]);
 ```
+
 (Keep `load()` setting `b`; the `.then` just picks `prof` and `cd`.)
 
 - [ ] **Step 2: Render the gauge under the account card**
 
 Directly after the `.ac-hero` block (the `<AccountCard …/>` wrapper) and before `<LoanPanel …>`, add:
+
 ```svelte
 <!-- 💳 Credit score -->
 {#if b}
@@ -627,10 +773,17 @@ Directly after the `.ac-hero` block (the `<AccountCard …/>` wrapper) and befor
 	</section>
 {/if}
 ```
+
 Add to `<style>`:
+
 ```css
-	.credit-sec { margin: 4px 0 16px; }
-	.credit-sec .hist-title { text-align: center; margin-bottom: 8px; }
+.credit-sec {
+	margin: 4px 0 16px;
+}
+.credit-sec .hist-title {
+	text-align: center;
+	margin-bottom: 8px;
+}
 ```
 
 - [ ] **Step 3: Gate**
@@ -641,6 +794,7 @@ npm run check
 npm run lint
 npm run build
 ```
+
 Expected: all clean; build OK.
 
 - [ ] **Step 4: Preview screenshot verification**
@@ -650,6 +804,7 @@ pkill -f "vite preview" 2>/dev/null
 nohup npm run preview -- --port 4173 > /tmp/wb-preview.log 2>&1 &
 sleep 4
 ```
+
 Then a Playwright script (CJS default import per `wordbank-qa-harness`) that logs in as the test user, navigates to `/bank`, waits, and screenshots. Assert in the script: `document.querySelector('.cg-score')` text is a 3-digit number and `.cg-tier` is non-empty. Read the screenshot to confirm the dial renders under the card and the tap-breakdown opens.
 
 Expected: gauge visible with a score + tier; tapping shows the 5-row breakdown.
@@ -662,6 +817,7 @@ git commit -m "Credit score: mount CreditGauge on My Account"
 git push -u origin <branch>
 gh pr create --title "Credit score Phase 1: score model + read-only gauge" --body "…"
 ```
+
 Then squash-merge and sync master (standard flow). Phase 1 ships with **no loan effects** — verify on prod that `/bank` shows a gauge and `/loans` behavior is unchanged.
 
 ---
@@ -669,6 +825,6 @@ Then squash-merge and sync master (standard flow). Phase 1 ships with **no loan 
 ## Self-review notes
 
 - **Spec coverage (§3 model, §3.1 components, §3.2 movement, §6 data model, §7 functions, §8 My Account gauge):** Tasks 1–6 cover storage (T1), the weighted target + ease + grace + derog (T2), lazy recompute + payload + detail RPC (T3), store access (T4), the gauge (T5), and the My Account surface (T6). Spec §4 loan effects, §8 Loans/Leaderboard/Badges are **explicitly deferred** (Phase 2–4) per the plan goal.
-- **Phase-1 simplifications flagged:** Utilization uses the *instantaneous* loan/cap (spec's rolling-average anti-abuse matters only once effects exist in Phase 2); Consistency falls back to a ledger-day proxy if `streak` is 0. Both are noted and safe for a read-only display.
+- **Phase-1 simplifications flagged:** Utilization uses the _instantaneous_ loan/cap (spec's rolling-average anti-abuse matters only once effects exist in Phase 2); Consistency falls back to a ledger-day proxy if `streak` is 0. Both are noted and safe for a read-only display.
 - **Type consistency:** `_recompute_credit(uuid,text,int)`, `_credit_tier(int)`, `get_credit_detail()` shape (`score/target/tier/delta/components{value,label,hint}/history`), and `CreditGauge` props (`score/tier/delta/detail`) are used identically across Tasks 2–6.
 - **No placeholders:** every DB and Svelte step includes the actual code; PR body text in T6 Step 5 is the one intentional fill-in at ship time.
