@@ -6040,7 +6040,8 @@
 		flex-direction: column;
 		gap: 0.85rem;
 		width: 100%;
-		max-width: 360px;
+		max-width: 264px;
+		margin: 0 auto;
 	}
 	/* ── Gold bullion bars ─────────────────────────────────────────────── */
 	.menu-card {
