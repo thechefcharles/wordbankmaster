@@ -2,7 +2,9 @@
    WordBank design system — premium dark neon-arcade aesthetic
    Global tokens + base styles. Imported once in +layout.svelte.
 ============================================================ */
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+/* All app fonts in one top-level import (font @imports MUST precede all other CSS;
+   keeping them here avoids the invalid mid-stylesheet @imports Vite errors on). */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=VT323&family=Montserrat:wght@500;700&family=Playfair+Display:wght@400;700&family=Orbitron:wght@400;700&display=swap');
 
 :root {
 	/* Brand */
