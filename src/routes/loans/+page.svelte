@@ -29,16 +29,13 @@
 <main class="loans-page">
 	<PageNav back="/" />
 
-	<!-- 🦈 Shark hero — placeholder art now; animation pass lands here later -->
-	<div class="shark-hero" class:owe={inDebt}>
-		<div class="shark-art" aria-hidden="true">🦈</div>
-		<h1 class="shark-title">Loan Shark</h1>
-		<p class="shark-sub">
+	<div class="loan-hero">
+		<h1 class="loan-title">Loans</h1>
+		<p class="loan-sub">
 			{#if inDebt}
-				The Shark's circling. Interest compounds every day it's out — pay it down before it bites.
+				Interest grows every day it's out — pay it down soon.
 			{:else}
-				Need Cash fast? Borrow on the spot. Interest compounds daily and the more you take, the
-				steeper the rate — so borrow smart and pay it back quick.
+				Borrow Cash instantly. Daily interest scales with how much you take.
 			{/if}
 		</p>
 	</div>
@@ -48,19 +45,15 @@
 	{:else if b}
 		<LoanPanel bank={b} expanded on:changed={load} />
 
-		<!-- How the Shark charges -->
 		<div class="rate-card">
-			<div class="rc-head">Daily interest — the more you borrow, the higher the rate</div>
+			<div class="rc-head">Daily interest by amount</div>
 			<div class="rc-rows">
 				<div class="rc-row"><span>Up to 25% of your limit</span><b>5% / day</b></div>
 				<div class="rc-row"><span>Up to 50%</span><b>8% / day</b></div>
 				<div class="rc-row"><span>Up to 75%</span><b class="hot">12% / day</b></div>
 				<div class="rc-row"><span>Above 75%</span><b class="hot">15% / day</b></div>
 			</div>
-			<p class="rc-note">
-				Compounds daily · never grows past <b>2.5×</b> what you borrowed · half of every payout auto-pays
-				it down.
-			</p>
+			<p class="rc-note">Caps at <b>2.5×</b> what you borrow · half of each payout auto-repays.</p>
 		</div>
 	{/if}
 </main>
@@ -71,43 +64,20 @@
 		margin: 0 auto;
 		padding: 12px 16px 40px;
 	}
-	.shark-hero {
+	.loan-hero {
 		text-align: center;
-		padding: 8px 6px 18px;
+		padding: 6px 6px 16px;
 	}
-	.shark-art {
-		font-size: 4.6rem;
-		line-height: 1;
-		filter: drop-shadow(0 8px 22px rgba(56, 189, 248, 0.4));
-		animation: sharkBob 3.4s ease-in-out infinite;
-	}
-	.shark-hero.owe .shark-art {
-		filter: drop-shadow(0 8px 22px rgba(248, 113, 113, 0.5));
-	}
-	@keyframes sharkBob {
-		0%,
-		100% {
-			transform: translateY(0) rotate(-2deg);
-		}
-		50% {
-			transform: translateY(-8px) rotate(2deg);
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.shark-art {
-			animation: none;
-		}
-	}
-	.shark-title {
+	.loan-title {
 		font-family: var(--font-display);
 		font-weight: 800;
 		font-size: 1.7rem;
-		margin: 8px 0 4px;
+		margin: 0 0 4px;
 		color: var(--text, #f4f6fb);
 	}
-	.shark-sub {
+	.loan-sub {
 		font-size: 0.9rem;
-		line-height: 1.5;
+		line-height: 1.45;
 		color: var(--text-muted, #aeb8c6);
 		max-width: 340px;
 		margin: 0 auto;
