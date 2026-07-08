@@ -505,11 +505,12 @@
 		gap: 1px;
 	}
 	.loan-usd {
-		font-family: 'Orbitron', var(--font-display);
+		font-family: var(--font-display, sans-serif);
 		font-weight: 800;
 		color: var(--brand-2);
-		font-size: 1.6rem;
+		font-size: 1.7rem;
 		line-height: 1;
+		font-variant-numeric: tabular-nums;
 	}
 	.loan-sub {
 		font-size: 0.68rem;
