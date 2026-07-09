@@ -5,6 +5,7 @@
 	export let tier = 'Good';
 	export let delta = 0;
 	/** @type {any} */ export let detail = null;
+	export let hero = false; // enlarge as the page focal point
 
 	let open = false;
 	$: card = cardName(tier);
@@ -37,7 +38,7 @@
 		: [];
 </script>
 
-<div class="cg">
+<div class="cg" class:hero>
 	<button class="cg-face" on:click={() => (open = !open)} aria-expanded={open}>
 		<svg viewBox="0 0 200 200" class="cg-svg">
 			<circle
@@ -142,6 +143,17 @@
 		font-size: 2rem;
 		font-weight: 800;
 		color: #fff;
+	}
+	/* Hero size — the focal point of My Account. */
+	.cg.hero .cg-face {
+		width: 260px;
+		max-width: 80%;
+	}
+	.cg.hero .cg-score {
+		font-size: 2.7rem;
+	}
+	.cg.hero .cg-tier {
+		font-size: 0.92rem;
 	}
 	.cg-tier {
 		font-size: 0.8rem;
