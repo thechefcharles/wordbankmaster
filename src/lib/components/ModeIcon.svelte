@@ -38,5 +38,6 @@
 		justify-content: center;
 		flex: none;
 		line-height: 0;
+		vertical-align: middle;
 	}
 </style>

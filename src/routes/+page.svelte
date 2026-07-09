@@ -3303,7 +3303,7 @@
 							openCommunity('challenges');
 						}}
 					>
-						<span class="cc-ic">⚔️</span> Challenge Friends
+						<span class="cc-ic"><ModeIcon mode="challenge" size={20} /></span> Challenge Friends
 					</button>
 				</div>
 			{:else if menuView === 'play'}
@@ -3327,11 +3327,16 @@
 						on:click={handleMenuDaily}
 					>
 						<span class="mc-streak left" title="Play streak — days in a row"
-							>📅 {dailyStatus?.current_streak ?? 0}</span
+							><ModeIcon mode="daily" size={14} /> {dailyStatus?.current_streak ?? 0}</span
 						>
 						<span class="mc-title">{dailyInProgress ? 'Resume Daily' : 'Daily'}</span>
 						<span class="mc-streak right" title="Win streak — solves in a row"
-							>🏆 {dailyStatus?.win_streak ?? 0}</span
+							><svg class="mc-fire" viewBox="0 0 24 24" aria-hidden="true"
+								><path
+									d="M12 3s5 3.8 5 9a5 5 0 0 1-10 0c0-2 .9-3.5 2.4-4.6C10.2 8.7 12 7 12 3Z"
+								/></svg
+							>
+							{dailyStatus?.win_streak ?? 0}</span
 						>
 						{#if dailyDone}
 							{#if dailyStatus?.last_daily_won}
@@ -3355,12 +3360,14 @@
 						style="--i: 1"
 						on:click={handleMenuClimb}
 					>
-						<span class="mc-title">Cash Game</span>
+						<ModeIcon mode="climb" size={22} /><span class="mc-title">Cash Game</span>
 						{#if climbInProgress}<span class="daily-chip prog">▶ Resume</span>{/if}
 					</button>
 					{#if BLITZ_ENABLED}
 						<button class="menu-card" style="--i: 2" on:click={handleMenuBlitz}>
-							<span class="mc-title">⚡ Blitz</span><span class="mc-stat">Beat the clock</span>
+							<ModeIcon mode="blitz" size={22} /><span class="mc-title">Blitz</span><span
+								class="mc-stat">Beat the clock</span
+							>
 						</button>
 					{/if}
 				</div>
@@ -3382,7 +3389,10 @@
 					{:else}
 						<button class="sub-back" on:click={exitCommunity}>← Back</button>
 						<h2 class="sub-title">
-							{communityTab === 'leaderboard' ? '🏆 Leaderboard' : '⚔️ Challenges'}
+							{#if communityTab === 'leaderboard'}🏆 Leaderboard{:else}<ModeIcon
+									mode="challenge"
+									size={17}
+								/> Challenges{/if}
 						</h2>
 						{#if communityTab === 'challenges'}
 							<button
@@ -3532,7 +3542,7 @@
 				></button>
 				<div class="modal-content main-menu-modal tier-modal">
 					<button class="close-btn" on:click={() => (showBlitzTier = false)}>❌</button>
-					<h2>⚡ Blitz</h2>
+					<h2><ModeIcon mode="blitz" size={20} /> Blitz</h2>
 					<p class="cat-sub">
 						Beat the clock. 45s to start — reveal costs 3s, a wrong guess costs 5s, each solve adds
 						8s + a combo-boosted payout. Bank whatever you win.
@@ -3575,7 +3585,7 @@
 				<div class="modal-content main-menu-modal ch-modal">
 					<button class="close-btn" on:click={() => (showChallenges = false)}>❌</button>
 
-					<h2>⚔️ New Challenge</h2>
+					<h2><ModeIcon mode="challenge" size={20} /> New Challenge</h2>
 					<div class="ch-steps" aria-hidden="true">
 						<span class="ch-dot" class:on={mbStep >= 1}></span>
 						<span class="ch-dot" class:on={mbStep >= 2}></span>
@@ -3671,7 +3681,7 @@
 										class="ch-mode"
 										class:active={mbMode === 'blitz'}
 										on:click={() => (mbMode = 'blitz')}
-										>⚡ Blitz<small>timed · combos</small></button
+										><ModeIcon mode="blitz" size={16} /> Blitz<small>timed · combos</small></button
 									>
 								</div>
 							{/if}
@@ -3762,7 +3772,7 @@
 								>
 							{:else}
 								<button class="ch-create ch-grow" disabled={mbBusy} on:click={submitNewMatch}
-									>Send challenge ⚔️</button
+									>Send challenge <ModeIcon mode="challenge" size={17} /></button
 								>
 							{/if}
 						</div>
@@ -5884,7 +5894,8 @@
 		transform: scale(0.98);
 	}
 	.cc-ic {
-		font-size: 1.1rem;
+		display: inline-flex;
+		align-items: center;
 	}
 	.ch-new-btn {
 		width: 100%;
@@ -6389,11 +6400,22 @@
 		top: 50%;
 		transform: translateY(-50%);
 		z-index: 1;
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
 		font-family: 'Orbitron', var(--font-display);
 		font-weight: 800;
 		font-size: 0.82rem;
 		color: #463413;
 		text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+	}
+	.mc-fire {
+		width: 1em;
+		height: 1em;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.7;
+		stroke-linejoin: round;
 	}
 	.mc-streak.left {
 		left: 13px;
