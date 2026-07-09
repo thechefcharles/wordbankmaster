@@ -4450,7 +4450,12 @@
 							title="Your power-ups"
 							aria-label="Open your vault"
 						>
-							<img src="/vault.png" alt="" />
+							<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
+								<rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+								<rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
+								<rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
+								<rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
+							</svg>
 							{#if usableClimbPups > 0}<span class="solve-vault-badge">{usableClimbPups}</span>{/if}
 						</button>
 					{:else if isMatch && matchInfo?.items_allowed && !matchInfo?.done && gameActive}
@@ -4460,7 +4465,12 @@
 							title="Your power-ups"
 							aria-label="Open your vault"
 						>
-							<img src="/vault.png" alt="" />
+							<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
+								<rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+								<rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
+								<rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
+								<rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
+							</svg>
 							{#if usableMatchPups > 0}<span class="solve-vault-badge">{usableMatchPups}</span>{/if}
 						</button>
 					{/if}
@@ -8146,10 +8156,10 @@
 	.solve-vault:active {
 		transform: translateY(-50%) scale(0.93);
 	}
-	.solve-vault img {
-		width: 34px;
-		height: 34px;
-		object-fit: contain;
+	.solve-vault .qt-svg {
+		width: 26px;
+		height: 26px;
+		stroke: #fff;
 	}
 	.solve-vault-badge {
 		position: absolute;
