@@ -1,17 +1,15 @@
 <script>
 	import { onMount } from 'svelte';
 	import PageNav from '$lib/components/PageNav.svelte';
-	import { getBank, getProfileDetail, getCreditDetail } from '$lib/stores/statsStore.js';
-	import AccountCard from '$lib/components/AccountCard.svelte';
+	import { getBank, getCreditDetail } from '$lib/stores/statsStore.js';
 	import CreditGauge from '$lib/components/CreditGauge.svelte';
 	import LoanPanel from '$lib/components/LoanPanel.svelte';
 	import { reasonLabel } from '$lib/bankReasons.js';
+	import { cardName } from '$lib/creditTiers.js';
 	import { track } from '$lib/analytics.js';
 
 	/** @type {{ bank:number, net_worth:number, loan:number, loan_cap:number, in_the_red:boolean, ledger:any[], credit_score:number, credit_tier:string, credit_delta:number }|null} */
 	let b = null;
-	/** @type {any} */
-	let prof = null;
 	/** @type {any} */
 	let cd = null;
 	let loading = true;
@@ -22,9 +20,7 @@
 	onMount(async () => {
 		track('bank_view');
 		try {
-			const [p, c] = await Promise.all([getProfileDetail(), getCreditDetail(), load()]);
-			prof = p;
-			cd = c;
+			[cd] = await Promise.all([getCreditDetail(), load()]);
 		} finally {
 			loading = false;
 		}
@@ -88,26 +84,22 @@
 	{#if loading}
 		<p class="loading">Loading…</p>
 	{:else if b}
-		<!-- 💳 Account card hero — balance + identity -->
-		<div class="ac-hero">
-			<AccountCard
-				holder={prof?.username ?? ''}
-				account={prof?.account_number ?? ''}
-				member={prof?.member_no ?? null}
-				balance={b.bank}
-				tier={b.credit_tier ?? 'Good'}
-			/>
+		<!-- 💰 Available Balance — clean line, no card -->
+		<div class="bal-line">
+			<span class="bal-cap">Available Balance</span>
+			<span class="bal-amt">{fmt(b.bank)}</span>
 		</div>
 
-		<!-- 💳 Credit score -->
+		<!-- 💳 Credit score — the hero -->
 		<section class="credit-sec">
-			<h2 class="hist-title">Credit Score</h2>
 			<CreditGauge
 				score={b.credit_score ?? 650}
 				tier={b.credit_tier ?? 'Good'}
 				delta={b.credit_delta ?? 0}
 				detail={cd}
+				hero
 			/>
+			<div class="credit-card-name">WordBank {cardName(b.credit_tier ?? 'Good')}</div>
 		</section>
 
 		<!-- 💸 Loan Shark -->
@@ -233,15 +225,37 @@
 		text-align: center;
 	}
 
-	.ac-hero {
-		margin-bottom: 14px;
+	.bal-line {
+		text-align: center;
+		margin: 2px 0 18px;
+	}
+	.bal-cap {
+		display: block;
+		font-size: 0.72rem;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: var(--text-muted);
+	}
+	.bal-amt {
+		display: block;
+		font-family: var(--font-display, sans-serif);
+		font-weight: 800;
+		font-size: 2rem;
+		line-height: 1.1;
+		font-variant-numeric: tabular-nums;
+		color: var(--text);
 	}
 	.credit-sec {
-		margin: 4px 0 16px;
-	}
-	.credit-sec .hist-title {
+		margin: 4px 0 18px;
 		text-align: center;
-		margin-bottom: 8px;
+	}
+	.credit-card-name {
+		margin-top: 8px;
+		font-family: var(--font-display, sans-serif);
+		font-weight: 800;
+		font-size: 0.9rem;
+		letter-spacing: 0.02em;
+		color: var(--brand-2, #fde047);
 	}
 
 	.led-head {
