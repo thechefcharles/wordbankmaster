@@ -54,16 +54,16 @@ Discipline-weighted:
 
 | Component           | Weight | Signal                                                                                   | Source                                                           |
 | ------------------- | ------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| **Utilization** `U` | 35%    | `1 − avg(loan/cap)` over the last 14 days. No debt → 1. Sitting maxed → 0.               | daily util from `profiles.loan` / `_loan_cap`, or ledger-derived |
-| **Solvency** `S`    | 25%    | fraction of last 14 days **not in the red** (net_worth ≥ 0).                             | red-day counter / net_worth checks                               |
-| **Repayment** `R`   | 20%    | self-repaid vs defaulted loans in window; defaults drag hard.                            | `bank_ledger` reasons `loan_repay` vs `loan_skim`                |
+| **Utilization** `U` | 25%    | `1 − avg(loan/cap)` over the last 14 days. No debt → 1. Sitting maxed → 0.               | daily util from `profiles.loan` / `_loan_cap`, or ledger-derived |
+| **Solvency** `S`    | 20%    | fraction of last 14 days **not in the red** (net_worth ≥ 0).                             | red-day counter / net_worth checks                               |
+| **Repayment** `R`   | 15%    | self-repaid vs defaulted loans in window; defaults drag hard.                            | `bank_ledger` reasons `loan_repay` vs `loan_skim`                |
 | **Restraint** `B`   | 10%    | penalize serial borrowing (many `loan_take` in window) + always grabbing near-max loans. | `bank_ledger` `loan_take` count + sizes                          |
-| **Consistency** `C` | 10%    | play streak / attendance over window.                                                    | existing streak fields                                           |
+| **Consistency** `C` | 30%    | play streak / attendance over window.                                                    | existing streak fields                                           |
 
 **Behavioral target:**
 
 ```
-T = 300 + 550 × (0.35·U + 0.25·S + 0.20·R + 0.10·B + 0.10·C)
+T = 300 + 550 × (0.25·U + 0.20·S + 0.15·R + 0.10·B + 0.30·C)
 ```
 
 All-perfect → 850, all-zero → 300.
