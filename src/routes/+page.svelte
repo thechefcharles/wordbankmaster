@@ -560,7 +560,7 @@
 	$: modeLabel =
 		{
 			daily: { emoji: '📅', name: 'Daily' },
-			climb: { emoji: '🎰', name: 'Cash Game' },
+			climb: { emoji: '', name: 'Cash Game' },
 			blitz: { emoji: '⚡', name: 'Blitz' },
 			makeup: { emoji: '📅', name: 'Make-up' },
 			match: { emoji: '⚔️', name: 'Challenge' },
@@ -3024,9 +3024,8 @@
 					>
 				</button>
 				<button class="ap-toggle" on:click={toggleMusic}>
-					<span>{$musicEnabled ? '🎵' : '🔕'} Music</span><span
-						class="ap-state"
-						class:on={$musicEnabled}>{$musicEnabled ? 'On' : 'Off'}</span
+					<span>Music</span><span class="ap-state" class:on={$musicEnabled}
+						>{$musicEnabled ? 'On' : 'Off'}</span
 					>
 				</button>
 			</div>
@@ -3941,7 +3940,7 @@
 							>
 						</button>
 						<button class="set-row" on:click={toggleMusic}>
-							<span>🎵 Music</span><span class="set-state" class:on={$musicEnabled}
+							<span>Music</span><span class="set-state" class:on={$musicEnabled}
 								>{$musicEnabled ? 'On' : 'Off'}</span
 							>
 						</button>
@@ -4114,8 +4113,8 @@
 					showObjectiveFor($gameStore.gameMode, true);
 				}}
 			>
-				<span class="mp-emoji">{modeLabel.emoji}</span
-				>{modeLabel.name}{#if isClimb && climb?.buy_in}<span class="mp-sub"
+				{#if modeLabel.emoji}<span class="mp-emoji">{modeLabel.emoji}</span
+					>{/if}{modeLabel.name}{#if isClimb && climb?.buy_in}<span class="mp-sub"
 						>· {(climb.tier ?? '').charAt(0).toUpperCase() + (climb.tier ?? '').slice(1)} · ${Math.round(
 							climb.buy_in ?? 0
 						).toLocaleString()}</span
@@ -4425,7 +4424,12 @@
 								on:click={() => {
 									fx('tap');
 									dailyInfo = 'streak';
-								}}>{dailyStatus?.win_streak ?? 0}</button
+								}}
+								><svg class="bp-fire" viewBox="0 0 24 24" aria-hidden="true"
+									><path
+										d="M12 3s5 3.8 5 9a5 5 0 0 1-10 0c0-2 .9-3.5 2.4-4.6C10.2 8.7 12 7 12 3Z"
+									/></svg
+								>{dailyStatus?.win_streak ?? 0}</button
 							>
 						{:else if isClimb}
 							<button
@@ -4434,7 +4438,12 @@
 								on:click={() => {
 									fx('tap');
 									climbInfo = 'streak';
-								}}>{climbStreak}</button
+								}}
+								><svg class="bp-fire" viewBox="0 0 24 24" aria-hidden="true"
+									><path
+										d="M12 3s5 3.8 5 9a5 5 0 0 1-10 0c0-2 .9-3.5 2.4-4.6C10.2 8.7 12 7 12 3Z"
+									/></svg
+								>{climbStreak}</button
 							>
 						{:else}
 							<span class="bp-badge-spacer"></span>
@@ -8120,6 +8129,13 @@
 	}
 	.bp-winstreak:active {
 		transform: scale(0.94);
+	}
+	.bp-fire {
+		width: 0.82em;
+		height: 0.82em;
+		fill: #1a1a1a;
+		vertical-align: -0.1em;
+		margin-right: 2px;
 	}
 	/* ℹ️ Daily explainer modal (multiplier / Solve-to-Earn breakdown) */
 	.info-overlay {
