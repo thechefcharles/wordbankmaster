@@ -45,6 +45,7 @@
 	} from '$lib/stores/statsStore.js';
 	import { CATEGORIES, categoryLabel } from '$lib/categories.js';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
+	import ModeIcon from '$lib/components/ModeIcon.svelte';
 	import {
 		user,
 		userProfile,
@@ -186,7 +187,7 @@
 		...openGames.map((/** @type {any} */ g) => ({
 			key: 'solo-' + g.mode,
 			label: RESUME_LABEL[g.mode] ?? 'Game',
-			icon: /** @type {Record<string,string>} */ ({ daily: '📅', climb: '🎰' })[g.mode] ?? '▶',
+			modeKey: g.mode,
 			go: () => resumeSolo(g.mode)
 		})),
 		...(myMatches ?? [])
@@ -194,7 +195,7 @@
 			.map((/** @type {any} */ m) => ({
 				key: 'match-' + m.id,
 				label: m.group_name || (m.opponent ? '@' + m.opponent : 'Challenge'),
-				icon: '⚔️',
+				modeKey: 'match',
 				go: () => respondToMatch(m)
 			}))
 	];
@@ -2972,9 +2973,9 @@
 							r.go();
 						}}
 					>
-						<span class="rm-ic">{r.icon}</span><span class="rm-label">{r.label}</span><span
-							class="rm-arrow">▶</span
-						>
+						<span class="rm-ic"><ModeIcon mode={r.modeKey} size={20} /></span><span class="rm-label"
+							>{r.label}</span
+						><span class="rm-arrow">▶</span>
 					</button>
 				{/each}
 			</div>
@@ -4113,14 +4114,8 @@
 					showObjectiveFor($gameStore.gameMode, true);
 				}}
 			>
-				{#if isClimb}<span class="mp-emoji"
-						><svg class="mp-cash-ic" viewBox="0 0 24 24" fill="none" aria-hidden="true"
-							><circle cx="12" cy="12" r="8.6" /><path d="M12 7v10" /><path
-								d="M14.6 9.2c-.6-.8-1.6-1.2-2.7-1.2-1.7 0-2.9 1-2.9 2.3s1.3 1.9 2.9 2.2 2.9 1 2.9 2.3-1.3 2.3-2.9 2.3c-1.1 0-2.2-.5-2.8-1.3"
-							/></svg
-						></span
-					>{:else if modeLabel.emoji}<span class="mp-emoji">{modeLabel.emoji}</span
-					>{/if}{modeLabel.name}{#if isClimb && climb?.buy_in}<span class="mp-sub"
+				<span class="mp-emoji"><ModeIcon mode={$gameStore.gameMode} size={15} /></span
+				>{modeLabel.name}{#if isClimb && climb?.buy_in}<span class="mp-sub"
 						>· {(climb.tier ?? '').charAt(0).toUpperCase() + (climb.tier ?? '').slice(1)} · ${Math.round(
 							climb.buy_in ?? 0
 						).toLocaleString()}</span
@@ -6608,7 +6603,9 @@
 		transform: scale(0.98);
 	}
 	.rm-ic {
-		font-size: 1.2rem;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 	}
 	.rm-label {
 		flex: 1;
@@ -8756,16 +8753,6 @@
 		letter-spacing: 0;
 		display: inline-flex;
 		align-items: center;
-	}
-	/* 🪙 Cash Game money glyph (replaces the slot-machine emoji) */
-	.mp-cash-ic {
-		width: 1.05em;
-		height: 1.05em;
-		fill: none;
-		stroke: #fcd34d;
-		stroke-width: 1.7;
-		stroke-linecap: round;
-		stroke-linejoin: round;
 	}
 	.mp-info {
 		font-size: 0.72rem;
