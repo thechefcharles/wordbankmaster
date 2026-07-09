@@ -1299,8 +1299,9 @@
 	let shareCopied = false;
 	function buildShareText() {
 		const br = '$' + resultBankroll.toLocaleString();
-		// Link to the live origin (never a hardcoded/deleted project URL).
-		const link = typeof window !== 'undefined' ? window.location.origin : '';
+		// Always share the production URL — never localhost/preview. Override with
+		// VITE_SITE_URL if the domain ever changes; falls back to the prod alias.
+		const link = import.meta.env.VITE_SITE_URL || 'https://wordbanksvelte.vercel.app';
 		if (isDailyResult) {
 			if (resultWon && dr) {
 				return `🧠 WordBank Daily · ${todayLabel}\nProfit ${(dr.net ?? 0) >= 0 ? '+' : '−'}$${Math.abs(dr.net ?? 0).toLocaleString()} — beat that 👀\n${link}`;
