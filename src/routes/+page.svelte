@@ -2828,11 +2828,11 @@
 			<button class="modal-x" on:click={() => (showDepositConfirm = false)} aria-label="Close"
 				>✕</button
 			>
-			<div class="info-big green">${depositPend.toLocaleString()}</div>
+			<div class="info-big green dep-amt">${depositPend.toLocaleString()}</div>
 			<h3 class="info-title">Deposit & end your run?</h3>
 			<p class="info-sub">
-				This banks your winnings into your <b>account</b> for keeps and <b>ends this run</b>. Keep
-				playing to grow it — but one wrong solve <b class="neg">voids it all</b>.
+				This deposits your winnings into your account and <b>ends this run</b>. Keep playing to earn
+				more — but <b class="neg">risk losing it all</b>!
 			</p>
 			<div class="dep-actions">
 				<button class="dep-keep" on:click={() => (showDepositConfirm = false)}>Keep Playing</button>
@@ -8401,7 +8401,11 @@
 		color: var(--text-muted);
 		margin: 0 0 14px;
 	}
-	/* 🏦 Deposit confirm actions */
+	/* 🏦 Deposit confirm — amount uses the clean money font (not Orbitron) */
+	.info-big.dep-amt {
+		font-family: var(--font-display, sans-serif);
+		font-variant-numeric: tabular-nums;
+	}
 	.dep-actions {
 		display: flex;
 		gap: 10px;
