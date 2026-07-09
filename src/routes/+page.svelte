@@ -2828,11 +2828,10 @@
 			<button class="modal-x" on:click={() => (showDepositConfirm = false)} aria-label="Close"
 				>✕</button
 			>
-			<div class="info-big green dep-amt">${depositPend.toLocaleString()}</div>
+			<div class="info-big dep-amt">${depositPend.toLocaleString()}</div>
 			<h3 class="info-title">Deposit & end your run?</h3>
 			<p class="info-sub">
-				This deposits your winnings into your account and <b>ends this run</b>. Keep playing to earn
-				more — but <b class="neg">risk losing it all</b>!
+				Cash out now or keep playing, but <b class="neg">risk losing it all</b>!
 			</p>
 			<div class="dep-actions">
 				<button class="dep-keep" on:click={() => (showDepositConfirm = false)}>Keep Playing</button>
@@ -8396,10 +8395,13 @@
 		color: var(--text-muted);
 		margin: 0 0 14px;
 	}
-	/* 🏦 Deposit confirm — amount uses the clean money font (not Orbitron) */
+	/* 🏦 Deposit confirm — amount uses the clean money font (not Orbitron) and the
+	   same gold as its source (the Potential Payout number in the HUD). */
 	.info-big.dep-amt {
 		font-family: var(--font-display, sans-serif);
 		font-variant-numeric: tabular-nums;
+		color: #fcd34d;
+		text-shadow: 0 0 22px rgba(251, 191, 36, 0.5);
 	}
 	.dep-actions {
 		display: flex;
