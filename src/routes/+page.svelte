@@ -3450,7 +3450,7 @@
 				></button>
 				<div class="modal-content main-menu-modal tier-modal">
 					<button class="close-btn" on:click={() => (showTierSelect = false)}>❌</button>
-					<h2>🎰 Cash Game</h2>
+					<h2>Cash Game</h2>
 					<p class="cat-sub">
 						Invest your Principal, grow it, Deposit — or VOID. Higher tiers put more on the table
 						for a bigger Yield.
@@ -4342,7 +4342,7 @@
 								on:click={() => {
 									fx('tap');
 									climbInfo = 'heat';
-								}}>📈 +{climbYield}%</button
+								}}>+{climbYield}%</button
 							>
 						{:else}
 							<span class="bp-badge-spacer"></span>
@@ -4394,7 +4394,7 @@
 								on:click={() => {
 									fx('tap');
 									dailyInfo = 'streak';
-								}}>🏆 {dailyStatus?.win_streak ?? 0}</button
+								}}>{dailyStatus?.win_streak ?? 0}</button
 							>
 						{:else if isClimb}
 							<button
@@ -4403,7 +4403,7 @@
 								on:click={() => {
 									fx('tap');
 									climbInfo = 'streak';
-								}}>🏆 {climbStreak}</button
+								}}>{climbStreak}</button
 							>
 						{:else}
 							<span class="bp-badge-spacer"></span>
