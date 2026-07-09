@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { getHistory, getMatchDetail } from '$lib/stores/statsStore.js';
 	import MatchDetailModal from '$lib/components/MatchDetailModal.svelte';
+	import ModeIcon from '$lib/components/ModeIcon.svelte';
 	import { track } from '$lib/analytics.js';
 
 	/** @type {'all'|'daily'|'climb'|'challenge'} */
@@ -25,20 +26,10 @@
 
 	const MODES = [
 		{ k: 'all', label: 'All' },
-		{ k: 'daily', label: '📅 Daily' },
-		{ k: 'climb', label: '🎰 Cash Game' },
-		{ k: 'challenge', label: '⚔️ Versus' }
+		{ k: 'daily', label: 'Daily' },
+		{ k: 'climb', label: 'Cash Game' },
+		{ k: 'challenge', label: 'Versus' }
 	];
-	const icon = (/** @type {string} */ m) =>
-		m === 'daily'
-			? '📅'
-			: m === 'makeup'
-				? '🗓️'
-				: m === 'climb'
-					? '🎰'
-					: m === 'challenge'
-						? '⚔️'
-						: '🎮';
 	const money = (/** @type {any} */ n) =>
 		(Number(n) < 0 ? '−$' : '+$') + Math.abs(Math.round(Number(n ?? 0))).toLocaleString();
 	const mult = (/** @type {any} */ x) => (x ? (Number(x) / 100).toFixed(1) + '×' : '');
@@ -109,7 +100,7 @@
 	<div class="chips">
 		{#each MODES as m}
 			<button class="chip" class:active={mode === m.k} onclick={() => setMode(m.k)}
-				>{m.label}</button
+				>{#if m.k !== 'all'}<ModeIcon mode={m.k} size={15} />{/if}{m.label}</button
 			>
 		{/each}
 	</div>
@@ -139,7 +130,7 @@
 			{#each rows as r (r.id)}
 				<li class="item" class:open={openRow === r.id}>
 					<button class="item-main" onclick={() => openDetail(r)}>
-						<span class="ic">{icon(r.game_mode)}</span>
+						<span class="ic"><ModeIcon mode={r.game_mode} size={20} /></span>
 						<span class="mid">
 							<span class="ttl">{title(r)}</span>
 							<span class="sub">
@@ -210,6 +201,9 @@
 		margin-bottom: 10px;
 	}
 	.chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
 		flex: 0 0 auto;
 		padding: 7px 13px;
 		border-radius: var(--r-pill);
@@ -292,7 +286,9 @@
 		text-align: left;
 	}
 	.ic {
-		font-size: 1.3rem;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 		flex: 0 0 auto;
 	}
 	.mid {

@@ -4,6 +4,7 @@
 	// once — per-mode for solo modes, per-match for challenges (first entry, not resume).
 	import { createEventDispatcher } from 'svelte';
 	import { MODIFIERS } from '$lib/powerups.js';
+	import ModeIcon from '$lib/components/ModeIcon.svelte';
 	const dispatch = createEventDispatcher();
 
 	let page = 0; // 0 = how to win, 1 = power-ups (daily only)
@@ -80,6 +81,11 @@
 	}
 
 	$: c = content(mode, ctx);
+	// Use the mode line-icon for every mode except a group challenge (keeps its 👥)
+	// and the unknown-mode fallback (keeps 🎯).
+	$: useModeIcon =
+		['daily', 'makeup', 'climb', 'challenge', 'blitz'].includes(mode) ||
+		(mode === 'match' && (ctx.fieldSize ?? 2) <= 2);
 	function go() {
 		dispatch('close');
 	}
@@ -90,7 +96,9 @@
 		<button class="obj-x" on:click={go} aria-label="Close">✕</button>
 		{#if page === 0}
 			<span class="obj-pill">🎯 How to win</span>
-			<div class="obj-icon">{c.icon}</div>
+			<div class="obj-icon">
+				{#if useModeIcon}<ModeIcon {mode} size={44} />{:else}{c.icon}{/if}
+			</div>
 			<h2 class="obj-title">{c.title}</h2>
 
 			<p class="obj-goal">{c.goal}</p>
@@ -205,6 +213,9 @@
 		background: var(--brand-grad, linear-gradient(135deg, #fbbf24, #fde047));
 	}
 	.obj-icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		font-size: 2.8rem;
 		line-height: 1;
 		margin: 2px 0 10px;
