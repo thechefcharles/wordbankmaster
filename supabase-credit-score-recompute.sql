@@ -13,7 +13,7 @@ DECLARE
   DROP_CAP CONSTANT INT := 120;
   RISE_CAP CONSTANT INT := 40;
   v_bank BIGINT; v_loan BIGINT; v_created TIMESTAMPTZ;
-  v_prev INT; v_updated TIMESTAMPTZ; v_derog TIMESTAMPTZ; v_streak INT;
+  v_prev INT; v_updated TIMESTAMPTZ; v_derog TIMESTAMPTZ; v_streak INT; v_last_play DATE;
   v_cap BIGINT;
   u NUMERIC; s NUMERIC; r NUMERIC; b NUMERIC; c NUMERIC;
   v_neg_days INT; v_repay INT; v_skim INT; v_take INT; v_active_days INT;
@@ -25,9 +25,14 @@ BEGIN
   -- would (a) make `v_loan > 0` NULL so grace is skipped and (b) make LEAST(NULL/cap,1)
   -- collapse to 1 → utilization 0, wrongly deflating a debt-free newcomer.
   SELECT COALESCE(p.bank, 0), COALESCE(p.loan, 0), p.credit_score, p.credit_updated_at,
-         p.credit_derog_until, COALESCE(p.current_daily_play_streak, 0)
-    INTO v_bank, v_loan, v_prev, v_updated, v_derog, v_streak
+         p.credit_derog_until, COALESCE(p.current_daily_play_streak, 0), p.last_daily_play_date
+    INTO v_bank, v_loan, v_prev, v_updated, v_derog, v_streak, v_last_play
     FROM public.profiles p WHERE p.id = p_uid;
+  -- Streak only counts while it's still alive: if you haven't played within a day, the
+  -- stored streak is stale — treat it as 0 so lapsing crashes Consistency (and your credit).
+  IF v_last_play IS NULL OR v_last_play < CURRENT_DATE - 1 THEN
+    v_streak := 0;
+  END IF;
   SELECT u.created_at INTO v_created FROM auth.users u WHERE u.id = p_uid;
   v_prev := COALESCE(v_prev, 650);
 
