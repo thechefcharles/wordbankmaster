@@ -81,6 +81,7 @@
 	} from '$lib/stores/notificationStore.js';
 	import { track } from '$lib/analytics.js';
 	import { reasonLabel } from '$lib/bankReasons.js';
+	import { BLITZ_ENABLED } from '$lib/features.js';
 	import { modifierInfo } from '$lib/powerups.js';
 	import {
 		saveGameToLocalStorage,
@@ -1953,6 +1954,7 @@
 		if (!get(user)?.id) return;
 		mbMsg = '';
 		mbStep = 1;
+		if (!BLITZ_ENABLED) mbMode = 'standard'; // Blitz hidden → force Standard challenges
 		mbSearch = '';
 		mbResults = [];
 		showChallenges = true;
@@ -3325,9 +3327,11 @@
 						<span class="mc-title">Cash Game</span>
 						{#if climbInProgress}<span class="daily-chip prog">▶ Resume</span>{/if}
 					</button>
-					<button class="menu-card" style="--i: 2" on:click={handleMenuBlitz}>
-						<span class="mc-title">⚡ Blitz</span><span class="mc-stat">Beat the clock</span>
-					</button>
+					{#if BLITZ_ENABLED}
+						<button class="menu-card" style="--i: 2" on:click={handleMenuBlitz}>
+							<span class="mc-title">⚡ Blitz</span><span class="mc-stat">Beat the clock</span>
+						</button>
+					{/if}
 				</div>
 			{:else if menuView === 'community'}
 				<div class="sub-head">
@@ -3622,21 +3626,24 @@
 						{:else if mbStep === 2}
 							<!-- Step 2 · Match -->
 							<div class="ch-step-title">The match</div>
-							<div class="ch-modes">
-								<button
-									type="button"
-									class="ch-mode"
-									class:active={mbMode === 'standard'}
-									on:click={() => (mbMode = 'standard')}
-									>🧠 Standard<small>spend less</small></button
-								>
-								<button
-									type="button"
-									class="ch-mode"
-									class:active={mbMode === 'blitz'}
-									on:click={() => (mbMode = 'blitz')}>⚡ Blitz<small>timed · combos</small></button
-								>
-							</div>
+							{#if BLITZ_ENABLED}
+								<div class="ch-modes">
+									<button
+										type="button"
+										class="ch-mode"
+										class:active={mbMode === 'standard'}
+										on:click={() => (mbMode = 'standard')}
+										>🧠 Standard<small>spend less</small></button
+									>
+									<button
+										type="button"
+										class="ch-mode"
+										class:active={mbMode === 'blitz'}
+										on:click={() => (mbMode = 'blitz')}
+										>⚡ Blitz<small>timed · combos</small></button
+									>
+								</div>
+							{/if}
 
 							<div class="ch-field">
 								<span>Categories <em class="ch-opt">(optional)</em></span>
