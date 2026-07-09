@@ -67,15 +67,18 @@ BEGIN
   b := 1 - LEAST(v_take::numeric / 6, 1);
 
   IF v_streak > 0 THEN
-    c := LEAST(v_streak::numeric / 14, 1);
+    c := LEAST(v_streak::numeric / 21, 1); -- ~3-week daily streak to max Consistency
   ELSE
     SELECT COUNT(DISTINCT date(created_at)) INTO v_active_days
       FROM public.bank_ledger
-     WHERE user_id = p_uid AND created_at > now() - INTERVAL '14 days';
-    c := LEAST(v_active_days::numeric / 14, 1);
+     WHERE user_id = p_uid AND created_at > now() - INTERVAL '21 days';
+    c := LEAST(v_active_days::numeric / 21, 1);
   END IF;
 
-  v_target := round(300 + 550 * (0.35*u + 0.25*s + 0.20*r + 0.10*b + 0.10*c));
+  -- Reweighted so credit is EARNED, not default: pulled weight off the auto-perfect
+  -- factors (util/solvency/repayment default to 1.0 for non-borrowers) onto Consistency,
+  -- so reaching Excellent needs sustained daily play, not just "never messed up".
+  v_target := round(300 + 550 * (0.25*u + 0.20*s + 0.15*r + 0.10*b + 0.30*c));
   v_target := GREATEST(300, LEAST(850, v_target));
 
   v_days_elapsed := GREATEST(1, LEAST(7,
