@@ -43,7 +43,8 @@
 		getMatchOpponents,
 		declineMatch
 	} from '$lib/stores/statsStore.js';
-	import { CATEGORIES } from '$lib/categories.js';
+	import { CATEGORIES, categoryLabel } from '$lib/categories.js';
+	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import {
 		user,
 		userProfile,
@@ -3684,7 +3685,7 @@
 											class:on={mbCategories.includes(c.value)}
 											on:click={() => toggleCategory(c.value)}
 										>
-											<span class="ch-catemoji">{c.emoji}</span>
+											<span class="ch-catemoji"><CategoryIcon category={c.value} size={19} /></span>
 											<span class="ch-catname">{c.label}</span>
 											<span class="ch-catcheck">{mbCategories.includes(c.value) ? '✓' : ''}</span>
 										</button>
@@ -4112,7 +4113,13 @@
 					showObjectiveFor($gameStore.gameMode, true);
 				}}
 			>
-				{#if modeLabel.emoji}<span class="mp-emoji">{modeLabel.emoji}</span
+				{#if isClimb}<span class="mp-emoji"
+						><svg class="mp-cash-ic" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+							><circle cx="12" cy="12" r="8.6" /><path d="M12 7v10" /><path
+								d="M14.6 9.2c-.6-.8-1.6-1.2-2.7-1.2-1.7 0-2.9 1-2.9 2.3s1.3 1.9 2.9 2.2 2.9 1 2.9 2.3-1.3 2.3-2.9 2.3c-1.1 0-2.2-.5-2.8-1.3"
+							/></svg
+						></span
+					>{:else if modeLabel.emoji}<span class="mp-emoji">{modeLabel.emoji}</span
 					>{/if}{modeLabel.name}{#if isClimb && climb?.buy_in}<span class="mp-sub"
 						>· {(climb.tier ?? '').charAt(0).toUpperCase() + (climb.tier ?? '').slice(1)} · ${Math.round(
 							climb.buy_in ?? 0
@@ -4282,7 +4289,11 @@
 
 		<!-- 🌍 Category + today's auto-applied Twist chip + witty clue -->
 		<div class="puzzle-meta">
-			{#if $gameStore.category}<span class="category-chip">{$gameStore.category}</span>{/if}
+			{#if $gameStore.category}<span class="category-chip"
+					><CategoryIcon category={$gameStore.category} size={14} />{categoryLabel(
+						$gameStore.category
+					)}</span
+				>{/if}
 			{#if $gameStore.gameMode === 'daily' && dailyMod}
 				<button
 					class="twist-chip"
@@ -5564,6 +5575,9 @@
 		margin: 0 0 12px;
 	}
 	.category-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
 		font-family: var(--font-display);
 		font-weight: 600;
 		font-size: 0.8rem;
@@ -7355,7 +7369,10 @@
 		background: rgba(251, 191, 36, 0.1);
 	}
 	.ch-catemoji {
-		font-size: 1.05rem;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 22px;
 	}
 	.ch-catname {
 		flex: 1;
@@ -8737,6 +8754,18 @@
 	.mp-emoji {
 		font-size: 0.9rem;
 		letter-spacing: 0;
+		display: inline-flex;
+		align-items: center;
+	}
+	/* 🪙 Cash Game money glyph (replaces the slot-machine emoji) */
+	.mp-cash-ic {
+		width: 1.05em;
+		height: 1.05em;
+		fill: none;
+		stroke: #fcd34d;
+		stroke-width: 1.7;
+		stroke-linecap: round;
+		stroke-linejoin: round;
 	}
 	.mp-info {
 		font-size: 0.72rem;
