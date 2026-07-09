@@ -2713,7 +2713,7 @@
 				</p>
 				<div class="info-rows">
 					<div class="info-row">
-						<span>Pending Deposit</span><b class="pos">${dlRemaining.toLocaleString()}</b>
+						<span>Earnings</span><b class="pos">${dlRemaining.toLocaleString()}</b>
 					</div>
 					{#if dlMult > 1}<div class="info-row">
 							<span>× Interest</span><b>{fmtMult(dlMult)}</b>
@@ -2723,7 +2723,7 @@
 					</div>
 				</div>
 				<p class="info-note">
-					Deduce letters instead of buying them — keep more of your Pending Deposit. Grows your <button
+					Deduce letters instead of buying them — keep more of your Earnings. Grows your <button
 						class="info-inline"
 						on:click|stopPropagation={() => (dailyInfo = 'mult')}>multiplier</button
 					> too.
@@ -2784,8 +2784,8 @@
 				</p>
 			{:else}
 				<div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
-				<h3 class="info-title">Potential Credit</h3>
-				<p class="info-sub">What lands in your Pending Deposit if you solve right now.</p>
+				<h3 class="info-title">Credit</h3>
+				<p class="info-sub">What lands in your Earnings if you solve right now.</p>
 				<div class="info-rows">
 					<div class="info-row">
 						<span>Cash Advance left <small>(spend on letters)</small></span><b
@@ -4156,12 +4156,12 @@
 					class="top-bank solo"
 					class:pop-up={bankFlash === 'up'}
 					class:pop-down={bankFlash === 'down'}
-					title={isDailyLike ? 'Pending Deposit — spend it, keep the rest' : 'Available Balance'}
+					title={isDailyLike ? 'Earnings — spend it, keep the rest' : 'Available Balance'}
 					on:click={openBankModal}
 				>
 					{#if isMatch}<span class="tb-wallet-cap">👛 Wallet</span>{:else if isDailyLike}<span
-							class="tb-wallet-cap">Pending Deposit</span
-						>{:else if isClimb}<span class="tb-wallet-cap">Pending Deposit</span>{/if}
+							class="tb-wallet-cap">Earnings</span
+						>{:else if isClimb}<span class="tb-wallet-cap">Earnings</span>{/if}
 					<span class="tb-solo"
 						>{#if isMatch}👛
 						{:else if isClimb}{:else if !isDailyLike}💰
@@ -4232,23 +4232,6 @@
 						</div>
 					{/if}
 				</div>
-			{/if}
-			<!-- 🏦 Cash Out — bank the run bankroll anytime (the press-your-luck valve). -->
-			{#if climb.state === 'active' && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
-				{@const bankroll = Math.round(climb.bankroll ?? 0)}
-				<button
-					class="cashout-btn"
-					class:ready={bankroll > 0}
-					disabled={cgBusy || bankroll <= 0}
-					on:click={cashOut}
-				>
-					<svg class="dep-ic" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-						<path d="M12 4v10" />
-						<path d="M8 11l4 4 4-4" />
-						<path d="M5 17v2a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2" />
-					</svg>
-					Deposit
-				</button>
 			{/if}
 		{/if}
 
@@ -4352,7 +4335,7 @@
 							: $gameStore.gameMode === 'daily'
 								? "You'll bank"
 								: soloHero.net >= 0
-									? 'Potential Credit'
+									? 'Credit'
 									: '⚠️ You’re losing money'}</span
 					>
 					<div class="bp-row">
@@ -4515,6 +4498,23 @@
 						</button>
 					{/if}
 				</svelte:fragment>
+				<svelte:fragment slot="right">
+					{#if isClimb && climb?.state === 'active' && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
+						<button
+							class="solve-deposit"
+							on:click={cashOut}
+							disabled={cgBusy || (climb.bankroll ?? 0) <= 0}
+							title="Deposit your Earnings"
+							aria-label="Deposit your Earnings"
+						>
+							<svg class="dep-ic" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+								<path d="M12 4v10" />
+								<path d="M8 11l4 4 4-4" />
+								<path d="M5 17v2a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2" />
+							</svg>
+						</button>
+					{/if}
+				</svelte:fragment>
 			</GameButtons>
 		</section>
 
@@ -4541,7 +4541,7 @@
 						)}
 						{@const interestPct = Math.round((mult - 1) * 100)}
 						{@const interestBonus = Math.max(0, banked - kept)}
-						<!-- 🧾 Daily DEPOSIT slip: Pending Deposit − Letters = Subtotal ×Interest = Deposit -->
+						<!-- 🧾 Daily DEPOSIT slip: Earnings − Letters = Subtotal ×Interest = Deposit -->
 						<div class="receipt">
 							<div class="rcpt-brand">
 								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
@@ -4564,7 +4564,7 @@
 							</div>
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line">
-								<span>Pending Deposit</span><span>${prize.toLocaleString()}</span>
+								<span>Earnings</span><span>${prize.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
 								<span>Letters (debit)</span><span class="neg"
@@ -4682,7 +4682,7 @@
 							</div>
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line">
-								<span>Pending Deposit</span><span>${(co.banked ?? 0).toLocaleString()}</span>
+								<span>Earnings</span><span>${(co.banked ?? 0).toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
 								<span>Principal</span><span class="neg">−${(co.buy_in ?? 0).toLocaleString()}</span>
@@ -4782,7 +4782,7 @@
 								<span>CREDIT</span><span>+${payout.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
-								<span>Pending Deposit</span><span
+								<span>Earnings</span><span
 									>${pendBefore.toLocaleString()} ▸ ${pendAfter.toLocaleString()}</span
 								>
 							</div>
@@ -4792,7 +4792,7 @@
 									>${Math.round(menuBank ?? 0).toLocaleString()}</span
 								>
 							</div>
-							<div class="rcpt-foot">Pending Deposit is at risk until you Deposit it.</div>
+							<div class="rcpt-foot">Earnings are at risk until you Deposit them.</div>
 						</div>
 						<div class="result-actions">
 							<button
@@ -4848,7 +4848,7 @@
 							<div class="rcpt-rule"></div>
 							{#if wiped > 0}
 								<div class="rcpt-line">
-									<span>Pending Deposit</span><span>${wiped.toLocaleString()}</span>
+									<span>Earnings</span><span>${wiped.toLocaleString()}</span>
 								</div>
 								<div class="rcpt-line">
 									<span>Wrong guess</span><span class="neg">−${wiped.toLocaleString()}</span>
@@ -5332,70 +5332,42 @@
 		color: #d8cccc;
 	}
 
-	/* 🏦 Deposit button (during a run) — compact bank-app style action pill.
-	   Two states: muted/inactive at $0 Pending Deposit, solid+glowing once there's
-	   money to bank so it reads clearly clickable. */
-	.cashout-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 7px;
-		width: fit-content;
-		margin: 0 auto 12px;
-		padding: 0.44rem 1.2rem;
-		border-radius: 12px;
+	/* 🏦 Deposit accessory — icon-only button to the right of Solve, mirroring the
+	   power-ups vault on the left. White glyph on the same glassy surface. */
+	.solve-deposit {
+		position: absolute;
+		left: 100%;
+		margin-left: 12px;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 50px;
+		height: 50px;
+		border-radius: 14px;
+		display: grid;
+		place-items: center;
 		cursor: pointer;
-		border: 1px solid rgba(148, 163, 184, 0.3);
-		background: rgba(148, 163, 184, 0.08);
-		color: #7c8798;
-		font-family: var(--font-display);
-		font-weight: 800;
-		font-size: 0.9rem;
+		background: var(--surface-strong, rgba(20, 28, 40, 0.9));
+		border: 1px solid rgba(253, 224, 71, 0.5);
+		backdrop-filter: blur(10px);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 		transition:
-			transform 0.15s var(--ease-spring),
-			box-shadow 0.2s,
-			background 0.2s,
-			color 0.2s;
+			transform 0.16s var(--ease-spring),
+			opacity 0.2s;
+	}
+	.solve-deposit:active {
+		transform: translateY(-50%) scale(0.93);
+	}
+	.solve-deposit:disabled {
+		opacity: 0.4;
+		cursor: default;
 	}
 	.dep-ic {
-		width: 16px;
-		height: 16px;
-		stroke: currentColor;
+		width: 26px;
+		height: 26px;
+		stroke: #fff;
 		stroke-width: 2;
 		stroke-linecap: round;
 		stroke-linejoin: round;
-	}
-	/* Has Pending Deposit → filled, glowing, clearly actionable. */
-	.cashout-btn.ready {
-		border-color: transparent;
-		background: linear-gradient(135deg, #6ee7b7, #34d399);
-		color: #06281d;
-		box-shadow: 0 6px 18px rgba(52, 211, 153, 0.3);
-	}
-	.cashout-btn.ready:hover {
-		transform: translateY(-2px);
-		filter: brightness(1.05);
-	}
-	.cashout-btn.ready:active {
-		transform: scale(0.97);
-	}
-	@media (prefers-reduced-motion: no-preference) {
-		.cashout-btn.ready {
-			animation: depPulse 2.4s ease-in-out infinite;
-		}
-		@keyframes depPulse {
-			0%,
-			100% {
-				box-shadow: 0 6px 18px rgba(52, 211, 153, 0.28);
-			}
-			50% {
-				box-shadow: 0 6px 26px rgba(52, 211, 153, 0.5);
-			}
-		}
-	}
-	.cashout-btn:disabled {
-		opacity: 0.55;
-		cursor: default;
 	}
 	.co-inline {
 		display: flex;
@@ -8131,10 +8103,13 @@
 		transform: scale(0.94);
 	}
 	.bp-fire {
-		width: 0.82em;
-		height: 0.82em;
-		fill: #1a1a1a;
-		vertical-align: -0.1em;
+		width: 0.98em;
+		height: 0.98em;
+		fill: none;
+		stroke: #1a1a1a;
+		stroke-width: 1.7;
+		stroke-linejoin: round;
+		vertical-align: -0.16em;
 		margin-right: 2px;
 	}
 	/* ℹ️ Daily explainer modal (multiplier / Solve-to-Earn breakdown) */
