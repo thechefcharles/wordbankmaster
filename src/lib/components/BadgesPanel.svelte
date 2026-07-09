@@ -2,6 +2,7 @@
 	import { onMount, tick } from 'svelte';
 	import { getCategoryStats, getUserBadges } from '$lib/stores/statsStore.js';
 	import { CATEGORIES } from '$lib/categories.js';
+	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import {
 		categoryProgress,
 		CATEGORY_TIERS,
@@ -253,7 +254,7 @@
 								style="stroke-dasharray:{CIRC};stroke-dashoffset:{CIRC * (1 - r.progress)}"
 							/>
 						</svg>
-						<span class="ring-emoji">{r.emoji}</span>
+						<span class="ring-emoji"><CategoryIcon category={r.value} size={24} /></span>
 						{#if r.current}<span class="ring-medal">{r.current.medal}</span>{/if}
 					</div>
 					<div class="cat-name">{r.label}</div>
@@ -331,7 +332,7 @@
 		<button class="cd-backdrop" aria-label="Close" onclick={() => (detail = null)}></button>
 		<div class="cd-card" role="dialog" aria-modal="true">
 			<button class="cd-x" onclick={() => (detail = null)} aria-label="Close">✕</button>
-			<div class="cd-emoji">{detail.emoji}</div>
+			<div class="cd-emoji"><CategoryIcon category={detail.value} size={42} /></div>
 			<h3 class="cd-name">{detail.label}</h3>
 			<p class="cd-solves">
 				{detail.solves}
