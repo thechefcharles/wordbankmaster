@@ -1787,19 +1787,18 @@
 			fx('wrong');
 		}
 	}
-	async function cashOut() {
+	let showDepositConfirm = false;
+	let depositPend = 0;
+	// Tapping Deposit opens a confirm + info layer (no PIN) that explains it banks your
+	// winnings and ENDS the run. Covers every deposit point (in-run pill + per-puzzle receipt).
+	function cashOut() {
 		if (cgBusy) return;
-		// Depositing moves Cash into the Available Balance — a money-out commitment, so
-		// confirm with the PIN (a no-op if the player hasn't set one). Gating here covers
-		// every deposit point (in-run button + per-puzzle receipt).
-		const pend = Math.round(climb?.bankroll ?? 0);
-		try {
-			await requirePin('Deposit to your Available Balance', [
-				{ label: 'Pending Deposit', value: '$' + pend.toLocaleString() }
-			]);
-		} catch {
-			return; // cancelled at the pad
-		}
+		depositPend = Math.round(climb?.bankroll ?? 0);
+		showDepositConfirm = true;
+	}
+	async function confirmDeposit() {
+		if (cgBusy) return;
+		showDepositConfirm = false;
 		cgBusy = true;
 		const res = await cashOutClimb();
 		cgBusy = false;
@@ -2813,6 +2812,38 @@
 {/if}
 
 <!-- ℹ️ Challenge "Left to Spend" explainer -->
+{#if showDepositConfirm}
+	<div
+		class="modal-overlay info-overlay"
+		role="button"
+		tabindex="0"
+		aria-label="Close"
+		on:click={() => (showDepositConfirm = false)}
+		on:keydown={(e) => {
+			if (e.key === 'Escape') showDepositConfirm = false;
+		}}
+	>
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
+		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
+			<button class="modal-x" on:click={() => (showDepositConfirm = false)} aria-label="Close"
+				>✕</button
+			>
+			<div class="info-big green">${depositPend.toLocaleString()}</div>
+			<h3 class="info-title">Deposit & end your run?</h3>
+			<p class="info-sub">
+				This banks your winnings into your <b>account</b> for keeps and <b>ends this run</b>. Keep
+				playing to grow it — but one wrong solve <b class="neg">voids it all</b>.
+			</p>
+			<div class="dep-actions">
+				<button class="dep-keep" on:click={() => (showDepositConfirm = false)}>Keep Playing</button>
+				<button class="dep-go" disabled={cgBusy} on:click={confirmDeposit}
+					>Deposit ${depositPend.toLocaleString()}</button
+				>
+			</div>
+		</div>
+	</div>
+{/if}
+
 {#if showAnteInfo}
 	<div
 		class="modal-overlay info-overlay"
@@ -8369,6 +8400,36 @@
 		font-size: 0.84rem;
 		color: var(--text-muted);
 		margin: 0 0 14px;
+	}
+	/* 🏦 Deposit confirm actions */
+	.dep-actions {
+		display: flex;
+		gap: 10px;
+		margin-top: 4px;
+	}
+	.dep-keep {
+		flex: 1;
+		padding: 0.7rem 0.5rem;
+		border-radius: 12px;
+		border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16));
+		background: var(--surface);
+		color: var(--text);
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.dep-go {
+		flex: 1.5;
+		padding: 0.7rem 0.5rem;
+		border-radius: 12px;
+		border: none;
+		background: linear-gradient(135deg, #34d399, #10b981);
+		color: #06281c;
+		font-weight: 800;
+		cursor: pointer;
+	}
+	.dep-go:disabled {
+		opacity: 0.6;
+		cursor: default;
 	}
 	.info-rows {
 		display: flex;
