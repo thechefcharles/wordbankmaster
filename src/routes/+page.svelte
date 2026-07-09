@@ -8042,7 +8042,7 @@
 	}
 	.bp-mult-badge {
 		justify-self: start;
-		font-family: 'Orbitron', var(--font-display);
+		font-family: var(--font-display, sans-serif);
 		font-weight: 800;
 		font-size: 0.9rem;
 		line-height: 1;
@@ -8064,7 +8064,7 @@
 	.bp-winstreak {
 		justify-self: end;
 		cursor: pointer;
-		font-family: 'Orbitron', var(--font-display);
+		font-family: var(--font-display, sans-serif);
 		font-weight: 800;
 		font-size: 0.9rem;
 		line-height: 1;
