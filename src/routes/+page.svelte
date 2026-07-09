@@ -1854,26 +1854,6 @@
 	let showChallenges = false; // the New-Challenge builder modal
 	/** Which Community hub tab is showing. */
 	let communityTab = /** @type {'challenges'|'leaderboard'|'activity'|'people'} */ ('challenges');
-	// ⚡ Quick-tiles horizontal scroll state — drives the "more to swipe" fade + chevron.
-	let qtEl = /** @type {HTMLElement|null} */ (null);
-	let qtAtEnd = false; // true once scrolled to the end (or when the row fits with no overflow)
-	function updateQt() {
-		if (!qtEl) return;
-		qtAtEnd = qtEl.scrollLeft + qtEl.clientWidth >= qtEl.scrollWidth - 4;
-	}
-	/** Svelte action: capture the scroller, size the hint on mount + resize. */
-	function qtInit(/** @type {HTMLElement} */ node) {
-		qtEl = node;
-		updateQt();
-		const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateQt) : null;
-		ro?.observe(node);
-		return {
-			destroy() {
-				ro?.disconnect();
-				if (qtEl === node) qtEl = null;
-			}
-		};
-	}
 	/** Which People sub-tab (when communityTab === 'people'). */
 	let peopleTab = /** @type {'friends'|'groups'} */ ('friends');
 	/** Start a challenge with a friend from the People list. @param {string} username */
@@ -3157,8 +3137,8 @@
 					{/if}
 				</div>
 				<!-- ⚡ Bank-app quick actions — horizontally swipeable (flat line icons) -->
-				<div class="qt-wrap" class:qt-end={qtAtEnd}>
-					<div class="quick-tiles" use:qtInit on:scroll={updateQt}>
+				<div class="qt-wrap">
+					<div class="quick-tiles">
 						<button class="qt" on:click={() => openCommunity('people')}>
 							<span class="qt-plus" aria-hidden="true">+</span>
 							<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
@@ -3218,7 +3198,6 @@
 							</svg><span class="qt-l">Activity</span>
 						</button>
 					</div>
-					<span class="qt-more" aria-hidden="true">›</span>
 				</div>
 				<div class="main-menu-buttons stagger">
 					<!-- 🦈 Debt banner — you owe the Loan Shark; Store locked + payouts auto-skim. -->
@@ -6074,13 +6053,23 @@
 		scroll-snap-type: x proximity;
 		-webkit-overflow-scrolling: touch;
 		scrollbar-width: none;
-		padding-bottom: 2px;
-	}
-	/* Fade the right edge only while there's more to swipe — clears fully at the end
-	   so the last tile (Activity) is never cut off. */
-	.qt-wrap:not(.qt-end) .quick-tiles {
-		-webkit-mask: linear-gradient(90deg, #000 86%, transparent);
-		mask: linear-gradient(90deg, #000 86%, transparent);
+		/* Symmetric inset + fade on both edges so the row reads as a centered carousel —
+		   tiles bleed off both sides evenly; the fade lands on the padding, not the tiles. */
+		padding: 0 18px 2px;
+		-webkit-mask: linear-gradient(
+			90deg,
+			transparent 0,
+			#000 18px,
+			#000 calc(100% - 18px),
+			transparent 100%
+		);
+		mask: linear-gradient(
+			90deg,
+			transparent 0,
+			#000 18px,
+			#000 calc(100% - 18px),
+			transparent 100%
+		);
 	}
 	/* "+" badge on the Friends tile — hints you can add friends. */
 	.qt-plus {
@@ -6092,44 +6081,6 @@
 		font-size: 0.85rem;
 		font-weight: 700;
 		line-height: 1;
-	}
-	/* Animated "swipe for more" chevron; hidden once scrolled to the end. */
-	.qt-more {
-		position: absolute;
-		top: 50%;
-		right: 4px;
-		transform: translateY(-50%);
-		display: grid;
-		place-items: center;
-		width: 22px;
-		height: 22px;
-		border-radius: 999px;
-		background: rgba(0, 0, 0, 0.35);
-		color: #fff;
-		font-size: 1.2rem;
-		font-weight: 700;
-		line-height: 1;
-		pointer-events: none;
-		opacity: 0.9;
-		transition: opacity 0.25s;
-		animation: qtNudge 1.5s ease-in-out infinite;
-	}
-	.qt-wrap.qt-end .qt-more {
-		opacity: 0;
-	}
-	@keyframes qtNudge {
-		0%,
-		100% {
-			transform: translate(0, -50%);
-		}
-		50% {
-			transform: translate(3px, -50%);
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.qt-more {
-			animation: none;
-		}
 	}
 	.quick-tiles::-webkit-scrollbar {
 		display: none;
