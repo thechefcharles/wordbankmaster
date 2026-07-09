@@ -41,7 +41,7 @@
 					title: 'Cash Game',
 					goal: 'Invest your Principal → grow it by solving puzzles cheaply.',
 					win: 'Deposit anytime to bank it — Yield climbs with each solve.',
-					bar: 'A wrong guess VOIDs your Pending Deposit.'
+					bar: 'A wrong guess VOIDs your Earnings.'
 				};
 			case 'makeup':
 				return {

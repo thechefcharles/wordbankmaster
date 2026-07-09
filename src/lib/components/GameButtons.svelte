@@ -113,6 +113,8 @@
 			</button>
 		</div>
 	{/if}
+	<!-- Optional right accessory (e.g. Cash Game deposit). Absolutely positioned so Solve stays centered. -->
+	<slot name="right" />
 </div>
 
 <style>
