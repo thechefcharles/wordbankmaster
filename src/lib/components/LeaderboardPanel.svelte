@@ -125,7 +125,13 @@
 						><button
 							class="sort"
 							class:on={sortKey === 'net_worth'}
-							onclick={() => setSort('net_worth')}>💰 Cash{arrow('net_worth')}</button
+							onclick={() => setSort('net_worth')}
+							><svg class="hcol-ic" viewBox="0 0 24 24" aria-hidden="true"
+								><circle cx="12" cy="12" r="8.6" /><path d="M12 7v10" /><path
+									d="M14.6 9.2c-.6-.8-1.6-1.2-2.7-1.2-1.7 0-2.9 1-2.9 2.3s1.3 1.9 2.9 2.2 2.9 1 2.9 2.3-1.3 2.3-2.9 2.3c-1.1 0-2.2-.5-2.8-1.3"
+								/></svg
+							>
+							Cash{arrow('net_worth')}</button
 						></th
 					>
 					<th class="num"
@@ -134,12 +140,22 @@
 							class:on={sortKey === 'credit'}
 							onclick={() => setSort('credit')}
 							title="Credit score — reputation from responsible money management (300–850)"
-							>💳 Credit{arrow('credit')}</button
+							><svg class="hcol-ic" viewBox="0 0 24 24" aria-hidden="true"
+								><rect x="2.5" y="5" width="19" height="14" rx="2.5" /><path d="M2.5 9.5h19" /></svg
+							>
+							Credit{arrow('credit')}</button
 						></th
 					>
 					<th class="num"
 						><button class="sort" class:on={sortKey === 'score'} onclick={() => setSort('score')}
-							>Bounty Earned{arrow('score')}</button
+							><svg class="hcol-ic" viewBox="0 0 24 24" aria-hidden="true"
+								><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle
+									cx="12"
+									cy="12"
+									r="1.2"
+								/></svg
+							>
+							Bounty Earned{arrow('score')}</button
 						></th
 					>
 					<th class="num"
@@ -148,21 +164,40 @@
 							class:on={sortKey === 'efficiency'}
 							onclick={() => setSort('efficiency')}
 							title="Efficiency — value kept of the puzzle's base bounty (same for everyone; pure spend-less skill)"
-							>⚡ Eff{arrow('efficiency')}</button
+							><svg class="hcol-ic" viewBox="0 0 24 24" aria-hidden="true"
+								><path d="M4.5 16a7.5 7.5 0 0 1 15 0" /><path d="M12 16l3.6-3" /><circle
+									cx="12"
+									cy="16"
+									r="1"
+								/></svg
+							>
+							Eff{arrow('efficiency')}</button
 						></th
 					>
 					<th class="num"
 						><button
 							class="sort"
 							class:on={sortKey === 'play_streak'}
-							onclick={() => setSort('play_streak')}>🔥{arrow('play_streak')}</button
+							onclick={() => setSort('play_streak')}
+							><svg class="hcol-ic" viewBox="0 0 24 24" aria-hidden="true"
+								><path
+									d="M12 3s5 3.8 5 9a5 5 0 0 1-10 0c0-2 .9-3.5 2.4-4.6C10.2 8.7 12 7 12 3Z"
+								/></svg
+							>{arrow('play_streak')}</button
 						></th
 					>
 					<th class="num"
 						><button
 							class="sort"
 							class:on={sortKey === 'win_streak'}
-							onclick={() => setSort('win_streak')}>🏆{arrow('win_streak')}</button
+							onclick={() => setSort('win_streak')}
+							><svg class="hcol-ic" viewBox="0 0 24 24" aria-hidden="true"
+								><path d="M7 4.2h10v4.8a5 5 0 0 1-10 0z" /><path
+									d="M7 6.2H4.2v.8a3 3 0 0 0 2.8 3M17 6.2h2.8v.8a3 3 0 0 1-2.8 3"
+								/><path
+									d="M12 13.8v2.8M9 20.4h6M10.3 20.4c0-1.9.5-3.8 1.7-3.8s1.7 1.9 1.7 3.8"
+								/></svg
+							>{arrow('win_streak')}</button
 						></th
 					>
 				</tr>
@@ -322,6 +357,17 @@
 	}
 	th button.sort.on {
 		color: var(--brand-2);
+	}
+	/* Column-header line icons — inherit the header/sort color via currentColor. */
+	.hcol-ic {
+		width: 1.05em;
+		height: 1.05em;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.7;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		vertical-align: -0.16em;
 	}
 	tr.me {
 		background: rgba(56, 189, 248, 0.1);
