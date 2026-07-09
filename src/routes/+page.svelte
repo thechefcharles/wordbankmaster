@@ -2784,8 +2784,8 @@
 				</p>
 			{:else}
 				<div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
-				<h3 class="info-title">Credit</h3>
-				<p class="info-sub">What lands in your Earnings if you solve right now.</p>
+				<h3 class="info-title">Balance Remaining</h3>
+				<p class="info-sub">What lands in your Potential Payout if you solve right now.</p>
 				<div class="info-rows">
 					<div class="info-row">
 						<span>Cash Advance left <small>(spend on letters)</small></span><b
@@ -4156,12 +4156,16 @@
 					class="top-bank solo"
 					class:pop-up={bankFlash === 'up'}
 					class:pop-down={bankFlash === 'down'}
-					title={isDailyLike ? 'Earnings — spend it, keep the rest' : 'Available Balance'}
+					title={isDailyLike
+						? 'Earnings — spend it, keep the rest'
+						: isClimb
+							? 'Potential Payout — deposit it before a wrong guess'
+							: 'Available Balance'}
 					on:click={openBankModal}
 				>
 					{#if isMatch}<span class="tb-wallet-cap">👛 Wallet</span>{:else if isDailyLike}<span
 							class="tb-wallet-cap">Earnings</span
-						>{:else if isClimb}<span class="tb-wallet-cap">Earnings</span>{/if}
+						>{:else if isClimb}<span class="tb-wallet-cap">Potential Payout</span>{/if}
 					<span class="tb-solo"
 						>{#if isMatch}👛
 						{:else if isClimb}{:else if !isDailyLike}💰
@@ -4335,7 +4339,7 @@
 							: $gameStore.gameMode === 'daily'
 								? "You'll bank"
 								: soloHero.net >= 0
-									? 'Credit'
+									? 'Balance Remaining'
 									: '⚠️ You’re losing money'}</span
 					>
 					<div class="bp-row">
