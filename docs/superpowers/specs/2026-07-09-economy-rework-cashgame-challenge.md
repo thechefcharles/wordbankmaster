@@ -172,3 +172,41 @@ If we ever want the flavor in Challenge: do a **blind** head-to-head press-your-
 - **Phase 6 — Cleanup + docs.** Kill dead challenge SQL + legacy gameMode, prune dead reasons, QA harness, Notion.
 
 **Sequencing note:** Challenge first (Phases 1–2) — it's the bigger conceptual change and it validates the shared bounty-efficiency engine that Cash Game already uses. Cash Game (3–4) is then a smaller, self-contained flow change.
+
+---
+
+## 7. Phase 7 — Cash Game "One Balance" overhaul (2026-07-09)
+
+**Goal:** Kill the two-number HUD (top "Potential Payout" = accumulated `bankroll`; center "Balance Remaining" = `budget_left × heat`). Replace with **one running Balance**, top bar shows your **real account balance** (like Daily), and move **Heat onto the bounty injection** so it stays a single number.
+
+### 7.1 The model (locked)
+
+- **One number = `balance` = `bankroll` (secured pile) + `budget_left` (this puzzle's spendable).** Buying a letter drops it; solving _secures_ it (folds `budget_left` into `bankroll`); busting zeroes it.
+- **Heat multiplies the bounty as it's injected**, not the payout: `bounty_eff = round(_climb_bounty(pid,k) × stake × heat/100)`. At heat ×1.0 puzzle 1 starts _at the bounty_ (matches the user's "starts as the bounty"). Heat still `+10`/solve, capped at `heat_cap`.
+- **Letters spend from the current puzzle's `bounty_eff` only** (`budget_left = bounty_eff − spent`; `must_guess` when `budget_left < cheapest`). The secured pile is **safe from letter-spend**, at risk only from a wrong final guess → this preserves the bust mechanic (a flush pile can't buy its way out of a hard word). Copy at `must_guess`: framed as "out of budget for _this word_."
+- **Solving no longer makes the number jump** — the Balance already shows your at-risk total. Solve = "secured, carried"; the next bounty (× the new heat) is added when you hit **Play On**. Cash out (between puzzles) = take the Balance; net = `balance − buy_in`. Bust = `$0`, down the buy-in.
+- **Buy-in unchanged** — still the entry fee / sink / risk floor, deducted at `cashgame_start`. Tiers still gate bounty size.
+- **DON is a dead stub** (`climb_double_or_nothing` returns the board) → untouched.
+
+### 7.2 Server (`supabase-cashgame-v5-onebalance.sql`)
+
+Three functions change; `cashgame_start` / `climb_next` / `cashgame_cashout` / `_cg_bust` keep their logic (they already operate on `bankroll` = secured pile, which conserves).
+
+- **`_climb_board`**: compute `v_bounty := round(_climb_bounty(pid,k) × stake × heat/100)`; `v_budget_left := max(0, v_bounty − spent)`; add **`'balance' = bankroll + v_budget_left`**; `solve_reward := v_budget_left` (back-compat); `next_bounty := round(_climb_bounty(next,k) × stake × min(cap, heat+10)/100)` (peek uses the heat you'll have). `must_guess` unchanged (uses new `v_budget_left`).
+- **`_climb_resolve`**: `v_bounty_eff := round(_climb_bounty(pid,k) × stake × heat/100)`; `v_keep := max(0, v_bounty_eff − spent)`; `bankroll += v_keep` (**no** second `× heat`); `heat += 10` (cap); `last_gain := v_keep`; log `net := v_keep`.
+- **`climb_buy_letter`**: `v_bounty := round(_climb_bounty(pid,k) × stake × heat/100)`; rest identical (affordability check uses the heat-boosted budget).
+
+**Conservation:** letters stay off-ledger; only `buy_in` (sink) and `cashout(bankroll)` (source) touch `_bank_credit`. `bankroll` only ever grows by `max(0, bounty_eff − spent)` per solve → `net = bankroll − buy_in`. Verify in a `BEGIN…ROLLBACK` run: buy-in debits bank, multi-solve accumulates, cashout credits exactly `bankroll`, bust credits nothing. No `econ_v` gate needed — runs are single-session and the change is display + heat-target (no in-flight leak).
+
+**Balance note:** heat-on-bounty means a hot streak has _more_ working capital (can afford more letters) — intended "hot = flush." `k<1` on higher tiers already decays base bounties deeper in, counterbalancing heat growth; bust probability rises with harder deep puzzles. Watch avg cash-out multiples after ship; tune `heat` increment / `heat_cap` if inflationary.
+
+### 7.3 Client (`src/routes/+page.svelte`)
+
+- **Top bar (isClimb)**: cap "Potential Payout" → **"Available Balance"**, value `$tweenBank` → real account (`menuBank ?? netWorth ?? 0`), static during play — same treatment just shipped for Daily (#494).
+- **Center hero (isClimb)**: `climbLive.net` (= `solve_reward`) → **`climb.balance`**; label stays "Balance". Heat badge `+{climbYield}%` → **`×{heat/100}`** to match Daily's Interest badge grammar.
+- **Between-puzzle screen**: show **carried `bankroll`** + **next bounty (`next_bounty`, heat-boosted)** → **new Balance**; Cash Out banks the carried, Play On injects the next bounty.
+- **`must_guess` banner / info modals / win-secure / cashout / bust** copy: reframe from "payout" to "Balance" — solving _secures_, busting _zeroes_.
+
+### 7.4 Verification
+
+PITR stamp → apply via MCP/psql → `BEGIN…ROLLBACK` conservation test (impersonate a user, run buy-in→buys→solve→next→solve→cashout, assert ledger net = `bankroll − buy_in`; separate bust path asserts no credit) → prettier/check/lint/build → `qa-e2e.mjs` → ship.

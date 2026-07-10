@@ -608,7 +608,8 @@
 			? {
 					spent: climb.spent ?? 0,
 					payout: climb.solve_reward ?? 0,
-					net: climb.solve_reward ?? 0
+					// One-number model: the hero shows the running Balance (secured pile + this puzzle's spend).
+					net: climb.balance ?? (climb.bankroll ?? 0) + (climb.solve_reward ?? 0)
 				}
 			: null;
 	// Challenge live: Spent of your ante budget — lowest spend wins (standard only).
@@ -1120,8 +1121,6 @@
 		matchExpiredFired = true;
 		await matchTimeoutCheck();
 	}
-	// Cash Game "Yield" = heat expressed as a % gain (heat ×1.3 → +30%).
-	$: climbYield = Math.round((climb?.heat ?? 100) - 100);
 	// Heat IS the Cash Game win streak: each solve +0.1× (cap ×2.0), reset to ×1.0 when stuck.
 	$: climbStreak = Math.max(0, Math.round(((climb?.heat ?? 100) - 100) / 10));
 	// 🔥 The run: solves + cumulative profit since heat last reset (run_profit can be negative early).
@@ -1774,6 +1773,7 @@
 		const res = await startCashGame(tier);
 		cgBusy = false;
 		if (res?.ok) {
+			refreshBank(); // buy-in was just debited server-side → keep the top-bar Available Balance fresh
 			await enterClimbGame();
 		} else if (res?.reason === 'insufficient') {
 			await borrowToBuyIn(tier, res.buy_in ?? 0, res.bank ?? 0);
@@ -1822,6 +1822,7 @@
 		cgBusy = false;
 		if (retry?.ok) {
 			fx('win');
+			refreshBank(); // borrowed + bought in → refresh the top-bar Available Balance
 			await enterClimbGame();
 		} else {
 			fx('wrong');
@@ -2812,60 +2813,65 @@
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (climbInfo = null)} aria-label="Close">✕</button>
 			{#if climbInfo === 'heat'}
-				<div class="info-big">📈 +{climbYield}%</div>
-				<h3 class="info-title">Yield — your return rate</h3>
-				<p class="info-sub">Everything you earn from a puzzle is boosted by your Yield rate.</p>
+				<div class="info-big">🔥 ×{((climb?.heat ?? 100) / 100).toFixed(1)}</div>
+				<h3 class="info-title">Heat — your bounty multiplier</h3>
+				<p class="info-sub">Every new bounty lands in your Balance boosted by your Heat.</p>
 				<div class="info-rows">
-					<div class="info-row"><span>Base</span><b>+0%</b></div>
-					<div class="info-row"><span>Each solve in a row</span><b class="pos">+10%</b></div>
+					<div class="info-row"><span>Base</span><b>×1.0</b></div>
+					<div class="info-row"><span>Each solve in a row</span><b class="pos">+0.1×</b></div>
 					<div class="info-row">
-						<span>Maxes out at</span><b>+{(climb?.heat_cap ?? 200) - 100}%</b>
+						<span>Maxes out at</span><b>×{((climb?.heat_cap ?? 200) / 100).toFixed(1)}</b>
 					</div>
-					<div class="info-row total"><span>Your Yield</span><b>+{climbYield}%</b></div>
+					<div class="info-row total">
+						<span>Your Heat</span><b>×{((climb?.heat ?? 100) / 100).toFixed(1)}</b>
+					</div>
 				</div>
 				<p class="info-note">
-					Yield climbs with your <button
+					Heat climbs with your <button
 						class="info-inline"
-						on:click|stopPropagation={() => (climbInfo = 'streak')}>deposit streak</button
-					> and resets to +0% on a VOID.
+						on:click|stopPropagation={() => (climbInfo = 'streak')}>solve streak</button
+					> and resets to ×1.0 on a bust.
 				</p>
 			{:else if climbInfo === 'streak'}
-				<div class="info-big">🏆 {climbStreak}</div>
-				<h3 class="info-title">Deposit Streak</h3>
+				<div class="info-big">🔥 {climbStreak}</div>
+				<h3 class="info-title">Solve Streak</h3>
 				<p class="info-sub">Cash Game puzzles you've solved in a row.</p>
 				<div class="info-rows">
 					<div class="info-row"><span>Solve a puzzle</span><b class="pos">+1</b></div>
-					<div class="info-row"><span>VOID</span><b class="neg">back to 0</b></div>
+					<div class="info-row"><span>Bust</span><b class="neg">back to 0</b></div>
 				</div>
 				<p class="info-note">
 					Powers your <button
 						class="info-inline"
-						on:click|stopPropagation={() => (climbInfo = 'heat')}>Yield</button
+						on:click|stopPropagation={() => (climbInfo = 'heat')}>Heat</button
 					>
-					— <b>+10%</b> per solve.
+					— <b>+0.1×</b> per solve.
 				</p>
 			{:else}
 				<div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
-				<h3 class="info-title">Balance Remaining</h3>
-				<p class="info-sub">What lands in your Potential Payout if you solve right now.</p>
+				<h3 class="info-title">Balance</h3>
+				<p class="info-sub">
+					Your running cash this run — solve to keep it, one wrong guess loses it all.
+				</p>
 				<div class="info-rows">
 					<div class="info-row">
-						<span>Cash Advance left <small>(spend on letters)</small></span><b
+						<span>Secured so far</span><b>${Math.round(climb?.bankroll ?? 0).toLocaleString()}</b>
+					</div>
+					<div class="info-row">
+						<span>This puzzle's budget <small>(spend on letters)</small></span><b
 							>${Math.round(climb?.budget_left ?? 0).toLocaleString()}</b
 						>
 					</div>
-					<div class="info-row">
-						<span>📈 Yield</span><b class="pos">+{climbYield}%</b>
-					</div>
 					<div class="info-row total">
-						<span>Credit</span><b class="green">${(climbLive?.net ?? 0).toLocaleString()}</b>
+						<span>Balance</span><b class="green">${(climbLive?.net ?? 0).toLocaleString()}</b>
 					</div>
 				</div>
 				<p class="info-note">
-					Each puzzle's <b>Cash Advance</b> shrinks as you buy letters — solve to keep what's left ×
+					Each puzzle's <b>budget</b> shrinks as you buy letters — solve to lock it into your
+					Balance. Reveal less, keep more; the next bounty lands ×
 					<button class="info-inline" on:click|stopPropagation={() => (climbInfo = 'heat')}
-						>Yield</button
-					>. Reveal less, keep more.
+						>Heat</button
+					>.
 				</p>
 			{/if}
 			<button class="info-close" on:click={() => (climbInfo = null)}>Got it</button>
@@ -2900,8 +2906,8 @@
 			<div class="info-big neg">−${forfeitAmount.toLocaleString()}</div>
 			<h3 class="info-title">Give up this puzzle?</h3>
 			<p class="info-sub">
-				You'll <b class="neg">lose your ${forfeitAmount.toLocaleString()} Potential Payout</b> and see
-				the answer. This can't be undone.
+				You'll <b class="neg">lose your ${forfeitAmount.toLocaleString()} Balance</b> and see the answer.
+				This can't be undone.
 			</p>
 			<div class="dep-actions">
 				<button class="dep-keep" on:click={() => (showForfeitConfirm = false)}>Keep Playing</button>
@@ -3561,8 +3567,8 @@
 					<button class="close-btn" on:click={() => (showTierSelect = false)}>❌</button>
 					<h2>Cash Game</h2>
 					<p class="cat-sub">
-						Invest your Principal, grow it, Deposit — or VOID. Higher tiers put more on the table
-						for a bigger Yield.
+						Spend each bounty, keep what's left, and grow one Balance across puzzles. Cash out
+						anytime — but one wrong guess busts it. Higher tiers, bigger bounties.
 					</p>
 					<div class="tier-balance">
 						Your Cash <b class:neg={cgBroke}>${(cgMeta?.bank ?? 0).toLocaleString()}</b>
@@ -4263,18 +4269,22 @@
 					title={isDailyLike
 						? 'Available Balance — your account; today’s puzzle deposits into it'
 						: isClimb
-							? 'Potential Payout — deposit it before a wrong guess'
+							? 'Available Balance — your account; cash out your run into it'
 							: isMatch
 								? 'Your Score — cash kept, banks up with each solve'
 								: 'Available Balance'}
 					on:click={openBankModal}
 				>
-					{#if isMatch}<span class="tb-wallet-cap">Score</span>{:else if isDailyLike}<span
-							class="tb-wallet-cap">Available Balance</span
-						>{:else if isClimb}<span class="tb-wallet-cap">Potential Payout</span>{/if}
+					{#if isMatch}<span class="tb-wallet-cap">Score</span
+						>{:else if isDailyLike || isClimb}<span class="tb-wallet-cap">Available Balance</span
+						>{/if}
 					<span class="tb-solo"
 						>${Math.round(
-							isMatch ? $tweenScore : isDailyLike ? (menuBank ?? netWorth ?? 0) : $tweenBank
+							isMatch
+								? $tweenScore
+								: isDailyLike || isClimb
+									? (menuBank ?? netWorth ?? 0)
+									: $tweenBank
 						).toLocaleString()}</span
 					>
 				</button>
@@ -4320,16 +4330,16 @@
 			</div>
 		{/if}
 
-		<!-- 🎰 Cash Game (Climb) HUD — number-free so it feels random. Heat lives in the
-         Solve-to-Earn box; power-ups live in the vault beside Solve. -->
+		<!-- 🎰 Cash Game (Climb) HUD — one running Balance up top; Heat badge + Balance in the
+         hero. Must-guess banner shows when this puzzle's budget is spent. -->
 		{#if isClimb && climb}
 			{#if mgBannerVisible && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
 				<div class="bank-notif">
 					<div class="bn-head">
 						<span class="bn-app">🏦 WordBank</span><span class="bn-time">now</span>
 					</div>
-					<div class="bn-title">You're out of money!</div>
-					<div class="bn-body">Solve now, or forfeit your payout!</div>
+					<div class="bn-title">Out of budget for this word!</div>
+					<div class="bn-body">Solve it now — or bust and lose your Balance.</div>
 					<button class="bn-forfeit" on:click={askForfeit}>Don't know it? Give up →</button>
 				</div>
 			{/if}
@@ -4447,9 +4457,11 @@
 								: 'Nothing left'
 							: $gameStore.gameMode === 'daily'
 								? 'Balance Remaining'
-								: soloHero.net >= 0
-									? 'Balance Remaining'
-									: '⚠️ You’re losing money'}</span
+								: isClimb
+									? 'Balance'
+									: soloHero.net >= 0
+										? 'Balance Remaining'
+										: '⚠️ You’re losing money'}</span
 					>
 					<div class="bp-row">
 						{#if $gameStore.gameMode === 'daily'}
@@ -4464,11 +4476,11 @@
 						{:else if isClimb}
 							<button
 								class="bp-mult-badge"
-								title="Yield — your return rate, climbs with each solve"
+								title="Heat — boosts each new bounty as it lands in your Balance"
 								on:click={() => {
 									fx('tap');
 									climbInfo = 'heat';
-								}}>+{climbYield}%</button
+								}}>×{((climb?.heat ?? 100) / 100).toFixed(1)}</button
 							>
 						{:else}
 							<span class="bp-badge-spacer"></span>
@@ -4621,7 +4633,7 @@
 
 		<!-- 🏆 Game Outcome Banner (win celebration handled by the slot-machine reveal) -->
 		{#if $gameStore.gameState === 'lost'}
-			<div class="banner lose">{isClimb ? '⚠ VOID' : 'No luck'}</div>
+			<div class="banner lose">{isClimb ? '⚠ BUST' : 'No luck'}</div>
 		{/if}
 
 		<!-- 🎯 Result Modal -->
@@ -4722,7 +4734,7 @@
 								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
 								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
 							</div>
-							<div class="rcpt-title void">⚠ VOID</div>
+							<div class="rcpt-title void">⚠ BUST</div>
 							<div class="rcpt-acct">WORDBANK CHECKING</div>
 							<div class="rcpt-sub">
 								ACCT ·········{acctNo}{#if myUsername}
@@ -4778,10 +4790,10 @@
 							</div>
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line">
-								<span>Earnings</span><span>${(co.banked ?? 0).toLocaleString()}</span>
+								<span>Balance banked</span><span>${(co.banked ?? 0).toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
-								<span>Principal</span><span class="neg">−${(co.buy_in ?? 0).toLocaleString()}</span>
+								<span>Buy-in</span><span class="neg">−${(co.buy_in ?? 0).toLocaleString()}</span>
 							</div>
 							<div class="rcpt-rule double"></div>
 							<div class="rcpt-line total" class:profit={prof >= 0}>
@@ -4790,9 +4802,9 @@
 								>
 							</div>
 							<div class="rcpt-note">
-								{((co.multiple_x100 ?? 0) / 100).toFixed(1)}× principal · peak yield +{Math.round(
-									(co.heat ?? 100) - 100
-								)}%
+								{((co.multiple_x100 ?? 0) / 100).toFixed(1)}× buy-in · peak heat ×{(
+									(co.heat ?? 100) / 100
+								).toFixed(1)}
 							</div>
 							{#if co.phrase}
 								<div class="rcpt-rule"></div>
@@ -4828,12 +4840,10 @@
 						</div>
 					{:else if isClimb && resultWon}
 						<!-- 🧾 Per-puzzle TRANSACTION slip -->
+						{@const heatMult = ((climb?.heat ?? 100) / 100).toFixed(1)}
 						{@const advance = Math.round(climb?.bounty ?? 0)}
 						{@const letters = Math.round(climb?.spent ?? 0)}
-						{@const subtotal = Math.max(0, advance - letters)}
 						{@const payout = Math.round(climb?.last_gain ?? 0)}
-						{@const yieldBonus = Math.max(0, payout - subtotal)}
-						{@const yieldPct = Math.round((climb?.heat ?? 100) - 100)}
 						{@const pendAfter = Math.round(climb?.bankroll ?? 0)}
 						{@const pendBefore = pendAfter - payout}
 						<div class="receipt">
@@ -4859,26 +4869,19 @@
 							</div>
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line">
-								<span>Cash Advance</span><span>${advance.toLocaleString()}</span>
+								<span>Bounty <small>(×{heatMult} Heat)</small></span><span
+									>${advance.toLocaleString()}</span
+								>
 							</div>
 							<div class="rcpt-line">
 								<span>Letters (debit)</span><span class="neg">−${letters.toLocaleString()}</span>
 							</div>
-							<div class="rcpt-rule"></div>
-							<div class="rcpt-line">
-								<span>Subtotal</span><span>${subtotal.toLocaleString()}</span>
-							</div>
-							<div class="rcpt-line">
-								<span>Yield +{yieldPct}%</span><span class="pos"
-									>+${yieldBonus.toLocaleString()}</span
-								>
-							</div>
 							<div class="rcpt-rule double"></div>
 							<div class="rcpt-line total profit">
-								<span>CREDIT</span><span>+${payout.toLocaleString()}</span>
+								<span>SECURED</span><span>+${payout.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
-								<span>Earnings</span><span
+								<span>Balance</span><span
 									>${pendBefore.toLocaleString()} ▸ ${pendAfter.toLocaleString()}</span
 								>
 							</div>
@@ -4896,7 +4899,7 @@
 								<span class="cg-peek-val"
 									><CategoryIcon category={climb.next_category} size={15} />{categoryLabel(
 										climb.next_category
-									)} · <b>${(climb.next_bounty ?? 0).toLocaleString()}</b> payout</span
+									)} · <b>+${(climb.next_bounty ?? 0).toLocaleString()}</b> bounty</span
 								>
 							</div>
 						{/if}
@@ -4934,7 +4937,7 @@
 								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
 								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
 							</div>
-							<div class="rcpt-title void">⚠ VOID</div>
+							<div class="rcpt-title void">⚠ BUST</div>
 							<div class="rcpt-acct">WORDBANK CHECKING</div>
 							<div class="rcpt-sub">
 								ACCT ·········{acctNo}{#if myUsername}
@@ -4953,16 +4956,16 @@
 							<div class="rcpt-rule"></div>
 							{#if wiped > 0}
 								<div class="rcpt-line">
-									<span>Earnings</span><span>${wiped.toLocaleString()}</span>
+									<span>Balance</span><span>${wiped.toLocaleString()}</span>
 								</div>
 								<div class="rcpt-line">
 									<span>Wrong guess</span><span class="neg">−${wiped.toLocaleString()}</span>
 								</div>
 								<div class="rcpt-rule double"></div>
-								<div class="rcpt-line total"><span>DEPOSIT VOIDED</span><span>$0</span></div>
+								<div class="rcpt-line total"><span>BALANCE LOST</span><span>$0</span></div>
 							{/if}
 							<div class="rcpt-line">
-								<span>Principal lost</span><span class="neg">−${ante.toLocaleString()}</span>
+								<span>Buy-in lost</span><span class="neg">−${ante.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line answer">
@@ -8606,7 +8609,7 @@
 		margin: 0 0 14px;
 	}
 	/* 🏦 Deposit confirm — amount uses the clean money font (not Orbitron) and the
-	   same gold as its source (the Potential Payout number in the HUD). */
+	   same gold as its source (the Balance number in the HUD). */
 	.info-big.dep-amt {
 		font-family: var(--font-display, sans-serif);
 		font-variant-numeric: tabular-nums;
