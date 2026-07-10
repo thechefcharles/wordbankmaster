@@ -139,12 +139,39 @@
 				class="back-btn home"
 				on:click={() => goto('/')}
 				title="Main menu"
-				aria-label="Main menu">🏠</button
+				aria-label="Main menu"
+				><svg
+					class="hdr-ic"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
+					><path d="M3 10.5 12 3l9 7.5" /><path
+						d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"
+					/><path d="M9.5 21v-6h5v6" /></svg
+				></button
 			>
 		</div>
 		<div class="av-head-right">
-			<button class="av-rand" on:click={randomize} title="Surprise me">🎲</button>
-			<span class="av-cash">💰 {fmt(bank)}</span>
+			<button class="av-rand" on:click={randomize} title="Surprise me" aria-label="Randomize"
+				><svg
+					class="hdr-ic"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
+					><path d="M16 3h5v5" /><path d="M4 20 21 3" /><path d="M21 16v5h-5" /><path
+						d="m15 15 6 6"
+					/><path d="m4 4 5 5" /></svg
+				></button
+			>
+			<span class="av-cash">{fmt(bank)}</span>
 		</div>
 	</header>
 
@@ -229,7 +256,15 @@
 	}
 	.back-btn.home {
 		padding: 0.5rem 0.7rem;
-		font-size: 1.05rem;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--text);
+	}
+	.hdr-ic {
+		width: 18px;
+		height: 18px;
+		display: block;
 	}
 	.av-head-right {
 		display: flex;
@@ -241,8 +276,10 @@
 		height: 38px;
 		border-radius: 50%;
 		cursor: pointer;
-		font-size: 1.1rem;
-		line-height: 1;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--text);
 		background: var(--surface);
 		border: 1px solid var(--border);
 	}
