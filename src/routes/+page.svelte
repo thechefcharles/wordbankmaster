@@ -726,8 +726,8 @@
 	let vaultMsg = '';
 	/** @type {ReturnType<typeof setTimeout>|undefined} */ let _vaultMsgTimer;
 	const BOOST_META = /** @type {Record<string,{emoji:string,blurb:string}>} */ ({
-		bounty_boost: { emoji: '💥', blurb: 'Adds ×0.5 to your bounty' },
-		jackpot_boost: { emoji: '💎', blurb: 'Adds ×1.0 to your bounty' }
+		bounty_boost: { emoji: '💥', blurb: 'Adds +50% to your bounty' },
+		jackpot_boost: { emoji: '💎', blurb: 'Adds +100% to your bounty' }
 	});
 	async function loadVault() {
 		try {
@@ -918,7 +918,6 @@
 	$: dlWrong = $gameStore.wrongGuesses ?? 0;
 	$: dlPenalty = Math.min(0.2 * dlWrong, Math.max(0, dlMult - 1)); // shown penalty, can't push below ×1.0 floor
 	$: dlBoost = Math.max(0, Math.round((dlMult - 1 - dlStreakBonus + dlPenalty) * 10) / 10);
-	const fmtMult = (/** @type {number} */ n) => '×' + n.toFixed(1);
 	let _prevBank = /** @type {number|null} */ (null);
 	let _floatId = 0;
 	/** @type {{id:number,text:string}[]} */
@@ -2523,7 +2522,7 @@
 			</h2>
 			<p class="gu-text">
 				{isClimb
-					? `Your heat resets to ×1.0${(climb?.spent ?? 0) > 0 ? ` and you forfeit the $${(climb?.spent ?? 0).toLocaleString()} spent on this one` : ''} — then a fresh puzzle.`
+					? `Your Interest resets to +0%${(climb?.spent ?? 0) > 0 ? ` and you forfeit the $${(climb?.spent ?? 0).toLocaleString()} spent on this one` : ''} — then a fresh puzzle.`
 					: $gameStore.gameMode === 'match'
 						? 'Skip this puzzle — you pay its full price and move on.'
 						: 'It counts as a loss and reveals the answer.'}
@@ -2722,30 +2721,34 @@
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (dailyInfo = null)} aria-label="Close">✕</button>
 			{#if dailyInfo === 'mult'}
-				<div class="info-big">{fmtMult(dlMult)}</div>
+				<div class="info-big">+{Math.round((dlMult - 1) * 100)}%</div>
 				<h3 class="info-title">Interest</h3>
 				<p class="info-sub">Boosts everything you Deposit from this puzzle.</p>
 				<div class="info-rows">
 					<div class="info-row"><span>Base</span><b>+0%</b></div>
 					{#if dlStreakBonus > 0}<div class="info-row">
 							<span>🏆 Win streak ({dlWinStreak} in a row)</span><b class="pos"
-								>+{dlStreakBonus.toFixed(1)}</b
+								>+{Math.round(dlStreakBonus * 100)}%</b
 							>
 						</div>{/if}
 					{#if dlBoost > 0}<div class="info-row">
-							<span>💥 Boosts</span><b class="pos">+{dlBoost.toFixed(1)}</b>
+							<span>💥 Boosts</span><b class="pos">+{Math.round(dlBoost * 100)}%</b>
 						</div>{/if}
 					{#if dlWrong > 0}<div class="info-row">
-							<span>❌ Wrong guesses ({dlWrong})</span><b class="neg">−{dlPenalty.toFixed(1)}</b>
+							<span>❌ Wrong guesses ({dlWrong})</span><b class="neg"
+								>−{Math.round(dlPenalty * 100)}%</b
+							>
 						</div>{/if}
-					<div class="info-row total"><span>Your Interest</span><b>{fmtMult(dlMult)}</b></div>
+					<div class="info-row total">
+						<span>Your Interest</span><b>+{Math.round((dlMult - 1) * 100)}%</b>
+					</div>
 				</div>
 				<p class="info-note">
 					Grows with your <button
 						class="info-inline"
 						on:click|stopPropagation={() => (dailyInfo = 'streak')}>deposit streak</button
 					>
-					(<b>+0.1×</b>/solve, up to <b>×1.5</b>). Each wrong guess costs <b>−0.2×</b> (never below ×1.0).
+					(<b>+10%</b>/solve, up to <b>+50%</b>). Each wrong guess costs <b>−20%</b> (never below +0%).
 				</p>
 			{:else if dailyInfo === 'twist'}
 				<div class="info-big">{dailyMod?.emoji ?? '🎁'}</div>
@@ -2766,7 +2769,7 @@
 						class="info-inline"
 						on:click|stopPropagation={() => (dailyInfo = 'mult')}>Interest</button
 					>
-					— <b>+0.1×</b> per win.
+					— <b>+10%</b> per win.
 				</p>
 			{:else}
 				<div class="info-big green">${Math.max(0, dlWinnings).toLocaleString()}</div>
@@ -2780,7 +2783,7 @@
 						<span>Balance Remaining</span><b class="pos">${dlRemaining.toLocaleString()}</b>
 					</div>
 					{#if dlMult > 1}<div class="info-row">
-							<span>× Interest</span><b>{fmtMult(dlMult)}</b>
+							<span>Interest</span><b class="pos">+{Math.round((dlMult - 1) * 100)}%</b>
 						</div>{/if}
 					<div class="info-row total">
 						<span>You deposit</span><b class="green">${dlWinnings.toLocaleString()}</b>
@@ -2814,24 +2817,24 @@
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (climbInfo = null)} aria-label="Close">✕</button>
 			{#if climbInfo === 'heat'}
-				<div class="info-big">🔥 ×{((climb?.heat ?? 100) / 100).toFixed(1)}</div>
-				<h3 class="info-title">Interest — your bounty multiplier</h3>
+				<div class="info-big">🔥 +{Math.round((climb?.heat ?? 100) - 100)}%</div>
+				<h3 class="info-title">Interest — your bounty boost</h3>
 				<p class="info-sub">Every new bounty lands in your Payout boosted by your Interest.</p>
 				<div class="info-rows">
-					<div class="info-row"><span>Base</span><b>×1.0</b></div>
-					<div class="info-row"><span>Each solve in a row</span><b class="pos">+0.1×</b></div>
+					<div class="info-row"><span>Base</span><b>+0%</b></div>
+					<div class="info-row"><span>Each solve in a row</span><b class="pos">+10%</b></div>
 					<div class="info-row">
-						<span>Maxes out at</span><b>×{((climb?.heat_cap ?? 200) / 100).toFixed(1)}</b>
+						<span>Maxes out at</span><b>+{Math.round((climb?.heat_cap ?? 200) - 100)}%</b>
 					</div>
 					<div class="info-row total">
-						<span>Your Interest</span><b>×{((climb?.heat ?? 100) / 100).toFixed(1)}</b>
+						<span>Your Interest</span><b>+{Math.round((climb?.heat ?? 100) - 100)}%</b>
 					</div>
 				</div>
 				<p class="info-note">
 					Interest climbs with your <button
 						class="info-inline"
 						on:click|stopPropagation={() => (climbInfo = 'streak')}>solve streak</button
-					> and resets to ×1.0 on a bust.
+					> and resets to +0% on a bust.
 				</p>
 			{:else if climbInfo === 'streak'}
 				<div class="info-big">🔥 {climbStreak}</div>
@@ -2846,7 +2849,7 @@
 						class="info-inline"
 						on:click|stopPropagation={() => (climbInfo = 'heat')}>Interest</button
 					>
-					— <b>+0.1×</b> per solve.
+					— <b>+10%</b> per solve.
 				</p>
 			{:else}
 				<div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
@@ -4448,7 +4451,7 @@
 								on:click={() => {
 									fx('tap');
 									dailyInfo = 'mult';
-								}}>×{Number($gameStore.bountyMult ?? 1).toFixed(1)}</button
+								}}>+{Math.round((Number($gameStore.bountyMult ?? 1) - 1) * 100)}%</button
 							>
 						{:else if isClimb}
 							<button
@@ -4457,7 +4460,7 @@
 								on:click={() => {
 									fx('tap');
 									climbInfo = 'heat';
-								}}>×{((climb?.heat ?? 100) / 100).toFixed(1)}</button
+								}}>+{Math.round((climb?.heat ?? 100) - 100)}%</button
 							>
 						{:else}
 							<span class="bp-badge-spacer"></span>
@@ -4801,9 +4804,9 @@
 								>
 							</div>
 							<div class="rcpt-note">
-								{((co.multiple_x100 ?? 0) / 100).toFixed(1)}× buy-in · peak interest ×{(
-									(co.heat ?? 100) / 100
-								).toFixed(1)}
+								{((co.multiple_x100 ?? 0) / 100).toFixed(1)}× buy-in · peak interest +{Math.round(
+									(co.heat ?? 100) - 100
+								)}%
 							</div>
 							{#if co.phrase}
 								<div class="rcpt-rule"></div>
@@ -4856,7 +4859,7 @@
 							1,
 							Math.round(((climb?.bounty ?? 0) * 100) / (climb?.heat ?? 100))
 						)}
-						{@const intMult = (advance / intBase).toFixed(1)}
+						{@const intPct = Math.round((advance / intBase - 1) * 100)}
 						{@const pendAfter = Math.round(climb?.bankroll ?? 0)}
 						{@const buyIn = Math.round(climb?.buy_in ?? 0)}
 						{@const startBal = Math.round((menuBank ?? 0) + buyIn)}
@@ -4891,7 +4894,7 @@
 							</div>
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line">
-								<span>Bounty <small>(×{intMult} Interest)</small></span><span
+								<span>Bounty <small>(+{intPct}% Interest)</small></span><span
 									>${advance.toLocaleString()}</span
 								>
 							</div>
@@ -8555,7 +8558,7 @@
 		color: #fb7185;
 	}
 	.info-big {
-		font-family: 'Orbitron', var(--font-display);
+		font-family: var(--font-display, sans-serif);
 		font-weight: 800;
 		font-size: 2.6rem;
 		line-height: 1;
@@ -8640,7 +8643,7 @@
 		color: var(--text);
 	}
 	.info-row b {
-		font-family: 'Orbitron', var(--font-display);
+		font-family: var(--font-display, sans-serif);
 		font-variant-numeric: tabular-nums;
 	}
 	.info-row .pos {

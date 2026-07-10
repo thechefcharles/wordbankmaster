@@ -14,8 +14,8 @@
 
 	/** @type {Record<string,{icon:string,desc:string}>} */
 	const META = {
-		bounty_boost: { icon: '💥', desc: 'Adds ×0.5 to your Daily bounty' },
-		jackpot_boost: { icon: '💎', desc: 'Adds ×1.0 to your Daily bounty' },
+		bounty_boost: { icon: '💥', desc: 'Adds +50% to your Daily bounty' },
+		jackpot_boost: { icon: '💎', desc: 'Adds +100% to your Daily bounty' },
 		free_reveal: { icon: '🔍', desc: 'Reveal the most useful letter' },
 		free_vowel: { icon: '🅰️', desc: 'Reveal one vowel free' },
 		half_off: { icon: '🏷️', desc: 'Letters cost 50% less this puzzle' },

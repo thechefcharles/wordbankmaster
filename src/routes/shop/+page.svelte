@@ -40,8 +40,8 @@
 		sabotage_toll: { icon: '🚧', desc: "An opponent's next letter costs 3×" },
 		sabotage_vowel_block: { icon: '🚫', desc: "An opponent's vowels cost 3×" },
 		sabotage_lock: { icon: '🔒', desc: 'Wipe a letter an opponent revealed' },
-		bounty_boost: { icon: '💥', desc: 'Adds ×0.5 to your Daily bounty' },
-		jackpot_boost: { icon: '💎', desc: 'Adds ×1.0 to your Daily bounty' }
+		bounty_boost: { icon: '💥', desc: 'Adds +50% to your Daily bounty' },
+		jackpot_boost: { icon: '💎', desc: 'Adds +100% to your Daily bounty' }
 	});
 
 	/** @type {any[]} */
