@@ -4809,6 +4809,14 @@
 								<div class="rcpt-line answer"><span>Answer</span><span>{co.phrase}</span></div>
 							{/if}
 							<div class="rcpt-rule"></div>
+							{#if (co.loan_repaid ?? 0) > 0}
+								<!-- 🦈 50% of the deposit auto-skims to your loan — show why the balance rose less. -->
+								<div class="rcpt-line">
+									<span>Loan repayment <small>(50%)</small></span><span class="neg"
+										>−${co.loan_repaid.toLocaleString()}</span
+									>
+								</div>
+							{/if}
 							<div class="rcpt-line balance">
 								<span>AVAILABLE BALANCE</span><span
 									>${Math.round(menuBank ?? 0).toLocaleString()}</span
