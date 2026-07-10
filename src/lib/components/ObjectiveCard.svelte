@@ -57,16 +57,16 @@
 					return {
 						icon: '👥',
 						title: 'Group Challenge',
-						goal: `Solve ${pk} — spend the least.`,
-						win: 'Winner takes all.',
-						bar: ''
+						goal: `Solve ${pk} — keep the most of each bounty for a higher Score.`,
+						win: 'Highest Score takes the pot. Your ante is the stake.',
+						bar: 'A wrong guess busts the puzzle.'
 					};
 				return {
 					icon: '⚔️',
 					title: c.opponent ? `Duel vs @${c.opponent}` : 'Challenge',
-					goal: `Solve ${pk} — spend the least.`,
-					win: 'Winner takes all.',
-					bar: ''
+					goal: `Solve ${pk} — keep the most of each bounty for a higher Score.`,
+					win: 'Highest Score takes the pot. Your ante is the stake.',
+					bar: 'A wrong guess busts the puzzle.'
 				};
 			}
 			default:

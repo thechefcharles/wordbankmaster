@@ -31,7 +31,7 @@
 			icon: '🧗',
 			title: 'Cash Game & Challenges',
 			isNew: true,
-			body: 'Endless puzzles for Cash, or wager friends — spend the least to take the pot.'
+			body: 'Endless puzzles for Cash, or wager friends — solve efficiently and the highest Score takes the pot.'
 		}
 	];
 
