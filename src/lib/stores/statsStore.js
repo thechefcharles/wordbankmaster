@@ -790,6 +790,16 @@ export async function climbLeave() {
 	}
 	return data;
 }
+/** Voluntarily give up the current Cash Game run — a clean bust (wipes the pot,
+ *  reveals the answer). @returns {Promise<any>} */
+export async function climbForfeit() {
+	const { data, error } = await supabase.rpc('climb_forfeit');
+	if (error) {
+		console.error('❌ climb_forfeit:', error);
+		return null;
+	}
+	return data;
+}
 /** Skip the current Cash Game puzzle for a fresh one (resets heat to ×1.0). @returns {Promise<any>} */
 export async function climbSkip() {
 	const { data, error } = await supabase.rpc('climb_skip');

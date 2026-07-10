@@ -17,6 +17,7 @@
 		startCashGame,
 		cashOutClimb,
 		climbAdvance,
+		climbForfeitRun,
 		climbLeaveGame,
 		climbSkipPuzzle,
 		climbArmDoubleOrNothing,
@@ -1818,6 +1819,23 @@
 			refreshBank();
 		}
 	}
+	// 🏳️ Give up: when you're stuck (can't afford letters, don't know it), forfeit
+	// the run instead of typing wrong guesses. Same outcome as a bust — a forced-choice
+	// confirm makes the loss deliberate.
+	let showForfeitConfirm = false;
+	let forfeitAmount = 0;
+	function askForfeit() {
+		if (cgBusy) return;
+		forfeitAmount = Math.round(climb?.bankroll ?? 0);
+		showForfeitConfirm = true;
+	}
+	async function confirmForfeit() {
+		if (cgBusy) return;
+		showForfeitConfirm = false;
+		cgBusy = true;
+		await climbForfeitRun();
+		cgBusy = false;
+	}
 
 	// ===== ⚡ Blitz — tier select + timed run =====
 	let showBlitzTier = false;
@@ -2836,6 +2854,24 @@
 				<button class="dep-go" disabled={cgBusy} on:click={confirmDeposit}
 					>Deposit ${depositPend.toLocaleString()}</button
 				>
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if showForfeitConfirm}
+	<!-- Forced choice — Keep Playing or Give Up. -->
+	<div class="modal-overlay info-overlay dep-confirm-overlay">
+		<div class="info-card" role="dialog" aria-modal="true">
+			<div class="info-big neg">−${forfeitAmount.toLocaleString()}</div>
+			<h3 class="info-title">Give up this puzzle?</h3>
+			<p class="info-sub">
+				You'll <b class="neg">lose your ${forfeitAmount.toLocaleString()} Potential Payout</b> and see
+				the answer. This can't be undone.
+			</p>
+			<div class="dep-actions">
+				<button class="dep-keep" on:click={() => (showForfeitConfirm = false)}>Keep Playing</button>
+				<button class="dep-go forfeit" disabled={cgBusy} on:click={confirmForfeit}>Give Up</button>
 			</div>
 		</div>
 	</div>
@@ -4243,6 +4279,7 @@
 							wrong guess ends the run and forfeits your Principal.
 						</div>
 					{/if}
+					<button class="bn-forfeit" on:click={askForfeit}>Don't know it? Give up →</button>
 				</div>
 			{/if}
 		{/if}
@@ -5376,6 +5413,20 @@
 		font-size: 0.78rem;
 		line-height: 1.35;
 		color: #d8cccc;
+	}
+	/* 🏳️ give-up link inside the must-guess banner */
+	.bn-forfeit {
+		margin-top: 8px;
+		background: none;
+		border: none;
+		padding: 2px 0;
+		font-family: var(--font-ui);
+		font-weight: 700;
+		font-size: 0.76rem;
+		color: #fb7185;
+		cursor: pointer;
+		text-decoration: underline;
+		text-underline-offset: 2px;
 	}
 
 	.dep-ic {
@@ -8425,6 +8476,12 @@
 		color: #4ade80;
 		text-shadow: 0 0 22px rgba(74, 222, 128, 0.45);
 	}
+	.info-big.neg {
+		font-family: var(--font-display, sans-serif);
+		font-variant-numeric: tabular-nums;
+		color: #fb7185;
+		text-shadow: 0 0 22px rgba(251, 113, 133, 0.4);
+	}
 	.info-title {
 		font-family: var(--font-display);
 		font-size: 1.15rem;
@@ -8471,6 +8528,11 @@
 	.dep-go:disabled {
 		opacity: 0.6;
 		cursor: default;
+	}
+	/* destructive variant — Give Up (forfeit) */
+	.dep-go.forfeit {
+		background: linear-gradient(135deg, #fb7185, #e11d48);
+		color: #fff;
 	}
 	.info-rows {
 		display: flex;

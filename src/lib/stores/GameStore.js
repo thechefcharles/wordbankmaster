@@ -36,6 +36,7 @@ import {
 	climbSubmitGuess,
 	climbNext,
 	climbLeave,
+	climbForfeit,
 	climbSkip,
 	climbDoubleOrNothing,
 	climbUsePowerup,
@@ -671,6 +672,14 @@ export async function climbAdvance() {
 	} finally {
 		dailyInFlight = false;
 	}
+}
+
+/** Voluntarily give up the current Cash Game run — a clean bust (same as a wrong
+ *  guess: wipes the pot, reveals the answer). Shows the VOID receipt. */
+export async function climbForfeitRun() {
+	const board = await climbForfeit();
+	if (board) reconcileClimbBoard(board);
+	return board;
 }
 
 /** Leave the Cash Game (clears heat; position + Cash persist). */
