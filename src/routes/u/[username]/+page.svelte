@@ -5,6 +5,8 @@
 	import { page } from '$app/stores';
 	import { getPublicProfile, addFriend, requestJoinGroup } from '$lib/stores/statsStore.js';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import AccountCard from '$lib/components/AccountCard.svelte';
+	import ModeIcon from '$lib/components/ModeIcon.svelte';
 	import { track } from '$lib/analytics.js';
 	/** @type {Record<string,string>} */ let busyFriend = $state({});
 	/** @type {Record<string,string>} */ let groupState = $state({});
@@ -18,7 +20,6 @@
 
 	const username = $derived($page.params.username);
 
-	const money = (/** @type {any} */ n) => '$' + Math.round(Number(n ?? 0)).toLocaleString();
 	const mult = (/** @type {any} */ x) => (x ? (Number(x) / 100).toFixed(1) + '×' : '—');
 	const winPct = (/** @type {any} */ a) =>
 		a?.games_played ? Math.round((a.games_won / a.games_played) * 100) + '%' : '—';
@@ -88,8 +89,13 @@
 			{/if}
 			<h1>@{p.username}</h1>
 			{#if p.title}<span class="u-title">{p.title}</span>{/if}
-			<div class="u-net" class:neg={Number(p.net_worth) < 0}>{money(p.net_worth)}</div>
-			<span class="u-net-lbl">Net Worth</span>
+			<div class="u-card">
+				<AccountCard
+					holder={p.name || p.username}
+					balance={p.net_worth}
+					tier={p.credit_tier ?? 'Good'}
+				/>
+			</div>
 		</header>
 
 		{#if !p.is_self}
@@ -126,7 +132,7 @@
 					<button class="pill" disabled={addBusy} onclick={add}>+ Add friend</button>
 				{/if}
 				<button class="pill gold" onclick={() => goto('/?challenge=' + p.username)}
-					>⚔️ Challenge</button
+					><ModeIcon mode="challenge" size={16} /> Challenge</button
 				>
 			</div>
 			{#if addMsg}<p class="add-msg">{addMsg}</p>{/if}
@@ -138,7 +144,7 @@
 
 		<section class="grid">
 			<div class="stat">
-				<span class="s-n">🔥 {p.current_streak}</span><span class="s-l">Streak</span>
+				<span class="s-n">{p.current_streak}</span><span class="s-l">Streak</span>
 			</div>
 			<div class="stat">
 				<span class="s-n">{p.longest_streak}</span><span class="s-l">Best streak</span>
@@ -168,7 +174,7 @@
 				<div class="b-h">Badges · {p.badges.length}</div>
 				<div class="b-wrap">
 					{#each p.badges as b}<span class="badge"
-							>🏅 {(b || '')
+							>{(b || '')
 								.replace(/_/g, ' ')
 								.replace(/\b\w/g, (/** @type {string} */ c) => c.toUpperCase())}</span
 						>{/each}
@@ -209,7 +215,7 @@
 				<div class="b-h">Groups · {p.groups.length}</div>
 				{#each p.groups as g}
 					<div class="soc-row">
-						<span class="soc-main static">👥 {g.name}</span>
+						<span class="soc-main static">{g.name}</span>
 						{#if g.my_status === 'member'}
 							<span class="soc-tag">✓ Member</span>
 						{:else if groupState[g.id] === 'requested' || g.my_status === 'requested'}
@@ -275,23 +281,9 @@
 		font-size: 0.78rem;
 		color: var(--gold);
 	}
-	.u-net {
-		font-family: 'Orbitron', var(--font-display);
-		font-weight: 800;
-		font-size: 2rem;
-		color: #fde047;
-		margin-top: 12px;
-		text-shadow: 0 0 18px rgba(251, 191, 36, 0.5);
-	}
-	.u-net.neg {
-		color: #fb7185;
-		text-shadow: none;
-	}
-	.u-net-lbl {
-		font-size: 0.72rem;
-		color: var(--text-faint);
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
+	.u-card {
+		max-width: 340px;
+		margin: 16px auto 0;
 	}
 
 	.h2h {
@@ -377,6 +369,10 @@
 		flex-wrap: wrap;
 	}
 	.pill {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 5px;
 		padding: 9px 18px;
 		border-radius: var(--r-pill);
 		border: 1px solid var(--border-strong);
