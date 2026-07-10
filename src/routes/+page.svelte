@@ -5537,10 +5537,11 @@
 		font-size: 1.05rem;
 	}
 	.tt-buyin {
-		font-family: 'Orbitron', var(--font-display);
+		font-family: var(--font-display, sans-serif);
 		font-weight: 800;
 		color: var(--brand-2);
 		font-size: 1.1rem;
+		font-variant-numeric: tabular-nums;
 	}
 	.tt-buyin small {
 		font-family: var(--font-ui);
