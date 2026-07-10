@@ -180,20 +180,14 @@
 				bind:value={repayAmt}
 			/>
 			<div class="loan-actions">
+				<!-- One slider-driven action: reads "Pay off" when the slider clears the whole
+             balance, "Repay $X" for a partial payment. -->
 				<button
-					class="loan-btn ghost"
+					class="loan-btn pay"
 					disabled={!!loanBusy || repayAmt <= 0}
-					on:click={() => repay(repayAmt)}>Repay {fmt(repayAmt)}</button
+					on:click={() => repay(repayAmt)}
+					>{repayAmt >= owed ? `Pay off (${fmt(repayAmt)})` : `Repay ${fmt(repayAmt)}`}</button
 				>
-				{#if canClear}
-					<button class="loan-btn pay" disabled={!!loanBusy} on:click={() => repay(owed)}
-						>Pay off ({fmt(owed)})</button
-					>
-				{:else}
-					<button class="loan-btn pay" disabled={!!loanBusy} on:click={() => repay(maxRepay)}
-						>Repay all ({fmt(maxRepay)})</button
-					>
-				{/if}
 			</div>
 			{#if !canClear}
 				<p class="loan-note" style="margin-bottom:0">
@@ -425,9 +419,10 @@
 		font-size: 1rem;
 	}
 	.loan-owed {
-		font-family: 'Orbitron', var(--font-display);
+		font-family: var(--font-display, sans-serif);
 		font-weight: 800;
 		font-size: 1.5rem;
+		font-variant-numeric: tabular-nums;
 		color: #fb7185;
 	}
 	.loan-summary {
