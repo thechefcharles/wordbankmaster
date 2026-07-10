@@ -4284,7 +4284,10 @@
 				<div class="match-meta">
 					{#if matchPot > 0}<span class="pot-chip">Pot ${matchPot.toLocaleString()}</span>{/if}
 					{#if matchInfo.target != null}<span class="beat-chip"
-							>Beat ${Number(matchInfo.target).toLocaleString()}</span
+							>Beat ${Number(
+								matchInfo.target
+							).toLocaleString()}{#if matchInfo.target_kind === 'place'}
+								to place{/if}</span
 						>{/if}
 					{#if matchInfo.pack_size > 1}<span class="match-pos"
 							>Puzzle {matchInfo.position}/{matchInfo.pack_size}</span
