@@ -147,7 +147,11 @@
 						></th
 					>
 					<th class="num"
-						><button class="sort" class:on={sortKey === 'score'} onclick={() => setSort('score')}
+						><button
+							class="sort"
+							class:on={sortKey === 'score'}
+							onclick={() => setSort('score')}
+							title="Earnings — what you banked from today's Daily"
 							><svg class="hcol-ic" viewBox="0 0 24 24" aria-hidden="true"
 								><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle
 									cx="12"
@@ -155,7 +159,7 @@
 									r="1.2"
 								/></svg
 							>
-							Bounty Earned{arrow('score')}</button
+							Earnings{arrow('score')}</button
 						></th
 					>
 					<th class="num"
@@ -226,8 +230,8 @@
 						<td class="metric">{r.credit ?? 650}</td>
 						<td class="metric gold">{r.played ? Number(r.score).toLocaleString() : '—'}</td>
 						<td class="metric eff">{r.efficiency != null ? r.efficiency + '%' : '—'}</td>
-						<td class="metric small">{r.play_streak > 0 ? '🔥' + r.play_streak : '—'}</td>
-						<td class="metric small">{r.win_streak > 0 ? '🏆' + r.win_streak : '—'}</td>
+						<td class="metric small">{r.play_streak > 0 ? r.play_streak : '—'}</td>
+						<td class="metric small">{r.win_streak > 0 ? r.win_streak : '—'}</td>
 					</tr>
 				{/each}
 			</tbody>
