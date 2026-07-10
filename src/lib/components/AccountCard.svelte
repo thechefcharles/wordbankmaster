@@ -8,8 +8,6 @@
 	import { cardName } from '$lib/creditTiers.js';
 	/** Credit tier — skins the card (Excellent = black card; Poor/Bad = distressed). */
 	/** @type {string} */ export let tier = 'Good';
-	/** Compact = a mini card for the in-game HUD top bar (drops holder/member footer). */
-	export let compact = false;
 
 	$: cardTitle = cardName(tier);
 	$: tierClass =
@@ -26,7 +24,7 @@
 	$: amount = Math.round(Number(balance) || 0).toLocaleString();
 </script>
 
-<div class="acct-card {tierClass}" class:compact>
+<div class="acct-card {tierClass}">
 	<div class="ac-sheen"></div>
 	<div class="ac-inner">
 		<div class="ac-top">
@@ -41,7 +39,7 @@
 			<div class="ac-cap">Available Balance</div>
 			<div class="ac-amt">${amount}</div>
 		</div>
-		<div class="ac-num">{compact ? `···· ${last4}` : `•••• •••• •••• ${last4}`}</div>
+		<div class="ac-num">•••• •••• •••• {last4}</div>
 		<div class="ac-foot">
 			<div>
 				<div class="ac-cap sm">Account Holder</div>
@@ -200,52 +198,5 @@
 		font-size: 0.9rem;
 		color: #fbbf24;
 		font-variant-numeric: tabular-nums;
-	}
-	/* 💳 Compact — the mini card that lives in the in-game HUD top bar. */
-	.acct-card.compact {
-		min-height: 0;
-		max-width: 228px;
-		padding: 10px 14px 11px;
-		border-radius: 13px;
-		box-shadow:
-			0 6px 18px rgba(0, 0, 0, 0.5),
-			inset 0 1px 0 rgba(255, 255, 255, 0.08);
-	}
-	.acct-card.compact .ac-inner {
-		gap: 3px;
-	}
-	.acct-card.compact .ac-foot,
-	.acct-card.compact .ac-cardname {
-		display: none;
-	}
-	.acct-card.compact .ac-coin {
-		width: 17px;
-		height: 17px;
-	}
-	.acct-card.compact .ac-brand {
-		font-size: 0.64rem;
-		letter-spacing: 0.11em;
-		gap: 5px;
-	}
-	.acct-card.compact .ac-chip {
-		width: 25px;
-		height: 19px;
-		border-radius: 4px;
-	}
-	.acct-card.compact .ac-bal {
-		margin-top: 3px;
-	}
-	.acct-card.compact .ac-cap {
-		font-size: 0.53rem;
-		letter-spacing: 0.14em;
-	}
-	.acct-card.compact .ac-amt {
-		font-size: 1.45rem;
-	}
-	.acct-card.compact .ac-num {
-		font-size: 0.82rem;
-		letter-spacing: 0.14em;
-		color: #b8ac97;
-		margin-top: 2px;
 	}
 </style>

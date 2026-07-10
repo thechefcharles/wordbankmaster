@@ -4264,19 +4264,19 @@
 			{:else if !matchBlitz}
 				{@const isDailyLike = $gameStore.gameMode === 'daily' || isMakeup}
 				{#if isDailyLike || isClimb}
-					<!-- 💳 Mini account card — your real, safe money; the hero number below is the
+					<!-- 🏦 Account balance strip — your real, safe money; the hero number below is the
                  at-risk game money that banks into this account. -->
 					<button
-						class="mini-card-btn"
+						class="acct-strip"
 						title="Available Balance — your account; solving deposits into it"
 						on:click={openBankModal}
 					>
-						<AccountCard
-							compact
-							account={acctNo}
-							balance={menuBank ?? netWorth ?? 0}
-							tier={bankData?.credit_tier ?? menuCreditTier ?? 'Good'}
-						/>
+						<span class="as-acct">···· {acctNo}</span>
+						<span class="as-div"></span>
+						<span class="as-right">
+							<span class="as-cap">Available Balance</span>
+							<span class="as-amt">${Math.round(menuBank ?? netWorth ?? 0).toLocaleString()}</span>
+						</span>
 					</button>
 				{:else}
 					<button
@@ -8859,19 +8859,53 @@
 	.top-bank.solo:active {
 		transform: scale(0.97);
 	}
-	/* 💳 Mini account-card wrapper (Daily + Cash Game top bar) — a bare tappable button. */
-	.mini-card-btn {
-		display: block;
+	/* 🏦 Account balance strip (Daily + Cash Game top bar) — account no. + Available Balance. */
+	.acct-strip {
+		display: inline-flex;
+		align-items: center;
+		gap: 12px;
 		width: fit-content;
 		margin: 0 auto 12px;
-		padding: 0;
-		border: 0;
-		background: none;
+		padding: 6px 16px;
+		border-radius: 12px;
+		border: 1px solid rgba(253, 224, 71, 0.28);
+		background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(251, 191, 36, 0.03));
 		cursor: pointer;
 		transition: transform 0.12s ease;
 	}
-	.mini-card-btn:active {
+	.acct-strip:active {
 		transform: scale(0.98);
+	}
+	.as-acct {
+		font-family: 'Courier New', 'Courier', ui-monospace, monospace;
+		font-size: 0.74rem;
+		letter-spacing: 0.12em;
+		color: var(--text-faint);
+	}
+	.as-div {
+		width: 1px;
+		height: 22px;
+		background: rgba(253, 224, 71, 0.25);
+	}
+	.as-right {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		line-height: 1.05;
+	}
+	.as-cap {
+		font-size: 0.54rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--text-faint);
+	}
+	.as-amt {
+		font-family: var(--font-display, sans-serif);
+		font-weight: 800;
+		font-size: 1.3rem;
+		color: #fcd34d;
+		font-variant-numeric: tabular-nums;
 	}
 	/* 🔥 Cash Game tagline under the title in the tier picker. */
 	.cg-tagline {
