@@ -1730,6 +1730,14 @@
 	/** @type {any} */
 	let cgMeta = null;
 	let cgBusy = false;
+	// Can't afford ANY unlocked tier → we'll nudge them to a loan / the free Daily.
+	$: cgMinBuyIn = Math.min(
+		...(cgMeta?.tiers ?? [])
+			.filter((/** @type {any} */ t) => t.unlocked)
+			.map((/** @type {any} */ t) => t.buy_in),
+		Infinity
+	);
+	$: cgBroke = !!cgMeta && (cgMeta.bank ?? 0) < cgMinBuyIn;
 	/** @type {any} */
 	let cashoutResult = null; // { banked, buy_in, profit, multiple_x100, solves, tier }
 
@@ -3556,6 +3564,9 @@
 						Invest your Principal, grow it, Deposit — or VOID. Higher tiers put more on the table
 						for a bigger Yield.
 					</p>
+					<div class="tier-balance">
+						Your Cash <b class:neg={cgBroke}>${(cgMeta?.bank ?? 0).toLocaleString()}</b>
+					</div>
 					<div class="tier-grid">
 						{#each cgMeta?.tiers ?? [] as t}
 							<button
@@ -3580,6 +3591,28 @@
 							</button>
 						{/each}
 					</div>
+					{#if cgBroke}
+						<div class="tier-broke">
+							<p class="tb-text">Not enough Cash to buy in — grab some first:</p>
+							<div class="tb-actions">
+								<button
+									class="tb-btn loan"
+									on:click={() => {
+										showTierSelect = false;
+										goto('/loans');
+									}}>Take out a loan</button
+								>
+								<button
+									class="tb-btn daily"
+									on:click={() => {
+										showTierSelect = false;
+										handleMenuDaily();
+									}}>Play the Daily</button
+								>
+							</div>
+							<p class="tb-hint">The Daily is free — wins pay Cash, and a streak pays even more.</p>
+						</div>
+					{/if}
 					{#if (cgMeta?.best_run ?? 0) > 0}
 						<p class="tier-stats">
 							Best deposit <b>${cgMeta.best_run.toLocaleString()}</b> · best multiple
@@ -5532,6 +5565,67 @@
 	}
 	.tier-stats b {
 		color: var(--brand-2);
+	}
+	.tier-balance {
+		text-align: center;
+		font-size: 0.82rem;
+		color: var(--text-muted);
+		margin: -4px 0 12px;
+		letter-spacing: 0.02em;
+	}
+	.tier-balance b {
+		font-family: var(--font-display);
+		font-weight: 800;
+		font-size: 1rem;
+		color: var(--brand-2);
+		margin-left: 4px;
+		font-variant-numeric: tabular-nums;
+	}
+	.tier-balance b.neg {
+		color: #fb7185;
+	}
+	/* 🚫 Too broke to buy in → nudge to a loan / the free Daily */
+	.tier-broke {
+		text-align: center;
+		margin: 4px 0 10px;
+		padding: 12px;
+		border-radius: 14px;
+		background: rgba(251, 113, 133, 0.08);
+		border: 1px solid rgba(251, 113, 133, 0.25);
+	}
+	.tb-text {
+		margin: 0 0 10px;
+		font-size: 0.86rem;
+		font-weight: 700;
+		color: var(--text);
+	}
+	.tb-actions {
+		display: flex;
+		gap: 8px;
+		justify-content: center;
+	}
+	.tb-btn {
+		flex: 1;
+		padding: 0.6rem 0.5rem;
+		border-radius: 11px;
+		font-weight: 800;
+		font-size: 0.84rem;
+		cursor: pointer;
+		border: none;
+	}
+	.tb-btn.loan {
+		background: linear-gradient(135deg, #fbbf24, #fde047);
+		color: #3a2a00;
+	}
+	.tb-btn.daily {
+		background: var(--surface);
+		color: var(--text);
+		border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16));
+	}
+	.tb-hint {
+		margin: 10px 0 0;
+		font-size: 0.74rem;
+		color: var(--text-faint);
 	}
 	.tier-grid-3 {
 		grid-template-columns: repeat(3, 1fr);
