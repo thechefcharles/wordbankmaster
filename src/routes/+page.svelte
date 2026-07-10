@@ -3263,12 +3263,8 @@
 						member={$userProfile?.member_no ?? null}
 						balance={menuBank ?? $userProfile?.bank ?? 0}
 						tier={menuCreditTier ?? 'Good'}
+						loan={menuLoan}
 					/>
-					{#if menuLoan > 0}
-						<span class="mcw-debt" title="You owe the Loan Shark"
-							>🦈 −${Math.round(menuLoan).toLocaleString()}</span
-						>
-					{/if}
 				</div>
 				<!-- ⚡ Bank-app quick actions — horizontally swipeable (flat line icons) -->
 				<div class="qt-wrap" class:qt-end={qtAtEnd}>
@@ -3335,23 +3331,6 @@
 					<span class="qt-more" aria-hidden="true">›</span>
 				</div>
 				<div class="main-menu-buttons stagger">
-					<!-- 🦈 Debt banner — you owe the Loan Shark; Store locked + payouts auto-skim. -->
-					{#if menuLoan > 0}
-						<button
-							class="debt-banner"
-							style="--i: 0"
-							on:click={() => {
-								fx('tap');
-								goto('/bank');
-							}}
-						>
-							🦈 <span class="db-text"
-								>You owe <b>${Math.round(menuLoan).toLocaleString()}</b> — half of every payout auto-repays
-								it</span
-							>
-							<span class="db-go">Repay ›</span>
-						</button>
-					{/if}
 					<!-- ▶ Resume — any in-progress game (solo + started challenges). One → straight in; many → the Resume menu. -->
 					{#if resumables.length}
 						<button class="resume-strip" style="--i: 0" on:click={onResume}>
@@ -6302,19 +6281,6 @@
 	.menu-card-wrap:active {
 		transform: scale(0.985);
 	}
-	.mcw-debt {
-		position: absolute;
-		top: 10px;
-		right: 12px;
-		padding: 3px 9px;
-		border-radius: 999px;
-		background: rgba(20, 12, 12, 0.8);
-		border: 1px solid rgba(248, 113, 113, 0.5);
-		color: #fb7185;
-		font-family: var(--font-display);
-		font-weight: 800;
-		font-size: 0.72rem;
-	}
 	/* ⚡ Quick-action tiles — horizontally swipeable */
 	.qt-wrap {
 		position: relative;
@@ -6747,40 +6713,6 @@
 	}
 	.resume-strip:active {
 		transform: scale(0.99);
-	}
-	.debt-banner {
-		display: flex;
-		align-items: center;
-		gap: 9px;
-		width: 100%;
-		margin-bottom: 2px;
-		padding: 9px 14px;
-		border-radius: 12px;
-		cursor: pointer;
-		background: linear-gradient(180deg, rgba(53, 16, 16, 0.7), rgba(42, 15, 15, 0.7));
-		border: 1px solid rgba(248, 113, 113, 0.5);
-		font-family: var(--font-display);
-		font-weight: 700;
-		font-size: 0.82rem;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-	}
-	.debt-banner:hover {
-		border-color: rgba(248, 113, 113, 0.75);
-	}
-	.debt-banner:active {
-		transform: scale(0.99);
-	}
-	.db-text {
-		flex: 1;
-		text-align: left;
-		color: #fecaca;
-		font-weight: 600;
-	}
-	.db-text b {
-		color: #fb7185;
-	}
-	.db-go {
-		color: rgba(251, 113, 133, 0.85);
 	}
 	.rs-dot {
 		color: #34d399;
