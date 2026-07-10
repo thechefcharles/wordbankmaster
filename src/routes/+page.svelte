@@ -4841,7 +4841,7 @@
 						{@const letters = Math.round(climb?.spent ?? 0)}
 						{@const payout = Math.round(climb?.last_gain ?? 0)}
 						<!-- Gross = kept + letters (the bounty at the heat this puzzle was PLAYED, not the
-                 bumped heat the board now reports) so Bounty − Letters = SECURED always ties out. -->
+                 bumped heat the board now reports) so Bounty − Letters = Earnings always ties out. -->
 						{@const advance = payout + letters}
 						{@const intBase = Math.max(
 							1,
@@ -4849,7 +4849,6 @@
 						)}
 						{@const intMult = (advance / intBase).toFixed(1)}
 						{@const pendAfter = Math.round(climb?.bankroll ?? 0)}
-						{@const pendBefore = pendAfter - payout}
 						{@const buyIn = Math.round(climb?.buy_in ?? 0)}
 						{@const startBal = Math.round((menuBank ?? 0) + buyIn)}
 						{@const tierName =
@@ -4892,12 +4891,7 @@
 							</div>
 							<div class="rcpt-rule double"></div>
 							<div class="rcpt-line total profit">
-								<span>SECURED</span><span>+${payout.toLocaleString()}</span>
-							</div>
-							<div class="rcpt-line">
-								<span>Earnings</span><span
-									>${pendBefore.toLocaleString()} ▸ ${pendAfter.toLocaleString()}</span
-								>
+								<span>Earnings</span><span>+${payout.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line balance">
@@ -4905,7 +4899,6 @@
 									>${Math.round(menuBank ?? 0).toLocaleString()}</span
 								>
 							</div>
-							<div class="rcpt-foot">Bank it now, or play on and risk it all.</div>
 						</div>
 						{#if climb?.next_category}
 							<div class="cg-peek">
