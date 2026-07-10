@@ -80,13 +80,7 @@
 		<p class="msg">No player named <b>@{username}</b>.</p>
 	{:else}
 		<header class="u-head">
-			{#if p.avatar}
-				<Avatar config={p.avatar} fx size={110} />
-			{:else}
-				<div class="u-coin" style={p.color ? `--c:${p.color}` : ''}>
-					{(p.name || p.username || '?').slice(0, 1).toUpperCase()}
-				</div>
-			{/if}
+			<Avatar config={p.avatar} fx size={110} />
 			<h1>@{p.username}</h1>
 			{#if p.title}<span class="u-title">{p.title}</span>{/if}
 			<div class="u-card">
@@ -255,20 +249,6 @@
 	.u-head {
 		text-align: center;
 		margin: 10px 0 20px;
-	}
-	.u-coin {
-		width: 72px;
-		height: 72px;
-		margin: 0 auto 10px;
-		border-radius: 50%;
-		display: grid;
-		place-items: center;
-		font-family: var(--font-display);
-		font-weight: 800;
-		font-size: 1.8rem;
-		color: #3a2a00;
-		background: linear-gradient(135deg, var(--c, #fde047), #f59e0b);
-		box-shadow: 0 0 26px rgba(251, 191, 36, 0.4);
 	}
 	h1 {
 		font-family: var(--font-display);
