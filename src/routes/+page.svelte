@@ -8880,7 +8880,7 @@
 		font-family: 'Courier New', 'Courier', ui-monospace, monospace;
 		font-size: 0.74rem;
 		letter-spacing: 0.12em;
-		color: var(--text-faint);
+		color: #aab4c4;
 	}
 	.as-div {
 		width: 1px;
@@ -8898,7 +8898,7 @@
 		font-weight: 700;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
-		color: var(--text-faint);
+		color: #d6dbe4;
 	}
 	.as-amt {
 		font-family: var(--font-display, sans-serif);
