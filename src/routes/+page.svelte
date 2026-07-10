@@ -495,6 +495,27 @@
 	}
 	$: isClimb = $gameStore.gameMode === 'climb';
 	$: climb = $gameStore.climbInfo; // { wallet, bounty, budget_left, solve_reward, spent, heat, must_guess, cheapest, last_gain, state, run_solves, wiped, pups_locked, equipped }
+	// ⏳ "You're out of money!" banner — pops for ~5s the first time you can't afford a
+	// letter, then auto-hides (give-up stays reachable via the top-right ↪).
+	let mgBannerShown = false;
+	let mgBannerVisible = false;
+	/** @type {ReturnType<typeof setTimeout>|undefined} */
+	let mgTimer;
+	function syncMustGuessBanner(/** @type {boolean} */ mg) {
+		if (mg) {
+			if (!mgBannerShown) {
+				mgBannerShown = true;
+				mgBannerVisible = true;
+				clearTimeout(mgTimer);
+				mgTimer = setTimeout(() => (mgBannerVisible = false), 5000);
+			}
+		} else {
+			mgBannerShown = false;
+			mgBannerVisible = false;
+			clearTimeout(mgTimer);
+		}
+	}
+	$: syncMustGuessBanner(!!climb?.must_guess);
 
 	// 🧾 Bank-receipt meta — a stable masked account number derived from the user id
 	// (deterministic, no DB), the account holder, and a timestamp captured when a
@@ -4267,23 +4288,13 @@
 		<!-- 🎰 Cash Game (Climb) HUD — number-free so it feels random. Heat lives in the
          Solve-to-Earn box; power-ups live in the vault beside Solve. -->
 		{#if isClimb && climb}
-			{#if climb.must_guess && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
+			{#if mgBannerVisible && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
 				<div class="bank-notif">
 					<div class="bn-head">
 						<span class="bn-app">🏦 WordBank</span><span class="bn-time">now</span>
 					</div>
-					<div class="bn-title">Balance too low</div>
-					{#if (climb.wallet ?? climb.bankroll ?? 0) > 0}
-						<div class="bn-body">
-							Not enough to buy another letter — you have to guess. Solve to bank it, or a wrong
-							guess voids your whole Potential Payout.
-						</div>
-					{:else}
-						<div class="bn-body">
-							Not enough to buy another letter — you have to guess. Solve to bank your winnings; a
-							wrong guess ends the run and forfeits your Principal.
-						</div>
-					{/if}
+					<div class="bn-title">You're out of money!</div>
+					<div class="bn-body">Solve now, or forfeit your payout!</div>
 					<button class="bn-forfeit" on:click={askForfeit}>Don't know it? Give up →</button>
 				</div>
 			{/if}
