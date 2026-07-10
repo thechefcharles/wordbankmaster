@@ -2823,21 +2823,9 @@
 
 <!-- ℹ️ Challenge "Left to Spend" explainer -->
 {#if showDepositConfirm}
-	<div
-		class="modal-overlay info-overlay dep-confirm-overlay"
-		role="button"
-		tabindex="0"
-		aria-label="Close"
-		on:click={() => (showDepositConfirm = false)}
-		on:keydown={(e) => {
-			if (e.key === 'Escape') showDepositConfirm = false;
-		}}
-	>
-		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
-		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
-			<button class="modal-x" on:click={() => (showDepositConfirm = false)} aria-label="Close"
-				>✕</button
-			>
+	<!-- No ✕ / no click-outside: this is a forced choice — Keep Playing or Deposit. -->
+	<div class="modal-overlay info-overlay dep-confirm-overlay">
+		<div class="info-card" role="dialog" aria-modal="true">
 			<div class="info-big dep-amt">${depositPend.toLocaleString()}</div>
 			<h3 class="info-title">Deposit & end your run?</h3>
 			<p class="info-sub">
@@ -8167,8 +8155,9 @@
 		cursor: pointer;
 	}
 	/* Deposit confirm is opened FROM the win receipt (also a .modal-overlay), so it
-	   must sit above it — otherwise it renders behind and the tap looks like a no-op. */
-	.dep-confirm-overlay {
+	   must sit above it — otherwise it renders behind and the tap looks like a no-op.
+	   Two-class selector so it beats `.modal-overlay` regardless of source order. */
+	.modal-overlay.dep-confirm-overlay {
 		z-index: 10000;
 	}
 	.info-card {
