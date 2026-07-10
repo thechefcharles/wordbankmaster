@@ -618,21 +618,22 @@
 			? { spent: matchInfo.spent ?? 0, budget: matchInfo.budget ?? 0 }
 			: null;
 	$: matchLeft = matchLive ? Math.max(0, (matchLive.budget ?? 0) - (matchLive.spent ?? 0)) : 0;
-	// Unified money hero (Daily · Cash Game = net you keep; Challenge = ante left to spend).
+	// Challenge "Earnings" = accumulated Score (prior puzzles' kept cash) + this puzzle's leftover.
+	// Mirrors Cash Game's Earnings (secured pile + current budget) so all modes read the same.
+	$: matchEarnings = (matchInfo?.total_score ?? 0) + matchLeft;
+	// Unified money hero — every mode's center = Earnings (bounty − spent, kept by solving).
 	$: soloHero = climbLive
 		? { net: climbLive.net }
 		: dLive
 			? { net: dLive.remaining } // Daily center = "Balance Remaining" (leftover budget; ×interest banks on solve)
 			: matchLive
-				? { net: matchLeft }
+				? { net: matchEarnings }
 				: null;
 
 	// 🎰 Slot-machine money feel: count up/down the bankroll + the green "Solve to Earn",
 	// and float a -$X by the number each time you spend.
 	const tweenBank = tweened(0, { duration: 550, easing: cubicOut });
 	const tweenNet = tweened(0, { duration: 900, easing: cubicOut });
-	// ⚔️ Challenge: top-bar Score banks up as you solve each puzzle in the pack.
-	const tweenScore = tweened(0, { duration: 700, easing: cubicOut });
 	// 🏆 Win-banner animations: profit counts up, then Cash scrolls to the new total.
 	const resultProfit = tweened(0, { duration: 1100, easing: cubicOut });
 	const resultBankAnim = tweened(0, { duration: 1300, easing: cubicOut });
@@ -642,7 +643,6 @@
 	// While the opening reveal is landing boxes, hold the bounty at $0 so it can
 	// dramatically count up at the climax (introDone).
 	$: tweenNet.set(introBuilding ? 0 : soloHero ? Math.round(soloHero.net) : 0);
-	$: tweenScore.set(isMatch ? Math.round(matchInfo?.total_score ?? 0) : 0);
 	// The Pot you're playing for = every player's ante. Reduced-stake joins can make
 	// the settled pot a bit lower; this is the headline "playing for" figure.
 	$: matchPot = isMatch
@@ -2931,13 +2931,17 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (showAnteInfo = false)} aria-label="Close">✕</button>
-			<div class="info-big green">${Math.max(0, matchLeft).toLocaleString()}</div>
-			<h3 class="info-title">Balance Remaining</h3>
+			<div class="info-big green">${Math.max(0, matchEarnings).toLocaleString()}</div>
+			<h3 class="info-title">Earnings</h3>
 			<p class="info-sub">
-				Each puzzle gives you this bounty to spend on letters — it's <b>not</b> your money. Keep as
-				much as you can; whatever's left banks into your <b>Score</b>. Highest Score wins the pot.
+				Each puzzle gives you a bounty to spend on letters — it's <b>not</b> your money. Whatever
+				you don't spend banks into your <b>Earnings</b>, which stack across the pack. Highest
+				Earnings takes the pot.
 			</p>
 			<div class="info-rows">
+				<div class="info-row">
+					<span>This puzzle's budget</span><b>${Math.max(0, matchLeft).toLocaleString()}</b>
+				</div>
 				<div class="info-row">
 					<span>Your ante</span><b>${(matchInfo?.wager ?? 0).toLocaleString()}</b>
 				</div>
@@ -2947,8 +2951,9 @@
 				<div class="info-row"><span>Lose the duel</span><b class="neg">forfeit your ante</b></div>
 			</div>
 			<p class="info-note">
-				Highest Score wins the pot. Duel = winner-take-all (tie splits 50/50); groups pay a podium
-				(3 → 70/30, 4+ → 60/30/10). A wrong guess busts the puzzle, so guess only when you're sure.
+				Highest Earnings wins the pot. Duel = winner-take-all (tie splits 50/50); groups pay a
+				podium (3 → 70/30, 4+ → 60/30/10). A wrong guess busts the puzzle, so guess only when you're
+				sure.
 			</p>
 			<button class="info-close" on:click={() => (showAnteInfo = false)}>Got it</button>
 		</div>
@@ -4263,18 +4268,18 @@
 				</div>
 			{:else if !matchBlitz}
 				{@const isDailyLike = $gameStore.gameMode === 'daily' || isMakeup}
-				{#if isDailyLike || isClimb}
-					<!-- 🏦 Account balance strip — your real, safe money; the hero number below is the
-                 at-risk game money that banks into this account. -->
+				{#if isDailyLike || isClimb || isMatch}
+					<!-- 🏦 Account balance strip (all modes) — your real, safe money; the hero number
+                 below is the game money you're building this session. -->
 					<button
 						class="acct-strip"
-						title="Available Balance — your account; solving deposits into it"
+						title="My Account — your real balance; game winnings bank into it"
 						on:click={openBankModal}
 					>
 						<span class="as-acct">···· {acctNo}</span>
 						<span class="as-div"></span>
 						<span class="as-right">
-							<span class="as-cap">Available Balance</span>
+							<span class="as-cap">My Account</span>
 							<span class="as-amt">${Math.round(menuBank ?? netWorth ?? 0).toLocaleString()}</span>
 						</span>
 					</button>
@@ -4283,27 +4288,10 @@
 						class="top-bank solo"
 						class:pop-up={bankFlash === 'up'}
 						class:pop-down={bankFlash === 'down'}
-						title={isDailyLike
-							? 'Available Balance — your account; today’s puzzle deposits into it'
-							: isClimb
-								? 'Available Balance — your account; cash out your run into it'
-								: isMatch
-									? 'Your Score — cash kept, banks up with each solve'
-									: 'Available Balance'}
+						title="Available Balance"
 						on:click={openBankModal}
 					>
-						{#if isMatch}<span class="tb-wallet-cap">Score</span
-							>{:else if isDailyLike || isClimb}<span class="tb-wallet-cap">Available Balance</span
-							>{/if}
-						<span class="tb-solo"
-							>${Math.round(
-								isMatch
-									? $tweenScore
-									: isDailyLike || isClimb
-										? (menuBank ?? netWorth ?? 0)
-										: $tweenBank
-							).toLocaleString()}</span
-						>
+						<span class="tb-solo">${Math.round($tweenBank).toLocaleString()}</span>
 					</button>
 				{/if}
 			{/if}
@@ -4461,7 +4449,7 @@
 		<!-- 💰 Money hero -->
 		<section class="stats-section">
 			{#if soloHero}
-				<!-- Daily · Cash Game = the number you keep if you solve now. Challenge = ante left to spend (depletes). -->
+				<!-- Daily · Cash Game hero = Earnings (bounty − spent, the cash you keep by solving efficiently). -->
 				<div
 					class="bounty-panel"
 					class:loss={!isMatch && soloHero.net < 0}
@@ -4469,17 +4457,9 @@
 					class:count-pop={introCountPop}
 				>
 					<span class="bp-label"
-						>{isMatch
-							? matchLeft > 0
-								? 'Balance Remaining'
-								: 'Nothing left'
-							: $gameStore.gameMode === 'daily'
-								? 'Balance Remaining'
-								: isClimb
-									? 'Earnings'
-									: soloHero.net >= 0
-										? 'Balance Remaining'
-										: '⚠️ You’re losing money'}</span
+						>{isMatch || isClimb || $gameStore.gameMode === 'daily'
+							? 'Earnings'
+							: 'Balance Remaining'}</span
 					>
 					<div class="bp-row">
 						{#if $gameStore.gameMode === 'daily'}
@@ -8990,14 +8970,6 @@
 		font-size: 1.55rem;
 		color: #fcd34d;
 		font-variant-numeric: tabular-nums;
-	}
-	.tb-wallet-cap {
-		display: block;
-		font-size: 0.62rem;
-		font-weight: 700;
-		letter-spacing: 0.05em;
-		text-transform: uppercase;
-		color: var(--text-faint);
 	}
 	/* 🏷️ Game-mode pill — centered under the wordmark, same for every mode */
 	.mode-pill {
