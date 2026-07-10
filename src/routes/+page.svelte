@@ -4283,6 +4283,9 @@
 			{:else}
 				<div class="match-meta">
 					{#if matchPot > 0}<span class="pot-chip">Pot ${matchPot.toLocaleString()}</span>{/if}
+					{#if matchInfo.target != null}<span class="beat-chip"
+							>Beat ${Number(matchInfo.target).toLocaleString()}</span
+						>{/if}
 					{#if matchInfo.pack_size > 1}<span class="match-pos"
 							>Puzzle {matchInfo.position}/{matchInfo.pack_size}</span
 						>{/if}
@@ -5224,6 +5227,18 @@
 		color: #fcd34d;
 		background: rgba(252, 211, 77, 0.12);
 		border: 1px solid rgba(252, 211, 77, 0.3);
+		padding: 3px 11px;
+		border-radius: 999px;
+		font-variant-numeric: tabular-nums;
+	}
+	/* 🎯 The score to beat (opponent has played) — the async duel's live target */
+	.beat-chip {
+		font-family: var(--font-display);
+		font-weight: 800;
+		font-size: 0.8rem;
+		color: #fb7185;
+		background: rgba(251, 113, 133, 0.12);
+		border: 1px solid rgba(251, 113, 133, 0.35);
 		padding: 3px 11px;
 		border-radius: 999px;
 		font-variant-numeric: tabular-nums;
