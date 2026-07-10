@@ -2814,8 +2814,8 @@
 			<button class="modal-x" on:click={() => (climbInfo = null)} aria-label="Close">✕</button>
 			{#if climbInfo === 'heat'}
 				<div class="info-big">🔥 ×{((climb?.heat ?? 100) / 100).toFixed(1)}</div>
-				<h3 class="info-title">Heat — your bounty multiplier</h3>
-				<p class="info-sub">Every new bounty lands in your Earnings boosted by your Heat.</p>
+				<h3 class="info-title">Interest — your bounty multiplier</h3>
+				<p class="info-sub">Every new bounty lands in your Earnings boosted by your Interest.</p>
 				<div class="info-rows">
 					<div class="info-row"><span>Base</span><b>×1.0</b></div>
 					<div class="info-row"><span>Each solve in a row</span><b class="pos">+0.1×</b></div>
@@ -2823,11 +2823,11 @@
 						<span>Maxes out at</span><b>×{((climb?.heat_cap ?? 200) / 100).toFixed(1)}</b>
 					</div>
 					<div class="info-row total">
-						<span>Your Heat</span><b>×{((climb?.heat ?? 100) / 100).toFixed(1)}</b>
+						<span>Your Interest</span><b>×{((climb?.heat ?? 100) / 100).toFixed(1)}</b>
 					</div>
 				</div>
 				<p class="info-note">
-					Heat climbs with your <button
+					Interest climbs with your <button
 						class="info-inline"
 						on:click|stopPropagation={() => (climbInfo = 'streak')}>solve streak</button
 					> and resets to ×1.0 on a bust.
@@ -2843,7 +2843,7 @@
 				<p class="info-note">
 					Powers your <button
 						class="info-inline"
-						on:click|stopPropagation={() => (climbInfo = 'heat')}>Heat</button
+						on:click|stopPropagation={() => (climbInfo = 'heat')}>Interest</button
 					>
 					— <b>+0.1×</b> per solve.
 				</p>
@@ -2870,7 +2870,7 @@
 					Each puzzle's <b>budget</b> shrinks as you buy letters — solve to lock it into your
 					Earnings. Reveal less, keep more; the next bounty lands ×
 					<button class="info-inline" on:click|stopPropagation={() => (climbInfo = 'heat')}
-						>Heat</button
+						>Interest</button
 					>.
 				</p>
 			{/if}
@@ -4336,7 +4336,7 @@
 			</div>
 		{/if}
 
-		<!-- 🎰 Cash Game (Climb) HUD — one running Balance up top; Heat badge + Balance in the
+		<!-- 🎰 Cash Game (Climb) HUD — account strip up top; Interest badge + Earnings in the
          hero. Must-guess banner shows when this puzzle's budget is spent. -->
 		{#if isClimb && climb}
 			{#if mgBannerVisible && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
@@ -4474,7 +4474,7 @@
 						{:else if isClimb}
 							<button
 								class="bp-mult-badge"
-								title="Heat — boosts each new bounty as it lands in your Earnings"
+								title="Interest — boosts each new bounty as it lands in your Earnings"
 								on:click={() => {
 									fx('tap');
 									climbInfo = 'heat';
@@ -4800,7 +4800,7 @@
 								>
 							</div>
 							<div class="rcpt-note">
-								{((co.multiple_x100 ?? 0) / 100).toFixed(1)}× buy-in · peak heat ×{(
+								{((co.multiple_x100 ?? 0) / 100).toFixed(1)}× buy-in · peak interest ×{(
 									(co.heat ?? 100) / 100
 								).toFixed(1)}
 							</div>
@@ -4838,12 +4838,22 @@
 						</div>
 					{:else if isClimb && resultWon}
 						<!-- 🧾 Per-puzzle TRANSACTION slip -->
-						{@const heatMult = ((climb?.heat ?? 100) / 100).toFixed(1)}
-						{@const advance = Math.round(climb?.bounty ?? 0)}
 						{@const letters = Math.round(climb?.spent ?? 0)}
 						{@const payout = Math.round(climb?.last_gain ?? 0)}
+						<!-- Gross = kept + letters (the bounty at the heat this puzzle was PLAYED, not the
+                 bumped heat the board now reports) so Bounty − Letters = SECURED always ties out. -->
+						{@const advance = payout + letters}
+						{@const intBase = Math.max(
+							1,
+							Math.round(((climb?.bounty ?? 0) * 100) / (climb?.heat ?? 100))
+						)}
+						{@const intMult = (advance / intBase).toFixed(1)}
 						{@const pendAfter = Math.round(climb?.bankroll ?? 0)}
 						{@const pendBefore = pendAfter - payout}
+						{@const buyIn = Math.round(climb?.buy_in ?? 0)}
+						{@const startBal = Math.round((menuBank ?? 0) + buyIn)}
+						{@const tierName =
+							(climb?.tier ?? '').charAt(0).toUpperCase() + (climb?.tier ?? '').slice(1)}
 						<div class="receipt">
 							<div class="rcpt-brand">
 								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
@@ -4859,15 +4869,21 @@
 							<div class="rcpt-info">
 								<div class="ri-row"><span>{rcptDate}</span><span>{rcptTime}</span></div>
 								<div class="ri-row">
-									<span
-										>{(climb?.tier ?? '').charAt(0).toUpperCase() +
-											(climb?.tier ?? '').slice(1)}</span
-									><span>TRANS #{String(climb?.position ?? 1).padStart(4, '0')}</span>
+									<span>Cash Game</span><span
+										>TRANS #{String(climb?.position ?? 1).padStart(4, '0')}</span
+									>
 								</div>
 							</div>
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line">
-								<span>Bounty <small>(×{heatMult} Heat)</small></span><span
+								<span>Starting Balance</span><span>${startBal.toLocaleString()}</span>
+							</div>
+							<div class="rcpt-line">
+								<span>{tierName} buy-in</span><span class="neg">−${buyIn.toLocaleString()}</span>
+							</div>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-line">
+								<span>Bounty <small>(×{intMult} Interest)</small></span><span
 									>${advance.toLocaleString()}</span
 								>
 							</div>
@@ -4897,7 +4913,7 @@
 								<span class="cg-peek-val"
 									><CategoryIcon category={climb.next_category} size={15} />{categoryLabel(
 										climb.next_category
-									)} · <b>+${(climb.next_bounty ?? 0).toLocaleString()}</b> bounty</span
+									)} for <b>${(climb.next_bounty ?? 0).toLocaleString()}</b></span
 								>
 							</div>
 						{/if}
