@@ -2414,9 +2414,14 @@
 		}}>{$soundEnabled || $musicEnabled ? '🔊' : '🔇'}</button
 	>
 {/if}
-<!-- 🏳️ Give up (top-right) — Daily / Challenges -->
-{#if loggedIn && hasInitialized && !showMainMenu && foldMode && gameActive}
-	<button class="giveup-btn" title="Give up" aria-label="Give up" on:click={confirmFold}>↪</button>
+<!-- 🏳️ Give up (top-right) — Daily / Challenges / Cash Game (forfeit) -->
+{#if loggedIn && hasInitialized && !showMainMenu && gameActive && (foldMode || (isClimb && climb?.state === 'active'))}
+	<button
+		class="giveup-btn"
+		title="Give up"
+		aria-label="Give up"
+		on:click={isClimb ? askForfeit : confirmFold}>↪</button
+	>
 {/if}
 <!-- Skip retired in Cash Game V4 — Cash Out is the graceful bail. -->
 
