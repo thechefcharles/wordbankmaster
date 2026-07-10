@@ -4231,16 +4231,16 @@
 					<div class="bn-head">
 						<span class="bn-app">🏦 WordBank</span><span class="bn-time">now</span>
 					</div>
-					<div class="bn-title">Cash Advance depleted</div>
+					<div class="bn-title">Balance too low</div>
 					{#if (climb.wallet ?? climb.bankroll ?? 0) > 0}
 						<div class="bn-body">
-							You have to guess now — no more letters. Solve to bank it, or a wrong guess voids your
-							whole Wallet.
+							Not enough to buy another letter — you have to guess. Solve to bank it, or a wrong
+							guess voids your whole Potential Payout.
 						</div>
 					{:else}
 						<div class="bn-body">
-							You have to guess now. Solve to credit your account; a wrong guess voids the session
-							and forfeits your Principal.
+							Not enough to buy another letter — you have to guess. Solve to bank your winnings; a
+							wrong guess ends the run and forfeits your Principal.
 						</div>
 					{/if}
 				</div>
