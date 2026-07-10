@@ -120,6 +120,15 @@
 		if (loanBusy) return;
 		const pay = amt ?? maxRepay;
 		if (pay <= 0) return;
+		// 🔐 Money-out → PIN confirm (same gate as store/avatar buys).
+		try {
+			await requirePin(pay >= owed ? `Pay off ${fmt(pay)}` : `Repay ${fmt(pay)}`, [
+				{ label: 'Repay', value: fmt(pay) },
+				{ label: 'Owed after', value: fmt(Math.max(0, owed - pay)) }
+			]);
+		} catch {
+			return; // cancelled at the pad
+		}
 		loanBusy = 'repay';
 		loanMsg = '';
 		const res = await repayLoan(amt);
