@@ -4648,6 +4648,11 @@
 						)}
 						{@const interestPct = Math.round((mult - 1) * 100)}
 						{@const interestBonus = Math.max(0, banked - kept)}
+						{@const attendance = Number(dr.attendance ?? 0)}
+						{@const loanRepaid = Number(dr.loan_repaid ?? 0)}
+						{@const acctNow = Math.round(menuBank ?? netWorth ?? 0)}
+						<!-- Account before today: back out the show-up bonus + this deposit (net of the skim). -->
+						{@const startBal = acctNow - attendance - banked + loanRepaid}
 						<!-- 🧾 Daily DEPOSIT slip: Earnings − Letters = Subtotal ×Interest = Deposit -->
 						<div class="receipt">
 							<div class="rcpt-brand">
@@ -4669,6 +4674,15 @@
 									>
 								</div>
 							</div>
+							<div class="rcpt-rule"></div>
+							<div class="rcpt-line">
+								<span>Starting Balance</span><span>${startBal.toLocaleString()}</span>
+							</div>
+							{#if attendance > 0}
+								<div class="rcpt-line">
+									<span>Show-up bonus</span><span class="pos">+${attendance.toLocaleString()}</span>
+								</div>
+							{/if}
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line">
 								<span>Earnings</span><span>${prize.toLocaleString()}</span>
