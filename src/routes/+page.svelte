@@ -2815,7 +2815,7 @@
 			{#if climbInfo === 'heat'}
 				<div class="info-big">🔥 ×{((climb?.heat ?? 100) / 100).toFixed(1)}</div>
 				<h3 class="info-title">Heat — your bounty multiplier</h3>
-				<p class="info-sub">Every new bounty lands in your Balance boosted by your Heat.</p>
+				<p class="info-sub">Every new bounty lands in your Earnings boosted by your Heat.</p>
 				<div class="info-rows">
 					<div class="info-row"><span>Base</span><b>×1.0</b></div>
 					<div class="info-row"><span>Each solve in a row</span><b class="pos">+0.1×</b></div>
@@ -2849,7 +2849,7 @@
 				</p>
 			{:else}
 				<div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
-				<h3 class="info-title">Balance</h3>
+				<h3 class="info-title">Earnings</h3>
 				<p class="info-sub">
 					Your running cash this run — solve to keep it, one wrong guess loses it all.
 				</p>
@@ -2863,12 +2863,12 @@
 						>
 					</div>
 					<div class="info-row total">
-						<span>Balance</span><b class="green">${(climbLive?.net ?? 0).toLocaleString()}</b>
+						<span>Earnings</span><b class="green">${(climbLive?.net ?? 0).toLocaleString()}</b>
 					</div>
 				</div>
 				<p class="info-note">
 					Each puzzle's <b>budget</b> shrinks as you buy letters — solve to lock it into your
-					Balance. Reveal less, keep more; the next bounty lands ×
+					Earnings. Reveal less, keep more; the next bounty lands ×
 					<button class="info-inline" on:click|stopPropagation={() => (climbInfo = 'heat')}
 						>Heat</button
 					>.
@@ -2906,7 +2906,7 @@
 			<div class="info-big neg">−${forfeitAmount.toLocaleString()}</div>
 			<h3 class="info-title">Give up this puzzle?</h3>
 			<p class="info-sub">
-				You'll <b class="neg">lose your ${forfeitAmount.toLocaleString()} Balance</b> and see the answer.
+				You'll <b class="neg">lose your ${forfeitAmount.toLocaleString()} Earnings</b> and see the answer.
 				This can't be undone.
 			</p>
 			<div class="dep-actions">
@@ -3566,8 +3566,9 @@
 				<div class="modal-content main-menu-modal tier-modal">
 					<button class="close-btn" on:click={() => (showTierSelect = false)}>❌</button>
 					<h2>Cash Game</h2>
+					<div class="cg-tagline">🔥 Solve to Earn</div>
 					<p class="cat-sub">
-						Spend each bounty, keep what's left, and grow one Balance across puzzles. Cash out
+						Spend each bounty, keep what's left, and grow your Earnings across puzzles. Cash out
 						anytime — but one wrong guess busts it. Higher tiers, bigger bounties.
 					</p>
 					<div class="tier-balance">
@@ -4262,32 +4263,49 @@
 				</div>
 			{:else if !matchBlitz}
 				{@const isDailyLike = $gameStore.gameMode === 'daily' || isMakeup}
-				<button
-					class="top-bank solo"
-					class:pop-up={bankFlash === 'up'}
-					class:pop-down={bankFlash === 'down'}
-					title={isDailyLike
-						? 'Available Balance — your account; today’s puzzle deposits into it'
-						: isClimb
-							? 'Available Balance — your account; cash out your run into it'
-							: isMatch
-								? 'Your Score — cash kept, banks up with each solve'
-								: 'Available Balance'}
-					on:click={openBankModal}
-				>
-					{#if isMatch}<span class="tb-wallet-cap">Score</span
-						>{:else if isDailyLike || isClimb}<span class="tb-wallet-cap">Available Balance</span
-						>{/if}
-					<span class="tb-solo"
-						>${Math.round(
-							isMatch
-								? $tweenScore
-								: isDailyLike || isClimb
-									? (menuBank ?? netWorth ?? 0)
-									: $tweenBank
-						).toLocaleString()}</span
+				{#if isDailyLike || isClimb}
+					<!-- 💳 Mini account card — your real, safe money; the hero number below is the
+                 at-risk game money that banks into this account. -->
+					<button
+						class="mini-card-btn"
+						title="Available Balance — your account; solving deposits into it"
+						on:click={openBankModal}
 					>
-				</button>
+						<AccountCard
+							compact
+							account={acctNo}
+							balance={menuBank ?? netWorth ?? 0}
+							tier={bankData?.credit_tier ?? menuCreditTier ?? 'Good'}
+						/>
+					</button>
+				{:else}
+					<button
+						class="top-bank solo"
+						class:pop-up={bankFlash === 'up'}
+						class:pop-down={bankFlash === 'down'}
+						title={isDailyLike
+							? 'Available Balance — your account; today’s puzzle deposits into it'
+							: isClimb
+								? 'Available Balance — your account; cash out your run into it'
+								: isMatch
+									? 'Your Score — cash kept, banks up with each solve'
+									: 'Available Balance'}
+						on:click={openBankModal}
+					>
+						{#if isMatch}<span class="tb-wallet-cap">Score</span
+							>{:else if isDailyLike || isClimb}<span class="tb-wallet-cap">Available Balance</span
+							>{/if}
+						<span class="tb-solo"
+							>${Math.round(
+								isMatch
+									? $tweenScore
+									: isDailyLike || isClimb
+										? (menuBank ?? netWorth ?? 0)
+										: $tweenBank
+							).toLocaleString()}</span
+						>
+					</button>
+				{/if}
 			{/if}
 		{/if}
 
@@ -4339,7 +4357,7 @@
 						<span class="bn-app">🏦 WordBank</span><span class="bn-time">now</span>
 					</div>
 					<div class="bn-title">Out of budget for this word!</div>
-					<div class="bn-body">Solve it now — or bust and lose your Balance.</div>
+					<div class="bn-body">Solve it now — or bust and lose your Earnings.</div>
 					<button class="bn-forfeit" on:click={askForfeit}>Don't know it? Give up →</button>
 				</div>
 			{/if}
@@ -4458,7 +4476,7 @@
 							: $gameStore.gameMode === 'daily'
 								? 'Balance Remaining'
 								: isClimb
-									? 'Balance'
+									? 'Earnings'
 									: soloHero.net >= 0
 										? 'Balance Remaining'
 										: '⚠️ You’re losing money'}</span
@@ -4476,7 +4494,7 @@
 						{:else if isClimb}
 							<button
 								class="bp-mult-badge"
-								title="Heat — boosts each new bounty as it lands in your Balance"
+								title="Heat — boosts each new bounty as it lands in your Earnings"
 								on:click={() => {
 									fx('tap');
 									climbInfo = 'heat';
@@ -4790,7 +4808,7 @@
 							</div>
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line">
-								<span>Balance banked</span><span>${(co.banked ?? 0).toLocaleString()}</span>
+								<span>Earnings banked</span><span>${(co.banked ?? 0).toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
 								<span>Buy-in</span><span class="neg">−${(co.buy_in ?? 0).toLocaleString()}</span>
@@ -4881,7 +4899,7 @@
 								<span>SECURED</span><span>+${payout.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
-								<span>Balance</span><span
+								<span>Earnings</span><span
 									>${pendBefore.toLocaleString()} ▸ ${pendAfter.toLocaleString()}</span
 								>
 							</div>
@@ -4956,7 +4974,7 @@
 							<div class="rcpt-rule"></div>
 							{#if wiped > 0}
 								<div class="rcpt-line">
-									<span>Balance</span><span>${wiped.toLocaleString()}</span>
+									<span>Earnings</span><span>${wiped.toLocaleString()}</span>
 								</div>
 								<div class="rcpt-line">
 									<span>Wrong guess</span><span class="neg">−${wiped.toLocaleString()}</span>
@@ -8609,7 +8627,7 @@
 		margin: 0 0 14px;
 	}
 	/* 🏦 Deposit confirm — amount uses the clean money font (not Orbitron) and the
-	   same gold as its source (the Balance number in the HUD). */
+	   same gold as its source (the Earnings number in the HUD). */
 	.info-big.dep-amt {
 		font-family: var(--font-display, sans-serif);
 		font-variant-numeric: tabular-nums;
@@ -8840,6 +8858,31 @@
 	}
 	.top-bank.solo:active {
 		transform: scale(0.97);
+	}
+	/* 💳 Mini account-card wrapper (Daily + Cash Game top bar) — a bare tappable button. */
+	.mini-card-btn {
+		display: block;
+		width: fit-content;
+		margin: 0 auto 12px;
+		padding: 0;
+		border: 0;
+		background: none;
+		cursor: pointer;
+		transition: transform 0.12s ease;
+	}
+	.mini-card-btn:active {
+		transform: scale(0.98);
+	}
+	/* 🔥 Cash Game tagline under the title in the tier picker. */
+	.cg-tagline {
+		text-align: center;
+		font-family: var(--font-display, sans-serif);
+		font-weight: 800;
+		font-size: 0.72rem;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: #fcd34d;
+		margin: -4px 0 8px;
 	}
 	/* 💥 dramatic pop when the bankroll swings big (win payout / loss) */
 	.top-bank.solo.pop-up {
