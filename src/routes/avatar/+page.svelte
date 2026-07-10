@@ -11,6 +11,7 @@
 	/** @type {any} */ let config = { ...DEFAULT_AVATAR };
 	/** @type {string[]} */ let owned = [];
 	let bank = 0;
+	let loan = 0; // owe a loan → the Store's locked, so no buying new looks until it's paid off
 	let loading = true;
 	let saving = false;
 	let activeCat = CATEGORIES[0].key;
@@ -23,6 +24,7 @@
 		if (a.config) config = { ...DEFAULT_AVATAR, ...a.config };
 		owned = a.owned ?? [];
 		bank = b?.bank ?? 0;
+		loan = b?.loan ?? 0;
 		loading = false;
 	});
 
@@ -78,6 +80,10 @@
 	/** Buy → PIN is the only confirmation (no separate sheet). @param {string} key @param {any} o */
 	async function buyNow(key, o) {
 		if (saving) return;
+		if (loan > 0) {
+			flash('Pay off your loan to buy new looks');
+			return;
+		}
 		if (bank < o.price) {
 			flash('Not enough Cash');
 			return;
@@ -145,6 +151,12 @@
 	{#if loading}
 		<p class="loading">Loading…</p>
 	{:else}
+		{#if loan > 0}
+			<!-- 🦈 Store's locked while you owe — no new looks until the loan is paid off. -->
+			<a class="av-loan-banner" href="/loans"
+				>🔒 You owe {fmt(loan)} — pay off your loan to buy new looks →</a
+			>
+		{/if}
 		<div class="av-hero"><Avatar {config} fx size={150} /></div>
 
 		<div class="cat-row">
@@ -172,8 +184,8 @@
 						<span class="opt-label">{o.label}</span>
 					</button>
 					{#if locked(o)}
-						<button class="opt-buy" on:click={() => buyNow(cat.key, o)}
-							>🔒 Buy {fmt(o.price)}</button
+						<button class="opt-buy" class:loan-locked={loan > 0} on:click={() => buyNow(cat.key, o)}
+							>{loan > 0 ? '🔒 Loan' : `🔒 Buy ${fmt(o.price)}`}</button
 						>
 					{/if}
 				</div>
@@ -345,6 +357,26 @@
 		font-weight: 800;
 		white-space: nowrap;
 		cursor: pointer;
+	}
+	/* 🔒 Loan-locked buy pill — red-tinted, reads as blocked (tap explains why). */
+	.opt-buy.loan-locked {
+		border-color: rgba(248, 113, 113, 0.5);
+		background: rgba(248, 113, 113, 0.12);
+		color: #fca5a5;
+	}
+	.av-loan-banner {
+		display: block;
+		margin: 0 auto 0.8rem;
+		max-width: 340px;
+		padding: 0.65rem 1rem;
+		border-radius: 12px;
+		border: 1px solid rgba(248, 113, 113, 0.4);
+		background: rgba(248, 113, 113, 0.1);
+		color: #fca5a5;
+		font-weight: 700;
+		font-size: 0.85rem;
+		text-align: center;
+		text-decoration: none;
 	}
 	.opt-buy:active {
 		transform: scale(0.96);
