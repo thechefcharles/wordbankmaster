@@ -2368,6 +2368,7 @@
 			hasTriggeredModal = true;
 			const won = $gameStore.gameState === 'won';
 			if ($gameStore.gameMode === 'daily' && won) {
+				refreshBank(); // deposit + any loan skim just landed → refresh the slip's Available Balance
 				resultRank = null;
 				getMyDailyRank()
 					.then((r) => {
@@ -4692,9 +4693,17 @@
 							<div class="rcpt-line total profit">
 								<span>DEPOSIT</span><span>+${banked.toLocaleString()}</span>
 							</div>
+							{#if Number(dr.loan_repaid ?? 0) > 0}
+								<!-- 🦈 50% of the deposit auto-skims to your loan — show why the balance rose less. -->
+								<div class="rcpt-line">
+									<span>Loan repayment <small>(50%)</small></span><span class="neg"
+										>−${Number(dr.loan_repaid).toLocaleString()}</span
+									>
+								</div>
+							{/if}
 							<div class="rcpt-line balance">
 								<span>AVAILABLE BALANCE</span><span
-									>${Math.round($resultBankAnim).toLocaleString()}</span
+									>${Math.round(menuBank ?? netWorth ?? 0).toLocaleString()}</span
 								>
 							</div>
 							{#if dailyMod}
