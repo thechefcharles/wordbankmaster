@@ -621,7 +621,7 @@
 	// Challenge "Earnings" = accumulated Score (prior puzzles' kept cash) + this puzzle's leftover.
 	// Mirrors Cash Game's Earnings (secured pile + current budget) so all modes read the same.
 	$: matchEarnings = (matchInfo?.total_score ?? 0) + matchLeft;
-	// Unified money hero — every mode's center = Earnings (bounty − spent, kept by solving).
+	// Unified money hero — every mode's center = Payout (bounty − spent, kept by solving).
 	$: soloHero = climbLive
 		? { net: climbLive.net }
 		: dLive
@@ -2816,7 +2816,7 @@
 			{#if climbInfo === 'heat'}
 				<div class="info-big">🔥 ×{((climb?.heat ?? 100) / 100).toFixed(1)}</div>
 				<h3 class="info-title">Interest — your bounty multiplier</h3>
-				<p class="info-sub">Every new bounty lands in your Earnings boosted by your Interest.</p>
+				<p class="info-sub">Every new bounty lands in your Payout boosted by your Interest.</p>
 				<div class="info-rows">
 					<div class="info-row"><span>Base</span><b>×1.0</b></div>
 					<div class="info-row"><span>Each solve in a row</span><b class="pos">+0.1×</b></div>
@@ -2850,7 +2850,7 @@
 				</p>
 			{:else}
 				<div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
-				<h3 class="info-title">Earnings</h3>
+				<h3 class="info-title">Payout</h3>
 				<p class="info-sub">
 					Your running cash this run — solve to keep it, one wrong guess loses it all.
 				</p>
@@ -2864,12 +2864,12 @@
 						>
 					</div>
 					<div class="info-row total">
-						<span>Earnings</span><b class="green">${(climbLive?.net ?? 0).toLocaleString()}</b>
+						<span>Payout</span><b class="green">${(climbLive?.net ?? 0).toLocaleString()}</b>
 					</div>
 				</div>
 				<p class="info-note">
 					Each puzzle's <b>budget</b> shrinks as you buy letters — solve to lock it into your
-					Earnings. Reveal less, keep more; the next bounty lands ×
+					Payout. Reveal less, keep more; the next bounty lands ×
 					<button class="info-inline" on:click|stopPropagation={() => (climbInfo = 'heat')}
 						>Interest</button
 					>.
@@ -2907,7 +2907,7 @@
 			<div class="info-big neg">−${forfeitAmount.toLocaleString()}</div>
 			<h3 class="info-title">Give up this puzzle?</h3>
 			<p class="info-sub">
-				You'll <b class="neg">lose your ${forfeitAmount.toLocaleString()} Earnings</b> and see the answer.
+				You'll <b class="neg">lose your ${forfeitAmount.toLocaleString()} Payout</b> and see the answer.
 				This can't be undone.
 			</p>
 			<div class="dep-actions">
@@ -2933,11 +2933,11 @@
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (showAnteInfo = false)} aria-label="Close">✕</button>
 			<div class="info-big green">${Math.max(0, matchEarnings).toLocaleString()}</div>
-			<h3 class="info-title">Earnings</h3>
+			<h3 class="info-title">Payout</h3>
 			<p class="info-sub">
 				Each puzzle gives you a bounty to spend on letters — it's <b>not</b> your money. Whatever
-				you don't spend banks into your <b>Earnings</b>, which stack across the pack. Highest
-				Earnings takes the pot.
+				you don't spend banks into your <b>Payout</b>, which stacks across the pack. Highest Payout
+				takes the pot.
 			</p>
 			<div class="info-rows">
 				<div class="info-row">
@@ -2952,9 +2952,8 @@
 				<div class="info-row"><span>Lose the duel</span><b class="neg">forfeit your ante</b></div>
 			</div>
 			<p class="info-note">
-				Highest Earnings wins the pot. Duel = winner-take-all (tie splits 50/50); groups pay a
-				podium (3 → 70/30, 4+ → 60/30/10). A wrong guess busts the puzzle, so guess only when you're
-				sure.
+				Highest Payout wins the pot. Duel = winner-take-all (tie splits 50/50); groups pay a podium
+				(3 → 70/30, 4+ → 60/30/10). A wrong guess busts the puzzle, so guess only when you're sure.
 			</p>
 			<button class="info-close" on:click={() => (showAnteInfo = false)}>Got it</button>
 		</div>
@@ -3553,7 +3552,7 @@
 					<h2>Cash Game</h2>
 					<div class="cg-tagline">🔥 Solve to Earn</div>
 					<p class="cat-sub">
-						Spend each bounty, keep what's left, and grow your Earnings across puzzles. Cash out
+						Spend each bounty, keep what's left, and grow your Payout across puzzles. Cash out
 						anytime — but one wrong guess busts it. Higher tiers, bigger bounties.
 					</p>
 					<div class="tier-balance">
@@ -4316,7 +4315,7 @@
 			</div>
 		{/if}
 
-		<!-- 🎰 Cash Game (Climb) HUD — account strip up top; Interest badge + Earnings in the
+		<!-- 🎰 Cash Game (Climb) HUD — account strip up top; Interest badge + Payout in the
          hero. Must-guess banner shows when this puzzle's budget is spent. -->
 		{#if isClimb && climb}
 			{#if mgBannerVisible && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
@@ -4325,7 +4324,7 @@
 						<span class="bn-app">🏦 WordBank</span><span class="bn-time">now</span>
 					</div>
 					<div class="bn-title">Out of budget for this word!</div>
-					<div class="bn-body">Solve it now — or bust and lose your Earnings.</div>
+					<div class="bn-body">Solve it now — or bust and lose your Payout.</div>
 					<button class="bn-forfeit" on:click={askForfeit}>Don't know it? Give up →</button>
 				</div>
 			{/if}
@@ -4429,7 +4428,7 @@
 		<!-- 💰 Money hero -->
 		<section class="stats-section">
 			{#if soloHero}
-				<!-- Daily · Cash Game hero = Earnings (bounty − spent, the cash you keep by solving efficiently). -->
+				<!-- Daily · Cash Game hero = Payout (bounty − spent, the cash you keep by solving efficiently). -->
 				<div
 					class="bounty-panel"
 					class:loss={!isMatch && soloHero.net < 0}
@@ -4438,7 +4437,7 @@
 				>
 					<span class="bp-label"
 						>{isMatch || isClimb || $gameStore.gameMode === 'daily'
-							? 'Earnings'
+							? 'Payout'
 							: 'Balance Remaining'}</span
 					>
 					<div class="bp-row">
@@ -4454,7 +4453,7 @@
 						{:else if isClimb}
 							<button
 								class="bp-mult-badge"
-								title="Interest — boosts each new bounty as it lands in your Earnings"
+								title="Interest — boosts each new bounty as it lands in your Payout"
 								on:click={() => {
 									fx('tap');
 									climbInfo = 'heat';
@@ -4632,7 +4631,7 @@
 						{@const acctNow = Math.round(menuBank ?? netWorth ?? 0)}
 						<!-- Account before today: back out the show-up bonus + this deposit (net of the skim). -->
 						{@const startBal = acctNow - attendance - banked + loanRepaid}
-						<!-- 🧾 Daily DEPOSIT slip: Earnings − Letters = Subtotal ×Interest = Deposit -->
+						<!-- 🧾 Daily DEPOSIT slip: Budget − Letters = Subtotal ×Interest = Deposit -->
 						<div class="receipt">
 							<div class="rcpt-brand">
 								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
@@ -4664,7 +4663,7 @@
 							{/if}
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line">
-								<span>Earnings</span><span>${prize.toLocaleString()}</span>
+								<span>Budget</span><span>${prize.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
 								<span>Letters (debit)</span><span class="neg"
@@ -4790,7 +4789,7 @@
 							</div>
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line">
-								<span>Earnings banked</span><span>${(co.banked ?? 0).toLocaleString()}</span>
+								<span>Payout banked</span><span>${(co.banked ?? 0).toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
 								<span>Buy-in</span><span class="neg">−${(co.buy_in ?? 0).toLocaleString()}</span>
@@ -4851,7 +4850,7 @@
 						{@const letters = Math.round(climb?.spent ?? 0)}
 						{@const payout = Math.round(climb?.last_gain ?? 0)}
 						<!-- Gross = kept + letters (the bounty at the heat this puzzle was PLAYED, not the
-                 bumped heat the board now reports) so Bounty − Letters = Earnings always ties out. -->
+                 bumped heat the board now reports) so Bounty − Letters = Payout always ties out. -->
 						{@const advance = payout + letters}
 						{@const intBase = Math.max(
 							1,
@@ -4901,7 +4900,7 @@
 							</div>
 							<div class="rcpt-rule double"></div>
 							<div class="rcpt-line total profit">
-								<span>Earnings</span><span>+${payout.toLocaleString()}</span>
+								<span>Payout</span><span>+${payout.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line balance">
@@ -4973,7 +4972,7 @@
 							<div class="rcpt-rule"></div>
 							{#if wiped > 0}
 								<div class="rcpt-line">
-									<span>Earnings</span><span>${wiped.toLocaleString()}</span>
+									<span>Payout</span><span>${wiped.toLocaleString()}</span>
 								</div>
 								<div class="rcpt-line">
 									<span>Wrong guess</span><span class="neg">−${wiped.toLocaleString()}</span>
@@ -8584,7 +8583,7 @@
 		margin: 0 0 14px;
 	}
 	/* 🏦 Deposit confirm — amount uses the clean money font (not Orbitron) and the
-	   same gold as its source (the Earnings number in the HUD). */
+	   same gold as its source (the Payout number in the HUD). */
 	.info-big.dep-amt {
 		font-family: var(--font-display, sans-serif);
 		font-variant-numeric: tabular-nums;
