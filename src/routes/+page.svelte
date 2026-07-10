@@ -4820,7 +4820,7 @@
 								<span class="cg-peek-val"
 									><CategoryIcon category={climb.next_category} size={15} />{categoryLabel(
 										climb.next_category
-									)} · <b>${(climb.next_bounty ?? 0).toLocaleString()}</b> bounty</span
+									)} · <b>${(climb.next_bounty ?? 0).toLocaleString()}</b> payout</span
 								>
 							</div>
 						{/if}
