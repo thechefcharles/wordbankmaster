@@ -2824,7 +2824,7 @@
 <!-- ℹ️ Challenge "Left to Spend" explainer -->
 {#if showDepositConfirm}
 	<div
-		class="modal-overlay info-overlay"
+		class="modal-overlay info-overlay dep-confirm-overlay"
 		role="button"
 		tabindex="0"
 		aria-label="Close"
@@ -4812,7 +4812,7 @@
 									>${Math.round(menuBank ?? 0).toLocaleString()}</span
 								>
 							</div>
-							<div class="rcpt-foot">Bank it now, or push on and risk it all.</div>
+							<div class="rcpt-foot">Bank it now, or play on and risk it all.</div>
 						</div>
 						{#if climb?.next_category}
 							<div class="cg-peek">
@@ -4846,7 +4846,7 @@
 									showResultModal = false;
 									hasTriggeredModal = false;
 									climbAdvance().then(() => tick().then(playDailyIntroIfArmed));
-								}}>Push →</button
+								}}>Play On →</button
 							>
 						</div>
 					{:else if isClimb}
@@ -8165,6 +8165,11 @@
 	.info-overlay {
 		border: none;
 		cursor: pointer;
+	}
+	/* Deposit confirm is opened FROM the win receipt (also a .modal-overlay), so it
+	   must sit above it — otherwise it renders behind and the tap looks like a no-op. */
+	.dep-confirm-overlay {
+		z-index: 10000;
 	}
 	.info-card {
 		position: relative;
