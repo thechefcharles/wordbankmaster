@@ -8,7 +8,10 @@
 	import { cardName } from '$lib/creditTiers.js';
 	/** Credit tier — skins the card (Excellent = black card; Poor/Bad = distressed). */
 	/** @type {string} */ export let tier = 'Good';
+	/** Outstanding loan — shows a small "Loan −$X" debit line under the balance. 0 = hidden. */
+	/** @type {any} */ export let loan = 0;
 
+	$: loanAmt = Math.round(Number(loan) || 0);
 	$: cardTitle = cardName(tier);
 	$: tierClass =
 		tier === 'Excellent'
@@ -38,6 +41,7 @@
 		<div class="ac-bal">
 			<div class="ac-cap">Available Balance</div>
 			<div class="ac-amt">${amount}</div>
+			{#if loanAmt > 0}<div class="ac-loan">Loan −${loanAmt.toLocaleString()}</div>{/if}
 		</div>
 		<div class="ac-num">•••• •••• •••• {last4}</div>
 		<div class="ac-foot">
@@ -171,6 +175,15 @@
 		font-weight: 800;
 		line-height: 1.05;
 		letter-spacing: 0.01em;
+		font-variant-numeric: tabular-nums;
+	}
+	/* 🔴 Outstanding loan — a small debit line under the balance. */
+	.ac-loan {
+		margin-top: 3px;
+		font-family: var(--font-display, sans-serif);
+		font-weight: 700;
+		font-size: 0.82rem;
+		color: #fb7185;
 		font-variant-numeric: tabular-nums;
 	}
 	.ac-num {
