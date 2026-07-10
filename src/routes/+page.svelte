@@ -621,7 +621,7 @@
 	$: soloHero = climbLive
 		? { net: climbLive.net }
 		: dLive
-			? { net: dLive.winnings }
+			? { net: dLive.remaining } // Daily center = "Balance Remaining" (leftover budget; ×interest banks on solve)
 			: matchLive
 				? { net: matchLeft }
 				: null;
@@ -2775,7 +2775,7 @@
 				</p>
 				<div class="info-rows">
 					<div class="info-row">
-						<span>Earnings</span><b class="pos">${dlRemaining.toLocaleString()}</b>
+						<span>Balance Remaining</span><b class="pos">${dlRemaining.toLocaleString()}</b>
 					</div>
 					{#if dlMult > 1}<div class="info-row">
 							<span>× Interest</span><b>{fmtMult(dlMult)}</b>
@@ -2785,7 +2785,7 @@
 					</div>
 				</div>
 				<p class="info-note">
-					Deduce letters instead of buying them — keep more of your Earnings. Grows your <button
+					Deduce letters instead of buying them — keep more of your balance. Grows your <button
 						class="info-inline"
 						on:click|stopPropagation={() => (dailyInfo = 'mult')}>multiplier</button
 					> too.
@@ -4261,7 +4261,7 @@
 					class:pop-up={bankFlash === 'up'}
 					class:pop-down={bankFlash === 'down'}
 					title={isDailyLike
-						? 'Earnings — spend it, keep the rest'
+						? 'Available Balance — your account; today’s puzzle deposits into it'
 						: isClimb
 							? 'Potential Payout — deposit it before a wrong guess'
 							: isMatch
@@ -4270,10 +4270,12 @@
 					on:click={openBankModal}
 				>
 					{#if isMatch}<span class="tb-wallet-cap">Score</span>{:else if isDailyLike}<span
-							class="tb-wallet-cap">Earnings</span
+							class="tb-wallet-cap">Available Balance</span
 						>{:else if isClimb}<span class="tb-wallet-cap">Potential Payout</span>{/if}
 					<span class="tb-solo"
-						>${Math.round(isMatch ? $tweenScore : $tweenBank).toLocaleString()}</span
+						>${Math.round(
+							isMatch ? $tweenScore : isDailyLike ? (menuBank ?? netWorth ?? 0) : $tweenBank
+						).toLocaleString()}</span
 					>
 				</button>
 			{/if}
@@ -4444,7 +4446,7 @@
 								? 'Balance Remaining'
 								: 'Nothing left'
 							: $gameStore.gameMode === 'daily'
-								? "You'll bank"
+								? 'Balance Remaining'
 								: soloHero.net >= 0
 									? 'Balance Remaining'
 									: '⚠️ You’re losing money'}</span
