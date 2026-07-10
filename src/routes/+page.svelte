@@ -3282,12 +3282,12 @@
 								<path d="M18 13.5a6 6 0 0 1 3 5.5" />
 							</svg><span class="qt-l">Friends</span>
 						</button>
-						<button class="qt" on:click={() => goto('/shop')}>
+						<button class="qt" class:qt-locked={menuLoan > 0} on:click={() => goto('/shop')}>
 							<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
 								<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
 								<path d="M3 6h18" />
 								<path d="M16 10a4 4 0 0 1-8 0" />
-							</svg><span class="qt-l">Store</span>
+							</svg><span class="qt-l">{menuLoan > 0 ? '🔒 Store' : 'Store'}</span>
 						</button>
 						<button class="qt" on:click={() => openCommunity('leaderboard')}>
 							<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
@@ -6402,6 +6402,11 @@
 	}
 	.qt:active {
 		transform: scale(0.96);
+	}
+	/* 🔒 Store tile while you owe — dimmed with a red-tinted edge (page hard-locks buys). */
+	.qt-locked {
+		opacity: 0.72;
+		border-color: rgba(248, 113, 113, 0.4);
 	}
 	.qt-svg {
 		width: 25px;

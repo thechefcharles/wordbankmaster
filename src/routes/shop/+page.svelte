@@ -18,6 +18,7 @@
 	let backTo = $derived($page.url.searchParams.get('from') === 'bank' ? '/bank' : '/');
 
 	let bank = $state(0);
+	let loan = $state(0); // Store is locked while you owe — no buying anything until it's paid off.
 	/** @type {any[]} */
 	let items = $state([]);
 	/** @type {any[]} */
@@ -53,6 +54,7 @@
 	async function load() {
 		const [shop, pu] = await Promise.all([getShop(), getPowerups()]);
 		bank = shop.bank;
+		loan = shop.loan ?? 0;
 		items = shop.items;
 		pups = (pu.items || []).filter((/** @type {any} */ i) => i.kind === 'climb');
 		sabs = (pu.items || []).filter((/** @type {any} */ i) => i.kind === 'sabotage');
@@ -72,6 +74,10 @@
 			track('powerup_buy', { id: item.id });
 			await load();
 		} else {
+			if (res?.reason === 'in_debt') {
+				await load(); // loan outstanding → lock the whole Store
+				return;
+			}
 			msg =
 				res?.reason === 'insufficient'
 					? 'Not enough Cash.'
@@ -103,6 +109,8 @@
 			fx('win');
 			track('cosmetic_buy', { id: item.id });
 			await load();
+		} else if (res.reason === 'in_debt') {
+			await load(); // loan outstanding → lock the whole Store
 		} else {
 			msg = res.reason === 'insufficient' ? 'Not enough Cash.' : 'Could not buy that.';
 		}
@@ -132,6 +140,20 @@
 
 	{#if loading}
 		<p class="loading">Loading…</p>
+	{:else if loan > 0}
+		<!-- 🔒 Store locked while you owe — no buying anything until the loan is paid off. -->
+		<div class="locked">
+			<div class="locked-ic">🔒</div>
+			<h2>Store locked</h2>
+			<p class="locked-msg">
+				You owe <b>${loan.toLocaleString()}</b> on a loan. The Store stays closed until it's paid off
+				— no cosmetics, power-ups, or boosts.
+			</p>
+			<a class="pay-btn" href="/loans">🦈 Pay off loan →</a>
+			<p class="locked-sub">
+				Solve the Daily or a Cash Game to earn — half of every deposit auto-pays your loan down.
+			</p>
+		</div>
 	{:else}
 		{#if msg}<p class="msg">{msg}</p>{/if}
 
@@ -314,6 +336,56 @@
 		color: var(--text-muted);
 		padding: 2rem;
 		text-align: center;
+	}
+	.locked {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+		gap: 0.5rem;
+		margin: 2rem auto 0;
+		padding: 2rem 1.4rem;
+		max-width: 340px;
+		border: 1px solid rgba(248, 113, 113, 0.32);
+		border-radius: 18px;
+		background: linear-gradient(160deg, rgba(248, 113, 113, 0.08), rgba(248, 113, 113, 0.02));
+	}
+	.locked-ic {
+		font-size: 2.4rem;
+		line-height: 1;
+	}
+	.locked h2 {
+		font-family: var(--font-display);
+		font-size: 1.35rem;
+		margin: 0.2rem 0 0;
+	}
+	.locked-msg {
+		color: var(--text-muted);
+		font-size: 0.92rem;
+		line-height: 1.45;
+		margin: 0;
+	}
+	.locked-msg b {
+		color: #fca5a5;
+		font-family: var(--font-display);
+	}
+	.pay-btn {
+		display: inline-block;
+		margin: 0.7rem 0 0.2rem;
+		padding: 0.7rem 1.4rem;
+		border-radius: 12px;
+		font-family: var(--font-display);
+		font-weight: 800;
+		font-size: 0.98rem;
+		text-decoration: none;
+		color: #3a2a00;
+		background: var(--brand-grad, linear-gradient(135deg, #fbbf24, #fde047));
+	}
+	.locked-sub {
+		color: var(--text-faint);
+		font-size: 0.78rem;
+		line-height: 1.4;
+		margin: 0.4rem 0 0;
 	}
 	.msg {
 		text-align: center;

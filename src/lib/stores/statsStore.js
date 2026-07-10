@@ -414,14 +414,18 @@ export async function getNetworthLeaderboard(scope = 'friends') {
 }
 
 /* ===== Cosmetics shop (Bank spending sink; earned-Bank-only, no pay-to-win) ===== */
-/** Shop catalog + owned/equipped flags + my Bank. @returns {Promise<{bank:number, items:any[]}>} */
+/** Shop catalog + owned/equipped flags + my Bank + loan. @returns {Promise<{bank:number, loan:number, items:any[]}>} */
 export async function getShop() {
 	const { data, error } = await supabase.rpc('get_shop');
 	if (error || !data) {
 		if (error) console.error('❌ get_shop:', error);
-		return { bank: 0, items: [] };
+		return { bank: 0, loan: 0, items: [] };
 	}
-	return { bank: data.bank ?? 0, items: Array.isArray(data.items) ? data.items : [] };
+	return {
+		bank: data.bank ?? 0,
+		loan: data.loan ?? 0,
+		items: Array.isArray(data.items) ? data.items : []
+	};
 }
 /** Buy a cosmetic with Bank. @param {string} id @returns {Promise<{ok:boolean, reason?:string}>} */
 export async function buyCosmetic(id) {
