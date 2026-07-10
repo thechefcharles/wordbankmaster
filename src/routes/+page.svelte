@@ -4246,14 +4246,13 @@
 					<div class="bn-title">Cash Advance depleted</div>
 					{#if (climb.wallet ?? climb.bankroll ?? 0) > 0}
 						<div class="bn-body">
-							Solve to credit your account, or Deposit your ${Math.round(
-								climb.wallet ?? climb.bankroll ?? 0
-							).toLocaleString()} now to bank it. A wrong guess voids it.
+							You have to guess now — no more letters. Solve to bank it, or a wrong guess voids your
+							whole Wallet.
 						</div>
 					{:else}
 						<div class="bn-body">
-							Solve to credit your account. A wrong guess voids the session and forfeits your
-							Principal.
+							You have to guess now. Solve to credit your account; a wrong guess voids the session
+							and forfeits your Principal.
 						</div>
 					{/if}
 				</div>
@@ -4527,23 +4526,6 @@
 								<rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
 							</svg>
 							{#if usableMatchPups > 0}<span class="solve-vault-badge">{usableMatchPups}</span>{/if}
-						</button>
-					{/if}
-				</svelte:fragment>
-				<svelte:fragment slot="right">
-					{#if isClimb && climb?.state === 'active' && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
-						<button
-							class="solve-deposit"
-							on:click={cashOut}
-							disabled={cgBusy || (climb.bankroll ?? 0) <= 0}
-							title="Deposit your Earnings"
-							aria-label="Deposit your Earnings"
-						>
-							<svg class="dep-ic" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-								<path d="M12 4v10" />
-								<path d="M8 11l4 4 4-4" />
-								<path d="M5 17v2a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2" />
-							</svg>
 						</button>
 					{/if}
 				</svelte:fragment>
@@ -4824,16 +4806,25 @@
 									>${Math.round(menuBank ?? 0).toLocaleString()}</span
 								>
 							</div>
-							<div class="rcpt-foot">Earnings are at risk until you Deposit them.</div>
+							<div class="rcpt-foot">Bank it now, or push on and risk it all.</div>
 						</div>
+						{#if climb?.next_category}
+							<div class="cg-peek">
+								<span class="cg-peek-cap">Next puzzle</span>
+								<span class="cg-peek-val"
+									><CategoryIcon category={climb.next_category} size={15} />{categoryLabel(
+										climb.next_category
+									)} · <b>${(climb.next_bounty ?? 0).toLocaleString()}</b> bounty</span
+								>
+							</div>
+						{/if}
 						<div class="result-actions">
 							<button
 								class="share-btn co-inline"
 								disabled={cgBusy}
 								on:click={() => {
-									// Leave the modal up — cashOut() runs the PIN gate, then swaps this
-									// transaction slip for the cash-out slip on success. Cancelling the PIN
-									// keeps this slip so the player can retry or hit Next (no soft-lock).
+									// Between-puzzle bank: opens the deposit confirm, then swaps this slip for
+									// the cash-out slip on success. Cancelling keeps this slip (no soft-lock).
 									hasTriggeredModal = false;
 									cashOut();
 								}}
@@ -4849,7 +4840,7 @@
 									showResultModal = false;
 									hasTriggeredModal = false;
 									climbAdvance().then(() => tick().then(playDailyIntroIfArmed));
-								}}>Next →</button
+								}}>Push →</button
 							>
 						</div>
 					{:else if isClimb}
@@ -5381,35 +5372,6 @@
 		color: #d8cccc;
 	}
 
-	/* 🏦 Deposit accessory — icon-only button to the right of Solve, mirroring the
-	   power-ups vault on the left. White glyph on the same glassy surface. */
-	.solve-deposit {
-		position: absolute;
-		left: 100%;
-		margin-left: 12px;
-		top: 50%;
-		transform: translateY(-50%);
-		width: 50px;
-		height: 50px;
-		border-radius: 14px;
-		display: grid;
-		place-items: center;
-		cursor: pointer;
-		background: var(--surface-strong, rgba(20, 28, 40, 0.9));
-		border: 1px solid rgba(253, 224, 71, 0.5);
-		backdrop-filter: blur(10px);
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-		transition:
-			transform 0.16s var(--ease-spring),
-			opacity 0.2s;
-	}
-	.solve-deposit:active {
-		transform: translateY(-50%) scale(0.93);
-	}
-	.solve-deposit:disabled {
-		opacity: 0.4;
-		cursor: default;
-	}
 	.dep-ic {
 		width: 26px;
 		height: 26px;
@@ -9276,6 +9238,36 @@
 		font-size: 0.84rem;
 		text-decoration: underline;
 		cursor: pointer;
+	}
+	/* 🔮 Between-puzzle peek — what you'd be pushing into (Cash Game) */
+	.cg-peek {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		margin: 0 0 12px;
+		padding: 9px 13px;
+		border-radius: 12px;
+		background: rgba(255, 255, 255, 0.05);
+		border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+	}
+	.cg-peek-cap {
+		font-size: 0.68rem;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--text-faint);
+	}
+	.cg-peek-val {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		font-family: var(--font-display);
+		font-weight: 700;
+		font-size: 0.86rem;
+		color: var(--text);
+	}
+	.cg-peek-val b {
+		color: #fcd34d;
 	}
 	.result-actions {
 		display: flex;
