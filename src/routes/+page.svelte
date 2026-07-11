@@ -4401,11 +4401,6 @@
 					class:ante-empty={isMatch && matchLeft <= 0}
 					class:count-pop={introCountPop}
 				>
-					<span class="bp-label"
-						>{isMatch || isClimb || $gameStore.gameMode === 'daily'
-							? 'Payout'
-							: 'Balance Remaining'}</span
-					>
 					<div class="bp-row">
 						{#if $gameStore.gameMode === 'daily'}
 							<button
@@ -8135,16 +8130,6 @@
 		background: linear-gradient(135deg, rgba(251, 113, 133, 0.13), rgba(251, 113, 133, 0.03));
 		box-shadow: none;
 	}
-	.bp-label {
-		font-size: 0.7rem;
-		font-weight: 700;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		color: var(--brand-2);
-	}
-	.bounty-panel.loss .bp-label {
-		color: #fb7185;
-	}
 	.bp-amount {
 		font-family: var(--font-display, sans-serif);
 		font-weight: 800;
@@ -8171,7 +8156,6 @@
 		background: linear-gradient(135deg, rgba(148, 163, 184, 0.12), rgba(148, 163, 184, 0.03));
 		box-shadow: none;
 	}
-	.bounty-panel.ante-empty .bp-label,
 	.bounty-panel.ante-empty .bp-amount {
 		color: #cbd5e1;
 		text-shadow: none;
