@@ -105,7 +105,8 @@ import { track } from '$lib/analytics.js';
  *   dailyLive?: { remaining:number, mult:number, winnings:number } | null,
  *   dailyIntro?: number,
  *   dailyIntroGo?: number,
- *   dailyIntroPlayed?: number
+ *   dailyIntroPlayed?: number,
+ *   wrongTick?: number
  * }} GameState
  */
 
@@ -178,7 +179,8 @@ export const gameStore = writable(
 		dailyLive: null, // { remaining, mult, winnings } — live Daily V2 HUD (Prize left → what you'd bank)
 		dailyIntro: 0, // bumps on a FRESH daily open → ARMS the opening reveal (pending)
 		dailyIntroGo: 0, // bumps once the board is actually visible → PLAYS the opening reveal
-		dailyIntroPlayed: 0 // the dailyIntro token that has already played (persists across remounts)
+		dailyIntroPlayed: 0, // the dailyIntro token that has already played (persists across remounts)
+		wrongTick: 0 // bumps on a non-busting wrong whole-phrase guess → UI flashes a distinct "✗ Wrong" cue
 	})
 );
 
@@ -526,8 +528,8 @@ async function refreshClimbClue() {
 	}
 }
 
-/** @param {any} board */
-function reconcileClimbBoard(board) {
+/** @param {any} board @param {boolean} [wrong] a wrong-but-still-playing guess (bump the "✗ Wrong" cue) */
+function reconcileClimbBoard(board, wrong = false) {
 	if (!board) return;
 	const prev = get(gameStore);
 	const climb = board.climb || {};
@@ -541,7 +543,9 @@ function reconcileClimbBoard(board) {
 			gameMode: 'climb',
 			gameState: busted ? 'lost' : solved ? 'won' : 'default',
 			modifier: null,
-			climbInfo: climb
+			climbInfo: climb,
+			// Bump in the SAME update as the budget drop so the floater is labeled correctly.
+			wrongTick: wrong ? (prev.wrongTick || 0) + 1 : (prev.wrongTick ?? 0)
 		})
 	);
 	// No confetti — the slot-machine reveal (box-by-box win pop) is the celebration, like Daily.
@@ -651,8 +655,18 @@ async function submitGuessClimb(state) {
 	if (Object.keys(guess).length === 0) return;
 	dailyInFlight = true;
 	try {
+		const prevSpent = get(gameStore).climbInfo?.spent ?? 0;
 		const board = await climbSubmitGuess(guess);
-		if (board) reconcileClimbBoard(board);
+		if (board) {
+			// A wrong guess that DOESN'T bust now drains budget and keeps the run alive
+			// (server: cashgame wrong-guess penalty). Detect it so the UI shows a distinct
+			// "✗ Wrong" cue instead of a silent letter-buy-style −$X drop.
+			const c = board.climb || {};
+			const stillPlaying = c.state !== 'solved' && c.state !== 'busted' && c.busted !== true;
+			const wrong = stillPlaying && (c.spent ?? 0) > prevSpent;
+			reconcileClimbBoard(board, wrong);
+			if (wrong) fx('wrong');
+		}
 	} finally {
 		dailyInFlight = false;
 	}
