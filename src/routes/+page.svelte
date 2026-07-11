@@ -618,16 +618,15 @@
 			? { spent: matchInfo.spent ?? 0, budget: matchInfo.budget ?? 0 }
 			: null;
 	$: matchLeft = matchLive ? Math.max(0, (matchLive.budget ?? 0) - (matchLive.spent ?? 0)) : 0;
-	// Challenge "Earnings" = accumulated Score (prior puzzles' kept cash) + this puzzle's leftover.
-	// Mirrors Cash Game's Earnings (secured pile + current budget) so all modes read the same.
-	$: matchEarnings = (matchInfo?.total_score ?? 0) + matchLeft;
-	// Unified money hero — every mode's center = Payout (bounty − spent, kept by solving).
+	// The hero number: the bounty you spend down THIS puzzle. Daily & Cash Game keep the
+	// leftover; Challenge's resets each puzzle (fresh bounty) — the accumulated total is the
+	// Score, shown up top. Cash Game's carries via climb.balance (secured pile + current budget).
 	$: soloHero = climbLive
 		? { net: climbLive.net }
 		: dLive
-			? { net: dLive.remaining } // Daily center = "Balance Remaining" (leftover budget; ×interest banks on solve)
+			? { net: dLive.remaining }
 			: matchLive
-				? { net: matchEarnings }
+				? { net: matchLeft }
 				: null;
 
 	// 🎰 Slot-machine money feel: count the hero number up/down; float a −$X off it on each spend.
@@ -2915,16 +2914,21 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (showAnteInfo = false)} aria-label="Close">✕</button>
-			<div class="info-big green">${Math.max(0, matchEarnings).toLocaleString()}</div>
-			<h3 class="info-title">Payout</h3>
+			<div class="info-big green">${Math.max(0, matchLeft).toLocaleString()}</div>
+			<h3 class="info-title">Bounty kept</h3>
 			<p class="info-sub">
-				Each puzzle gives you a bounty to spend on letters — it's <b>not</b> your money. Whatever
-				you don't spend banks into your <b>Payout</b>, which stacks across the pack. Highest Payout
+				Each puzzle gives you a <b>fresh bounty</b> to spend on letters — it's <b>not</b> your
+				money. Whatever you don't spend adds to your <b>Score</b>. Highest Score across the pack
 				takes the pot.
 			</p>
 			<div class="info-rows">
 				<div class="info-row">
-					<span>This puzzle's budget</span><b>${Math.max(0, matchLeft).toLocaleString()}</b>
+					<span>This puzzle's bounty left</span><b>${Math.max(0, matchLeft).toLocaleString()}</b>
+				</div>
+				<div class="info-row">
+					<span>Your Score so far</span><b class="pos"
+						>${Math.round(matchInfo?.total_score ?? 0).toLocaleString()}</b
+					>
 				</div>
 				<div class="info-row">
 					<span>Your ante</span><b>${(matchInfo?.wager ?? 0).toLocaleString()}</b>
@@ -2935,7 +2939,7 @@
 				<div class="info-row"><span>Lose the duel</span><b class="neg">forfeit your ante</b></div>
 			</div>
 			<p class="info-note">
-				Highest Payout wins the pot. Duel = winner-take-all (tie splits 50/50); groups pay a podium
+				Highest Score wins the pot. Duel = winner-take-all (tie splits 50/50); groups pay a podium
 				(3 → 70/30, 4+ → 60/30/10). A wrong guess busts the puzzle, so guess only when you're sure.
 			</p>
 			<button class="info-close" on:click={() => (showAnteInfo = false)}>Got it</button>
@@ -4318,6 +4322,12 @@
 					</div>
 				</div>
 			{:else}
+				<!-- 🏆 Your Score — the accumulated bounty-kept you win the pot on. The center hero
+             below is just this puzzle's fresh bounty; this is the number that matters. -->
+				<div class="match-score">
+					<span class="ms-cap">Your Score</span>
+					<span class="ms-val">${Math.round(matchInfo.total_score ?? 0).toLocaleString()}</span>
+				</div>
 				<div class="match-meta">
 					{#if matchPot > 0}<span class="pot-chip">Pot ${matchPot.toLocaleString()}</span>{/if}
 					{#if matchInfo.target != null}<span class="beat-chip"
@@ -5264,6 +5274,30 @@
 		width: 100%;
 		max-width: 360px;
 		margin: 0 auto 12px;
+	}
+	/* 🏆 Challenge Score — the accumulated number you win the pot on (the hero below is
+	   just this puzzle's fresh bounty). */
+	.match-score {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1px;
+		margin: 2px 0 6px;
+	}
+	.ms-cap {
+		font-size: 0.6rem;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--text-faint);
+	}
+	.ms-val {
+		font-family: var(--font-display, sans-serif);
+		font-weight: 800;
+		font-size: 1.7rem;
+		color: #fcd34d;
+		font-variant-numeric: tabular-nums;
+		line-height: 1.05;
 	}
 	.match-meta {
 		display: flex;
