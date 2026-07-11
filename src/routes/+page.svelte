@@ -915,15 +915,20 @@
 	$: dlBoost = Math.max(0, Math.round((dlMult - 1) * 10) / 10);
 	let _prevNet = /** @type {number|null} */ (null);
 	let _floatId = 0;
-	/** @type {{id:number,text:string}[]} */
+	let _prevWrongTick = 0;
+	/** @type {{id:number,text:string,wrong?:boolean}[]} */
 	let spendFloaters = [];
 	// Float a −$X off the hero number whenever it drops from a letter buy — in ANY mode.
 	// Watches the actual displayed value (soloHero.net) so it fires identically for Daily,
 	// Cash Game and Challenge. Guards: only while the game is active (so a bust → $0 doesn't
 	// float) and not during the opening reveal count-up (introBuilding) or on the menu.
-	$: trackSpend(soloHero?.net, gameActive, showMainMenu, introBuilding);
-	/** @param {number|null|undefined} v @param {boolean} active @param {boolean} onMenu @param {boolean} building */
-	function trackSpend(v, active, onMenu, building) {
+	$: trackSpend(soloHero?.net, gameActive, showMainMenu, introBuilding, $gameStore.wrongTick);
+	/** @param {number|null|undefined} v @param {boolean} active @param {boolean} onMenu @param {boolean} building @param {number|undefined} wtick */
+	function trackSpend(v, active, onMenu, building, wtick) {
+		// A Cash Game wrong guess bumps wrongTick in the SAME update as the budget drop, so this
+		// reactive sees both together — label that one floater "✗ Wrong" instead of a plain −$X buy.
+		const isWrong = wtick != null && wtick > _prevWrongTick;
+		_prevWrongTick = wtick ?? _prevWrongTick;
 		if (
 			browser &&
 			active &&
@@ -936,7 +941,8 @@
 			const amt = _prevNet - v;
 			if (amt > 0) {
 				const id = ++_floatId;
-				spendFloaters = [...spendFloaters, { id, text: '−$' + amt.toLocaleString() }];
+				const text = (isWrong ? '✗ Wrong  −$' : '−$') + amt.toLocaleString();
+				spendFloaters = [...spendFloaters, { id, text, wrong: isWrong }];
 				setTimeout(() => {
 					spendFloaters = spendFloaters.filter((f) => f.id !== id);
 				}, 1100);
@@ -4488,7 +4494,9 @@
 							<span class="bp-badge-spacer"></span>
 						{/if}
 					</div>
-					{#each spendFloaters as f (f.id)}<span class="spend-float">{f.text}</span>{/each}
+					{#each spendFloaters as f (f.id)}<span class="spend-float" class:wrong={f.wrong}
+							>{f.text}</span
+						>{/each}
 				</div>
 				{#if isMatch && matchLive}
 					<div class="ante-bar">
@@ -8747,6 +8755,34 @@
 		font-variant-numeric: tabular-nums;
 		white-space: nowrap;
 		animation: spendFloat 1.05s cubic-bezier(0.2, 0.75, 0.3, 1) forwards;
+	}
+	/* A wrong whole-phrase guess (Cash Game): same red, but bigger + a hard shake so it
+	   reads as a penalty, not a routine letter buy. */
+	.spend-float.wrong {
+		font-size: 1.85rem;
+		letter-spacing: 0.02em;
+		text-shadow: 0 0 16px rgba(248, 113, 133, 0.85);
+		animation:
+			spendFloat 1.15s cubic-bezier(0.2, 0.75, 0.3, 1) forwards,
+			wrongShake 0.42s ease-in-out;
+	}
+	@keyframes wrongShake {
+		0%,
+		100% {
+			margin-left: 0;
+		}
+		20% {
+			margin-left: -7px;
+		}
+		40% {
+			margin-left: 6px;
+		}
+		60% {
+			margin-left: -4px;
+		}
+		80% {
+			margin-left: 3px;
+		}
 	}
 	@keyframes spendFloat {
 		0% {
