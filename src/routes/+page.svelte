@@ -910,10 +910,9 @@
 	$: dlRemaining = $gameStore.dailyLive?.remaining ?? 0; // Prize budget left
 	$: dlWinnings = $gameStore.dailyLive?.winnings ?? Math.round(dlRemaining * dlMult); // banked if you solve now
 	$: dlWinStreak = dailyStatus?.win_streak ?? 0;
-	$: dlStreakBonus = Math.min(0.1 * dlWinStreak, 0.5);
-	$: dlWrong = $gameStore.wrongGuesses ?? 0;
-	$: dlPenalty = Math.min(0.2 * dlWrong, Math.max(0, dlMult - 1)); // shown penalty, can't push below ×1.0 floor
-	$: dlBoost = Math.max(0, Math.round((dlMult - 1 - dlStreakBonus + dlPenalty) * 10) / 10);
+	// Daily multiplier is now boost-only — the win-streak "interest" was dropped, so score =
+	// bounty − spent for normal play. Any multiplier comes purely from 💥/💎 boost power-ups.
+	$: dlBoost = Math.max(0, Math.round((dlMult - 1) * 10) / 10);
 	let _prevNet = /** @type {number|null} */ (null);
 	let _floatId = 0;
 	/** @type {{id:number,text:string}[]} */
@@ -2577,7 +2576,6 @@
 	</button>
 {/if}
 
-<!-- 🎰 Pure-solve ×1.5 multiplier fly-in -->
 <!-- 💰 In-game bank modal: same info as /bank, but closing returns to the game -->
 {#if showBank}
 	<div
@@ -2701,33 +2699,20 @@
 			<button class="modal-x" on:click={() => (dailyInfo = null)} aria-label="Close">✕</button>
 			{#if dailyInfo === 'mult'}
 				<div class="info-big">+{Math.round((dlMult - 1) * 100)}%</div>
-				<h3 class="info-title">Interest</h3>
-				<p class="info-sub">Boosts everything you Deposit from this puzzle.</p>
+				<h3 class="info-title">Boost</h3>
+				<p class="info-sub">A power-up boost on everything you Deposit from this puzzle.</p>
 				<div class="info-rows">
 					<div class="info-row"><span>Base</span><b>+0%</b></div>
-					{#if dlStreakBonus > 0}<div class="info-row">
-							<span>🏆 Win streak ({dlWinStreak} in a row)</span><b class="pos"
-								>+{Math.round(dlStreakBonus * 100)}%</b
-							>
-						</div>{/if}
 					{#if dlBoost > 0}<div class="info-row">
 							<span>💥 Boosts</span><b class="pos">+{Math.round(dlBoost * 100)}%</b>
 						</div>{/if}
-					{#if dlWrong > 0}<div class="info-row">
-							<span>❌ Wrong guesses ({dlWrong})</span><b class="neg"
-								>−{Math.round(dlPenalty * 100)}%</b
-							>
-						</div>{/if}
 					<div class="info-row total">
-						<span>Your Interest</span><b>+{Math.round((dlMult - 1) * 100)}%</b>
+						<span>Your Boost</span><b>+{Math.round((dlMult - 1) * 100)}%</b>
 					</div>
 				</div>
 				<p class="info-note">
-					Grows with your <button
-						class="info-inline"
-						on:click|stopPropagation={() => (dailyInfo = 'streak')}>deposit streak</button
-					>
-					(<b>+10%</b>/solve, up to <b>+50%</b>). Each wrong guess costs <b>−20%</b> (never below +0%).
+					Stock up on 💥/💎 boosts in the Store and tap one in before you solve — the Daily itself
+					has no streak multiplier, so your score is just what you keep of the bounty.
 				</p>
 			{:else if dailyInfo === 'twist'}
 				<div class="info-big">{dailyMod?.emoji ?? '🎁'}</div>
@@ -2744,11 +2729,8 @@
 					<div class="info-row"><span>Lose or give up</span><b class="neg">back to 0</b></div>
 				</div>
 				<p class="info-note">
-					Also boosts your <button
-						class="info-inline"
-						on:click|stopPropagation={() => (dailyInfo = 'mult')}>Interest</button
-					>
-					— <b>+10%</b> per win.
+					Bragging rights — your streak shows on every deposit slip. It no longer changes your
+					score; the Daily is pure skill now.
 				</p>
 			{:else}
 				<div class="info-big green">${Math.max(0, dlWinnings).toLocaleString()}</div>
@@ -2762,7 +2744,7 @@
 						<span>Balance Remaining</span><b class="pos">${dlRemaining.toLocaleString()}</b>
 					</div>
 					{#if dlMult > 1}<div class="info-row">
-							<span>Interest</span><b class="pos">+{Math.round((dlMult - 1) * 100)}%</b>
+							<span>Boost</span><b class="pos">+{Math.round((dlMult - 1) * 100)}%</b>
 						</div>{/if}
 					<div class="info-row total">
 						<span>You deposit</span><b class="green">${dlWinnings.toLocaleString()}</b>
@@ -4412,10 +4394,11 @@
 					class:count-pop={introCountPop}
 				>
 					<div class="bp-row">
-						{#if $gameStore.gameMode === 'daily'}
+						{#if $gameStore.gameMode === 'daily' && Number($gameStore.bountyMult ?? 1) > 1}
+							<!-- Daily badge only appears when a 💥/💎 boost is active (no streak interest). -->
 							<button
 								class="bp-mult-badge"
-								title="How your multiplier works"
+								title="Boost — a power-up multiplier on your deposit"
 								on:click={() => {
 									fx('tap');
 									dailyInfo = 'mult';
@@ -4647,7 +4630,7 @@
 							</div>
 							{#if interestPct > 0}
 								<div class="rcpt-line">
-									<span>Interest +{interestPct}%</span><span class="pos"
+									<span>Boost +{interestPct}%</span><span class="pos"
 										>+${interestBonus.toLocaleString()}</span
 									>
 								</div>
@@ -5175,7 +5158,6 @@
 	.attendance-toast strong {
 		font-family: var(--font-display);
 	}
-	/* 🎰 Pure-solve ×1.5 multiplier fly-in */
 	@keyframes attDrop {
 		from {
 			transform: translate(-50%, -60px);
