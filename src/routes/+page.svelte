@@ -918,23 +918,28 @@
 	$: dlWrong = $gameStore.wrongGuesses ?? 0;
 	$: dlPenalty = Math.min(0.2 * dlWrong, Math.max(0, dlMult - 1)); // shown penalty, can't push below ×1.0 floor
 	$: dlBoost = Math.max(0, Math.round((dlMult - 1 - dlStreakBonus + dlPenalty) * 10) / 10);
-	let _prevBank = /** @type {number|null} */ (null);
+	let _prevNet = /** @type {number|null} */ (null);
 	let _floatId = 0;
 	/** @type {{id:number,text:string}[]} */
 	let spendFloaters = [];
-	$: trackSpend($gameStore.bankroll, $gameStore.gameMode, showMainMenu);
-	/** @param {number|null|undefined} b @param {string} mode @param {boolean} onMenu */
-	function trackSpend(b, mode, onMenu) {
+	// Float a −$X off the hero number whenever it drops from a letter buy — in ANY mode.
+	// Watches the actual displayed value (soloHero.net) so it fires identically for Daily,
+	// Cash Game and Challenge. Guards: only while the game is active (so a bust → $0 doesn't
+	// float) and not during the opening reveal count-up (introBuilding) or on the menu.
+	$: trackSpend(soloHero?.net, gameActive, showMainMenu, introBuilding);
+	/** @param {number|null|undefined} v @param {boolean} active @param {boolean} onMenu @param {boolean} building */
+	function trackSpend(v, active, onMenu, building) {
 		if (
 			browser &&
+			active &&
 			!onMenu &&
-			_prevBank != null &&
-			b != null &&
-			b < _prevBank &&
-			['daily', 'makeup', 'climb'].includes(mode)
+			!building &&
+			_prevNet != null &&
+			v != null &&
+			v < _prevNet
 		) {
-			const amt = _prevBank - b;
-			if (amt > 0 && amt <= 300) {
+			const amt = _prevNet - v;
+			if (amt > 0) {
 				const id = ++_floatId;
 				spendFloaters = [...spendFloaters, { id, text: '−$' + amt.toLocaleString() }];
 				setTimeout(() => {
@@ -942,7 +947,7 @@
 				}, 1100);
 			}
 		}
-		_prevBank = b ?? null;
+		_prevNet = v ?? null;
 	}
 
 	// 💥 Dramatic bank pop on a big swing (win payout / big change).
@@ -8769,31 +8774,34 @@
 			transform: scale(1);
 		}
 	}
-	/* floating -$X spend feedback by the green number */
+	/* 💸 −$X spend feedback — pops at the hero number and flies up-and-off it, so the
+	   letter's cost is visibly what just came off the number. Clean font, punchy. */
 	.spend-float {
 		position: absolute;
-		right: 16px;
-		top: 8px;
+		left: 50%;
+		top: 46%;
 		pointer-events: none;
-		font-family: 'Orbitron', var(--font-display);
+		font-family: var(--font-display, sans-serif);
 		font-weight: 800;
-		font-size: 1.05rem;
+		font-size: 1.55rem;
 		color: #fb7185;
-		text-shadow: 0 0 8px rgba(248, 113, 133, 0.55);
-		animation: spendFloat 1.1s ease-out forwards;
+		text-shadow: 0 0 12px rgba(248, 113, 133, 0.65);
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+		animation: spendFloat 1.05s cubic-bezier(0.2, 0.75, 0.3, 1) forwards;
 	}
 	@keyframes spendFloat {
 		0% {
 			opacity: 0;
-			transform: translateY(8px) scale(0.9);
+			transform: translate(-50%, 6px) scale(0.8);
 		}
-		16% {
+		20% {
 			opacity: 1;
-			transform: translateY(0) scale(1.06);
+			transform: translate(-50%, -6px) scale(1.15);
 		}
 		100% {
 			opacity: 0;
-			transform: translateY(-28px) scale(1);
+			transform: translate(-50%, -46px) scale(1);
 		}
 	}
 	/* 💰 Top bankroll bar (very top, all modes) */
