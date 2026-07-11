@@ -630,16 +630,13 @@
 				? { net: matchEarnings }
 				: null;
 
-	// 🎰 Slot-machine money feel: count up/down the bankroll + the green "Solve to Earn",
-	// and float a -$X by the number each time you spend.
-	const tweenBank = tweened(0, { duration: 550, easing: cubicOut });
+	// 🎰 Slot-machine money feel: count the hero number up/down; float a −$X off it on each spend.
 	const tweenNet = tweened(0, { duration: 900, easing: cubicOut });
 	// 🏆 Win-banner animations: profit counts up, then Cash scrolls to the new total.
 	const resultProfit = tweened(0, { duration: 1100, easing: cubicOut });
 	const resultBankAnim = tweened(0, { duration: 1300, easing: cubicOut });
 	/** @type {{rank:number,total:number,score:number}|null} */
 	let resultRank = null;
-	$: tweenBank.set(Math.round($gameStore.bankroll ?? 0));
 	// While the opening reveal is landing boxes, hold the bounty at $0 so it can
 	// dramatically count up at the climax (introDone).
 	$: tweenNet.set(introBuilding ? 0 : soloHero ? Math.round(soloHero.net) : 0);
@@ -948,28 +945,6 @@
 			}
 		}
 		_prevNet = v ?? null;
-	}
-
-	// 💥 Dramatic bank pop on a big swing (win payout / big change).
-	let bankFlash = '';
-	let _bankFxPrev = /** @type {number|null} */ (null);
-	/** @type {ReturnType<typeof setTimeout>|undefined} */
-	let _bankFxTimer;
-	$: bankFx($gameStore.bankroll, showMainMenu);
-	/** @param {number|null|undefined} b @param {boolean} onMenu */
-	function bankFx(b, onMenu) {
-		if (!browser || b == null) {
-			_bankFxPrev = b ?? _bankFxPrev;
-			return;
-		}
-		if (!onMenu && _bankFxPrev != null && Math.abs(b - _bankFxPrev) >= 150) {
-			bankFlash = b > _bankFxPrev ? 'up' : 'down';
-			clearTimeout(_bankFxTimer);
-			_bankFxTimer = setTimeout(() => {
-				bankFlash = '';
-			}, 1100);
-		}
-		_bankFxPrev = b;
 	}
 
 	// ── Fold + broke-timer (Daily + Challenges) ──────────────────────────────
@@ -4254,33 +4229,16 @@
 					>
 				</div>
 			{:else if !matchBlitz}
-				{@const isDailyLike = $gameStore.gameMode === 'daily' || isMakeup}
-				{#if isDailyLike || isClimb || isMatch}
-					<!-- 🏦 Account balance strip (all modes) — your real, safe money; the hero number
-                 below is the game money you're building this session. -->
-					<button
-						class="acct-strip"
-						title="My Account — your real balance; game winnings bank into it"
-						on:click={openBankModal}
-					>
-						<span class="as-acct">···· {acctNo}</span>
-						<span class="as-div"></span>
-						<span class="as-right">
-							<span class="as-cap">My Account</span>
-							<span class="as-amt">${Math.round(menuBank ?? netWorth ?? 0).toLocaleString()}</span>
-						</span>
-					</button>
-				{:else}
-					<button
-						class="top-bank solo"
-						class:pop-up={bankFlash === 'up'}
-						class:pop-down={bankFlash === 'down'}
-						title="Available Balance"
-						on:click={openBankModal}
-					>
-						<span class="tb-solo">${Math.round($tweenBank).toLocaleString()}</span>
-					</button>
-				{/if}
+				<!-- 🪙 Small ambient bankroll chip — your account, shown quietly; the hero number
+             below is the game money. Static during play; tap → bank. -->
+				<button
+					class="bankroll-chip"
+					title="Your balance — game winnings bank into it"
+					on:click={openBankModal}
+				>
+					<img class="brc-coin" src="/logo-coin.png" alt="" width="16" height="16" />
+					<span class="brc-amt">${Math.round(menuBank ?? netWorth ?? 0).toLocaleString()}</span>
+				</button>
 			{/if}
 		{/if}
 
@@ -8804,74 +8762,34 @@
 			transform: translate(-50%, -46px) scale(1);
 		}
 	}
-	/* 💰 Top bankroll bar (very top, all modes) */
-	.top-bank {
-		width: 100%;
-		max-width: 340px;
-		margin: 0 auto 12px;
-		padding: 9px 16px;
-		border-radius: 14px;
-		border: 1px solid rgba(253, 224, 71, 0.4);
-		background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(251, 191, 36, 0.03));
-	}
-	/* solo bankroll = a centered gold chip below WordBank (matches the menu) — tap → /bank */
-	.top-bank.solo {
-		width: fit-content;
-		max-width: none;
-		margin: 0 auto 12px;
-		padding: 7px 18px;
-		text-align: center;
-		cursor: pointer;
-	}
-	.top-bank.solo:active {
-		transform: scale(0.97);
-	}
-	/* 🏦 Account balance strip (Daily + Cash Game top bar) — account no. + Available Balance. */
-	.acct-strip {
+	/* 🪙 Small ambient bankroll chip (in-game top, all modes) — quiet status, not a game number. */
+	.bankroll-chip {
 		display: inline-flex;
 		align-items: center;
-		gap: 12px;
+		gap: 6px;
 		width: fit-content;
 		margin: 0 auto 12px;
-		padding: 6px 16px;
-		border-radius: 12px;
-		border: 1px solid rgba(253, 224, 71, 0.28);
-		background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(251, 191, 36, 0.03));
+		padding: 4px 12px;
+		border-radius: 999px;
+		border: 1px solid var(--border);
+		background: rgba(255, 255, 255, 0.03);
 		cursor: pointer;
 		transition: transform 0.12s ease;
 	}
-	.acct-strip:active {
-		transform: scale(0.98);
+	.bankroll-chip:active {
+		transform: scale(0.97);
 	}
-	.as-acct {
-		font-family: 'Courier New', 'Courier', ui-monospace, monospace;
-		font-size: 0.74rem;
-		letter-spacing: 0.12em;
-		color: #aab4c4;
+	.brc-coin {
+		width: 16px;
+		height: 16px;
+		object-fit: contain;
+		opacity: 0.9;
 	}
-	.as-div {
-		width: 1px;
-		height: 22px;
-		background: rgba(253, 224, 71, 0.25);
-	}
-	.as-right {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		line-height: 1.05;
-	}
-	.as-cap {
-		font-size: 0.54rem;
-		font-weight: 700;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: #d6dbe4;
-	}
-	.as-amt {
+	.brc-amt {
 		font-family: var(--font-display, sans-serif);
-		font-weight: 800;
-		font-size: 1.3rem;
-		color: #fcd34d;
+		font-weight: 700;
+		font-size: 0.82rem;
+		color: var(--text-muted);
 		font-variant-numeric: tabular-nums;
 	}
 	/* 🔥 Cash Game tagline under the title in the tier picker. */
@@ -8884,79 +8802,6 @@
 		text-transform: uppercase;
 		color: #fcd34d;
 		margin: -4px 0 8px;
-	}
-	/* 💥 dramatic pop when the bankroll swings big (win payout / loss) */
-	.top-bank.solo.pop-up {
-		animation: bankPopUp 1.1s cubic-bezier(0.34, 1.56, 0.64, 1);
-	}
-	.top-bank.solo.pop-down {
-		animation: bankPopDown 1.1s cubic-bezier(0.34, 1.56, 0.64, 1);
-	}
-	@keyframes bankPopUp {
-		0% {
-			transform: scale(1);
-			border-color: rgba(253, 224, 71, 0.4);
-		}
-		22% {
-			transform: scale(1.4);
-			border-color: rgba(74, 222, 128, 0.9);
-			box-shadow: 0 0 30px rgba(74, 222, 128, 0.7);
-		}
-		55% {
-			transform: scale(0.96);
-		}
-		100% {
-			transform: scale(1);
-		}
-	}
-	@keyframes bankPopDown {
-		0% {
-			transform: scale(1);
-		}
-		18% {
-			transform: scale(0.8) translateX(-3px);
-			border-color: rgba(251, 113, 133, 0.9);
-			box-shadow: 0 0 22px rgba(251, 113, 133, 0.6);
-		}
-		36% {
-			transform: scale(0.86) translateX(3px);
-		}
-		100% {
-			transform: scale(1);
-		}
-	}
-	.top-bank.solo.pop-up .tb-solo {
-		animation: bankColorUp 1.1s ease-out;
-	}
-	.top-bank.solo.pop-down .tb-solo {
-		animation: bankColorDown 1.1s ease-out;
-	}
-	@keyframes bankColorUp {
-		0%,
-		100% {
-			color: #fcd34d;
-		}
-		25% {
-			color: #4ade80;
-			text-shadow: 0 0 24px rgba(74, 222, 128, 0.95);
-		}
-	}
-	@keyframes bankColorDown {
-		0%,
-		100% {
-			color: #fcd34d;
-		}
-		25% {
-			color: #fb7185;
-			text-shadow: 0 0 20px rgba(251, 113, 133, 0.9);
-		}
-	}
-	.tb-solo {
-		font-family: var(--font-display, sans-serif);
-		font-weight: 800;
-		font-size: 1.55rem;
-		color: #fcd34d;
-		font-variant-numeric: tabular-nums;
 	}
 	/* 🏷️ Game-mode pill — centered under the wordmark, same for every mode */
 	.mode-pill {
