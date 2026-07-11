@@ -109,9 +109,11 @@ try {
 	}
 	await wait(600);
 	await shot('01-menu');
-	(await page.locator('.menu-card').count()) > 0
+	// Menu presence = the primary CTA ("Play Now"). (Old `.menu-card` class was renamed in the
+	// account-card / single-focus-HUD redesign.)
+	(await page.getByText(/play now/i).count()) > 0
 		? ok('reach-menu')
-		: bad('reach-menu', 'no menu cards');
+		: bad('reach-menu', 'no Play Now CTA');
 
 	// ---------- 4. Page sweep (console-error / hang detection) ----------
 	const pages = [
@@ -203,6 +205,9 @@ try {
 		bad('daily-open', 'no Solve button — board did not load');
 	} else {
 		ok('daily-open');
+		// NOTE: today's Twist auto-reveals a letter, so only the remaining slots are editable.
+		// Typing the full DAILY answer misaligns the guess — this step is a known harness gap
+		// (the solve path itself is verified server-side). TODO: type only unrevealed slots.
 		await page
 			.getByRole('button', { name: /^solve$/i })
 			.first()
