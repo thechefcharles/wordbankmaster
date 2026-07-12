@@ -4405,6 +4405,7 @@
 			<div class="danger-cue daily" role="alert">
 				<span class="dc-title">💸 OUT OF BUDGET</span>
 				<span class="dc-sub">Last guess — get it right to win today</span>
+				<button class="bn-forfeit" on:click={confirmFold}>Give up?</button>
 			</div>
 		{/if}
 
