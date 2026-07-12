@@ -773,6 +773,9 @@
 								reason: avail ? '' : 'Bought after you started — usable on your next puzzle.'
 							});
 						} else if (it.kind === 'climb') {
+							// Heat Shield is a PASSIVE safety net (auto-saves you from a bust while owned) —
+							// it's not tap-to-use, so keep it out of the usable tray.
+							if (it.id === 'heat_shield') continue;
 							// Self-buffs work in BOTH the Cash Game and Challenges.
 							const climbUsed = (climb?.equipped ?? []).includes(it.id);
 							const matchUsed = (matchInfo?.used_powerups ?? []).includes(it.id);
