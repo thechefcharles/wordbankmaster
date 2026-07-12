@@ -2970,15 +2970,23 @@
 	<!-- Forced choice — Keep Playing or Give Up. -->
 	<div class="modal-overlay info-overlay dep-confirm-overlay">
 		<div class="info-card" role="dialog" aria-modal="true">
-			<div class="info-big neg">−${forfeitAmount.toLocaleString()}</div>
-			<h3 class="info-title">Give up this puzzle?</h3>
+			{#if forfeitAmount > 0}
+				<div class="info-big neg">−${forfeitAmount.toLocaleString()}</div>
+			{/if}
+			<h3 class="info-title">Give up your whole run?</h3>
 			<p class="info-sub">
-				You'll <b class="neg">lose your ${forfeitAmount.toLocaleString()} Payout</b> and see the answer.
-				This can't be undone.
+				{#if forfeitAmount > 0}
+					This <b class="neg">ends your Cash Game run</b> — not just this puzzle — and wipes the
+					<b class="neg">${forfeitAmount.toLocaleString()}</b> you've banked so far. You'll see the answer,
+					and it can't be undone.
+				{:else}
+					This <b class="neg">ends your Cash Game run</b> — not just this puzzle. You'll see the answer
+					and walk away with nothing, and it can't be undone.
+				{/if}
 			</p>
 			<div class="dep-actions">
 				<button class="dep-keep" on:click={() => (showForfeitConfirm = false)}>Keep Playing</button>
-				<button class="dep-go forfeit" disabled={cgBusy} on:click={confirmForfeit}>Give Up</button>
+				<button class="dep-go forfeit" disabled={cgBusy} on:click={confirmForfeit}>End Run</button>
 			</div>
 		</div>
 	</div>
