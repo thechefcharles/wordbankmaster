@@ -34,7 +34,7 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
   `state='done'`; a player who accepted+paid but didn't finish gets no `_notify` and no
   `_log_game_result`. Money loss never appears in history/leaderboards.
   **Fix:** include paid `active` participants with a DNF/lost result + notification.
-- [ ] **6. No scheduled settlement** — `get_my_matches` is the only sweeper (settles
+- [x] **6. No scheduled settlement** — ✅ FIXED (PR #561, supabase-scheduled-settlement.sql): added `settle_expired_matches()` + pg_cron job (every 5 min) that settles past-`settles_at` open matches server-side; enabling it immediately settled 1 real stuck match in prod. `get_my_matches` is the only sweeper (settles
   `status='open' AND settles_at < now()`); no pg_cron. Wagers stay escrowed and
   refund/settled notifications never fire until a participant next opens the list.
   **Fix:** scheduled sweeper (pg_cron or edge cron → `settle_expired_matches()`).
