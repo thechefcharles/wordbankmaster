@@ -26,7 +26,7 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
   (bank ≥ wager, netWorth < wager) is shown "capped" yet debited the full wager.
   **Fix:** align UI + RPC on one balance definition. *(`+page.svelte:2242,2260-2277`;
   RPC `accept_match(uuid,boolean)`)*
-- [ ] **4. Group owner leaving orphans the group** — `leave_group` doesn't reassign
+- [x] **4. Group owner leaving orphans the group** — ✅ FIXED (PR #559, supabase-leave-group-owner-fix.sql): owner-leave now hands ownership to the oldest remaining member; rollback-verified handoff + empty-group deletion still works. `leave_group` doesn't reassign
   `owner_id`; every management RPC gates on `owner_id = uid`, so remaining members can
   never rename / kick / approve joins. **Fix:** reassign ownership to the oldest remaining
   member on owner-leave. *(RPC `leave_group`)*
