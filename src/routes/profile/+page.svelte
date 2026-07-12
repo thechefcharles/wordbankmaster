@@ -4,6 +4,7 @@
 	import { page } from '$app/stores';
 	import { getProfileDetail, getMyAvatar, getUserBadges } from '$lib/stores/statsStore.js';
 	import { badgeInfo } from '$lib/badges.js';
+	import Icon from '$lib/components/Icon.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import InventoryList from '$lib/components/InventoryList.svelte';
 	import NotificationsPanel from '$lib/components/NotificationsPanel.svelte';
@@ -243,8 +244,8 @@
 						<button
 							class="ov-badge-tile"
 							title={bdg.name}
-							onclick={() => (statInfo = { title: `${bdg.emoji} ${bdg.name}`, desc: bdg.desc })}
-							>{bdg.emoji}</button
+							onclick={() => (statInfo = { title: bdg.name, desc: bdg.desc })}
+							><Icon name={bdg.icon} size={24} /></button
 						>
 					{/each}
 				</div>
