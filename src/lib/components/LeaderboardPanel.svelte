@@ -1,5 +1,5 @@
 <script>
-	// Today's Daily leaderboard. Sort by any column (name / cash / score / streaks);
+	// Game-type leaderboard: Daily (sortable) · Cash Game · Challenges · Wealth.
 	// scope dropdown: Everyone · Friends · a specific group.
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -32,7 +32,7 @@
 
 	// Sortable columns (client-side). Default: by place, best → worst. Tap # again to
 	// flip and bring LAST place to the top.
-	/** @typedef {'place'|'name'|'net_worth'|'credit'|'score'|'efficiency'|'play_streak'|'win_streak'} SortKey */
+	/** @typedef {'place'|'name'|'score'|'efficiency'|'play_streak'|'win_streak'} SortKey */
 	let sortKey = $state(/** @type {SortKey} */ ('place'));
 	let sortDir = $state(/** @type {'asc'|'desc'} */ ('asc'));
 	/** @param {SortKey} k */
@@ -92,7 +92,10 @@
 						}
 					]
 				: board === 'wealth'
-					? [{ label: 'Cash', cell: (/** @type {any} */ r) => fmt(r.cash ?? r.net_worth) }]
+					? [
+							{ label: 'Cash', cell: (/** @type {any} */ r) => fmt(r.cash ?? r.net_worth) },
+							{ label: 'Credit', cell: (/** @type {any} */ r) => r.credit ?? 650 }
+						]
 					: []
 	);
 	let caption = $derived(
@@ -102,8 +105,39 @@
 				? 'Cash Game — ranked by how far you’ve climbed.'
 				: board === 'challenge'
 					? 'Challenges — ranked by wins (all-time).'
-					: 'Wealth — ranked by total Cash (net worth).'
+					: 'Wealth — your Cash & Credit; ranked by net worth.'
 	);
+	// Per-board column legend for the "ⓘ What do these mean?" key.
+	let legend = $derived(
+		board === 'daily'
+			? [
+					{
+						term: 'Daily Earnings',
+						desc: "What you banked from today's Daily — the budget you didn't spend, grown by your Interest."
+					},
+					{
+						term: 'Efficiency',
+						desc: "Share of the puzzle's base budget you kept. Same for everyone — pure spend-less skill."
+					},
+					{ term: 'Play', desc: "Play streak — days in a row you've shown up for the Daily." },
+					{ term: 'Win', desc: "Win streak — Dailies you've solved in a row." }
+				]
+			: board === 'climb'
+				? [{ term: 'Furthest', desc: "The highest rung you've reached in the Cash Game." }]
+				: board === 'challenge'
+					? [
+							{ term: 'Wins', desc: "Challenge matches you've won (all-time)." },
+							{ term: 'Win %', desc: 'Share of the challenges you played that you won.' }
+						]
+					: [
+							{ term: 'Cash', desc: 'Your Available Balance — total net worth.' },
+							{
+								term: 'Credit',
+								desc: 'Your credit score (300-850) — reputation from responsible money management.'
+							}
+						]
+	);
+	let showKey = $state(false);
 
 	async function load() {
 		loading = true;
@@ -161,6 +195,22 @@
 </div>
 
 <p class="caption">{caption}</p>
+
+<!-- ⓘ Column key: explains what each column on the current board means. -->
+<div class="lb-key-row">
+	<button class="lb-key-toggle" onclick={() => (showKey = !showKey)}>
+		{showKey ? '✕ Close key' : 'ⓘ What do these mean?'}
+	</button>
+</div>
+{#if showKey}
+	<div class="lb-key">
+		{#each legend as item}
+			<div class="lb-key-item">
+				<span class="lbk-term">{item.term}</span><span class="lbk-desc">{item.desc}</span>
+			</div>
+		{/each}
+	</div>
+{/if}
 
 {#if loading}
 	<p class="muted">Loading…</p>
@@ -223,31 +273,6 @@
 					<th class="num"
 						><button
 							class="sort"
-							class:on={sortKey === 'net_worth'}
-							onclick={() => setSort('net_worth')}
-							><svg class="hcol-ic" viewBox="0 0 24 24" aria-hidden="true"
-								><circle cx="12" cy="12" r="8.6" /><path d="M12 7v10" /><path
-									d="M14.6 9.2c-.6-.8-1.6-1.2-2.7-1.2-1.7 0-2.9 1-2.9 2.3s1.3 1.9 2.9 2.2 2.9 1 2.9 2.3-1.3 2.3-2.9 2.3c-1.1 0-2.2-.5-2.8-1.3"
-								/></svg
-							>
-							Cash{arrow('net_worth')}</button
-						></th
-					>
-					<th class="num"
-						><button
-							class="sort"
-							class:on={sortKey === 'credit'}
-							onclick={() => setSort('credit')}
-							title="Credit score — reputation from responsible money management (300–850)"
-							><svg class="hcol-ic" viewBox="0 0 24 24" aria-hidden="true"
-								><rect x="2.5" y="5" width="19" height="14" rx="2.5" /><path d="M2.5 9.5h19" /></svg
-							>
-							Credit{arrow('credit')}</button
-						></th
-					>
-					<th class="num"
-						><button
-							class="sort"
 							class:on={sortKey === 'score'}
 							onclick={() => setSort('score')}
 							title="Earnings — what you banked from today's Daily"
@@ -281,26 +306,14 @@
 						><button
 							class="sort"
 							class:on={sortKey === 'play_streak'}
-							onclick={() => setSort('play_streak')}
-							><svg class="hcol-ic" viewBox="0 0 24 24" aria-hidden="true"
-								><path
-									d="M12 3s5 3.8 5 9a5 5 0 0 1-10 0c0-2 .9-3.5 2.4-4.6C10.2 8.7 12 7 12 3Z"
-								/></svg
-							>{arrow('play_streak')}</button
+							onclick={() => setSort('play_streak')}>Play{arrow('play_streak')}</button
 						></th
 					>
 					<th class="num"
 						><button
 							class="sort"
 							class:on={sortKey === 'win_streak'}
-							onclick={() => setSort('win_streak')}
-							><svg class="hcol-ic" viewBox="0 0 24 24" aria-hidden="true"
-								><path d="M7 4.2h10v4.8a5 5 0 0 1-10 0z" /><path
-									d="M7 6.2H4.2v.8a3 3 0 0 0 2.8 3M17 6.2h2.8v.8a3 3 0 0 1-2.8 3"
-								/><path
-									d="M12 13.8v2.8M9 20.4h6M10.3 20.4c0-1.9.5-3.8 1.7-3.8s1.7 1.9 1.7 3.8"
-								/></svg
-							>{arrow('win_streak')}</button
+							onclick={() => setSort('win_streak')}>Win{arrow('win_streak')}</button
 						></th
 					>
 				</tr>
@@ -325,8 +338,6 @@
 							{/if}
 							{#if r.title}<span class="title">{r.title}</span>{/if}
 						</td>
-						<td class="metric">{fmt(r.net_worth)}</td>
-						<td class="metric">{r.credit ?? 650}</td>
 						<td class="metric gold">{r.played ? Number(r.score).toLocaleString() : '—'}</td>
 						<td class="metric eff">{r.efficiency != null ? r.efficiency + '%' : '—'}</td>
 						<td class="metric small">{r.play_streak > 0 ? r.play_streak : '—'}</td>
@@ -393,8 +404,54 @@
 	.caption {
 		color: var(--text-faint);
 		font-size: 0.8rem;
-		margin: 0.2rem 0 1rem;
+		margin: 0.2rem 0 0.5rem;
 		text-align: center;
+	}
+	.lb-key-row {
+		display: flex;
+		justify-content: center;
+		margin: 0 0 0.8rem;
+	}
+	.lb-key-toggle {
+		background: none;
+		border: none;
+		cursor: pointer;
+		color: var(--brand-2);
+		font-family: var(--font-display);
+		font-weight: 700;
+		font-size: 0.8rem;
+		padding: 0.2rem 0.4rem;
+	}
+	.lb-key-toggle:hover {
+		text-decoration: underline;
+	}
+	.lb-key {
+		text-align: left;
+		max-width: 520px;
+		margin: 0 auto 1rem;
+		border: 1px solid var(--border);
+		border-radius: 12px;
+		padding: 0.75rem 0.9rem;
+		background: var(--surface);
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+	}
+	.lb-key-item {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+	.lbk-term {
+		font-family: var(--font-display);
+		font-weight: 700;
+		font-size: 0.82rem;
+		color: var(--brand-2);
+	}
+	.lbk-desc {
+		font-size: 0.8rem;
+		color: var(--text-muted);
+		line-height: 1.4;
 	}
 	.muted {
 		color: var(--text-muted);
