@@ -4,6 +4,7 @@
 	// Power-ups are spent in-game; cosmetics are equipped from the Store/Profile.
 	import { onMount } from 'svelte';
 	import { getPowerups, getShop } from '$lib/stores/statsStore.js';
+	import Icon from '$lib/components/Icon.svelte';
 
 	/** When set, the empty "+" slots link here (e.g. the Store). */
 	export let addHref = '';
@@ -12,25 +13,29 @@
 	/** @type {any[]} */ let cosmetics = [];
 	let loading = true;
 
+	// icon = Icon.svelte name (rendered via the component below).
 	/** @type {Record<string,{icon:string,desc:string}>} */
 	const META = {
-		bounty_boost: { icon: '💥', desc: 'Adds +50% Interest to your Daily deposit' },
-		jackpot_boost: { icon: '💎', desc: 'Adds +100% Interest to your Daily deposit' },
-		free_reveal: { icon: '🔍', desc: 'Reveal the most useful letter' },
-		free_vowel: { icon: '🅰️', desc: 'Reveal one vowel free' },
-		half_off: { icon: '🏷️', desc: 'Letters cost 50% less this puzzle' },
-		vowel_vision: { icon: '👁️', desc: 'Reveal every vowel' },
-		heat_shield: { icon: '🛡️', desc: 'Escape one bust — keep your Payout & Interest' },
-		overdrive: { icon: '🏧', desc: 'Out of money? Reveal one more letter, free' },
-		free_skip: { icon: '⏭️', desc: 'Swap this puzzle for a fresh one — keep your Interest & run' },
-		reveal_word: { icon: '📖', desc: 'Reveal a whole word' },
-		extra_hint: { icon: '💡', desc: 'First letter of each word' },
-		last_letters: { icon: '🔚', desc: 'Last letter of each word' },
-		sabotage_tax: { icon: '💸', desc: "An opponent's letters cost +50%" },
-		sabotage_fog: { icon: '🌫️', desc: "Hide an opponent's clue" },
-		sabotage_toll: { icon: '🚧', desc: "An opponent's next letter costs 3×" },
-		sabotage_vowel_block: { icon: '🚫', desc: "An opponent's vowels cost 3×" },
-		sabotage_lock: { icon: '🔒', desc: 'Wipe a letter an opponent revealed' }
+		bounty_boost: { icon: 'boost', desc: 'Adds +50% Interest to your Daily deposit' },
+		jackpot_boost: { icon: 'gem', desc: 'Adds +100% Interest to your Daily deposit' },
+		free_reveal: { icon: 'search', desc: 'Reveal the most useful letter' },
+		free_vowel: { icon: 'letter-a', desc: 'Reveal one vowel free' },
+		half_off: { icon: 'tag', desc: 'Letters cost 50% less this puzzle' },
+		vowel_vision: { icon: 'eye', desc: 'Reveal every vowel' },
+		heat_shield: { icon: 'shield', desc: 'Escape one bust — keep your Payout & Interest' },
+		overdrive: { icon: 'coin', desc: 'Out of money? Reveal one more letter, free' },
+		free_skip: {
+			icon: 'skip',
+			desc: 'Swap this puzzle for a fresh one — keep your Interest & run'
+		},
+		reveal_word: { icon: 'book', desc: 'Reveal a whole word' },
+		extra_hint: { icon: 'bulb', desc: 'First letter of each word' },
+		last_letters: { icon: 'chevron-right', desc: 'Last letter of each word' },
+		sabotage_tax: { icon: 'percent', desc: "An opponent's letters cost +50%" },
+		sabotage_fog: { icon: 'fog', desc: "Hide an opponent's clue" },
+		sabotage_toll: { icon: 'toll', desc: "An opponent's next letter costs 3×" },
+		sabotage_vowel_block: { icon: 'block', desc: "An opponent's vowels cost 3×" },
+		sabotage_lock: { icon: 'lock', desc: 'Wipe a letter an opponent revealed' }
 	};
 	const GROUPS = [
 		{
@@ -109,7 +114,7 @@
 											: 'Profile title'}</span
 								>
 							{:else}
-								<span class="inv-ic">{META[it.id]?.icon ?? '✨'}</span>
+								<span class="inv-ic"><Icon name={META[it.id]?.icon ?? 'boost'} size={22} /></span>
 								<span class="inv-badge">×{it.owned}</span>
 								<span class="inv-name">{it.name}</span>
 								<span class="inv-desc">{META[it.id]?.desc ?? ''}</span>

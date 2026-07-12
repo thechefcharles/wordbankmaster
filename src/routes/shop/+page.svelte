@@ -13,6 +13,7 @@
 	import { track } from '$lib/analytics.js';
 	import { fx } from '$lib/sound.js';
 	import InventoryList from '$lib/components/InventoryList.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 
 	// Back goes to the Bank when you came from its empty-slot "+", else the menu.
 	let backTo = $derived($page.url.searchParams.get('from') === 'bank' ? '/bank' : '/');
@@ -27,33 +28,34 @@
 	let busy = $state('');
 	let msg = $state('');
 
+	// icon = Icon.svelte name (see <Icon>); rendered via the component below.
 	const PUP_META = /** @type {Record<string,{icon:string,desc:string}>} */ ({
-		free_reveal: { icon: '🔍', desc: 'Reveal the most useful letter' },
-		free_vowel: { icon: '🅰️', desc: 'Reveal one vowel free' },
-		half_off: { icon: '🏷️', desc: 'Letters cost 50% less this puzzle' },
-		vowel_vision: { icon: '👁️', desc: 'Reveal every vowel' },
+		free_reveal: { icon: 'search', desc: 'Reveal the most useful letter' },
+		free_vowel: { icon: 'letter-a', desc: 'Reveal one vowel free' },
+		half_off: { icon: 'tag', desc: 'Letters cost 50% less this puzzle' },
+		vowel_vision: { icon: 'eye', desc: 'Reveal every vowel' },
 		heat_shield: {
-			icon: '🛡️',
+			icon: 'shield',
 			desc: 'Escape one bust — keep your Payout & Interest and jump to a fresh puzzle'
 		},
 		overdrive: {
-			icon: '🏧',
+			icon: 'coin',
 			desc: 'Out of money? Reveal one more letter of your choice — free'
 		},
 		free_skip: {
-			icon: '⏭️',
+			icon: 'skip',
 			desc: 'Swap this puzzle for a fresh one — keep your Interest, Payout & run. Anytime, no streak lost'
 		},
-		reveal_word: { icon: '📖', desc: 'Reveal a whole word' },
-		extra_hint: { icon: '💡', desc: 'Reveal the first letter of each word' },
-		last_letters: { icon: '🔚', desc: 'Reveal the last letter of each word' },
-		sabotage_tax: { icon: '💸', desc: "An opponent's letters cost +50%" },
-		sabotage_fog: { icon: '🌫️', desc: "Hide an opponent's clue" },
-		sabotage_toll: { icon: '🚧', desc: "An opponent's next letter costs 3×" },
-		sabotage_vowel_block: { icon: '🚫', desc: "An opponent's vowels cost 3×" },
-		sabotage_lock: { icon: '🔒', desc: 'Wipe a letter an opponent revealed' },
-		bounty_boost: { icon: '💥', desc: 'Adds +50% Interest to your Daily deposit' },
-		jackpot_boost: { icon: '💎', desc: 'Adds +100% Interest to your Daily deposit' }
+		reveal_word: { icon: 'book', desc: 'Reveal a whole word' },
+		extra_hint: { icon: 'bulb', desc: 'Reveal the first letter of each word' },
+		last_letters: { icon: 'chevron-right', desc: 'Reveal the last letter of each word' },
+		sabotage_tax: { icon: 'percent', desc: "An opponent's letters cost +50%" },
+		sabotage_fog: { icon: 'fog', desc: "Hide an opponent's clue" },
+		sabotage_toll: { icon: 'toll', desc: "An opponent's next letter costs 3×" },
+		sabotage_vowel_block: { icon: 'block', desc: "An opponent's vowels cost 3×" },
+		sabotage_lock: { icon: 'lock', desc: 'Wipe a letter an opponent revealed' },
+		bounty_boost: { icon: 'boost', desc: 'Adds +50% Interest to your Daily deposit' },
+		jackpot_boost: { icon: 'gem', desc: 'Adds +100% Interest to your Daily deposit' }
 	});
 
 	/** @type {any[]} */
@@ -185,7 +187,7 @@
 			<div class="grid">
 				{#each dboost as item}
 					<div class="card pup" class:owned={item.owned > 0}>
-						<span class="pup-ic">{PUP_META[item.id]?.icon ?? '💥'}</span>
+						<span class="pup-ic"><Icon name={PUP_META[item.id]?.icon ?? 'boost'} size={26} /></span>
 						<span class="c-label"
 							>{item.name}{#if item.owned > 0}
 								<span class="owned-x">×{item.owned}</span>{/if}</span
@@ -211,7 +213,7 @@
 		<div class="grid">
 			{#each pups as item}
 				<div class="card pup" class:owned={item.owned > 0}>
-					<span class="pup-ic">{PUP_META[item.id]?.icon ?? '✨'}</span>
+					<span class="pup-ic"><Icon name={PUP_META[item.id]?.icon ?? 'boost'} size={26} /></span>
 					<span class="c-label">{item.name}</span>
 					<span class="pup-desc">{PUP_META[item.id]?.desc ?? ''}</span>
 					{#if item.owned > 0}
@@ -237,7 +239,9 @@
 			<div class="grid">
 				{#each sabs as item}
 					<div class="card pup" class:owned={item.owned > 0}>
-						<span class="pup-ic">{PUP_META[item.id]?.icon ?? '😈'}</span>
+						<span class="pup-ic"
+							><Icon name={PUP_META[item.id]?.icon ?? 'sabotage'} size={26} /></span
+						>
 						<span class="c-label">{item.name}</span>
 						<span class="pup-desc">{PUP_META[item.id]?.desc ?? ''}</span>
 						{#if item.owned > 0}

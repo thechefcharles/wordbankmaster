@@ -43,7 +43,55 @@
 		link: `<svg ${A}><path d="M10.5 13.5a3.5 3.5 0 0 0 5 .3l2-2a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M13.5 10.5a3.5 3.5 0 0 0-5-.3l-2 2a3.5 3.5 0 0 0 5 5l1-1"/></svg>`,
 		lock: `<svg ${A}><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>`,
 		unlock: `<svg ${A}><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></svg>`,
-		key: `<svg ${A}><circle cx="8" cy="15" r="3.4"/><path d="M10.4 12.6L20 3M16.5 6.5l2.2 2.2M14.5 8.5l2 2"/></svg>`
+		key: `<svg ${A}><circle cx="8" cy="15" r="3.4"/><path d="M10.4 12.6L20 3M16.5 6.5l2.2 2.2M14.5 8.5l2 2"/></svg>`,
+
+		// ── money / economy ─────────────────────────────────────────────────────
+		cash: `<svg ${A}><rect x="3" y="6.5" width="18" height="11" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 9.5v5M17.5 9.5v5"/></svg>`,
+		card: `<svg ${A}><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><path d="M6.5 14.5h4"/></svg>`,
+		bank: `<svg ${A}><path d="M3.5 9.5L12 4l8.5 5.5"/><path d="M5.5 10v7M9.5 10v7M14.5 10v7M18.5 10v7"/><path d="M3.5 20h17"/></svg>`,
+		coin: `<svg ${A}><circle cx="12" cy="12" r="8"/><path d="M12 7.5v9"/><path d="M14.3 9.4a2.4 2.4 0 0 0-2.3-1.2c-1.4 0-2.3.8-2.3 1.8 0 2.3 4.6 1.3 4.6 3.6 0 1-1 1.8-2.3 1.8a2.5 2.5 0 0 1-2.3-1.3"/></svg>`,
+		broke: `<svg ${A}><rect x="3.5" y="8" width="12.5" height="9" rx="2"/><circle cx="9.7" cy="12.5" r="2"/><path d="M18.5 8.5l2.5-1M18.5 12.5H21M18.5 16.5l2.5 1"/></svg>`,
+		receipt: `<svg ${A}><path d="M6 3.5h12v17l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4V3.5z"/><path d="M9 8h6M9 11h6M9 14h4"/></svg>`,
+		gem: `<svg ${A}><path d="M6 4h12l3 5-9 11L3 9z"/><path d="M3 9h18M9 4l-2 5 5 11 5-11-2-5"/></svg>`,
+		growth: `<svg ${A}><path d="M4 4v16h16"/><polyline points="7 14.5 11 10 14 13 19.5 6.5"/><polyline points="19.5 6.5 19.5 10.5 15.5 6.5"/></svg>`,
+		exchange: `<svg ${A}><path d="M4 8h13M14 5l3 3-3 3"/><path d="M20 16H7M10 13l-3 3 3 3"/></svg>`,
+
+		// ── ranks / awards ──────────────────────────────────────────────────────
+		trophy: `<svg ${A}><path d="M8 4.5h8v4.5a4 4 0 0 1-8 0z"/><path d="M8 5.5H5.5v1a3 3 0 0 0 3 3M16 5.5h2.5v1a3 3 0 0 1-3 3"/><path d="M12 13v3.5M9 20h6M10 20l.5-3.5M14 20l-.5-3.5"/></svg>`,
+		medal: `<svg ${A}><circle cx="12" cy="14.5" r="5"/><path d="M8.5 10L6 3.5M15.5 10L18 3.5M9 3.5h6"/><path d="M12 12.5v4M10.2 14.5h3.6"/></svg>`,
+		badge: `<svg ${A}><circle cx="12" cy="9" r="5"/><path d="M8.7 13L7 21l5-2.6L17 21l-1.7-8"/></svg>`,
+		crown: `<svg ${A}><path d="M4 8l3.2 3L12 5l4.8 6L20 8l-1.6 9.5H5.6z"/></svg>`,
+		target: `<svg ${A}><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.4"/><circle cx="12" cy="12" r="1" ${DOT}/></svg>`,
+		fire: `<svg ${A}><path d="M12 3.5c.8 2.8 3.6 3.8 3.6 7.3a3.6 3.6 0 0 1-7.2 0c0-1.4.7-2.3 1.2-3 .6 1 1.5 1.1 1.7 1.9.5-1.7-.6-3-.9-4 .6.3 1.2.5 1.6-.1z"/></svg>`,
+
+		// ── power-ups / buffs ────────────────────────────────────────────────────
+		shield: `<svg ${A}><path d="M12 3.5l7 2.8v4.7c0 4.7-3 7.6-7 9.5-4-1.9-7-4.8-7-9.5V6.3z"/></svg>`,
+		skip: `<svg ${A}><path d="M5.5 5.5l8 6.5-8 6.5z"/><path d="M17 5.5v13"/></svg>`,
+		eye: `<svg ${A}><path d="M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.6"/></svg>`,
+		bulb: `<svg ${A}><path d="M9.5 18h5M10 21h4"/><path d="M12 3a6 6 0 0 1 3.8 10.6c-.6.5-.8 1.1-.8 2.4H9c0-1.3-.2-1.9-.8-2.4A6 6 0 0 1 12 3z"/></svg>`,
+		book: `<svg ${A}><path d="M12 6.5C10 5 7 4.5 4 5v13c3-.5 6 0 8 1.5M12 6.5C14 5 17 4.5 20 5v13c-3-.5-6 0-8 1.5M12 6.5v13"/></svg>`,
+		tag: `<svg ${A}><path d="M4 4.5h7l9 9-6.5 6.5-9-9z"/><circle cx="8.3" cy="8.3" r="1.4"/></svg>`,
+		'letter-a': `<svg ${A}><path d="M6 20l6-15 6 15M8.6 14.5h6.8"/></svg>`,
+		boost: `<svg ${A}><path d="M12 3.5v4M12 16.5v4M3.5 12h4M16.5 12h4M6 6l2.6 2.6M15.4 15.4L18 18M18 6l-2.6 2.6M8.6 15.4L6 18"/></svg>`,
+
+		// ── sabotage / debuffs ───────────────────────────────────────────────────
+		sabotage: `<svg ${A}><circle cx="11" cy="15" r="6"/><path d="M14.5 10.5l2.5-2.5M16.5 5.5l1 1 1-1M18.5 7.5l1-1"/></svg>`,
+		fog: `<svg ${A}><path d="M4 8.5h13M6 12.5h14M4 16.5h12"/></svg>`,
+		toll: `<svg ${A}><path d="M4 8h16v5H4z"/><path d="M4 8l16 5M20 8L4 13"/><path d="M6.5 13v6M17.5 13v6"/></svg>`,
+		block: `<svg ${A}><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg>`,
+		percent: `<svg ${A}><circle cx="7.5" cy="7.5" r="2.2"/><circle cx="16.5" cy="16.5" r="2.2"/><path d="M6 18L18 6"/></svg>`,
+
+		// ── social / alerts ──────────────────────────────────────────────────────
+		users: `<svg ${A}><circle cx="9" cy="9" r="3.2"/><path d="M3.5 19c0-3.1 2.5-5 5.5-5s5.5 1.9 5.5 5"/><path d="M16 6.3a3.2 3.2 0 0 1 0 5.9M17.5 14.2c1.8.6 3 2.1 3 4.8"/></svg>`,
+		chat: `<svg ${A}><path d="M4 5h16v11H9l-4 4z"/></svg>`,
+		handshake: `<svg ${A}><path d="M11 8l-2.5 2.5a1.4 1.4 0 0 0 2 2l.8-.8.9.9a1.4 1.4 0 0 0 2-2"/><path d="M3 8.5l4-2.5 4 3M21 8.5l-4-2.5-3 2.2"/></svg>`,
+		hand: `<svg ${A}><path d="M9 12V6.5a1.4 1.4 0 0 1 2.8 0V11M11.8 11V5.5a1.4 1.4 0 0 1 2.8 0V11M14.6 10.5a1.4 1.4 0 0 1 2.8 0v3.5a6 6 0 0 1-6 6 5 5 0 0 1-4-2l-2.6-3.5a1.4 1.4 0 0 1 2.2-1.7L9 12"/></svg>`,
+		siren: `<svg ${A}><path d="M6.5 18v-4.5a5.5 5.5 0 0 1 11 0V18M5 18h14M12 4.5V2.5M9.5 4l-1-1.6M14.5 4l1-1.6"/></svg>`,
+		warning: `<svg ${A}><path d="M12 4L2.8 19.5h18.4z"/><path d="M12 10v4.2"/><circle cx="12" cy="17" r="0.7" ${DOT}/></svg>`,
+		skull: `<svg ${A}><path d="M5.5 12.5a6.5 6.5 0 1 1 13 0v2.8l-1.5 1v2.4h-10v-2.4l-1.5-1z"/><circle cx="9.5" cy="12.5" r="1.4" ${DOT}/><circle cx="14.5" cy="12.5" r="1.4" ${DOT}/></svg>`,
+		'external-link': `<svg ${A}><path d="M14 5h5v5M19 5l-8.5 8.5"/><path d="M17 13.5V18a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V8.5A1.5 1.5 0 0 1 6 7h4.5"/></svg>`,
+		timer: `<svg ${A}><circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9M9.5 2.5h5M18.5 6.5l1.5-1.5"/></svg>`,
+		door: `<svg ${A}><path d="M6 20h12M8 20V4h8v16"/><circle cx="13.5" cy="12" r="0.9" ${DOT}/></svg>`
 	};
 
 	$: html = SVG[name] ?? '';
