@@ -1,5 +1,5 @@
 <script>
-	/** Game mode: daily | makeup | climb | match | challenge | blitz. */
+	/** Game mode: daily | makeup | climb | match | challenge. */
 	export let mode = '';
 	/** Pixel size (square). */
 	export let size = 18;
@@ -18,8 +18,7 @@
 		makeup: CAL,
 		climb: `<svg ${A}><circle cx="12" cy="12" r="8.6"/><path d="M12 7v10"/><path d="M14.6 9.2c-.6-.8-1.6-1.2-2.7-1.2-1.7 0-2.9 1-2.9 2.3s1.3 1.9 2.9 2.2 2.9 1 2.9 2.3-1.3 2.3-2.9 2.3c-1.1 0-2.2-.5-2.8-1.3"/></svg>`,
 		match: SWORDS,
-		challenge: SWORDS,
-		blitz: `<svg ${A}><path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12z"/></svg>`
+		challenge: SWORDS
 	};
 
 	$: html = SVG[mode] ?? '';

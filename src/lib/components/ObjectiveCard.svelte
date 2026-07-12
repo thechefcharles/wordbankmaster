@@ -84,7 +84,7 @@
 	// Use the mode line-icon for every mode except a group challenge (keeps its 👥)
 	// and the unknown-mode fallback (keeps 🎯).
 	$: useModeIcon =
-		['daily', 'makeup', 'climb', 'challenge', 'blitz'].includes(mode) ||
+		['daily', 'makeup', 'climb', 'challenge'].includes(mode) ||
 		(mode === 'match' && (ctx.fieldSize ?? 2) <= 2);
 	function go() {
 		dispatch('close');

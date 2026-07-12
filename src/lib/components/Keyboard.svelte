@@ -77,8 +77,6 @@
 		Z: '⠵'
 	};
 
-	// Blitz spends TIME, not Cash — every reveal is a flat −3s.
-	$: isBlitzKb = $gameStore.gameMode === 'blitz';
 	// Cash Game scales every letter by the tier's stake multiplier (Micro ×1 … Gold ×20);
 	// 1 everywhere else. Server (climb_buy_letter) charges the same.
 	$: climbMult =
@@ -119,11 +117,8 @@
 			? Number($gameStore.climbInfo?.budget_left ?? 0)
 			: $gameStore.bankroll;
 	// 🔹 Disable keys that are unaffordable or already marked incorrect (modifier-adjusted prices).
-	//    Blitz pays in TIME, not Cash, so letters are never gated by budget there.
-	$: disabledKeys = Object.keys(letterCosts).filter((letter: string) =>
-		isBlitzKb
-			? incorrectLetters.includes(letter)
-			: (effCosts[letter] ?? 0) > affordPool || incorrectLetters.includes(letter)
+	$: disabledKeys = Object.keys(letterCosts).filter(
+		(letter: string) => (effCosts[letter] ?? 0) > affordPool || incorrectLetters.includes(letter)
 	);
 
 	/**
@@ -245,8 +240,8 @@
 			>
 				<span class="braille">{BRAILLE[letter]}</span>
 				<div class="letter">{letter}</div>
-				<div class="price" class:time={isBlitzKb}>
-					{isBlitzKb ? '−3s' : '$' + (effCosts[letter] ?? 0)}
+				<div class="price">
+					${effCosts[letter] ?? 0}
 				</div>
 			</button>
 		{/each}
@@ -273,8 +268,8 @@
 			>
 				<span class="braille">{BRAILLE[letter]}</span>
 				<div class="letter">{letter}</div>
-				<div class="price" class:time={isBlitzKb}>
-					{isBlitzKb ? '−3s' : '$' + (effCosts[letter] ?? 0)}
+				<div class="price">
+					${effCosts[letter] ?? 0}
 				</div>
 			</button>
 		{/each}
@@ -301,8 +296,8 @@
 			>
 				<span class="braille">{BRAILLE[letter]}</span>
 				<div class="letter">{letter}</div>
-				<div class="price" class:time={isBlitzKb}>
-					{isBlitzKb ? '−3s' : '$' + (effCosts[letter] ?? 0)}
+				<div class="price">
+					${effCosts[letter] ?? 0}
 				</div>
 			</button>
 		{/each}
@@ -449,10 +444,6 @@
 		font-size: 8.5px;
 		color: rgba(251, 191, 36, 0.55);
 		font-variant-numeric: tabular-nums;
-	}
-	.price.time {
-		color: rgba(253, 224, 71, 0.75);
-		font-weight: 700;
 	}
 
 	/* ---------------------------
