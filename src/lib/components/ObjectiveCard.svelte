@@ -40,9 +40,9 @@
 				return {
 					icon: '🎰',
 					title: 'Cash Game',
-					goal: 'Invest your Principal → grow it by solving puzzles cheaply.',
-					win: 'Bank between puzzles — once you start one, it’s solve or bust. Yield climbs with each solve.',
-					bar: 'A wrong guess VOIDs your Wallet.'
+					goal: 'Invest your buy-in → grow it by solving puzzles cheaply.',
+					win: 'Bank between puzzles — once you start one, it’s solve or bust. Your Interest climbs with each solve.',
+					bar: 'A wrong guess drains your budget — run out and you bust.'
 				};
 			case 'makeup':
 				return {
