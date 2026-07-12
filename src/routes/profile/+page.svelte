@@ -7,7 +7,11 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import InventoryList from '$lib/components/InventoryList.svelte';
 	import NotificationsPanel from '$lib/components/NotificationsPanel.svelte';
-	import { unreadCount, requestInbox } from '$lib/stores/notificationStore.js';
+	import {
+		unreadCount,
+		requestInbox,
+		markAllNotificationsRead
+	} from '$lib/stores/notificationStore.js';
 	import { track } from '$lib/analytics.js';
 
 	/** @type {'overview'|'stats'|'alerts'} */
@@ -46,8 +50,11 @@
 		}
 	});
 
-	// Note: the unread count only drops when a notification is acted on or dismissed —
-	// NOT just from viewing the list. (No mark-all-read on open.)
+	// Opening the alerts inbox marks everything read (clears the bell badge). Items still
+	// show in the list — this just acknowledges you've seen them.
+	$effect(() => {
+		if (tab === 'alerts' && $unreadCount > 0) markAllNotificationsRead();
+	});
 	/** @param {any} n */
 	function notifNav(n) {
 		// Challenge invites/results → open the Challenges hub on the menu.

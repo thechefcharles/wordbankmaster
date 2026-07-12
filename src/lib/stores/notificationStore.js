@@ -27,23 +27,30 @@ let pollTimer;
 let knownIds = new Set();
 let started = false;
 let primed = false; // first poll seeds knownIds without toasting history
+let polling = false; // in-flight guard so concurrent polls can't double-toast the same row
 /** @type {(() => void)|undefined} */
 let onVis;
 /** @type {any} */
 let channel;
 
 async function poll() {
-	const res = await getNotifications();
-	const items = res.items ?? [];
-	notifications.set(items);
-	unreadCount.set(res.unread_count ?? 0);
-	if (primed) {
-		// newest first; toast anything new + still unread, oldest-of-the-new first
-		const fresh = items.filter((n) => !knownIds.has(n.id) && !n.read).reverse();
-		for (const n of fresh) pushToast(n);
+	if (polling) return; // a poll is already in flight — don't race on knownIds
+	polling = true;
+	try {
+		const res = await getNotifications();
+		const items = res.items ?? [];
+		notifications.set(items);
+		unreadCount.set(res.unread_count ?? 0);
+		if (primed) {
+			// newest first; toast anything new + still unread, oldest-of-the-new first
+			const fresh = items.filter((n) => !knownIds.has(n.id) && !n.read).reverse();
+			for (const n of fresh) pushToast(n);
+		}
+		for (const n of items) knownIds.add(n.id);
+		primed = true;
+	} finally {
+		polling = false;
 	}
-	for (const n of items) knownIds.add(n.id);
-	primed = true;
 }
 
 /** @param {any} n */
