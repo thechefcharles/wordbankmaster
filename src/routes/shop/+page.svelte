@@ -40,8 +40,8 @@
 		sabotage_toll: { icon: '🚧', desc: "An opponent's next letter costs 3×" },
 		sabotage_vowel_block: { icon: '🚫', desc: "An opponent's vowels cost 3×" },
 		sabotage_lock: { icon: '🔒', desc: 'Wipe a letter an opponent revealed' },
-		bounty_boost: { icon: '💥', desc: 'Adds +50% to your Daily bounty' },
-		jackpot_boost: { icon: '💎', desc: 'Adds +100% to your Daily bounty' }
+		bounty_boost: { icon: '💥', desc: 'Adds +50% Interest to your Daily deposit' },
+		jackpot_boost: { icon: '💎', desc: 'Adds +100% Interest to your Daily deposit' }
 	});
 
 	/** @type {any[]} */
@@ -165,10 +165,10 @@
 		{/key}
 
 		{#if dboost.length}
-			<h2 class="section">💥 Bounty Boosts</h2>
+			<h2 class="section">💥 Interest Boosts</h2>
 			<p class="section-note">
-				Stock up, then tap them in the Daily to multiply your bounty — they stack on your win-streak
-				multiplier (carry up to 5 of each).
+				Stock up, then tap one in before you solve the Daily to add Interest to your deposit — they
+				stack (carry up to 5 of each).
 			</p>
 			<div class="grid">
 				{#each dboost as item}

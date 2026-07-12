@@ -8,14 +8,14 @@
 	const dispatch = createEventDispatcher();
 
 	let page = 0; // 0 = how to win, 1 = power-ups (daily only)
-	// Power-ups a player can use in the Daily: the weekday Twists + the Bounty Boosts.
+	// Power-ups a player can use in the Daily: the weekday Twists + the Interest Boosts.
 	const DAILY_PUPS = [
 		{ group: 'Daily Twist — one free helper each weekday', items: Object.values(MODIFIERS) },
 		{
-			group: 'Bounty Boosts — buy in the Store, stack your multiplier',
+			group: 'Interest Boosts — buy in the Store, stack your rate',
 			items: [
-				{ emoji: '💥', name: 'Bounty Boost', blurb: 'Adds ×0.5 to your bounty multiplier' },
-				{ emoji: '💎', name: 'Jackpot', blurb: 'Adds ×1.0 to your bounty multiplier' }
+				{ emoji: '💥', name: 'Interest Boost', blurb: 'Adds +50% Interest to your deposit' },
+				{ emoji: '💎', name: 'Jackpot', blurb: 'Adds +100% Interest to your deposit' }
 			]
 		}
 	];
@@ -34,7 +34,7 @@
 					title: "Today's Daily",
 					goal: 'Solve the hidden phrase.',
 					win: 'Spend as little as you can — your leftover Deposits to your account.',
-					bar: 'A win streak pays Interest on every solve.'
+					bar: 'Boosts from the Store add Interest to your deposit.'
 				};
 			case 'climb':
 				return {

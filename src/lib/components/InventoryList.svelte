@@ -1,6 +1,6 @@
 <script>
 	// 🎒 My Bag — everything you currently own that you bought/earned, grouped by type:
-	// Power-ups (incl. Bounty Boosts), Sabotage, and Extras (titles + name colors).
+	// Power-ups (incl. Interest Boosts), Sabotage, and Extras (titles + name colors).
 	// Power-ups are spent in-game; cosmetics are equipped from the Store/Profile.
 	import { onMount } from 'svelte';
 	import { getPowerups, getShop } from '$lib/stores/statsStore.js';
@@ -14,8 +14,8 @@
 
 	/** @type {Record<string,{icon:string,desc:string}>} */
 	const META = {
-		bounty_boost: { icon: '💥', desc: 'Adds +50% to your Daily bounty' },
-		jackpot_boost: { icon: '💎', desc: 'Adds +100% to your Daily bounty' },
+		bounty_boost: { icon: '💥', desc: 'Adds +50% Interest to your Daily deposit' },
+		jackpot_boost: { icon: '💎', desc: 'Adds +100% Interest to your Daily deposit' },
 		free_reveal: { icon: '🔍', desc: 'Reveal the most useful letter' },
 		free_vowel: { icon: '🅰️', desc: 'Reveal one vowel free' },
 		half_off: { icon: '🏷️', desc: 'Letters cost 50% less this puzzle' },
