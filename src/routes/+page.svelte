@@ -976,6 +976,33 @@
 	// where stalling stalls a real opponent, keep the broke clock.
 	$: brokeMode = $gameStore.gameMode === 'match';
 	$: gameActive = $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost';
+
+	// 🎁 Daily Twist "as it happens" toast. GameStore sets $gameStore.twistCue when a Twist
+	// affects a buy (Insured free / pricing saving) or pre-reveals at open (head start / free
+	// vowel). Hold it until the board is interactive (past the intro + How-to-win card), then
+	// flash it for ~2.6s.
+	let twistToast = /** @type {{ id:number, text:string }|null} */ (null);
+	let _twistSeenId = 0;
+	$: maybeTwistToast(
+		$gameStore.twistCue,
+		gameActive,
+		showMainMenu,
+		introBuilding,
+		objective,
+		$gameStore.cashToast
+	);
+	/** @param {{id:number,text:string}|null|undefined} cue @param {boolean} active @param {boolean} onMenu @param {boolean} building @param {any} obj @param {any} attendanceToast */
+	function maybeTwistToast(cue, active, onMenu, building, obj, attendanceToast) {
+		if (!browser || !cue || cue.id === _twistSeenId) return;
+		// Wait until the board is playable AND the attendance toast has cleared (no stacking).
+		if (!active || onMenu || building || obj || attendanceToast) return;
+		_twistSeenId = cue.id;
+		twistToast = cue;
+		setTimeout(() => {
+			if (twistToast?.id === cue.id) twistToast = null;
+		}, 2600);
+	}
+
 	$: isBroke = (() => {
 		// Only while actively on a game screen — never on the menu.
 		if (!brokeMode || !gameActive || showMainMenu) return false;
@@ -2565,6 +2592,11 @@
 			> ·
 		{/if}{$gameStore.cashToast.label}
 	</button>
+{/if}
+
+<!-- 🎁 Daily Twist "as it happens" explainer toast -->
+{#if twistToast}
+	<div class="twist-toast" role="status">{twistToast.text}</div>
 {/if}
 
 <!-- 🔐 Vault door-open animation (from the main menu, after the PIN) → then items -->
@@ -5147,6 +5179,47 @@
 		to {
 			transform: translate(-50%, 0);
 			opacity: 1;
+		}
+	}
+	/* 🎁 Daily Twist explainer toast — sits just below the attendance toast, distinct
+	   neon-indigo look so it reads as "your Twist did this". */
+	.twist-toast {
+		position: fixed;
+		top: 58px;
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 2000;
+		max-width: min(90vw, 340px);
+		padding: 0.5rem 0.95rem;
+		border-radius: 999px;
+		text-align: center;
+		font-family: var(--font-display);
+		font-weight: 700;
+		font-size: 0.82rem;
+		line-height: 1.25;
+		color: #e9f2ff;
+		background: rgba(20, 24, 40, 0.94);
+		border: 1px solid rgba(129, 140, 248, 0.6);
+		box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
+		pointer-events: none;
+		animation:
+			twistDrop 0.35s var(--ease-spring, ease) both,
+			twistOut 0.4s ease 2.2s forwards;
+	}
+	@keyframes twistDrop {
+		from {
+			transform: translate(-50%, -40px);
+			opacity: 0;
+		}
+		to {
+			transform: translate(-50%, 0);
+			opacity: 1;
+		}
+	}
+	@keyframes twistOut {
+		to {
+			opacity: 0;
+			transform: translate(-50%, -12px);
 		}
 	}
 	main {

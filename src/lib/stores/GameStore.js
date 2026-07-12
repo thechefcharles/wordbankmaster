@@ -2,6 +2,7 @@
 
 import { writable, get } from 'svelte/store';
 import { fx } from '$lib/sound.js';
+import { MODIFIERS } from '$lib/powerups.js';
 import {
 	dailyStart,
 	dailyUseTwist,
@@ -106,7 +107,8 @@ import { track } from '$lib/analytics.js';
  *   dailyIntro?: number,
  *   dailyIntroGo?: number,
  *   dailyIntroPlayed?: number,
- *   wrongTick?: number
+ *   wrongTick?: number,
+ *   twistCue?: { id:number, text:string } | null
  * }} GameState
  */
 
@@ -180,7 +182,8 @@ export const gameStore = writable(
 		dailyIntro: 0, // bumps on a FRESH daily open → ARMS the opening reveal (pending)
 		dailyIntroGo: 0, // bumps once the board is actually visible → PLAYS the opening reveal
 		dailyIntroPlayed: 0, // the dailyIntro token that has already played (persists across remounts)
-		wrongTick: 0 // bumps on a non-busting wrong whole-phrase guess → UI flashes a distinct "✗ Wrong" cue
+		wrongTick: 0, // bumps on a non-busting wrong whole-phrase guess → UI flashes a distinct "✗ Wrong" cue
+		twistCue: null // { id, text } — transient "the Twist just did X" toast (Daily), cleared by the UI
 	})
 );
 
@@ -985,6 +988,38 @@ async function submitGuessMatch(state) {
 	}
 }
 
+let _twistCueId = 0;
+/** Flash a transient "the Twist just did X" toast (Daily). @param {string} text */
+function flashTwistCue(text) {
+	if (!text) return;
+	gameStore.update((s) => ({ ...s, twistCue: { id: ++_twistCueId, text } }));
+}
+
+/**
+ * Explain a Daily Twist the moment it affects a letter buy: the Insured free wrong
+ * letter, or a pricing Twist's saving (discount/flat/vowel-vision/consonant-sale).
+ * @param {string} letter @param {number} prevBankroll @param {number} prevWrong @param {string|null|undefined} mod
+ */
+function detectDailyBuyCue(letter, prevBankroll, prevWrong, mod) {
+	if (!mod) return;
+	const info = MODIFIERS[mod];
+	if (!info) return;
+	const s = get(gameStore);
+	const charged = Math.max(0, prevBankroll - (s.bankroll ?? 0));
+	const wasWrong = (s.incorrectLetters || []).length > prevWrong;
+	const base = LETTER_COSTS[letter] || 0;
+	// Insured: the first wrong letter is free.
+	if (mod === 'insured' && wasWrong && charged === 0) {
+		flashTwistCue(`${info.emoji} ${info.name} · first wrong letter free`);
+		return;
+	}
+	// Pricing Twists: only when the Twist actually made this letter cheaper.
+	const pricing = ['discount', 'flat_rate', 'vowel_vision', 'consonant_sale'];
+	if (pricing.includes(mod) && charged > 0 && base > charged) {
+		flashTwistCue(`${info.emoji} ${info.name} · saved $${(base - charged).toLocaleString()}`);
+	}
+}
+
 /**
  * confirmPurchaseDaily
  * Commit a pending letter/hint/extra-guess purchase via the server.
@@ -993,6 +1028,10 @@ async function submitGuessMatch(state) {
 async function confirmPurchaseDaily(state) {
 	const purchase = state.selectedPurchase;
 	if (!purchase || dailyInFlight) return;
+	const letter = purchase.type === 'letter' ? String(purchase.value ?? '').toUpperCase() : null;
+	const prevBankroll = state.bankroll ?? 0;
+	const prevWrong = (state.incorrectLetters || []).length;
+	const mod = state.modifier;
 	dailyInFlight = true;
 	try {
 		let board = null;
@@ -1005,6 +1044,7 @@ async function confirmPurchaseDaily(state) {
 
 		if (board) {
 			reconcileDailyBoard(board);
+			if (letter) detectDailyBuyCue(letter, prevBankroll, prevWrong, mod);
 		} else {
 			gameStore.update((s) => ({ ...s, selectedPurchase: null, gameState: 'default' }));
 		}
@@ -1314,6 +1354,13 @@ export async function fetchDailyGame() {
 		// 🎰 Fresh open (first time today, board still active) → play the opening reveal.
 		if (ab.state === 'active' && ab.attendance != null && ab.attendance > 0) {
 			gameStore.update((s) => ({ ...s, dailyIntro: (s.dailyIntro || 0) + 1 }));
+			// Auto-reveal Twists (head_start / free_vowel) pre-fill letters at open — explain why.
+			// The UI holds this until the board is interactive (past the intro / How-to-win card).
+			const mod = ab.modifier;
+			if (mod === 'head_start' || mod === 'free_vowel') {
+				const info = MODIFIERS[mod];
+				if (info) flashTwistCue(`${info.emoji} ${info.name} · ${info.blurb.toLowerCase()}`);
+			}
 		}
 		try {
 			const clue = await getDailyClue();
