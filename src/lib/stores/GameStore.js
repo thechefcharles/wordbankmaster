@@ -555,6 +555,10 @@ function reconcileClimbBoard(board, wrong = false) {
 	if (busted) fx('bust');
 	else if (solved) {
 		fx('win');
+	} else if (board.shielded) {
+		// 🛡️ Heat Shield turned a would-be bust into a fresh puzzle (Payout + interest kept).
+		fx('multiplier');
+		flashTwistCue('🛡️ Heat Shield · saved your run!');
 	} else playMoveCue(prev, board);
 }
 
@@ -669,6 +673,11 @@ async function submitGuessClimb(state) {
 			const wrong = stillPlaying && (c.spent ?? 0) > prevSpent;
 			reconcileClimbBoard(board, wrong);
 			if (wrong) fx('wrong');
+			// 🛡️ Heat Shield jumped you to a fresh puzzle — arm its reveal + pull the new clue.
+			if (board.shielded) {
+				maybeArmClimbIntro();
+				await refreshClimbClue();
+			}
 		}
 	} finally {
 		dailyInFlight = false;
