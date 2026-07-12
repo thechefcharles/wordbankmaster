@@ -44,11 +44,11 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
 - [ ] **7. Multi-puzzle "spent"/"budget" inflated** — `get_match` / `get_match_detail`
       compute `spent = start_budget − bankroll`, mixing accumulated multi-puzzle budget vs
       single-puzzle bankroll. **Fix:** `sum(per-position bounty) − total_score`.
-- [ ] **8. Pot chip shrinks as opponents finish** — `matchPot = wager × (opponents+1)`
+- [x] **8. Pot chip shrinks as opponents finish** — ✅ FIXED (PR #570, supabase-match-pot-fix.sql): _match_board now returns a stable `pot` (wager × non-declined players); client uses it; rollback-verified pot stays $1000 with an opponent done. Was: — `matchPot = wager × (opponents+1)`
       and `_match_board.opponents` excludes `done`. Opponent finishes → "Pot $1,000"→"$500".
       **Fix:** compute pot server-side from `sum(stake)` over all paid participants.
-      _(`+page.svelte:642-643`)_
-- [ ] **9. PIN confirm always "Winner takes all"** — `mbPayout='winner'` never reassigned;
+      _(`+page.svelte:642-643`)\_
+- [x] **9. PIN confirm always "Winner takes all"** — ✅ FIXED (PR #570): create + accept confirm sheets now say "Top finishers split the pot" for group/3+ pots, "Winner takes all" for 1:1. Was: — `mbPayout='winner'` never reassigned;
       group pots actually split 70/30 or 60/30/10. **Fix:** derive from field size / reuse
       `potSummary`. _(`+page.svelte:2020,2171`)_
 - [x] **10. Compete "recent matches" shows 🏆 on no-winner/ties** — ✅ FIXED (PR #568, supabase-group-standings-fix.sql): winner NULL unless a sole top scorer with score>0; client renders "🤝 Tie · no winner". Was: — `get_group_standings`

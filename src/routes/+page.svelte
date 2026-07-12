@@ -637,10 +637,13 @@
 	// dramatically count up at the climax (introDone). Cash Game stages the count-up manually
 	// (puzzle value → + carried run pile), so pause this auto-driver while climbStaging is on.
 	$: if (!climbStaging) tweenNet.set(introBuilding ? 0 : soloHero ? Math.round(soloHero.net) : 0);
-	// The Pot you're playing for = every player's ante. Reduced-stake joins can make
-	// the settled pot a bit lower; this is the headline "playing for" figure.
+	// The Pot you're playing for = every player's ante (server-computed over all
+	// non-declined players, so it stays stable as opponents finish). Reduced-stake joins
+	// can make the settled pot a bit lower; this is the headline "playing for" figure.
 	$: matchPot = isMatch
-		? Math.round((matchInfo?.wager ?? 0) * ((matchInfo?.opponents?.length ?? 0) + 1))
+		? Math.round(
+				matchInfo?.pot ?? (matchInfo?.wager ?? 0) * ((matchInfo?.opponents?.length ?? 0) + 1)
+			)
 		: 0;
 
 	// 🎰 Daily opening reveal coordination (boxes land → bounty counts up × multiplier).
@@ -2164,7 +2167,10 @@
 			},
 			{ label: 'Puzzles', value: String(mbPackSize) },
 			{ label: 'Buy-in', value: w > 0 ? '$' + w.toLocaleString() : 'Friendly' },
-			{ label: 'Payout', value: mbPayout === 'podium' ? 'Podium 3·2·1' : 'Winner takes all' }
+			{
+				label: 'Payout',
+				value: mbTarget === 'group' ? 'Top finishers split the pot' : 'Winner takes all'
+			}
 		];
 		try {
 			await requirePin(w > 0 ? 'Send & stake your buy-in' : 'Send this challenge', createStakes);
@@ -2216,7 +2222,11 @@
 				label: 'Buy-in',
 				value: Number(m.wager) > 0 ? '$' + Number(m.wager).toLocaleString() : 'Friendly'
 			},
-			{ label: 'Payout', value: m.payout === 'podium' ? 'Podium 3·2·1' : 'Winner takes all' }
+			// _match_settle: ≤2 paid → winner takes all; 3+ → top finishers split (70/30, 60/30/10).
+			{
+				label: 'Payout',
+				value: Number(m.players) > 2 ? 'Top finishers split the pot' : 'Winner takes all'
+			}
 		];
 		if (Number(m.wager) > 0 && netWorth != null)
 			s.push({ label: 'Available Balance', value: '$' + Math.round(netWorth).toLocaleString() });
