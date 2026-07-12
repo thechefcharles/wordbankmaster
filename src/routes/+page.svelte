@@ -4908,11 +4908,9 @@
 							>
 						</div>
 					{:else if isClimb && resultWon}
-						<!-- 🧾 Per-puzzle TRANSACTION slip -->
+						<!-- 🧾 Per-puzzle RUN scorecard — mid-run, nothing hits the account until you Deposit. -->
 						{@const letters = Math.round(climb?.spent ?? 0)}
 						{@const payout = Math.round(climb?.last_gain ?? 0)}
-						<!-- Gross = kept + letters (the bounty at the heat this puzzle was PLAYED, not the
-                 bumped heat the board now reports) so Bounty − Letters = Payout always ties out. -->
 						{@const advance = payout + letters}
 						{@const intBase = Math.max(
 							1,
@@ -4920,8 +4918,8 @@
 						)}
 						{@const intPct = Math.round((advance / intBase - 1) * 100)}
 						{@const pendAfter = Math.round(climb?.bankroll ?? 0)}
-						{@const buyIn = Math.round(climb?.buy_in ?? 0)}
-						{@const startBal = Math.round((menuBank ?? 0) + buyIn)}
+						{@const solves = Math.round(climb?.run_solves ?? 0)}
+						{@const runInt = Math.max(0, Math.round((climb?.heat ?? 100) - 100))}
 						{@const tierName =
 							(climb?.tier ?? '').charAt(0).toUpperCase() + (climb?.tier ?? '').slice(1)}
 						<div class="receipt">
@@ -4929,29 +4927,17 @@
 								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
 								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
 							</div>
-							<div class="rcpt-title">TRANSACTION</div>
-							<div class="rcpt-acct">WORDBANK CHECKING</div>
-							<div class="rcpt-sub">
-								ACCT ·········{acctNo}{#if myUsername}
-									· @{myUsername}{/if}
+							<div class="rcpt-title">CASH GAME</div>
+							<div class="rcpt-acct">
+								{tierName} RUN{#if solves > 0}
+									· SOLVE #{solves}{/if}
 							</div>
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-info">
 								<div class="ri-row"><span>{rcptDate}</span><span>{rcptTime}</span></div>
-								<div class="ri-row">
-									<span>Cash Game</span><span
-										>TRANS #{String(climb?.position ?? 1).padStart(4, '0')}</span
-									>
-								</div>
 							</div>
 							<div class="rcpt-rule"></div>
-							<div class="rcpt-line">
-								<span>Starting Balance</span><span>${startBal.toLocaleString()}</span>
-							</div>
-							<div class="rcpt-line">
-								<span>{tierName} buy-in</span><span class="neg">−${buyIn.toLocaleString()}</span>
-							</div>
-							<div class="rcpt-rule"></div>
+							<div class="rcpt-cap">This solve</div>
 							<div class="rcpt-line">
 								<span>Bounty <small>(+{intPct}% Interest)</small></span><span
 									>${advance.toLocaleString()}</span
@@ -4962,13 +4948,15 @@
 							</div>
 							<div class="rcpt-rule double"></div>
 							<div class="rcpt-line total profit">
-								<span>Payout</span><span>+${payout.toLocaleString()}</span>
+								<span>Kept this solve</span><span>+${payout.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-rule"></div>
+							<div class="rcpt-cap">Your run</div>
 							<div class="rcpt-line balance">
-								<span>AVAILABLE BALANCE</span><span
-									>${Math.round(menuBank ?? 0).toLocaleString()}</span
-								>
+								<span>RUNNING PAYOUT</span><span>${pendAfter.toLocaleString()}</span>
+							</div>
+							<div class="rcpt-line">
+								<span>Interest · Solves</span><span>+{runInt}% · {solves}</span>
 							</div>
 						</div>
 						{#if climb?.next_category}
@@ -9437,6 +9425,15 @@
 		font-size: 0.68rem;
 		letter-spacing: 0.04em;
 		color: #6b6455;
+	}
+	/* Left-aligned section caption inside a receipt ("This solve" / "Your run"). */
+	.rcpt-cap {
+		font-size: 0.6rem;
+		text-transform: uppercase;
+		letter-spacing: 0.11em;
+		font-weight: 700;
+		color: #8a8172;
+		margin: 4px 0 1px;
 	}
 	.rcpt-info {
 		display: flex;
