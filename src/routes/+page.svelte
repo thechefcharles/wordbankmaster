@@ -686,8 +686,8 @@
 	let vaultMsg = '';
 	/** @type {ReturnType<typeof setTimeout>|undefined} */ let _vaultMsgTimer;
 	const BOOST_META = /** @type {Record<string,{emoji:string,blurb:string}>} */ ({
-		bounty_boost: { emoji: '💥', blurb: 'Adds +50% Interest to your deposit' },
-		jackpot_boost: { emoji: '💎', blurb: 'Adds +100% Interest to your deposit' }
+		bounty_boost: { emoji: 'boost', blurb: 'Adds +50% Interest to your deposit' },
+		jackpot_boost: { emoji: 'gem', blurb: 'Adds +100% Interest to your deposit' }
 	});
 	async function loadVault() {
 		try {
@@ -742,7 +742,7 @@
 								$gameStore.gameMode === 'daily' && (dailyAvailBoosts[it.id] ?? 0) > 0 && gameActive;
 							out.push({
 								id: it.id,
-								emoji: BOOST_META[it.id]?.emoji ?? '💥',
+								emoji: BOOST_META[it.id]?.emoji ?? 'boost',
 								name: it.name,
 								blurb: BOOST_META[it.id]?.blurb ?? '',
 								count: it.owned,
@@ -777,7 +777,7 @@
 							const avail = climbAvail || matchAvail;
 							out.push({
 								id: it.id,
-								emoji: PUP_ICON[it.id] ?? '✨',
+								emoji: PUP_ICON[it.id] ?? 'boost',
 								name: it.name,
 								blurb: avail
 									? isOverdrive
@@ -804,7 +804,7 @@
 								isMatch && !!matchInfo?.items_allowed && gameActive && (it.owned ?? 0) > 0;
 							out.push({
 								id: it.id,
-								emoji: PUP_ICON[it.id] ?? '😈',
+								emoji: PUP_ICON[it.id] ?? 'sabotage',
 								name: it.name,
 								blurb: sabAvail ? '😈 Tap to aim at an opponent' : '',
 								count: it.owned,
@@ -815,7 +815,7 @@
 						} else {
 							out.push({
 								id: it.id,
-								emoji: PUP_ICON[it.id] ?? '✨',
+								emoji: PUP_ICON[it.id] ?? 'boost',
 								name: it.name,
 								blurb: '',
 								count: it.owned,
@@ -1154,21 +1154,22 @@
 	}
 	/** @type {any[]} */
 	let climbPups = [];
+	// Icon.svelte names, rendered via <Icon>.
 	const PUP_ICON = /** @type {Record<string,string>} */ ({
-		free_reveal: '🔍',
-		half_off: '🏷️',
-		vowel_vision: '👁️',
-		extra_hint: '💡',
-		reveal_word: '📖',
-		free_vowel: '🅰️',
-		last_letters: '🔚',
-		overdrive: '🏧',
-		free_skip: '⏭️',
-		sabotage_tax: '💸',
-		sabotage_fog: '🌫️',
-		sabotage_toll: '🚧',
-		sabotage_vowel_block: '🚫',
-		sabotage_lock: '🔒'
+		free_reveal: 'search',
+		half_off: 'tag',
+		vowel_vision: 'eye',
+		extra_hint: 'bulb',
+		reveal_word: 'book',
+		free_vowel: 'letter-a',
+		last_letters: 'chevron-right',
+		overdrive: 'coin',
+		free_skip: 'skip',
+		sabotage_tax: 'percent',
+		sabotage_fog: 'fog',
+		sabotage_toll: 'toll',
+		sabotage_vowel_block: 'block',
+		sabotage_lock: 'lock'
 	});
 	const DEBUFF_LABEL = /** @type {Record<string,string>} */ ({
 		tax: '💸 Taxed (letters +50%)',
@@ -2641,7 +2642,7 @@
 								on:click={() => tapVaultItem(it)}
 								title={it.usable ? it.blurb : it.reason}
 							>
-								<span class="bag-use-e">{it.emoji}</span>
+								<span class="bag-use-e"><Icon name={it.emoji} size={20} /></span>
 								{#if (it.count ?? 1) > 1}<span class="bag-use-n">×{it.count}</span>{/if}
 								<span class="bag-use-name">{it.name}</span>
 								<span class="bag-use-d">{it.usable ? it.blurb : '🔒 tap for why'}</span>
@@ -2733,7 +2734,7 @@
 					💳 credit (up to +10%). Tap in 💥/💎 Interest Boosts from the Store for more on top.
 				</p>
 			{:else if dailyInfo === 'twist'}
-				<div class="info-big">{dailyMod?.emoji ?? '🎁'}</div>
+				<div class="info-big"><Icon name={dailyMod?.emoji ?? 'boost'} size={40} /></div>
 				<h3 class="info-title">{dailyMod?.name ?? "Today's Twist"}</h3>
 				<p class="info-twist-do">{dailyMod?.blurb ?? ''}</p>
 			{:else if dailyInfo === 'streak'}
@@ -3006,7 +3007,9 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (sabPicker = null)} aria-label="Cancel">✕</button>
-			<div class="info-big">{PUP_ICON[sabPicker.item.id] ?? '😈'}</div>
+			<div class="info-big">
+				<Icon name={PUP_ICON[sabPicker.item.id] ?? 'sabotage'} size={40} />
+			</div>
 			<h3 class="info-title">{sabPicker.item.name} — hit who?</h3>
 			<div class="sab-target-list">
 				{#each sabPicker.opponents as o}
@@ -4279,7 +4282,7 @@
 					on:click={() => {
 						fx('tap');
 						dailyInfo = 'twist';
-					}}>{dailyMod.emoji}</button
+					}}><Icon name={dailyMod.emoji} size={18} /></button
 				>
 			{/if}
 		</div>
