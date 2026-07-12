@@ -12,6 +12,7 @@
 		removeGroupMember,
 		respondJoinRequest,
 		renameGroup,
+		transferGroupOwnership,
 		listFriends,
 		getGroupMessages,
 		sendGroupMessage,
@@ -289,6 +290,26 @@
 			await refresh();
 		}
 	}
+	/** Hand ownership of the group to another member (owner). @param {string} username */
+	async function makeOwner(username) {
+		if (busy) return;
+		if (
+			!(await requireConfirm({
+				title: 'Make owner?',
+				message: `Hand "${open.name}" to @${username}? They'll be able to rename it, remove members, and approve requests — and you'll lose those controls.`,
+				confirmText: 'Make owner',
+				danger: true
+			}))
+		)
+			return;
+		busy = true;
+		const res = await transferGroupOwnership(open.id, username);
+		busy = false;
+		if (res.ok) {
+			open = res.group;
+			await refresh();
+		}
+	}
 	/** Approve or deny a pending join request (owner). @param {string} requesterId @param {boolean} approve */
 	async function respondRequest(requesterId, approve) {
 		if (busy) return;
@@ -363,6 +384,11 @@
 								<td>{fmt(m.cash)}</td>
 								{#if open.is_owner}<td class="rm-cell"
 										>{#if !m.is_owner}<button
+												class="own-btn"
+												onclick={() => makeOwner(m.username)}
+												disabled={busy}
+												title="Make owner"><Icon name="crown" size={14} /></button
+											><button
 												class="rm-btn"
 												onclick={() => removeMember(m.username)}
 												disabled={busy}
@@ -947,19 +973,25 @@
 		white-space: nowrap;
 	}
 	.rm-cell {
-		width: 30px;
+		width: 56px;
 		text-align: right;
+		white-space: nowrap;
 	}
-	.rm-btn {
+	.rm-btn,
+	.own-btn {
 		background: none;
 		border: none;
 		color: var(--text-faint);
 		cursor: pointer;
 		font-size: 0.85rem;
 		padding: 2px 4px;
+		vertical-align: middle;
 	}
 	.rm-btn:hover {
 		color: #fb7185;
+	}
+	.own-btn:hover {
+		color: #fbbf24;
 	}
 	.add-toggle {
 		margin-top: 0.9rem;

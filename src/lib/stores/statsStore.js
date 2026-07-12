@@ -276,6 +276,18 @@ export async function renameGroup(groupId, name) {
 	}
 	return data;
 }
+/** Owner hands the group to an existing member. @param {string} groupId @param {string} username @returns {Promise<{ok:boolean, reason?:string, group?:any}>} */
+export async function transferGroupOwnership(groupId, username) {
+	const { data, error } = await supabase.rpc('transfer_group_ownership', {
+		p_group_id: groupId,
+		p_username: username
+	});
+	if (error || !data) {
+		if (error) console.error('❌ transfer_group_ownership:', error);
+		return { ok: false };
+	}
+	return data;
+}
 /** @param {string} groupId @returns {Promise<any[]>} */
 export async function getGroupMessages(groupId) {
 	const { data, error } = await supabase.rpc('get_group_messages', { p_group_id: groupId });
