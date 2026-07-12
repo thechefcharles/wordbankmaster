@@ -705,6 +705,23 @@ export async function climbAdvance() {
 	}
 }
 
+/** ⏭️ Free Skip power-up — swap the current puzzle for a fresh one mid-run, keeping
+ *  your Interest, secured pile, and run. Arms the dramatic reveal like a fresh puzzle. */
+export async function climbFreeSkip() {
+	if (dailyInFlight) return;
+	dailyInFlight = true;
+	try {
+		const board = await climbUsePowerup('free_skip');
+		if (board) {
+			reconcileClimbBoard(board);
+			maybeArmClimbIntro();
+			await refreshClimbClue();
+		}
+	} finally {
+		dailyInFlight = false;
+	}
+}
+
 /** Voluntarily give up the current Cash Game run — a clean bust (same as a wrong
  *  guess: wipes the pot, reveals the answer). Shows the VOID receipt. */
 export async function climbForfeitRun() {
