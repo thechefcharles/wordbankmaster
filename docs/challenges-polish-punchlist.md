@@ -30,7 +30,7 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
   `owner_id`; every management RPC gates on `owner_id = uid`, so remaining members can
   never rename / kick / approve joins. **Fix:** reassign ownership to the oldest remaining
   member on owner-leave. *(RPC `leave_group`)*
-- [ ] **5. Paid non-finishers forfeit invisibly** — `_match_settle` iterates only
+- [x] **5. Paid non-finishers forfeit invisibly** — ✅ FIXED (PR #560, supabase-settle-dnf-fix.sql): added a loop for paid `state<>'done'` players → logs a lost/tie result + sends a notification; rollback-verified DNF gets outcome='lost' spent=500 + a notif, winner still takes the pot. `_match_settle` iterates only
   `state='done'`; a player who accepted+paid but didn't finish gets no `_notify` and no
   `_log_game_result`. Money loss never appears in history/leaderboards.
   **Fix:** include paid `active` participants with a DNF/lost result + notification.
