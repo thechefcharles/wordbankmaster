@@ -234,15 +234,6 @@ export async function createGroup(name) {
 	}
 	return data;
 }
-/** @param {string} code @returns {Promise<{ok:boolean, reason?:string, group?:any}>} */
-export async function joinGroup(code) {
-	const { data, error } = await supabase.rpc('join_group', { p_code: code });
-	if (error || !data) {
-		if (error) console.error('❌ join_group:', error);
-		return { ok: false };
-	}
-	return data;
-}
 /** @param {string} id @returns {Promise<{ok:boolean}>} */
 export async function leaveGroup(id) {
 	const { data, error } = await supabase.rpc('leave_group', { p_id: id });

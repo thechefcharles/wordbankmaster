@@ -16,16 +16,16 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
       (~$1.2–3k) while the host was only debited `stake = wager` (min $500). Decline → host
       pockets the difference. `_match_settle` correctly uses `coalesce(stake,…)`.
       **Fix:** refund `COALESCE(stake, wager)`. _(RPC `decline_match`)_
-- [x] **2. `match_fold` never updated for `econ_v=2`** — ✅ FIXED (PR #557, supabase-match-fold-econ2-fix.sql): added econ_v=2 branch (accumulate total_score + fresh next bounty, mirrors solve path); rollback-verified final keeps prior $1200 and non-final advances with fresh bounty. Uses OLD absolute-overwrite
+- [x] **2. `match_fold` never updated for `econ_v=2`** — ✅ FIXED (PR #557, supabase-match-fold-econ2-fix.sql): added econ*v=2 branch (accumulate total_score + fresh next bounty, mirrors solve path); rollback-verified final keeps prior $1200 and non-final advances with fresh bounty. Uses OLD absolute-overwrite
       semantics (`total_score = v_left`), so folding a later puzzle in a multi-puzzle match
       erases earlier winnings and advances with a $0 budget. `_match_resolve_and_advance`
       accumulates + resets bounty. **Fix:** add an `econ_v=2` branch mirroring it.
-      _(RPC `match_fold`; single-puzzle matches unaffected)_
-- [x] **3. Reduced-accept charges the wrong balance** — ✅ FIXED (PR #558, supabase-accept-networth-fix.sql): accept_match now gates + caps on net worth (bank − loan); rollback-verified reduced caps at net worth, full blocks when net<wager, no-loan unchanged. UI gates on `netWorth = bank − loan`
+      *(RPC `match_fold`; single-puzzle matches unaffected)\_
+- [x] **3. Reduced-accept charges the wrong balance** — ✅ FIXED (PR #558, supabase-accept-networth-fix.sql): accept*match now gates + caps on net worth (bank − loan); rollback-verified reduced caps at net worth, full blocks when net<wager, no-loan unchanged. UI gates on `netWorth = bank − loan`
       and shows a capped buy-in, but `accept_match` checks `profiles.bank`. A loan-holder
       (bank ≥ wager, netWorth < wager) is shown "capped" yet debited the full wager.
-      **Fix:** align UI + RPC on one balance definition. _(`+page.svelte:2242,2260-2277`;
-      RPC `accept_match(uuid,boolean)`)_
+      **Fix:** align UI + RPC on one balance definition. *(`+page.svelte:2242,2260-2277`;
+      RPC `accept_match(uuid,boolean)`)\_
 - [x] **4. Group owner leaving orphans the group** — ✅ FIXED (PR #559, supabase-leave-group-owner-fix.sql): owner-leave now hands ownership to the oldest remaining member; rollback-verified handoff + empty-group deletion still works. `leave_group` doesn't reassign
       `owner_id`; every management RPC gates on `owner_id = uid`, so remaining members can
       never rename / kick / approve joins. **Fix:** reassign ownership to the oldest remaining
@@ -107,15 +107,15 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
       (`statsStore.js:1255-1340`) + GameStore fns (`startChallenge`/`enterChallenge`/
       `acceptAndPlayChallenge`/`resumeChallenge`/`confirmPurchaseChallenge`/
       `submitGuessChallenge`). Unreachable; `challenges` table empty in prod. **Fix:** delete.
-- [ ] **24. Dead `accept_match(uuid)` overload** — client only calls the 2-arg form; the
+- [x] **24. Dead `accept_match(uuid)` overload** — ✅ FIXED (PR #563, supabase-drop-dead-overloads.sql): dropped; accept_match now unambiguously 2-arg. Was: dead `accept_match(uuid)` overload — client only calls the 2-arg form; the
       1-arg one also skips `_mark_seen_many`. **Fix:** drop it.
 - [ ] **25. Join-by-code fully dead** — `create_group` generates `join_code`,
       `get_my_groups` returns it, but no UI renders it and `join_group(text)` has zero callers.
       **Fix:** surface it or drop `join_code` + `join_group`.
-- [ ] **26. Blitz match paths + mismatched clock** — `mode='blitz'` branches remain in
+- [ ] **26. Blitz match paths + mismatched clock** — ⏸️ DEFERRED to the Blitz mode excision (Blitz already disabled via BLITZ*ENABLED=false). Was: Blitz match paths + mismatched clock — `mode='blitz'` branches remain in
       `create_match` / `_match_resolve_and_advance` / `_match_tick` / `match_start` /
       `_match_board`; `_match_board.clock_seconds` (whole-match) mismatches the client's
-      per-puzzle countdown. Fold into the Blitz excision. _(Blitz already retired via flag)_
+      per-puzzle countdown. Fold into the Blitz excision. *(Blitz already retired via flag)\_
 
 ## ⚪ Tier 6 — Polish
 
