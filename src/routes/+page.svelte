@@ -80,6 +80,7 @@
 		refreshNotifications,
 		inboxRequest,
 		inboxTarget,
+		inboxMatch,
 		markChallengeNotifRead
 	} from '$lib/stores/notificationStore.js';
 	import { track } from '$lib/analytics.js';
@@ -1507,7 +1508,16 @@
 		if ($inboxTarget === 'people') {
 			openCommunity('people');
 			peopleTab = 'friends';
-		} else openCommunity('challenges');
+		} else {
+			const targetMatch = $inboxMatch;
+			openCommunity('challenges').then(() => {
+				// Deep-link: auto-open the specific match the notification pointed at.
+				if (!targetMatch) return;
+				const m = (myMatches ?? []).find((/** @type {any} */ x) => x.id === targetMatch);
+				if (m) respondToMatch(m);
+				inboxMatch.set(null);
+			});
+		}
 	}
 	function dismissTutorial() {
 		showTutorial = false;
