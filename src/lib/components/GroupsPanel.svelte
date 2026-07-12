@@ -10,6 +10,7 @@
 		leaveGroup,
 		addGroupMember,
 		removeGroupMember,
+		respondJoinRequest,
 		renameGroup,
 		listFriends,
 		getGroupMessages,
@@ -267,6 +268,15 @@
 			await refresh();
 		}
 	}
+	/** Approve or deny a pending join request (owner). @param {string} requesterId @param {boolean} approve */
+	async function respondRequest(requesterId, approve) {
+		if (busy) return;
+		busy = true;
+		await respondJoinRequest(open.id, requesterId, approve);
+		busy = false;
+		open = await getGroup(open.id); // refresh members + remaining requests
+		await refresh();
+	}
 </script>
 
 <div class="groups-panel">
@@ -389,6 +399,29 @@
 					{/each}
 				</div>
 			{/if}
+		{/if}
+
+		{#if open.is_owner && (open.requests ?? []).length}
+			<div class="req-panel">
+				<h2 class="req-title">🙋 Requests to join</h2>
+				{#each open.requests as r}
+					<div class="req-row">
+						<span class="uname">@{r.username}</span>
+						<span class="req-actions">
+							<button
+								class="g-btn sm"
+								onclick={() => respondRequest(r.requester_id, true)}
+								disabled={busy}>Approve</button
+							>
+							<button
+								class="g-btn sm ghost"
+								onclick={() => respondRequest(r.requester_id, false)}
+								disabled={busy}>Deny</button
+							>
+						</span>
+					</div>
+				{/each}
+			</div>
 		{/if}
 
 		<button
@@ -888,6 +921,40 @@
 		cursor: pointer;
 		font-weight: 700;
 		font-size: 0.9rem;
+	}
+	.g-btn.ghost {
+		background: transparent;
+		border: 1px solid var(--border);
+		color: var(--text-muted);
+	}
+	.req-panel {
+		margin-top: 0.75rem;
+		border: 1px solid rgba(251, 191, 36, 0.4);
+		border-radius: 14px;
+		background: var(--surface);
+		overflow: hidden;
+	}
+	.req-title {
+		font-size: 0.9rem;
+		font-weight: 700;
+		margin: 0;
+		padding: 0.6rem 0.9rem;
+		border-bottom: 1px solid var(--border);
+	}
+	.req-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+		padding: 0.6rem 0.9rem;
+		border-bottom: 1px solid var(--border);
+	}
+	.req-row:last-child {
+		border-bottom: none;
+	}
+	.req-actions {
+		display: flex;
+		gap: 0.4rem;
 	}
 	.add-panel {
 		margin-top: 0.5rem;
