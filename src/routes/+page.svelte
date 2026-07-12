@@ -5052,9 +5052,11 @@
 							>
 						</div>
 					{:else if isClimb}
-						<!-- 🧾 Wipe (VOID) receipt -->
+						<!-- 🧾 Bust slip: a full-run recap — starting balance → buy-in lost → ending balance. -->
 						{@const wiped = Math.round(climb?.wiped ?? 0)}
 						{@const ante = Math.round(climb?.buy_in ?? 0)}
+						{@const endBal = Math.round(menuBank ?? 0)}
+						{@const startBal = endBal + ante}
 						<div class="receipt void">
 							<div class="rcpt-brand">
 								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
@@ -5071,34 +5073,30 @@
 								<div class="ri-row"><span>{rcptDate}</span><span>{rcptTime}</span></div>
 								<div class="ri-row">
 									<span
-										>{(climb?.tier ?? '').charAt(0).toUpperCase() +
-											(climb?.tier ?? '').slice(1)}</span
+										>{(climb?.tier ?? '').charAt(0).toUpperCase() + (climb?.tier ?? '').slice(1)} run</span
 									><span>WRONG GUESS</span>
 								</div>
 							</div>
 							<div class="rcpt-rule"></div>
-							{#if wiped > 0}
-								<div class="rcpt-line">
-									<span>Payout</span><span>${wiped.toLocaleString()}</span>
-								</div>
-								<div class="rcpt-line">
-									<span>Wrong guess</span><span class="neg">−${wiped.toLocaleString()}</span>
-								</div>
-								<div class="rcpt-rule double"></div>
-								<div class="rcpt-line total"><span>BALANCE LOST</span><span>$0</span></div>
-							{/if}
+							<div class="rcpt-cap">Your run</div>
+							<div class="rcpt-line">
+								<span>Starting balance</span><span>${startBal.toLocaleString()}</span>
+							</div>
 							<div class="rcpt-line">
 								<span>Buy-in lost</span><span class="neg">−${ante.toLocaleString()}</span>
 							</div>
+							<div class="rcpt-rule double"></div>
+							<div class="rcpt-line balance">
+								<span>AVAILABLE BALANCE</span><span>${endBal.toLocaleString()}</span>
+							</div>
+							{#if wiped > 0}
+								<div class="rcpt-note">
+									💔 You also forfeited a ${wiped.toLocaleString()} run pile.
+								</div>
+							{/if}
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line answer">
 								<span>Answer</span><span>{$gameStore.currentPhrase}</span>
-							</div>
-							<div class="rcpt-rule"></div>
-							<div class="rcpt-line balance">
-								<span>AVAILABLE BALANCE</span><span
-									>${Math.round(menuBank ?? 0).toLocaleString()}</span
-								>
 							</div>
 							<div class="rcpt-thanks">Thank you for banking with WordBank</div>
 						</div>
