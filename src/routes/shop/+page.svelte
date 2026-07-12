@@ -36,6 +36,10 @@
 			icon: '🛡️',
 			desc: 'Escape one bust — keep your Payout & Interest and jump to a fresh puzzle'
 		},
+		overdrive: {
+			icon: '🏧',
+			desc: 'Out of money? Reveal one more letter of your choice — free'
+		},
 		reveal_word: { icon: '📖', desc: 'Reveal a whole word' },
 		extra_hint: { icon: '💡', desc: 'Reveal the first letter of each word' },
 		last_letters: { icon: '🔚', desc: 'Reveal the last letter of each word' },
