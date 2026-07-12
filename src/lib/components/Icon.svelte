@@ -44,6 +44,8 @@
 		lock: `<svg ${A}><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>`,
 		unlock: `<svg ${A}><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></svg>`,
 		key: `<svg ${A}><circle cx="8" cy="15" r="3.4"/><path d="M10.4 12.6L20 3M16.5 6.5l2.2 2.2M14.5 8.5l2 2"/></svg>`,
+		bag: `<svg ${A}><path d="M5.5 8h13l-1 11.5a1.5 1.5 0 0 1-1.5 1.4H8a1.5 1.5 0 0 1-1.5-1.4L5.5 8z"/><path d="M9 8.5V6.8a3 3 0 0 1 6 0v1.7"/></svg>`,
+		globe: `<svg ${A}><circle cx="12" cy="12" r="8.5"/><path d="M3.6 12h16.8M12 3.5c2.6 2.4 2.6 14.6 0 17M12 3.5c-2.6 2.4-2.6 14.6 0 17"/></svg>`,
 
 		// ── money / economy ─────────────────────────────────────────────────────
 		cash: `<svg ${A}><rect x="3" y="6.5" width="18" height="11" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 9.5v5M17.5 9.5v5"/></svg>`,

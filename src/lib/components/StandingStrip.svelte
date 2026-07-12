@@ -3,6 +3,7 @@
 	// spend to beat) + a lead celebration. The money (left to spend + bar) lives in the
 	// top bankroll bar now. Hidden until at least one rival has finished.
 	import { fx } from '$lib/sound.js';
+	import Icon from '$lib/components/Icon.svelte';
 
 	/** @type {{ field_size:number, finished:number, rank:number, state:'lead'|'behind'|'tied'|'first_to_play', provisional?:boolean } | null} */
 	export let standing = null;
@@ -20,8 +21,6 @@
 			v = n % 100;
 		return n + (s[(v - 20) % 10] || s[v] || s[0]);
 	};
-	const medal = (/** @type {number} */ r) =>
-		r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : '#' + r;
 	$: ranked = !!standing && standing.state !== 'first_to_play';
 </script>
 
@@ -29,12 +28,16 @@
 	{#key standing.state}
 		<div class="standing {standing.state}">
 			<span class="rank"
-				>{medal(standing.rank)}
+				>{#if standing.rank >= 1 && standing.rank <= 3}<span class="rk-{standing.rank}"
+						><Icon name="medal" size={15} /></span
+					>{/if}
 				{ord(standing.rank)} of {standing.field_size}{#if standing.provisional}<span class="sofar"
 						>so far</span
 					>{/if}</span
 			>
-			{#if standing.state === 'lead'}<span class="lead-badge">✓ In the lead</span>{/if}
+			{#if standing.state === 'lead'}<span class="lead-badge"
+					><Icon name="check" size={13} /> In the lead</span
+				>{/if}
 		</div>
 	{/key}
 {/if}
@@ -66,6 +69,15 @@
 			transform: scale(1);
 			opacity: 1;
 		}
+	}
+	.rk-1 {
+		color: #fbbf24;
+	}
+	.rk-2 {
+		color: #cbd5e1;
+	}
+	.rk-3 {
+		color: #d19a66;
 	}
 	.sofar {
 		margin-left: 6px;

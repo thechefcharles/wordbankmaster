@@ -147,8 +147,8 @@
 	<PageNav back={backTo} showHome={false} />
 
 	<div class="head">
-		<h1>🛍️ Store</h1>
-		<span class="bank-chip">💰 ${bank.toLocaleString()}</span>
+		<h1><Icon name="bag" size={22} /> Store</h1>
+		<span class="bank-chip"><Icon name="cash" size={16} /> ${bank.toLocaleString()}</span>
 	</div>
 	<p class="sub">Power-ups for the Cash Game &amp; challenges, plus cosmetics.</p>
 
@@ -157,13 +157,13 @@
 	{:else if loan > 0}
 		<!-- 🔒 Store locked while you owe — no buying anything until the loan is paid off. -->
 		<div class="locked">
-			<div class="locked-ic">🔒</div>
+			<div class="locked-ic"><Icon name="lock" size={30} /></div>
 			<h2>Store locked</h2>
 			<p class="locked-msg">
 				You owe <b>${loan.toLocaleString()}</b> on a loan. The Store stays closed until it's paid off
 				— no cosmetics, power-ups, or boosts.
 			</p>
-			<a class="pay-btn" href="/loans">🦈 Pay off loan →</a>
+			<a class="pay-btn" href="/loans"><Icon name="shark" size={16} /> Pay off loan →</a>
 			<p class="locked-sub">
 				Solve the Daily or a Cash Game to earn — half of every deposit auto-pays your loan down.
 			</p>
@@ -173,13 +173,13 @@
 
 		{#key inventoryKey}
 			<details class="inv-details">
-				<summary class="inv-summary">🎒 What you own</summary>
+				<summary class="inv-summary"><Icon name="bag" size={16} /> What you own</summary>
 				<InventoryList />
 			</details>
 		{/key}
 
 		{#if dboost.length}
-			<h2 class="section">💥 Interest Boosts</h2>
+			<h2 class="section"><Icon name="boost" size={18} /> Interest Boosts</h2>
 			<p class="section-note">
 				Stock up, then tap one in before you solve the Daily to add Interest to your deposit — they
 				stack (carry up to 5 of each).
@@ -194,14 +194,16 @@
 						>
 						<span class="pup-desc">{PUP_META[item.id]?.desc ?? ''}</span>
 						{#if item.owned >= 5}
-							<button class="c-btn equip on" disabled>✓ Maxed (5)</button>
+							<button class="c-btn equip on" disabled
+								><Icon name="check" size={14} /> Maxed (5)</button
+							>
 						{:else}
 							<button
 								class="c-btn buy"
 								disabled={busy === item.id || bank < item.price}
 								onclick={() => buyPup(item)}
 							>
-								💰 ${item.price.toLocaleString()}
+								<Icon name="cash" size={14} /> ${item.price.toLocaleString()}
 							</button>
 						{/if}
 					</div>
@@ -209,7 +211,7 @@
 			</div>
 		{/if}
 
-		<h2 class="section">⚡ Power-ups</h2>
+		<h2 class="section"><Icon name="bolt" size={18} /> Power-ups</h2>
 		<div class="grid">
 			{#each pups as item}
 				<div class="card pup" class:owned={item.owned > 0}>
@@ -217,14 +219,16 @@
 					<span class="c-label">{item.name}</span>
 					<span class="pup-desc">{PUP_META[item.id]?.desc ?? ''}</span>
 					{#if item.owned > 0}
-						<button class="c-btn equip on" disabled>✓ In your bag</button>
+						<button class="c-btn equip on" disabled
+							><Icon name="check" size={14} /> In your bag</button
+						>
 					{:else}
 						<button
 							class="c-btn buy"
 							disabled={busy === item.id || bank < item.price}
 							onclick={() => buyPup(item)}
 						>
-							💰 ${item.price.toLocaleString()}
+							<Icon name="cash" size={14} /> ${item.price.toLocaleString()}
 						</button>
 					{/if}
 				</div>
@@ -232,7 +236,7 @@
 		</div>
 
 		{#if sabs.length}
-			<h2 class="section">😈 Sabotage</h2>
+			<h2 class="section"><Icon name="sabotage" size={18} /> Sabotage</h2>
 			<p class="section-note">
 				Bring these to a challenge with power-ups on, then hit an opponent — they get notified.
 			</p>
@@ -245,14 +249,16 @@
 						<span class="c-label">{item.name}</span>
 						<span class="pup-desc">{PUP_META[item.id]?.desc ?? ''}</span>
 						{#if item.owned > 0}
-							<button class="c-btn equip on" disabled>✓ In your bag</button>
+							<button class="c-btn equip on" disabled
+								><Icon name="check" size={14} /> In your bag</button
+							>
 						{:else}
 							<button
 								class="c-btn buy"
 								disabled={busy === item.id || bank < item.price}
 								onclick={() => buyPup(item)}
 							>
-								💰 ${item.price.toLocaleString()}
+								<Icon name="cash" size={14} /> ${item.price.toLocaleString()}
 							</button>
 						{/if}
 					</div>
@@ -272,7 +278,7 @@
 							disabled={busy === item.id}
 							onclick={() => equip(item)}
 						>
-							{item.equipped ? '✓ Equipped' : 'Equip'}
+							{#if item.equipped}<Icon name="check" size={14} /> Equipped{:else}Equip{/if}
 						</button>
 					{:else}
 						<button
@@ -280,7 +286,7 @@
 							disabled={busy === item.id || bank < item.price}
 							onclick={() => buy(item)}
 						>
-							💰 ${item.price.toLocaleString()}
+							<Icon name="cash" size={14} /> ${item.price.toLocaleString()}
 						</button>
 					{/if}
 				</div>
@@ -299,7 +305,7 @@
 							disabled={busy === item.id}
 							onclick={() => equip(item)}
 						>
-							{item.equipped ? '✓ Equipped' : 'Equip'}
+							{#if item.equipped}<Icon name="check" size={14} /> Equipped{:else}Equip{/if}
 						</button>
 					{:else}
 						<button
@@ -307,7 +313,7 @@
 							disabled={busy === item.id || bank < item.price}
 							onclick={() => buy(item)}
 						>
-							💰 ${item.price.toLocaleString()}
+							<Icon name="cash" size={14} /> ${item.price.toLocaleString()}
 						</button>
 					{/if}
 				</div>

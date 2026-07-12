@@ -4,6 +4,7 @@
 	import { requirePin } from '$lib/pinConfirm.js';
 	import { track } from '$lib/analytics.js';
 	import { fx } from '$lib/sound.js';
+	import Icon from '$lib/components/Icon.svelte';
 
 	/** The get_bank payload (loan detail added in loans-v3)
 	 * @type {{ bank:number, net_worth:number, loan:number, loan_cap:number, in_the_red:boolean,
@@ -152,8 +153,8 @@
 			<span class="loan-owed">{fmt(owed)}</span>
 		</div>
 		<div class="loan-facts">
-			<span>📈 {activeRatePct}%/day</span>
-			<span>⏳ {loanDays}d out</span>
+			<span><Icon name="growth" size={13} /> {activeRatePct}%/day</span>
+			<span><Icon name="timer" size={13} /> {loanDays}d out</span>
 			<span>→ {fmt(owedTomorrow)} tomorrow</span>
 		</div>
 		<p class="loan-note">
@@ -272,12 +273,19 @@
 				<div class="la-spinner" aria-hidden="true"></div>
 				<div class="la-title">Reviewing your application…</div>
 				<ul class="la-checks">
-					{#if applyStep >= 1}<li>✓ Credit — {creditScore} {creditTier}</li>{/if}
-					{#if applyStep >= 2}<li>✓ Limit — up to {fmt(loanCap)}</li>{/if}
-					{#if applyStep >= 3}<li>✓ Amount — {fmt(borrowAmt)}</li>{/if}
+					{#if applyStep >= 1}<li>
+							<Icon name="check" size={13} /> Credit — {creditScore}
+							{creditTier}
+						</li>{/if}
+					{#if applyStep >= 2}<li>
+							<Icon name="check" size={13} /> Limit — up to {fmt(loanCap)}
+						</li>{/if}
+					{#if applyStep >= 3}<li>
+							<Icon name="check" size={13} /> Amount — {fmt(borrowAmt)}
+						</li>{/if}
 				</ul>
 			{:else if applyState === 'approved'}
-				<div class="la-verdict ok">✓ Approved</div>
+				<div class="la-verdict ok"><Icon name="check" size={20} /> Approved</div>
 				<div class="la-sub">
 					{fmt(applyResult?.borrowed ?? borrowAmt)} deposited to your account.
 				</div>
@@ -287,7 +295,7 @@
 				</div>
 				<button class="loan-btn borrow la-btn" on:click={closeApply}>Done</button>
 			{:else}
-				<div class="la-verdict no">✗ Not Approved</div>
+				<div class="la-verdict no"><Icon name="close" size={20} /> Not Approved</div>
 				<div class="la-sub">{declineReason}</div>
 				<button class="loan-btn ghost la-btn" on:click={closeApply}>Close</button>
 			{/if}
