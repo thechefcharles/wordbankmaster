@@ -266,7 +266,7 @@
 						{#if r.next}
 							{r.toNext} → {r.next.name}
 						{:else}
-							💎 Maxed · {r.solves}
+							<Icon name="gem" size={13} /> Maxed · {r.solves}
 						{/if}
 					</div>
 				</div>
@@ -318,7 +318,7 @@
 <!-- 🎉 New-unlock banner -->
 {#if newlyEarned.length}
 	<div class="bp-unlock" role="status">
-		🎉 New badge{newlyEarned.length > 1 ? 's' : ''} unlocked!
+		<Icon name="star" size={15} /> New badge{newlyEarned.length > 1 ? 's' : ''} unlocked!
 	</div>
 {/if}
 
@@ -335,7 +335,9 @@
 	<div class="cd-overlay">
 		<button class="cd-backdrop" aria-label="Close" onclick={() => (detail = null)}></button>
 		<div class="cd-card" role="dialog" aria-modal="true">
-			<button class="cd-x" onclick={() => (detail = null)} aria-label="Close">✕</button>
+			<button class="cd-x" onclick={() => (detail = null)} aria-label="Close"
+				><Icon name="close" size={16} /></button
+			>
 			<div class="cd-emoji"><CategoryIcon category={detail.value} size={42} /></div>
 			<h3 class="cd-name">{detail.label}</h3>
 			<p class="cd-solves">
@@ -349,7 +351,7 @@
 						<span class="cd-medal"><Icon name={t.icon} size={24} /></span>
 						<span class="cd-tname">{t.name}</span>
 						<span class="cd-treq"
-							>{#if got}✓ Unlocked{:else}{t.at - detail.solves} more{/if}</span
+							>{#if got}<Icon name="check" size={12} /> Unlocked{:else}{t.at - detail.solves} more{/if}</span
 						>
 					</div>
 				{/each}
@@ -363,14 +365,16 @@
 	<div class="cd-overlay">
 		<button class="cd-backdrop" aria-label="Close" onclick={() => (achDetail = null)}></button>
 		<div class="cd-card" role="dialog" aria-modal="true">
-			<button class="cd-x" onclick={() => (achDetail = null)} aria-label="Close">✕</button>
+			<button class="cd-x" onclick={() => (achDetail = null)} aria-label="Close"
+				><Icon name="close" size={16} /></button
+			>
 			<div class="cd-emoji" class:ad-dim={!achDetail.earned}>
 				<Icon name={achDetail.icon} size={40} />
 			</div>
 			<h3 class="cd-name">{achDetail.name}</h3>
 			<p class="cd-solves">{achDetail.desc}</p>
 			{#if achDetail.earned}
-				<div class="ad-status earned">✓ Unlocked</div>
+				<div class="ad-status earned"><Icon name="check" size={14} /> Unlocked</div>
 			{:else}
 				{#if achDetail.progText}
 					<div class="ad-prog">
@@ -381,7 +385,7 @@
 					</div>
 					<div class="ad-prog-t">{achDetail.progText}</div>
 				{/if}
-				<div class="ad-status locked">🔒 Locked</div>
+				<div class="ad-status locked"><Icon name="lock" size={14} /> Locked</div>
 			{/if}
 		</div>
 	</div>

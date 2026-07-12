@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { toasts, dismissToast, requestInbox } from '$lib/stores/notificationStore.js';
 	import { fx } from '$lib/sound.js';
+	import Icon from '$lib/components/Icon.svelte';
 
 	/** @param {any} t */
 	function open(t) {
@@ -24,7 +25,7 @@
 			<span class="t-title">{t.title}</span>
 			<span class="t-body">{t.body}</span>
 			<span class="t-x" role="presentation" on:click|stopPropagation={() => dismissToast(t.id)}
-				>✕</span
+				><Icon name="close" size={14} /></span
 			>
 		</button>
 	{/each}

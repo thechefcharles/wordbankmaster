@@ -1,6 +1,7 @@
 <script>
 	import { createEventDispatcher } from 'svelte';
 	import { fx } from '$lib/sound.js';
+	import Icon from '$lib/components/Icon.svelte';
 
 	export let length = 4;
 	export let error = false; // parent sets true to flash/shake
@@ -49,17 +50,23 @@
 		<button class="key num" on:click={() => press('1')}>1</button>
 		<button class="key num" on:click={() => press('2')}>2</button>
 		<button class="key num" on:click={() => press('3')}>3</button>
-		<button class="key act cancel" on:click={clearAll} aria-label="Cancel">✕</button>
+		<button class="key act cancel" on:click={clearAll} aria-label="Cancel"
+			><Icon name="close" size={20} /></button
+		>
 
 		<button class="key num" on:click={() => press('4')}>4</button>
 		<button class="key num" on:click={() => press('5')}>5</button>
 		<button class="key num" on:click={() => press('6')}>6</button>
-		<button class="key act clear" on:click={backspace} aria-label="Delete">⌫</button>
+		<button class="key act clear" on:click={backspace} aria-label="Delete"
+			><Icon name="backspace" size={20} /></button
+		>
 
 		<button class="key num" on:click={() => press('7')}>7</button>
 		<button class="key num" on:click={() => press('8')}>8</button>
 		<button class="key num" on:click={() => press('9')}>9</button>
-		<button class="key act enter" on:click={enter} aria-label="Enter">⏎</button>
+		<button class="key act enter" on:click={enter} aria-label="Enter"
+			><Icon name="enter" size={20} /></button
+		>
 
 		<button class="key num zero" on:click={() => press('0')}>0</button>
 	</div>

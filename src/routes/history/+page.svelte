@@ -1,5 +1,6 @@
 <script>
 	import PageNav from '$lib/components/PageNav.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import HistoryList from '$lib/components/HistoryList.svelte';
 </script>
 
@@ -7,7 +8,7 @@
 
 <main class="h-page">
 	<PageNav />
-	<h1>📜 History</h1>
+	<h1><Icon name="receipt" size={22} /> History</h1>
 	<HistoryList />
 </main>
 

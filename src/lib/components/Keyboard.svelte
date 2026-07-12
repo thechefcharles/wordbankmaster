@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
+	import Icon from '$lib/components/Icon.svelte';
 	import {
 		gameStore,
 		selectLetter,
@@ -304,7 +305,7 @@
 
 		{#if $gameStore.gameState === 'guess_mode'}
 			<button tabindex="-1" class="key delete" on:click={deleteGuessLetter}>
-				<div class="letter">⌫</div>
+				<div class="letter"><Icon name="backspace" size={20} /></div>
 			</button>
 		{/if}
 	</div>

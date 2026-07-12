@@ -1,5 +1,6 @@
 <script>
 	import PageNav from '$lib/components/PageNav.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import BadgesPanel from '$lib/components/BadgesPanel.svelte';
 </script>
 
@@ -7,7 +8,7 @@
 
 <main class="badges-page">
 	<PageNav back="/" />
-	<h1>🏅 Badges</h1>
+	<h1><Icon name="medal" size={22} /> Badges</h1>
 	<BadgesPanel />
 </main>
 

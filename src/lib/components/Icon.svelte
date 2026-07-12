@@ -52,6 +52,8 @@
 		mail: `<svg ${A}><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3.6 6.8l8.4 5.9 8.4-5.9"/></svg>`,
 		doc: `<svg ${A}><path d="M6.5 3.5h7l4 4v13h-11z"/><path d="M13 3.5V8h4.5"/><path d="M9 12.5h6M9 15.5h6"/></svg>`,
 		puzzle: `<svg ${A}><path d="M10 4.5h4v2a1.5 1.5 0 0 0 3 0v-.2h2.5v4.2h-.2a1.5 1.5 0 0 0 0 3h.2V19h-4.3v-.2a1.5 1.5 0 0 0-3 0v.2H5v-4.5h.2a1.5 1.5 0 0 0 0-3H5V6.5h4.8a1.5 1.5 0 0 1 .2-2z"/></svg>`,
+		backspace: `<svg ${A}><path d="M9 5.5h9.5a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9L3.5 12z"/><path d="M12.5 9.5l4 5M16.5 9.5l-4 5"/></svg>`,
+		enter: `<svg ${A}><path d="M20 6v5.5a2.5 2.5 0 0 1-2.5 2.5H5"/><path d="M8.5 10.5L4.8 14l3.7 3.5"/></svg>`,
 
 		// ── money / economy ─────────────────────────────────────────────────────
 		cash: `<svg ${A}><rect x="3" y="6.5" width="18" height="11" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 9.5v5M17.5 9.5v5"/></svg>`,

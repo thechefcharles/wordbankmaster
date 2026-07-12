@@ -1,6 +1,7 @@
 <script>
 	import PageNav from '$lib/components/PageNav.svelte';
 	import KitAvatar from '$lib/components/KitAvatar.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import { SLOTS, PARTS, DEFAULT_KIT, KIT_READY } from '$lib/avatarKit.js';
 
 	/** @type {any} */ let config = { ...DEFAULT_KIT };
@@ -37,7 +38,9 @@
 						class:on={config[s.key] === o.id}
 						on:click={() => pick(s.key, o.id)}
 					>
-						{o.label}{#if o.price}<span class="kp-price">🔒 {fmt(o.price)}</span>{/if}
+						{o.label}{#if o.price}<span class="kp-price"
+								><Icon name="lock" size={12} /> {fmt(o.price)}</span
+							>{/if}
 					</button>
 				{/each}
 			</div>

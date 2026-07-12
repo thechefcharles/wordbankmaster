@@ -317,7 +317,7 @@
 			{:else}
 				<h1>{open.name}</h1>
 				{#if open.is_owner}<button class="rename-btn" onclick={startRename} title="Rename group"
-						>✏️</button
+						><Icon name="edit" size={15} /></button
 					>{/if}
 			{/if}
 		</div>
@@ -325,10 +325,10 @@
 
 		<div class="g-tabs">
 			<button class="g-tab" class:active={gtab === 'wealth'} onclick={() => switchTab('wealth')}
-				>💰 Wealth</button
+				><Icon name="cash" size={14} /> Wealth</button
 			>
 			<button class="g-tab" class:active={gtab === 'compete'} onclick={() => switchTab('compete')}
-				>⚔️ Compete</button
+				><Icon name="swords" size={14} /> Compete</button
 			>
 		</div>
 
@@ -366,7 +366,7 @@
 												class="rm-btn"
 												onclick={() => removeMember(m.username)}
 												disabled={busy}
-												title="Remove">✕</button
+												title="Remove"><Icon name="close" size={14} /></button
 											>{/if}</td
 									>{/if}
 							</tr>
@@ -431,7 +431,7 @@
 
 		{#if open.is_owner && (open.requests ?? []).length}
 			<div class="req-panel">
-				<h2 class="req-title">🙋 Requests to join</h2>
+				<h2 class="req-title"><Icon name="hand" size={16} /> Requests to join</h2>
 				{#each open.requests as r}
 					<div class="req-row">
 						<span class="uname">@{r.username}</span>
@@ -496,7 +496,7 @@
 						</div>
 					{/each}
 				{:else}
-					<p class="chat-empty">No messages yet — say hi 👋</p>
+					<p class="chat-empty">No messages yet — say hi</p>
 				{/if}
 			</div>
 			<div class="g-row chat-input-row">

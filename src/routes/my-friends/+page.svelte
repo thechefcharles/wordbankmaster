@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import PageNav from '$lib/components/PageNav.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import { listFriends, removeFriend } from '$lib/stores/statsStore.js';
 	import { requireConfirm } from '$lib/confirm.js';
 	import { fx } from '$lib/sound.js';
@@ -91,7 +92,7 @@
 							disabled={busy === f.id}
 							onclick={() => remove(f)}
 							title="Remove friend"
-							aria-label="Remove friend">✕</button
+							aria-label="Remove friend"><Icon name="close" size={14} /></button
 						>
 					</div>
 				{/each}

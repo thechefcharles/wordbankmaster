@@ -5,6 +5,7 @@
 	import { page } from '$app/stores';
 	import { getPublicProfile, addFriend, requestJoinGroup } from '$lib/stores/statsStore.js';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import AccountCard from '$lib/components/AccountCard.svelte';
 	import ModeIcon from '$lib/components/ModeIcon.svelte';
 	import { track } from '$lib/analytics.js';
@@ -38,7 +39,7 @@
 		addBusy = true;
 		const res = await addFriend(p.username);
 		if (res?.ok) {
-			addMsg = 'Request sent ✓';
+			addMsg = 'Request sent';
 			p = { ...p, request_outgoing: true };
 		} else addMsg = res?.reason || 'Could not send request';
 		addBusy = false;
@@ -117,7 +118,7 @@
 
 			<div class="u-actions">
 				{#if p.is_friend}
-					<span class="pill friend">✓ Friends</span>
+					<span class="pill friend"><Icon name="check" size={12} /> Friends</span>
 				{:else if p.request_outgoing}
 					<span class="pill muted">Request sent</span>
 				{:else if p.request_incoming}
@@ -187,7 +188,7 @@
 						{#if f.is_self}
 							<span class="soc-tag">You</span>
 						{:else if f.status === 'friends'}
-							<span class="soc-tag ok">✓ Friend</span>
+							<span class="soc-tag ok"><Icon name="check" size={12} /> Friend</span>
 						{:else if f.status === 'pending_out' || busyFriend[f.username] === 'sent'}
 							<span class="soc-tag">Requested</span>
 						{:else}
@@ -211,7 +212,7 @@
 					<div class="soc-row">
 						<span class="soc-main static">{g.name}</span>
 						{#if g.my_status === 'member'}
-							<span class="soc-tag">✓ Member</span>
+							<span class="soc-tag"><Icon name="check" size={12} /> Member</span>
 						{:else if groupState[g.id] === 'requested' || g.my_status === 'requested'}
 							<span class="soc-tag">Requested</span>
 						{:else}

@@ -11,7 +11,7 @@
 
 <main class="groups-page">
 	<PageNav />
-	<GroupsPanel title="👥 Groups" onExit={() => goto('/')} />
+	<GroupsPanel title="Groups" onExit={() => goto('/')} />
 </main>
 
 <style>
