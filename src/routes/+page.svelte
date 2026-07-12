@@ -2838,11 +2838,12 @@
 			<button class="modal-x" on:click={() => (climbInfo = null)} aria-label="Close">✕</button>
 			{#if climbInfo === 'heat'}
 				<div class="info-big">🔥 +{Math.round((climb?.heat ?? 100) - 100)}%</div>
-				<h3 class="info-title">Interest — your bounty boost</h3>
+				<h3 class="info-title">Interest — grows your payouts</h3>
 				<p class="info-sub">Every new bounty lands in your Payout boosted by your Interest.</p>
 				<div class="info-rows">
-					<div class="info-row"><span>Base</span><b>+0%</b></div>
-					<div class="info-row"><span>Each solve in a row</span><b class="pos">+10%</b></div>
+					<div class="info-row"><span>Each solve</span><b class="pos">+5%</b></div>
+					<div class="info-row"><span>⚡ Solved cheaply</span><b class="pos">up to +10%</b></div>
+					<div class="info-row"><span>💳 Credit standing</span><b class="pos">up to +4%</b></div>
 					<div class="info-row">
 						<span>Maxes out at</span><b>+{Math.round((climb?.heat_cap ?? 200) - 100)}%</b>
 					</div>
@@ -2851,10 +2852,11 @@
 					</div>
 				</div>
 				<p class="info-note">
-					Interest climbs with your <button
+					Interest grows every <button
 						class="info-inline"
-						on:click|stopPropagation={() => (climbInfo = 'streak')}>solve streak</button
-					> and resets to +0% on a bust.
+						on:click|stopPropagation={() => (climbInfo = 'streak')}>solve</button
+					> — more when you solve cheaply and keep good credit. It resets to +0% on a bust, unless a
+					🛡️ Heat Shield saves you.
 				</p>
 			{:else if climbInfo === 'streak'}
 				<div class="info-big">🔥 {climbStreak}</div>

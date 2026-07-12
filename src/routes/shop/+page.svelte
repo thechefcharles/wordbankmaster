@@ -32,6 +32,10 @@
 		free_vowel: { icon: '🅰️', desc: 'Reveal one vowel free' },
 		half_off: { icon: '🏷️', desc: 'Letters cost 50% less this puzzle' },
 		vowel_vision: { icon: '👁️', desc: 'Reveal every vowel' },
+		heat_shield: {
+			icon: '🛡️',
+			desc: 'Escape one bust — keep your Payout & Interest and jump to a fresh puzzle'
+		},
 		reveal_word: { icon: '📖', desc: 'Reveal a whole word' },
 		extra_hint: { icon: '💡', desc: 'Reveal the first letter of each word' },
 		last_letters: { icon: '🔚', desc: 'Reveal the last letter of each word' },
