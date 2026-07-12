@@ -61,10 +61,29 @@
 	let standings = $state(null);
 	let standingsLoading = $state(false);
 
+	// Unread group-chat dot: compare each group's latest message time against a per-group
+	// last-seen stamp kept in localStorage. seenBump re-evaluates the dots after marking seen.
+	let seenBump = $state(0);
+	/** @param {any} g */
+	function groupUnread(g) {
+		void seenBump;
+		if (typeof localStorage === 'undefined' || !g?.last_message_at) return false;
+		const seen = localStorage.getItem('grpSeen:' + g.id);
+		return !seen || new Date(g.last_message_at) > new Date(seen);
+	}
+	/** @param {string} id */
+	function markGroupSeen(id) {
+		if (typeof localStorage === 'undefined' || !id) return;
+		localStorage.setItem('grpSeen:' + id, new Date().toISOString());
+		seenBump++;
+	}
+
 	async function switchTab(/** @type {string} */ t) {
 		gtab = t;
-		if (t === 'compete' && !standings && open) {
-			standingsLoading = true;
+		// Reload standings every time Compete is opened so a match settled while the panel
+		// was open shows up (previously cached on first open and never refreshed).
+		if (t === 'compete' && open) {
+			standingsLoading = !standings;
 			standings = await getGroupStandings(open.id);
 			standingsLoading = false;
 		}
@@ -175,6 +194,7 @@
 	/** @param {any} g */
 	async function openGroup(g) {
 		open = g;
+		markGroupSeen(g?.id); // opening the group clears its unread dot
 		renaming = false;
 		showAdd = false;
 		addMsg = '';
@@ -523,9 +543,10 @@
 					{#each shownGroups as g}
 						<button class="g-card" onclick={() => view(g.id)}>
 							<div class="gc-body">
-								<span class="gc-name">{g.name}</span><span class="gc-meta"
-									>{g.members} member{g.members === 1 ? '' : 's'}</span
-								>
+								<span class="gc-name"
+									>{g.name}{#if groupUnread(g)}<span class="gc-unread" title="New messages"
+										></span>{/if}</span
+								><span class="gc-meta">{g.members} member{g.members === 1 ? '' : 's'}</span>
 							</div>
 							<span class="gc-arrow">→</span>
 						</button>
@@ -758,6 +779,15 @@
 	}
 	.g-card:hover {
 		border-color: rgba(253, 224, 71, 0.4);
+	}
+	.gc-unread {
+		display: inline-block;
+		width: 8px;
+		height: 8px;
+		margin-left: 6px;
+		border-radius: 50%;
+		background: #fb7185;
+		vertical-align: middle;
 	}
 	.gc-body {
 		display: flex;
