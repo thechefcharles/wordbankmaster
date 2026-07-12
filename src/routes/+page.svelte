@@ -37,6 +37,7 @@
 	import {
 		getPowerups,
 		getDailyAvailBoosts,
+		getDailyInterest,
 		getMyMatches,
 		getMyGroups,
 		getMatchDetail,
@@ -906,13 +907,20 @@
 	// ℹ️ Daily explainers: ×N badge, Solve-to-Earn, 🏆 streak, or today's Twist.
 	/** @type {'mult'|'bounty'|'streak'|'twist'|null} */
 	let dailyInfo = null;
+	/** @type {{win_streak:number,tier:string,streak:number,credit:number,boost:number,total:number}|null} */
+	let dailyInterest = null;
+	// Open the Interest breakdown modal and pull the fresh streak/credit/boost split.
+	async function openDailyMult() {
+		fx('tap');
+		dailyInfo = 'mult';
+		dailyInterest = await getDailyInterest();
+	}
 	$: dlMult = Number($gameStore.dailyLive?.mult ?? $gameStore.bountyMult ?? 1);
 	$: dlRemaining = $gameStore.dailyLive?.remaining ?? 0; // Prize budget left
 	$: dlWinnings = $gameStore.dailyLive?.winnings ?? Math.round(dlRemaining * dlMult); // banked if you solve now
 	$: dlWinStreak = dailyStatus?.win_streak ?? 0;
-	// Daily multiplier is now boost-only — the win-streak "interest" was dropped, so score =
-	// bounty − spent for normal play. Any multiplier comes purely from 💥/💎 boost power-ups.
-	$: dlBoost = Math.max(0, Math.round((dlMult - 1) * 10) / 10);
+	// Daily Interest = earned (win streak + credit tier) + any 💥/💎 Interest Boosts you tap in.
+	// Total lands in dlMult; the breakdown comes from getDailyInterest() (dailyInterest).
 	let _prevNet = /** @type {number|null} */ (null);
 	let _floatId = 0;
 	let _prevWrongTick = 0;
@@ -2708,17 +2716,30 @@
 				<h3 class="info-title">Interest</h3>
 				<p class="info-sub">Extra Interest on everything you Deposit from this puzzle.</p>
 				<div class="info-rows">
-					<div class="info-row"><span>Base</span><b>+0%</b></div>
-					{#if dlBoost > 0}<div class="info-row">
-							<span>💥 Boosts</span><b class="pos">+{Math.round(dlBoost * 100)}%</b>
+					<div class="info-row">
+						<span>🏆 Win streak{dailyInterest ? ` (${dailyInterest.win_streak})` : ''}</span><b
+							class:pos={(dailyInterest?.streak ?? 0) > 0}
+							>+{Math.round((dailyInterest?.streak ?? 0) * 100)}%</b
+						>
+					</div>
+					<div class="info-row">
+						<span>💳 Credit{dailyInterest ? ` (${dailyInterest.tier})` : ''}</span><b
+							class:pos={(dailyInterest?.credit ?? 0) > 0}
+							>+{Math.round((dailyInterest?.credit ?? 0) * 100)}%</b
+						>
+					</div>
+					{#if (dailyInterest?.boost ?? 0) > 0}<div class="info-row">
+							<span>💥 Boosts</span><b class="pos"
+								>+{Math.round((dailyInterest?.boost ?? 0) * 100)}%</b
+							>
 						</div>{/if}
 					<div class="info-row total">
 						<span>Your Interest</span><b>+{Math.round((dlMult - 1) * 100)}%</b>
 					</div>
 				</div>
 				<p class="info-note">
-					Stock up on 💥/💎 Interest Boosts in the Store and tap one in before you solve — the Daily
-					itself has no streak multiplier, so your score is just what you keep of the bounty.
+					Interest is earned — solve day after day to grow your 🏆 streak (up to +15%) and keep good
+					💳 credit (up to +10%). Tap in 💥/💎 Interest Boosts from the Store for more on top.
 				</p>
 			{:else if dailyInfo === 'twist'}
 				<div class="info-big">{dailyMod?.emoji ?? '🎁'}</div>
@@ -2753,7 +2774,7 @@
 				<p class="info-note">
 					Deduce letters instead of buying them — keep more of your balance. Grows your <button
 						class="info-inline"
-						on:click|stopPropagation={() => (dailyInfo = 'mult')}>Interest</button
+						on:click|stopPropagation={openDailyMult}>Interest</button
 					> too.
 				</p>
 			{/if}
@@ -4400,11 +4421,9 @@
 							<!-- Daily badge only appears when a 💥/💎 boost is active (no streak interest). -->
 							<button
 								class="bp-mult-badge"
-								title="Interest — a power-up multiplier on your deposit"
-								on:click={() => {
-									fx('tap');
-									dailyInfo = 'mult';
-								}}>+{Math.round((Number($gameStore.bountyMult ?? 1) - 1) * 100)}%</button
+								title="Interest — earned from your streak + credit, plus boosts"
+								on:click={openDailyMult}
+								>+{Math.round((Number($gameStore.bountyMult ?? 1) - 1) * 100)}%</button
 							>
 						{:else if isClimb}
 							<button

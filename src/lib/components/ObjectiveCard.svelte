@@ -34,7 +34,7 @@
 					title: "Today's Daily",
 					goal: 'Solve the hidden phrase.',
 					win: 'Spend as little as you can — your leftover Deposits to your account.',
-					bar: 'Boosts from the Store add Interest to your deposit.'
+					bar: 'Earn Interest on every Deposit — from your streak, credit & boosts.'
 				};
 			case 'climb':
 				return {
