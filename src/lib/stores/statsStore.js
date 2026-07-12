@@ -631,6 +631,17 @@ export async function getDailyAvailBoosts() {
 	return data ?? {};
 }
 
+/** Breakdown of today's Daily Interest rate (earned + boosts) for the HUD modal.
+ * @returns {Promise<{win_streak:number,tier:string,streak:number,credit:number,boost:number,total:number}|null>} */
+export async function getDailyInterest() {
+	const { data, error } = await supabase.rpc('get_daily_interest');
+	if (error) {
+		console.error('❌ get_daily_interest:', error);
+		return null;
+	}
+	return data ?? null;
+}
+
 /* ===== Make-up daily (play a past missed day in the current month) =====
    No streak repair, no Bank deposit — fills the calendar + earns week/month badges.
    Each returns a daily board with an extra { makeup: { date } } marker. */
