@@ -14,15 +14,6 @@ import {
 	getDailyClue
 } from '$lib/stores/statsStore.js';
 import {
-	createChallenge,
-	acceptChallenge,
-	getChallengeBoard,
-	challengeBuyLetter,
-	challengeReveal,
-	challengeSubmitGuess,
-	challengeCheck
-} from '$lib/stores/statsStore.js';
-import {
 	makeupStart,
 	makeupBuyLetter,
 	makeupReveal,
@@ -96,7 +87,6 @@ import { track } from '$lib/analytics.js';
  *   wrongGuesses?: number,
  *   dailyMustGuess?: boolean,
  *   clue?: string | null,
- *   challengeInfo?: any,
  *   makeupDate?: string | null,
  *   dailyResult?: any,
  *   climbInfo?: any,
@@ -165,7 +155,7 @@ export const gameStore = writable(
 		shakenLetters: [],
 		message: '',
 		subcategory: '',
-		gameMode: 'daily', // 'daily' | 'climb' | 'challenge' | 'match' | 'makeup'
+		gameMode: 'daily', // 'daily' | 'climb' | 'match' | 'makeup'
 		freeReveals: 0, // owned Free Reveal power-ups (daily)
 		modifier: null, // today's Daily Twist power-up id (daily only)
 		twistUsed: false, // have you used today's Twist? (unused → ×1.5 bounty)
@@ -173,7 +163,6 @@ export const gameStore = writable(
 		wrongGuesses: 0, // wrong phrase guesses this Daily (each −0.2× mult, floor 1.0)
 		dailyMustGuess: false, // Daily out-of-budget wall → last-guess danger treatment
 		clue: null, // witty one-line hint for the current puzzle
-		challengeInfo: null, // { mode, started_at, limit_seconds, play_state, score } for the active challenge
 		makeupDate: null, // YYYY-MM-DD of the make-up day being played (makeup mode only)
 		climbInfo: null, // { bounty, heat, spent, position, final_guess, cheapest, wrong_penalty, last_gain, state } (climb mode)
 		blitzInfo: null, // { remaining_ms, combo, solved, winnings, tier, buy_in, base, state } (blitz mode)
@@ -320,112 +309,6 @@ function reconcileDailyBoard(board) {
 	// analytics: fire once, only on the actual solve transition
 	if (board.daily_result && prev.gameState !== 'won' && prev.gameState !== 'lost') {
 		track('daily_result', { won: true, bankroll: board.bankroll ?? 0 });
-	}
-}
-
-/* ===== Challenges (friend wager; same puzzle, score = leftover bankroll) ===== */
-/** @type {string|null} */
-let activeChallengeId = null;
-
-/** @param {any} board */
-function reconcileChallengeBoard(board) {
-	if (!board) return;
-	const prev = get(gameStore);
-	const finished = board.state !== 'active';
-	gameStore.set(
-		/** @type {GameState} */ ({
-			...prev,
-			...boardToState(board, prev),
-			gameMode: 'challenge',
-			gameState: finished ? board.state : 'default',
-			modifier: null,
-			challengeInfo: board.challenge ?? prev.challengeInfo ?? null
-		})
-	);
-	if (board.state === 'won') {
-		setTimeout(() => launchConfetti(), 300);
-		fx('win');
-	} else if (finished) fx('bust');
-	else playMoveCue(prev, board);
-}
-
-/** Start playing a challenge created/accepted elsewhere. @param {any} resp @returns {boolean} */
-export function enterChallenge(resp) {
-	if (!resp?.ok || !resp.board) return false;
-	activeChallengeId = resp.challenge_id;
-	reconcileChallengeBoard(resp.board);
-	return true;
-}
-
-/** Create a challenge and drop into play. @param {string} code @param {string} category @param {number} wager @param {string} [mode] */
-export async function startChallenge(code, category, wager, mode = 'score') {
-	const resp = await createChallenge(code, category, wager, mode);
-	if (resp?.ok) {
-		track('challenge_create', { wager, mode });
-		return enterChallenge(resp) ? resp : { ok: false, reason: 'board' };
-	}
-	return resp;
-}
-
-/** Accept an incoming challenge and drop into play. @param {string} id */
-export async function acceptAndPlayChallenge(id) {
-	const resp = await acceptChallenge(id);
-	if (resp?.ok) {
-		track('challenge_accept');
-		return enterChallenge(resp) ? resp : { ok: false, reason: 'board' };
-	}
-	return resp;
-}
-
-/** Resume a challenge I've already started. @param {string} id */
-export async function resumeChallenge(id) {
-	const board = await getChallengeBoard(id);
-	if (board) {
-		activeChallengeId = id;
-		reconcileChallengeBoard(board);
-		return true;
-	}
-	return false;
-}
-
-/** Pressure mode: force the server to settle the active play when the clock expires. */
-export async function challengeTimeoutCheck() {
-	if (!activeChallengeId) return;
-	const board = await challengeCheck(activeChallengeId);
-	if (board) reconcileChallengeBoard(board);
-}
-
-/** @param {GameState} state */
-async function confirmPurchaseChallenge(state) {
-	const purchase = state.selectedPurchase;
-	if (!purchase || dailyInFlight || !activeChallengeId) return;
-	dailyInFlight = true;
-	try {
-		let board = null;
-		if (purchase.type === 'letter')
-			board = await challengeBuyLetter(activeChallengeId, purchase.value ?? '');
-		else if (purchase.type === 'hint') board = await challengeReveal(activeChallengeId);
-		if (board) reconcileChallengeBoard(board);
-		else gameStore.update((s) => ({ ...s, selectedPurchase: null, gameState: 'default' }));
-	} finally {
-		dailyInFlight = false;
-	}
-}
-
-/** @param {GameState} state */
-async function submitGuessChallenge(state) {
-	if (state.gameState !== 'guess_mode' || dailyInFlight || !activeChallengeId) return;
-	/** @type {Record<string, string>} */
-	const guess = {};
-	for (const [k, v] of Object.entries(state.guessedLetters || {}))
-		guess[k] = /** @type {string} */ (v);
-	if (Object.keys(guess).length === 0) return;
-	dailyInFlight = true;
-	try {
-		const board = await challengeSubmitGuess(activeChallengeId, guess);
-		if (board) reconcileChallengeBoard(board);
-	} finally {
-		dailyInFlight = false;
 	}
 }
 
@@ -1197,7 +1080,6 @@ export function confirmPurchase() {
 	// All modes are server-authoritative: commit via RPC and reconcile.
 	const current = get(gameStore);
 	if (current.gameMode === 'daily') confirmPurchaseDaily(current);
-	else if (current.gameMode === 'challenge') confirmPurchaseChallenge(current);
 	else if (current.gameMode === 'makeup') confirmPurchaseMakeup(current);
 	else if (current.gameMode === 'climb') confirmPurchaseClimb(current);
 	else if (current.gameMode === 'blitz') confirmPurchaseBlitz(current);
@@ -1300,7 +1182,6 @@ export function submitGuess() {
 	// All modes are server-authoritative: the server validates + scores.
 	const current = get(gameStore);
 	if (current.gameMode === 'daily') submitGuessDaily(current);
-	else if (current.gameMode === 'challenge') submitGuessChallenge(current);
 	else if (current.gameMode === 'makeup') submitGuessMakeup(current);
 	else if (current.gameMode === 'climb') submitGuessClimb(current);
 	else if (current.gameMode === 'blitz') submitGuessBlitz(current);

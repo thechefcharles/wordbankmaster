@@ -11,7 +11,6 @@
 		fetchDailyGame,
 		useDailyTwist,
 		useDailyBoost,
-		challengeTimeoutCheck,
 		fetchMakeupGame,
 		fetchClimbGame,
 		startCashGame,
@@ -483,7 +482,6 @@
 		$gameStore.gameState !== 'lost'
 			? $gameStore.dailyLive
 			: null;
-	$: isChallenge = $gameStore.gameMode === 'challenge';
 	$: isMakeup = $gameStore.gameMode === 'makeup';
 	// Auto-dismiss the Cash-earned toast after a few seconds.
 	/** @type {ReturnType<typeof setTimeout>|undefined} */
@@ -1347,38 +1345,13 @@
 		const dt = new Date(d + 'T00:00:00');
 		return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 	})();
-	$: chScore = $gameStore.challengeInfo?.score ?? Math.floor($gameStore.bankroll || 0);
 	$: resultBankroll = Math.max(0, Math.floor($gameStore.bankroll || 0));
 	$: resultMedal = medalFor(resultBankroll, resultWon);
 
-	// ⏱️ Pressure-mode challenge clock (server-authoritative; this just displays + triggers the check)
+	// ⏱️ Shared 1s clock tick (drives the match-blitz countdown).
 	let pressureNow = browser ? Date.now() : 0;
 	/** @type {ReturnType<typeof setInterval>|undefined} */
 	let pressureTimer;
-	let pressureFired = false;
-	$: chInfo = $gameStore.gameMode === 'challenge' ? $gameStore.challengeInfo : null;
-	$: isPressure = chInfo?.mode === 'pressure';
-	$: pressureActive =
-		isPressure && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost';
-	$: pressureRemaining = (() => {
-		if (!isPressure || !chInfo?.started_at) return 0;
-		const start = new Date(chInfo.started_at).getTime();
-		const limitMs = (chInfo.limit_seconds ?? 60) * 1000;
-		return Math.max(0, Math.ceil((start + limitMs - pressureNow) / 1000));
-	})();
-	$: if (pressureActive && pressureRemaining > 0) pressureFired = false;
-	$: if (pressureActive && pressureRemaining <= 0 && !pressureFired) firePressureTimeout();
-	async function firePressureTimeout() {
-		pressureFired = true;
-		await challengeTimeoutCheck();
-		// tolerate minor client/server clock skew — retry shortly if the play didn't settle
-		if ($gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost') {
-			setTimeout(() => {
-				pressureFired = false;
-			}, 1500);
-		}
-	}
-
 	let shareCopied = false;
 	function buildShareText() {
 		const br = '$' + resultBankroll.toLocaleString();
@@ -4386,14 +4359,6 @@
 			</div>
 		{/if}
 
-		<!-- ⏱️ Pressure-mode challenge clock -->
-		{#if pressureActive}
-			<div class="pressure-hud" class:danger={pressureRemaining <= 10}>
-				<span class="ph-clock">⏱️ {pressureRemaining}s</span>
-				<span class="ph-label">Pressure — solve fast for a bigger score</span>
-			</div>
-		{/if}
-
 		<!-- 🗓️ Make-up daily banner -->
 		{#if isMakeup}
 			<div class="makeup-banner">
@@ -5280,40 +5245,6 @@
 								}}>Menu</button
 							>
 						</div>
-					{:else if isChallenge}
-						<!-- Challenge result (settles when the friend plays) -->
-						<div class="result-medal">{resultWon ? (isPressure ? '⏱️' : '⚔️') : '⌛'}</div>
-						<h2>{resultWon ? 'Challenge played!' : "Time's up!"}</h2>
-						{#if resultWon}
-							<p class="result-sub">
-								You scored ${chScore.toLocaleString()} · {$gameStore.currentPhrase}
-							</p>
-							{#if isPressure}<p class="arcade-earn">
-									Bankroll ${resultBankroll.toLocaleString()} + speed bonus
-								</p>{/if}
-						{:else}
-							<p class="result-sub">Ran out of time — scored $0 · {$gameStore.currentPhrase}</p>
-						{/if}
-						<p class="arcade-gain">We'll settle the pot once your friend plays.</p>
-						<div class="result-actions">
-							<button
-								class="share-btn"
-								on:click={() => {
-									showResultModal = false;
-									hasTriggeredModal = false;
-									goToMainMenu();
-									newChallenge();
-								}}>Challenge Friends</button
-							>
-							<button
-								class="next-puzzle-button"
-								on:click={() => {
-									showResultModal = false;
-									hasTriggeredModal = false;
-									goToMainMenu();
-								}}>Menu</button
-							>
-						</div>
 					{/if}
 				</div>
 			</div>
@@ -5536,39 +5467,6 @@
 		justify-content: safe center;
 	}
 
-	.pressure-hud {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 2px;
-		width: 100%;
-		max-width: 360px;
-		margin: 0 auto 14px;
-		padding: 0.5rem 1rem;
-		border: 1px solid rgba(251, 191, 36, 0.4);
-		border-radius: 14px;
-		background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(251, 191, 36, 0.03));
-	}
-	.pressure-hud .ph-clock {
-		font-family: var(--font-display);
-		font-weight: 800;
-		font-size: 1.5rem;
-		color: #fbbf24;
-		line-height: 1;
-		font-variant-numeric: tabular-nums;
-	}
-	.pressure-hud .ph-label {
-		font-size: 0.72rem;
-		color: var(--text-muted);
-	}
-	.pressure-hud.danger {
-		border-color: rgba(248, 113, 113, 0.6);
-		background: linear-gradient(135deg, rgba(248, 113, 113, 0.16), rgba(248, 113, 113, 0.04));
-		animation: pressurePulse 1s ease-in-out infinite;
-	}
-	.pressure-hud.danger .ph-clock {
-		color: #f87171;
-	}
 	@keyframes pressurePulse {
 		0%,
 		100% {
@@ -6112,27 +6010,6 @@
 		margin: -8px 0 14px;
 		font-size: 1rem;
 	}
-	.arcade-earn {
-		font-family: var(--font-display);
-		font-weight: 700;
-		font-size: 0.95rem;
-		color: #fcd34d;
-		margin: 10px auto 0;
-		padding: 7px 14px;
-		background: rgba(251, 191, 36, 0.12);
-		border: 1px solid rgba(251, 191, 36, 0.4);
-		border-radius: 999px;
-		display: inline-block;
-	}
-	.arcade-earn {
-		font-family: var(--font-display);
-		font-weight: 700;
-		color: #fcd34d;
-		margin: -6px 0 14px;
-		font-size: 0.95rem;
-		text-shadow: 0 0 14px rgba(251, 191, 36, 0.35);
-	}
-
 	.puzzle-meta {
 		display: flex;
 		flex-wrap: wrap;

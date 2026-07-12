@@ -12,122 +12,123 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
 ## 🔴 Tier 1 — Money & correctness bugs (fix first)
 
 - [x] **1. `decline_match` refunds bounty, not stake** — ✅ FIXED (PR #556, supabase-decline-refund-fix.sql): refund now `COALESCE(stake, GREATEST(wager,500))`; rollback-verified 1500→500. Refund credits
-  `COALESCE(start_budget, GREATEST(wager,500))`; `start_budget` is the puzzle bounty
-  (~$1.2–3k) while the host was only debited `stake = wager` (min $500). Decline → host
-  pockets the difference. `_match_settle` correctly uses `coalesce(stake,…)`.
-  **Fix:** refund `COALESCE(stake, wager)`. *(RPC `decline_match`)*
+      `COALESCE(start_budget, GREATEST(wager,500))`; `start_budget` is the puzzle bounty
+      (~$1.2–3k) while the host was only debited `stake = wager` (min $500). Decline → host
+      pockets the difference. `_match_settle` correctly uses `coalesce(stake,…)`.
+      **Fix:** refund `COALESCE(stake, wager)`. _(RPC `decline_match`)_
 - [x] **2. `match_fold` never updated for `econ_v=2`** — ✅ FIXED (PR #557, supabase-match-fold-econ2-fix.sql): added econ_v=2 branch (accumulate total_score + fresh next bounty, mirrors solve path); rollback-verified final keeps prior $1200 and non-final advances with fresh bounty. Uses OLD absolute-overwrite
-  semantics (`total_score = v_left`), so folding a later puzzle in a multi-puzzle match
-  erases earlier winnings and advances with a $0 budget. `_match_resolve_and_advance`
-  accumulates + resets bounty. **Fix:** add an `econ_v=2` branch mirroring it.
-  *(RPC `match_fold`; single-puzzle matches unaffected)*
+      semantics (`total_score = v_left`), so folding a later puzzle in a multi-puzzle match
+      erases earlier winnings and advances with a $0 budget. `_match_resolve_and_advance`
+      accumulates + resets bounty. **Fix:** add an `econ_v=2` branch mirroring it.
+      _(RPC `match_fold`; single-puzzle matches unaffected)_
 - [x] **3. Reduced-accept charges the wrong balance** — ✅ FIXED (PR #558, supabase-accept-networth-fix.sql): accept_match now gates + caps on net worth (bank − loan); rollback-verified reduced caps at net worth, full blocks when net<wager, no-loan unchanged. UI gates on `netWorth = bank − loan`
-  and shows a capped buy-in, but `accept_match` checks `profiles.bank`. A loan-holder
-  (bank ≥ wager, netWorth < wager) is shown "capped" yet debited the full wager.
-  **Fix:** align UI + RPC on one balance definition. *(`+page.svelte:2242,2260-2277`;
-  RPC `accept_match(uuid,boolean)`)*
+      and shows a capped buy-in, but `accept_match` checks `profiles.bank`. A loan-holder
+      (bank ≥ wager, netWorth < wager) is shown "capped" yet debited the full wager.
+      **Fix:** align UI + RPC on one balance definition. _(`+page.svelte:2242,2260-2277`;
+      RPC `accept_match(uuid,boolean)`)_
 - [x] **4. Group owner leaving orphans the group** — ✅ FIXED (PR #559, supabase-leave-group-owner-fix.sql): owner-leave now hands ownership to the oldest remaining member; rollback-verified handoff + empty-group deletion still works. `leave_group` doesn't reassign
-  `owner_id`; every management RPC gates on `owner_id = uid`, so remaining members can
-  never rename / kick / approve joins. **Fix:** reassign ownership to the oldest remaining
-  member on owner-leave. *(RPC `leave_group`)*
+      `owner_id`; every management RPC gates on `owner_id = uid`, so remaining members can
+      never rename / kick / approve joins. **Fix:** reassign ownership to the oldest remaining
+      member on owner-leave. _(RPC `leave_group`)_
 - [x] **5. Paid non-finishers forfeit invisibly** — ✅ FIXED (PR #560, supabase-settle-dnf-fix.sql): added a loop for paid `state<>'done'` players → logs a lost/tie result + sends a notification; rollback-verified DNF gets outcome='lost' spent=500 + a notif, winner still takes the pot. `_match_settle` iterates only
-  `state='done'`; a player who accepted+paid but didn't finish gets no `_notify` and no
-  `_log_game_result`. Money loss never appears in history/leaderboards.
-  **Fix:** include paid `active` participants with a DNF/lost result + notification.
+      `state='done'`; a player who accepted+paid but didn't finish gets no `_notify` and no
+      `_log_game_result`. Money loss never appears in history/leaderboards.
+      **Fix:** include paid `active` participants with a DNF/lost result + notification.
 - [x] **6. No scheduled settlement** — ✅ FIXED (PR #561, supabase-scheduled-settlement.sql): added `settle_expired_matches()` + pg_cron job (every 5 min) that settles past-`settles_at` open matches server-side; enabling it immediately settled 1 real stuck match in prod. `get_my_matches` is the only sweeper (settles
-  `status='open' AND settles_at < now()`); no pg_cron. Wagers stay escrowed and
-  refund/settled notifications never fire until a participant next opens the list.
-  **Fix:** scheduled sweeper (pg_cron or edge cron → `settle_expired_matches()`).
+      `status='open' AND settles_at < now()`); no pg_cron. Wagers stay escrowed and
+      refund/settled notifications never fire until a participant next opens the list.
+      **Fix:** scheduled sweeper (pg_cron or edge cron → `settle_expired_matches()`).
 
 ## 🟠 Tier 2 — Money/score shown wrong (visible, not exploitable)
 
 - [ ] **7. Multi-puzzle "spent"/"budget" inflated** — `get_match` / `get_match_detail`
-  compute `spent = start_budget − bankroll`, mixing accumulated multi-puzzle budget vs
-  single-puzzle bankroll. **Fix:** `sum(per-position bounty) − total_score`.
+      compute `spent = start_budget − bankroll`, mixing accumulated multi-puzzle budget vs
+      single-puzzle bankroll. **Fix:** `sum(per-position bounty) − total_score`.
 - [ ] **8. Pot chip shrinks as opponents finish** — `matchPot = wager × (opponents+1)`
-  and `_match_board.opponents` excludes `done`. Opponent finishes → "Pot $1,000"→"$500".
-  **Fix:** compute pot server-side from `sum(stake)` over all paid participants.
-  *(`+page.svelte:642-643`)*
+      and `_match_board.opponents` excludes `done`. Opponent finishes → "Pot $1,000"→"$500".
+      **Fix:** compute pot server-side from `sum(stake)` over all paid participants.
+      _(`+page.svelte:642-643`)_
 - [ ] **9. PIN confirm always "Winner takes all"** — `mbPayout='winner'` never reassigned;
-  group pots actually split 70/30 or 60/30/10. **Fix:** derive from field size / reuse
-  `potSummary`. *(`+page.svelte:2020,2171`)*
+      group pots actually split 70/30 or 60/30/10. **Fix:** derive from field size / reuse
+      `potSummary`. _(`+page.svelte:2020,2171`)_
 - [ ] **10. Compete "recent matches" shows 🏆 on no-winner/ties** — `get_group_standings`
-  picks `ORDER BY total_score DESC LIMIT 1` with no `>0`/tie guard; `GroupsPanel.svelte:379`
-  renders it unconditionally. **Fix:** `winner=null` when top is 0 or tied.
+      picks `ORDER BY total_score DESC LIMIT 1` with no `>0`/tie guard; `GroupsPanel.svelte:379`
+      renders it unconditionally. **Fix:** `winner=null` when top is 0 or tied.
 - [ ] **11. Leaderboard shows title as raw UUID + invalid color** —
-  `get_challenge_leaderboard` returns cosmetic **ids**, not values (siblings join
-  `public.cosmetics`). `LeaderboardPanel.svelte:239,328`. **Fix:** join cosmetics, return
-  `.value`.
+      `get_challenge_leaderboard` returns cosmetic **ids**, not values (siblings join
+      `public.cosmetics`). `LeaderboardPanel.svelte:239,328`. **Fix:** join cosmetics, return
+      `.value`.
 - [ ] **12. Compete win-count treats tied-top as a win** — `get_group_standings` counts
-  every co-leader as a win; `_match_settle` logs it as a tie. **Fix:** win only when
-  uniquely top.
+      every co-leader as a win; `_match_settle` logs it as a tie. **Fix:** win only when
+      uniquely top.
 
 ## 🟡 Tier 3 — Notifications & turn-flow (the async heart of Challenges)
 
 - [ ] **13. Sabotage debuffs + opponent standing not live** — only realtime channel is
-  `match_messages` (chat); the `sabotaged` notification never calls `reconcileMatchBoard`.
-  Victim sees the "you got hit" banner only after buying a letter (i.e. after overpaying).
-  **Fix:** subscribe to the victim's `challenge_participants` row / refresh board on the
-  sabotaged notification. *(`+page.svelte:1315,4476`)*
+      `match_messages` (chat); the `sabotaged` notification never calls `reconcileMatchBoard`.
+      Victim sees the "you got hit" banner only after buying a letter (i.e. after overpaying).
+      **Fix:** subscribe to the victim's `challenge_participants` row / refresh board on the
+      sabotaged notification. _(`+page.svelte:1315,4476`)_
 - [ ] **14. Turn notifications don't deep-link to the match** — `Toaster.svelte:12-15`
-  routes only `challenge_incoming` to Challenges; `challenge_your_turn` (carries
-  `match_id`) dead-ends at `/profile?tab=alerts`, and `notifNav` opens the *list*, not the
-  match. **Fix:** use `data.match_id` to open the specific match.
+      routes only `challenge_incoming` to Challenges; `challenge_your_turn` (carries
+      `match_id`) dead-ends at `/profile?tab=alerts`, and `notifNav` opens the _list_, not the
+      match. **Fix:** use `data.match_id` to open the specific match.
 - [ ] **15. Unread bell never clears from viewing inbox** — `markAllNotificationsRead`
-  (`notificationStore.js:107`) has zero callers; alerts tab doesn't mark-all-read.
-  **Fix:** call it on inbox open (or add a control).
+      (`notificationStore.js:107`) has zero callers; alerts tab doesn't mark-all-read.
+      **Fix:** call it on inbox open (or add a control).
 - [ ] **16. "Your turn" nudge only for the first finisher** — `_match_notify_opponent_played`
-  `IF v_done <> 1 THEN RETURN`. Later finishers never re-nudge stragglers.
-  **Fix:** notify still-active players on each finish (deduped) / final reminder.
+      `IF v_done <> 1 THEN RETURN`. Later finishers never re-nudge stragglers.
+      **Fix:** notify still-active players on each finish (deduped) / final reminder.
 - [ ] **17. Early settlement blocked by an idle invited member** — `_match_maybe_settle`
-  waits until nobody is `active`/`invited`. **Fix:** gate on accepted players only.
+      waits until nobody is `active`/`invited`. **Fix:** gate on accepted players only.
 - [ ] **18. Group decline silent to host** when the match survives (`decline_match` only
-  notifies on void). **Fix:** optionally notify "@x declined."
+      notifies on void). **Fix:** optionally notify "@x declined."
 - [ ] **19. Possible double-toast race** — `notificationStore.poll()` computes `fresh`
-  before writing `knownIds`; concurrent polls can both flag a row. **Fix:** in-flight guard
-  / add ids before the async gap.
+      before writing `knownIds`; concurrent polls can both flag a row. **Fix:** in-flight guard
+      / add ids before the async gap.
 
 ## 🔵 Tier 4 — Permissions & membership
 
 - [ ] **20. Roster control inconsistent** — any member can `add_group_member`, but
-  remove/rename/approve are owner-only. **Fix:** pick one model.
+      remove/rename/approve are owner-only. **Fix:** pick one model.
 - [ ] **21. Join-request approval only via transient notification** — `respond_join_request`
-  is only called from `NotificationsPanel.svelte:28`; no pending-requests list in
-  `GroupsPanel`. **Fix:** render pending requests in the owner view.
+      is only called from `NotificationsPanel.svelte:28`; no pending-requests list in
+      `GroupsPanel`. **Fix:** render pending requests in the owner view.
 - [ ] **22. Group leaderboard not membership-gated** — `get_challenge_leaderboard` group
-  scope lacks a membership check and always self-injects (`OR gr.user_id = v_uid`).
-  **Fix:** gate on membership; drop the unconditional self-include for group scope.
+      scope lacks a membership check and always self-injects (`OR gr.user_id = v_uid`).
+      **Fix:** gate on membership; drop the unconditional self-include for group scope.
 
 ## ⚪ Tier 5 — Dead code to retire
 
-- [ ] **23. Legacy `challenge_*` / `_challenge_*` engine** — 11 RPCs
-  (`create_challenge`, `accept_challenge`, `get_challenge`, `challenge_buy_letter`,
-  `challenge_submit_guess`, `challenge_reveal`, `challenge_check`, `_challenge_board`,
-  `_challenge_resolve`, `_challenge_record_score`, `_challenge_settle`) + client wrappers
-  (`statsStore.js:1255-1340`) + GameStore fns (`startChallenge`/`enterChallenge`/
-  `acceptAndPlayChallenge`/`resumeChallenge`/`confirmPurchaseChallenge`/
-  `submitGuessChallenge`). Unreachable; `challenges` table empty in prod. **Fix:** delete.
+- [x] **23. Legacy `challenge_*` / `_challenge_*` engine** — ✅ FIXED (PR #562): dropped all 12 dead RPCs (supabase-drop-legacy-challenge-engine.sql), removed the GameStore engine block + statsStore wrappers + dead +page.svelte challenge UI (isChallenge/chScore/pressure HUD/result branch + unused CSS); build+check clean, QA smoke 19/19. Was 11 RPCs
+      (`create_challenge`, `accept_challenge`, `get_challenge`, `challenge_buy_letter`,
+      `challenge_submit_guess`, `challenge_reveal`, `challenge_check`, `_challenge_board`,
+      `_challenge_resolve`, `_challenge_record_score`, `_challenge_settle`) + client wrappers
+      (`statsStore.js:1255-1340`) + GameStore fns (`startChallenge`/`enterChallenge`/
+      `acceptAndPlayChallenge`/`resumeChallenge`/`confirmPurchaseChallenge`/
+      `submitGuessChallenge`). Unreachable; `challenges` table empty in prod. **Fix:** delete.
 - [ ] **24. Dead `accept_match(uuid)` overload** — client only calls the 2-arg form; the
-  1-arg one also skips `_mark_seen_many`. **Fix:** drop it.
+      1-arg one also skips `_mark_seen_many`. **Fix:** drop it.
 - [ ] **25. Join-by-code fully dead** — `create_group` generates `join_code`,
-  `get_my_groups` returns it, but no UI renders it and `join_group(text)` has zero callers.
-  **Fix:** surface it or drop `join_code` + `join_group`.
+      `get_my_groups` returns it, but no UI renders it and `join_group(text)` has zero callers.
+      **Fix:** surface it or drop `join_code` + `join_group`.
 - [ ] **26. Blitz match paths + mismatched clock** — `mode='blitz'` branches remain in
-  `create_match` / `_match_resolve_and_advance` / `_match_tick` / `match_start` /
-  `_match_board`; `_match_board.clock_seconds` (whole-match) mismatches the client's
-  per-puzzle countdown. Fold into the Blitz excision. *(Blitz already retired via flag)*
+      `create_match` / `_match_resolve_and_advance` / `_match_tick` / `match_start` /
+      `_match_board`; `_match_board.clock_seconds` (whole-match) mismatches the client's
+      per-puzzle countdown. Fold into the Blitz excision. _(Blitz already retired via flag)_
 
 ## ⚪ Tier 6 — Polish
 
 - [ ] **27. Group chat has no unread indicator** (match chat has `matchChatUnread`).
-  *(`GroupsPanel.svelte:96-127`)*
+      _(`GroupsPanel.svelte:96-127`)_
 - [ ] **28. ActivityPanel uses emoji icons** instead of the line-icon system.
-  *(`ActivityPanel.svelte:16-22`)*
+      _(`ActivityPanel.svelte:16-22`)_
 - [ ] **29. Compete tab caches standings** — doesn't refresh after a settle while open.
-  *(`GroupsPanel.svelte:63`)*
+      _(`GroupsPanel.svelte:63`)_
 
 ---
 
 ### Recommended sequencing
+
 Tier 1 (verify + fix money/correctness) → Tier 5 (dead-code purge simplifies everything
 after) → Tier 3 (notifications = async feel) → Tier 2 → Tier 4 → Tier 6.
