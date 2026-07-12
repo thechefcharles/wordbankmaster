@@ -1875,16 +1875,19 @@
 		if (cgBusy) return;
 		showDepositConfirm = false;
 		cgBusy = true;
-		const preBank = Math.round(menuBank ?? netWorth ?? 0);
+		const preBank = Math.round(menuBank ?? netWorth ?? 0); // balance during the run (after buy-in)
 		const res = await cashOutClimb();
 		cgBusy = false;
 		if (res?.ok) {
-			cashoutResult = res;
 			await refreshBank(); // settle the account balance → exact count-up target
-			// 💸 Same "deposit lands" beat as the Daily: coins into the account + count up,
-			// then the cash-out slip. netRise = the real account rise (exact, skim-safe).
-			const netRise = Math.max(0, Math.round(menuBank ?? netWorth ?? 0) - preBank);
-			startDepositAnim(netRise);
+			const endBal = Math.round(menuBank ?? netWorth ?? 0);
+			const buyIn = Math.round(res.buy_in ?? 0);
+			// Stash the balance from BEFORE the run started (pre-buy-in) for the recap slip.
+			cashoutResult = { ...res, run_start_bal: preBank + buyIn };
+			// Dismiss the per-puzzle slip so the deposit beat plays clean (it was still showing
+			// underneath), then the "deposit lands" beat → finishDepositAnim shows the recap.
+			showResultModal = false;
+			startDepositAnim(Math.max(0, endBal - preBank)); // exact account rise (skim-safe)
 		}
 	}
 	// 🏳️ Give up: when you're stuck (can't afford letters, don't know it), forfeit
@@ -4596,7 +4599,7 @@
 							>{f.text}</span
 						>{/each}
 					{#if carryCue > 0}
-						<span class="carry-float">+${carryCue.toLocaleString()} run pile</span>
+						<span class="carry-float">+${carryCue.toLocaleString()}</span>
 					{/if}
 				</div>
 				{#if isMatch && matchLive}
@@ -4867,9 +4870,12 @@
 							>
 						</div>
 					{:else if isClimb && cashoutResult}
-						<!-- 🧾 Cash-out receipt -->
+						<!-- 🧾 Cash-out slip: a full-run recap — starting balance → run → ending balance. -->
 						{@const co = cashoutResult}
 						{@const prof = co.profit ?? 0}
+						{@const skim = Math.round(co.loan_repaid ?? 0)}
+						{@const endBal = Math.round(menuBank ?? 0)}
+						{@const startBal = Math.round(co.run_start_bal ?? endBal - prof + skim)}
 						<div class="receipt">
 							<div class="rcpt-brand">
 								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
@@ -4885,18 +4891,36 @@
 							<div class="rcpt-info">
 								<div class="ri-row"><span>{rcptDate}</span><span>{rcptTime}</span></div>
 								<div class="ri-row">
-									<span>{(co.tier ?? '').charAt(0).toUpperCase() + (co.tier ?? '').slice(1)}</span
+									<span
+										>{(co.tier ?? '').charAt(0).toUpperCase() + (co.tier ?? '').slice(1)} run</span
 									><span>{co.solves ?? 0} solve{co.solves === 1 ? '' : 's'}</span>
 								</div>
 							</div>
 							<div class="rcpt-rule"></div>
+							<div class="rcpt-cap">Your run</div>
 							<div class="rcpt-line">
-								<span>Payout banked</span><span>${(co.banked ?? 0).toLocaleString()}</span>
+								<span>Starting balance</span><span>${startBal.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
 								<span>Buy-in</span><span class="neg">−${(co.buy_in ?? 0).toLocaleString()}</span>
 							</div>
+							<div class="rcpt-line">
+								<span>Payout banked</span><span class="pos"
+									>+${(co.banked ?? 0).toLocaleString()}</span
+								>
+							</div>
+							{#if skim > 0}
+								<div class="rcpt-line">
+									<span>Loan repayment <small>(50%)</small></span><span class="neg"
+										>−${skim.toLocaleString()}</span
+									>
+								</div>
+							{/if}
 							<div class="rcpt-rule double"></div>
+							<div class="rcpt-line balance">
+								<span>AVAILABLE BALANCE</span><span>${endBal.toLocaleString()}</span>
+							</div>
+							<div class="rcpt-rule"></div>
 							<div class="rcpt-line total" class:profit={prof >= 0}>
 								<span>NET {prof >= 0 ? 'PROFIT' : 'LOSS'}</span><span
 									>{prof >= 0 ? '+' : '−'}${Math.abs(prof).toLocaleString()}</span
@@ -4909,22 +4933,8 @@
 							</div>
 							{#if co.phrase}
 								<div class="rcpt-rule"></div>
-								<div class="rcpt-line answer"><span>Answer</span><span>{co.phrase}</span></div>
+								<div class="rcpt-line answer"><span>Last answer</span><span>{co.phrase}</span></div>
 							{/if}
-							<div class="rcpt-rule"></div>
-							{#if (co.loan_repaid ?? 0) > 0}
-								<!-- 🦈 50% of the deposit auto-skims to your loan — show why the balance rose less. -->
-								<div class="rcpt-line">
-									<span>Loan repayment <small>(50%)</small></span><span class="neg"
-										>−${co.loan_repaid.toLocaleString()}</span
-									>
-								</div>
-							{/if}
-							<div class="rcpt-line balance">
-								<span>AVAILABLE BALANCE</span><span
-									>${Math.round(menuBank ?? 0).toLocaleString()}</span
-								>
-							</div>
 							<div class="rcpt-thanks">Thank you for banking with WordBank</div>
 						</div>
 						<div class="result-actions">
