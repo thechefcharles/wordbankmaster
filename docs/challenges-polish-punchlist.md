@@ -89,12 +89,12 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
 
 ## 🔵 Tier 4 — Permissions & membership
 
-- [ ] **20. Roster control inconsistent** — any member can `add_group_member`, but
+- [ ] **20. Roster control inconsistent** — ⏸️ DEFERRED (product call): "members invite friends, owner moderates + approves requests" is a coherent, common model (Discord-style), not a clear bug. Was: — any member can `add_group_member`, but
       remove/rename/approve are owner-only. **Fix:** pick one model.
-- [ ] **21. Join-request approval only via transient notification** — `respond_join_request`
+- [x] **21. Join-request approval only via transient notification** — ✅ FIXED (PR #572, supabase-group-pending-requests.sql): get_group returns pending requests (owner-only); GroupsPanel renders a "Requests to join" section with Approve/Deny. Was: — `respond_join_request`
       is only called from `NotificationsPanel.svelte:28`; no pending-requests list in
       `GroupsPanel`. **Fix:** render pending requests in the owner view.
-- [ ] **22. Group leaderboard not membership-gated** — `get_challenge_leaderboard` group
+- [x] **22. Group leaderboard not membership-gated** — ✅ FIXED (PR #572, supabase-challenge-lb-gating-fix.sql): group scope now members-only + self-include scoped to friends; rollback-verified non-member gets []. Was: — `get_challenge_leaderboard` group
       scope lacks a membership check and always self-injects (`OR gr.user_id = v_uid`).
       **Fix:** gate on membership; drop the unconditional self-include for group scope.
 
