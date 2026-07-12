@@ -37,14 +37,26 @@
 		sabotage_vowel_block: { icon: 'block', desc: "An opponent's vowels cost 3×" },
 		sabotage_lock: { icon: 'lock', desc: 'Wipe a letter an opponent revealed' }
 	};
+	// ticon = Icon.svelte name for the group heading (rendered via <Icon>).
 	const GROUPS = [
 		{
 			key: 'powerups',
-			title: '⚡ Power-ups',
+			ticon: 'bolt',
+			title: 'Power-ups',
 			note: 'Use in the Daily, Cash Game, or a challenge.'
 		},
-		{ key: 'sabotage', title: '😈 Sabotage', note: 'Hit an opponent in a challenge.' },
-		{ key: 'extras', title: '✨ Extras', note: 'Titles & name colors for your profile.' }
+		{
+			key: 'sabotage',
+			ticon: 'sabotage',
+			title: 'Sabotage',
+			note: 'Hit an opponent in a challenge.'
+		},
+		{
+			key: 'extras',
+			ticon: 'star',
+			title: 'Extras',
+			note: 'Titles & name colors for your profile.'
+		}
 	];
 
 	onMount(async () => {
@@ -93,14 +105,16 @@
 		{#each GROUPS as g}
 			{@const list = itemsFor(g.key)}
 			{#if list.length}
-				<div class="inv-h">{g.title}</div>
+				<div class="inv-h"><Icon name={g.ticon} size={16} /> {g.title}</div>
 				<p class="inv-note">{g.note}</p>
 				<div class="inv-grid">
 					{#each list as it}
 						<div class="inv-card">
 							{#if it.kind === 'title' || it.kind === 'color'}
-								<span class="inv-ic">{it.kind === 'color' ? '🎨' : '👑'}</span>
-								{#if it.equipped}<span class="inv-badge">✓</span>{/if}
+								<span class="inv-ic"
+									><Icon name={it.kind === 'color' ? 'palette' : 'crown'} size={20} /></span
+								>
+								{#if it.equipped}<span class="inv-badge"><Icon name="check" size={12} /></span>{/if}
 								<span
 									class="inv-name"
 									style={it.kind === 'color' && it.value ? `color:${it.value}` : ''}

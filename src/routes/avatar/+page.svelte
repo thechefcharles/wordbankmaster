@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import { CATEGORIES, DEFAULT_AVATAR } from '$lib/avatar.js';
 	import { getMyAvatar, setAvatar, buyCosmetic, getBank } from '$lib/stores/statsStore.js';
 	import { fx } from '$lib/sound.js';
@@ -181,7 +182,7 @@
 		{#if loan > 0}
 			<!-- 🦈 Store's locked while you owe — no new looks until the loan is paid off. -->
 			<a class="av-loan-banner" href="/loans"
-				>🔒 You owe {fmt(loan)} — pay off your loan to buy new looks →</a
+				><Icon name="lock" size={14} /> You owe {fmt(loan)} — pay off your loan to buy new looks →</a
 			>
 		{/if}
 		<div class="av-hero"><Avatar {config} fx size={150} /></div>
@@ -212,7 +213,7 @@
 					</button>
 					{#if locked(o)}
 						<button class="opt-buy" class:loan-locked={loan > 0} on:click={() => buyNow(cat.key, o)}
-							>{loan > 0 ? '🔒 Loan' : `🔒 Buy ${fmt(o.price)}`}</button
+							><Icon name="lock" size={12} /> {loan > 0 ? 'Loan' : `Buy ${fmt(o.price)}`}</button
 						>
 					{/if}
 				</div>

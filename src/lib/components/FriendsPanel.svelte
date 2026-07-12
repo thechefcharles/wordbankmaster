@@ -3,6 +3,7 @@
 	// route and the Community ▸ People ▸ Friends tab.
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import Icon from '$lib/components/Icon.svelte';
 	import {
 		searchUsers,
 		addFriend,
@@ -171,7 +172,9 @@
 							{#if u.name && u.name !== u.username}<span class="rname">{u.name}</span>{/if}
 							<span class="uname">@{u.username}</span>
 						</span>
-						{#if u.status === 'friends'}<span class="tag friend">✓ Friend</span>
+						{#if u.status === 'friends'}<span class="tag friend"
+								><Icon name="check" size={12} /> Friend</span
+							>
 						{:else if u.status === 'pending_out'}<span class="tag pending">Requested</span>
 						{:else if u.status === 'pending_in'}<button
 								class="act accept"
@@ -251,13 +254,13 @@
 						{#if onChallenge}<button
 								class="act challenge"
 								onclick={() => onChallenge(u.username)}
-								title="Challenge">⚔️</button
+								title="Challenge"><Icon name="swords" size={16} /></button
 							>{/if}
 						<button
 							class="act remove"
 							disabled={busy === u.id}
 							onclick={() => unfriend(u)}
-							title="Remove friend">✕</button
+							title="Remove friend"><Icon name="close" size={14} /></button
 						>
 					</div>
 				</div>

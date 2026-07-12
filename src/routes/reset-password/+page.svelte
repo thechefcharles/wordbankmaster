@@ -20,7 +20,7 @@
 		// Supabase passes errors (expired/used link) back as query params.
 		const errDesc = url.searchParams.get('error_description');
 		if (errDesc) {
-			message = `⛔ ${decodeURIComponent(errDesc.replace(/\+/g, ' '))}`;
+			message = `${decodeURIComponent(errDesc.replace(/\+/g, ' '))}`;
 			return;
 		}
 
@@ -49,7 +49,7 @@
 		});
 		const timer = setTimeout(() => {
 			if (!settled)
-				message = '⛔ This reset link is invalid or has expired. Please request a new one.';
+				message = 'This reset link is invalid or has expired. Please request a new one.';
 		}, 3000);
 
 		return () => {
@@ -60,13 +60,13 @@
 
 	async function updatePassword() {
 		if (!password || !confirmPassword) {
-			message = '⚠️ Please fill in both fields.';
+			message = 'Please fill in both fields.';
 			success = false;
 			return;
 		}
 
 		if (password !== confirmPassword) {
-			message = '❌ Passwords do not match.';
+			message = 'Passwords do not match.';
 			success = false;
 			return;
 		}
@@ -79,7 +79,7 @@
 				type: /** @type {any} */ (otpType)
 			});
 			if (verifyErr) {
-				message = `⛔ ${verifyErr.message}`;
+				message = `${verifyErr.message}`;
 				success = false;
 				return;
 			}
@@ -90,11 +90,11 @@
 		const { error } = await supabase.auth.updateUser({ password });
 
 		if (error) {
-			message = `❌ ${error.message}`;
+			message = `${error.message}`;
 			success = false;
 			console.error('❌ Password update error:', error.message);
 		} else {
-			message = '✅ Password updated! Redirecting...';
+			message = 'Password updated! Redirecting...';
 			success = true;
 			console.log('✅ Password update successful.');
 			setTimeout(() => goto('/'), 2000);
