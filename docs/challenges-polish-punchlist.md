@@ -79,7 +79,7 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
 - [x] **16. "Your turn" nudge only for the first finisher** — ✅ FIXED (PR #565, supabase-turnflow-notifs-fix.sql): removed the v_done<>1 gate so every finish nudges still-waiting players, deduped to one unread per match. Was: — `_match_notify_opponent_played`
       `IF v_done <> 1 THEN RETURN`. Later finishers never re-nudge stragglers.
       **Fix:** notify still-active players on each finish (deduped) / final reminder.
-- [ ] **17. Early settlement blocked by an idle invited member** — ⏸️ DEFERRED (product call): naively ignoring `invited` would let a 1:1 settle before the opponent ever accepts. #6 (scheduled settlement) already prevents indefinite escrow, so this is an early-settle-vs-late-accepters tradeoff, not a clean bug. Was: — `_match_maybe_settle`
+- [x] **17. Early settlement blocked by an idle invited member** — ✅ FIXED (PR #574, supabase-early-settle-fix.sql): settle once no player is `active` AND ≥2 are `done` — passes over never-accepted invitees, protects 1:1 (needs ≥2 done); rollback-verified all 3 cases. Prior note (product call): naively ignoring `invited` would let a 1:1 settle before the opponent ever accepts. #6 (scheduled settlement) already prevents indefinite escrow, so this is an early-settle-vs-late-accepters tradeoff, not a clean bug. Was: — `_match_maybe_settle`
       waits until nobody is `active`/`invited`. **Fix:** gate on accepted players only.
 - [x] **18. Group decline silent to host** — ✅ FIXED (PR #565): host now notified "@x declined — still on" when a decline leaves the match viable. Was: when the match survives (`decline_match` only
       notifies on void). **Fix:** optionally notify "@x declined."
