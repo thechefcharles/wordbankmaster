@@ -494,27 +494,15 @@
 	}
 	$: isClimb = $gameStore.gameMode === 'climb';
 	$: climb = $gameStore.climbInfo; // { wallet, bounty, budget_left, solve_reward, spent, heat, must_guess, cheapest, last_gain, state, run_solves, wiped, pups_locked, equipped }
-	// ⏳ "You're out of money!" banner — pops for ~5s the first time you can't afford a
-	// letter, then auto-hides (give-up stays reachable via the top-right ↪).
-	let mgBannerShown = false;
-	let mgBannerVisible = false;
-	/** @type {ReturnType<typeof setTimeout>|undefined} */
-	let mgTimer;
-	function syncMustGuessBanner(/** @type {boolean} */ mg) {
-		if (mg) {
-			if (!mgBannerShown) {
-				mgBannerShown = true;
-				mgBannerVisible = true;
-				clearTimeout(mgTimer);
-				mgTimer = setTimeout(() => (mgBannerVisible = false), 5000);
-			}
-		} else {
-			mgBannerShown = false;
-			mgBannerVisible = false;
-			clearTimeout(mgTimer);
-		}
-	}
-	$: syncMustGuessBanner(!!climb?.must_guess);
+	$: overdriveArmed = isClimb && (climb?.equipped ?? []).includes('overdrive');
+	// 🚨 Last-stand: out of money, this guess decides the run. Persistent while stuck
+	// (drives the red screen treatment + keyboard lock). Overdrive lifts the lock.
+	$: dangerMode =
+		isClimb &&
+		!!climb?.must_guess &&
+		gameActive &&
+		$gameStore.gameState !== 'won' &&
+		$gameStore.gameState !== 'lost';
 
 	// 🧾 Bank-receipt meta — a stable masked account number derived from the user id
 	// (deterministic, no DB), the account holder, and a timestamp captured when a
@@ -3219,7 +3207,7 @@
 	</div>
 {/if}
 
-<main>
+<main class:danger-active={dangerMode && !overdriveArmed}>
 	<!-- 👤 First-run: pick a username (required to play socially) -->
 	{#if loggedIn && hasInitialized && needsUsername}
 		<div
@@ -4280,6 +4268,11 @@
 	{:else}
 		<!-- ✅ GAME UI (Visible only when logged in) -->
 
+		<!-- 🚨 Last-stand red vignette — frames the whole screen when you're out of money. -->
+		{#if dangerMode}
+			<div class="danger-vignette" aria-hidden="true"></div>
+		{/if}
+
 		<!-- 🧠 Game Logo -->
 		<img class="game-logo" src="/wordmark.png" alt="WordBank" />
 
@@ -4389,22 +4382,17 @@
 		<!-- 🎰 Cash Game (Climb) HUD — account strip up top; Interest badge + Payout in the
          hero. Must-guess banner shows when this puzzle's budget is spent. -->
 		{#if isClimb && climb}
-			{#if (climb?.equipped ?? []).includes('overdrive') && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
-				<!-- 🏧 Overdrive armed → guide the player to spend the free letter. -->
-				<div class="bank-notif overdrive-armed">
-					<div class="bn-head">
-						<span class="bn-app">🏧 Overdrive</span><span class="bn-time">now</span>
-					</div>
-					<div class="bn-title">Overdrive armed</div>
-					<div class="bn-body">Pick any letter — it's free.</div>
+			{#if overdriveArmed && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
+				<!-- 🏧 Overdrive armed → guide the player to spend the free letter (danger lifts). -->
+				<div class="danger-cue armed" role="status">
+					<span class="dc-title">🏧 OVERDRIVE ARMED</span>
+					<span class="dc-sub">Pick any letter — it's free</span>
 				</div>
-			{:else if mgBannerVisible && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
-				<div class="bank-notif">
-					<div class="bn-head">
-						<span class="bn-app">🏦 WordBank</span><span class="bn-time">now</span>
-					</div>
-					<div class="bn-title">You're out of money</div>
-					<div class="bn-body">One guess left — guess wrong and you lose your run.</div>
+			{:else if dangerMode}
+				<!-- 🚨 Last stand: out of money, this guess decides the run. -->
+				<div class="danger-cue" role="alert">
+					<span class="dc-title">💸 OUT OF MONEY</span>
+					<span class="dc-sub">Last guess — solve now, or lose your run</span>
 					<button class="bn-forfeit" on:click={askForfeit}>Don't know it? Give up →</button>
 				</div>
 			{/if}
@@ -5753,55 +5741,87 @@
 	}
 
 	/* 🔔 Bank-app style push notification (out-of-Cash-Advance alert) */
-	.bank-notif {
+	/* 🚨 Last-stand "out of money": bold red danger headline (Overdrive turns it green). */
+	.danger-cue {
 		display: flex;
 		flex-direction: column;
+		align-items: center;
 		gap: 3px;
 		width: 100%;
 		max-width: 360px;
 		margin: 0 auto 12px;
-		padding: 11px 15px 13px;
+		padding: 12px 16px 13px;
+		text-align: center;
 		border-radius: 16px;
-		border: 1px solid rgba(248, 113, 113, 0.32);
-		background: linear-gradient(180deg, rgba(32, 22, 24, 0.92), rgba(24, 17, 19, 0.92));
-		box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
-		text-align: left;
+		border: 1px solid rgba(248, 113, 113, 0.5);
+		background: linear-gradient(180deg, rgba(48, 14, 18, 0.95), rgba(30, 10, 12, 0.95));
+		animation: dangerPulse 1.1s ease-in-out infinite;
 	}
-	/* 🏧 Overdrive armed — green accent (a helpful lifeline, not the red warning). */
-	.bank-notif.overdrive-armed {
-		border-color: rgba(74, 222, 128, 0.4);
-		background: linear-gradient(180deg, rgba(20, 34, 26, 0.94), rgba(15, 26, 20, 0.94));
-	}
-	.bank-notif.overdrive-armed .bn-title {
-		color: #4ade80;
-	}
-	.bn-head {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		font-size: 0.62rem;
+	.dc-title {
+		font-family: var(--font-display);
 		font-weight: 800;
+		font-size: 1.15rem;
 		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: #9a8f8f;
+		color: #fca5a5;
+		text-shadow: 0 0 14px rgba(248, 113, 113, 0.55);
 	}
-	.bn-time {
-		margin-left: auto;
+	.dc-sub {
+		font-size: 0.82rem;
 		font-weight: 600;
-		letter-spacing: 0;
-		text-transform: none;
-		opacity: 0.75;
-	}
-	.bn-title {
-		font-weight: 800;
-		font-size: 0.9rem;
-		color: #fda4af;
+		color: #f0cccc;
 		letter-spacing: 0.01em;
 	}
-	.bn-body {
-		font-size: 0.78rem;
-		line-height: 1.35;
-		color: #d8cccc;
+	@keyframes dangerPulse {
+		0%,
+		100% {
+			box-shadow:
+				0 0 0 1px rgba(248, 113, 113, 0.15),
+				0 10px 30px rgba(190, 30, 40, 0.3);
+		}
+		50% {
+			box-shadow:
+				0 0 0 1px rgba(248, 113, 113, 0.42),
+				0 12px 42px rgba(220, 40, 50, 0.55);
+		}
+	}
+	.danger-cue.armed {
+		border-color: rgba(74, 222, 128, 0.5);
+		background: linear-gradient(180deg, rgba(16, 40, 26, 0.95), rgba(12, 28, 18, 0.95));
+		animation: none;
+		box-shadow: 0 10px 30px rgba(34, 160, 90, 0.28);
+	}
+	.danger-cue.armed .dc-title {
+		color: #4ade80;
+		text-shadow: 0 0 14px rgba(74, 222, 128, 0.55);
+	}
+	/* full-screen red vignette framing the moment */
+	.danger-vignette {
+		position: fixed;
+		inset: 0;
+		z-index: 400;
+		pointer-events: none;
+		animation: vignettePulse 1.5s ease-in-out infinite;
+	}
+	@keyframes vignettePulse {
+		0%,
+		100% {
+			box-shadow:
+				inset 0 0 80px 10px rgba(190, 30, 40, 0.26),
+				inset 0 0 22px 2px rgba(248, 113, 113, 0.2);
+		}
+		50% {
+			box-shadow:
+				inset 0 0 120px 18px rgba(210, 35, 45, 0.5),
+				inset 0 0 30px 3px rgba(248, 113, 113, 0.36);
+		}
+	}
+	/* keyboard lock — you can't buy letters when you're broke, so darken + disable it */
+	main.danger-active :global(.keyboard-container) {
+		filter: grayscale(0.85) brightness(0.32);
+		pointer-events: none;
+		transition:
+			filter 0.35s ease,
+			opacity 0.35s ease;
 	}
 	/* 🏳️ give-up link inside the must-guess banner */
 	.bn-forfeit {
