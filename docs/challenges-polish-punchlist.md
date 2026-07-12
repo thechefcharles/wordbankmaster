@@ -41,7 +41,7 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
 
 ## 🟠 Tier 2 — Money/score shown wrong (visible, not exploitable)
 
-- [ ] **7. Multi-puzzle "spent"/"budget" inflated** — `get_match` / `get_match_detail`
+- [x] **7. Multi-puzzle "spent"/"budget" inflated** — ✅ FIXED (PR #571, supabase-match-spent-fix.sql): spent now = start_budget − total_score − (bankroll unless done) in get_match + get_match_detail; rollback-verified multi-puzzle done spent 1300→700, single-puzzle unchanged. Was: — `get_match` / `get_match_detail`
       compute `spent = start_budget − bankroll`, mixing accumulated multi-puzzle budget vs
       single-puzzle bankroll. **Fix:** `sum(per-position bounty) − total_score`.
 - [x] **8. Pot chip shrinks as opponents finish** — ✅ FIXED (PR #570, supabase-match-pot-fix.sql): _match_board now returns a stable `pot` (wager × non-declined players); client uses it; rollback-verified pot stays $1000 with an opponent done. Was: — `matchPot = wager × (opponents+1)`
