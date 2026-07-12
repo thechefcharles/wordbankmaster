@@ -48,6 +48,7 @@
 	import { CATEGORIES, categoryLabel } from '$lib/categories.js';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import ModeIcon from '$lib/components/ModeIcon.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import {
 		user,
 		userProfile,
@@ -2551,7 +2552,7 @@
 		on:click={() => {
 			fx('tap');
 			showAudio = true;
-		}}>{$soundEnabled || $musicEnabled ? '🔊' : '🔇'}</button
+		}}><Icon name={$soundEnabled || $musicEnabled ? 'volume' : 'mute'} size={18} /></button
 	>
 {/if}
 <!-- 🏳️ Give up (top-right) — Daily / Challenges / Cash Game (forfeit) -->
@@ -2560,7 +2561,7 @@
 		class="giveup-btn"
 		title="Give up"
 		aria-label="Give up"
-		on:click={isClimb ? askForfeit : confirmFold}>↪</button
+		on:click={isClimb ? askForfeit : confirmFold}><Icon name="give-up" size={18} /></button
 	>
 {/if}
 <!-- Skip retired in Cash Game V4 — Cash Out is the graceful bail. -->
@@ -3185,7 +3186,7 @@
 						if ($soundEnabled) fx('select');
 					}}
 				>
-					<span>{$soundEnabled ? '🔊' : '🔇'} Sound</span><span
+					<span><Icon name={$soundEnabled ? 'volume' : 'mute'} size={16} /> Sound</span><span
 						class="ap-state"
 						class:on={$soundEnabled}>{$soundEnabled ? 'On' : 'Off'}</span
 					>
@@ -3197,10 +3198,8 @@
 						if ($hapticsEnabled) fx('tap');
 					}}
 				>
-					<span>{$hapticsEnabled ? '📳' : '📴'} Haptics</span><span
-						class="ap-state"
-						class:on={$hapticsEnabled}>{$hapticsEnabled ? 'On' : 'Off'}</span
-					>
+					<span><Icon name={$hapticsEnabled ? 'vibrate' : 'vibrate-off'} size={16} /> Haptics</span
+					><span class="ap-state" class:on={$hapticsEnabled}>{$hapticsEnabled ? 'On' : 'Off'}</span>
 				</button>
 				<button class="ap-toggle" on:click={toggleMusic}>
 					<span>Music</span><span class="ap-state" class:on={$musicEnabled}
@@ -3210,7 +3209,7 @@
 			</div>
 			{#if $musicEnabled}
 				<div class="ma-music-ctl">
-					<span class="mmc-ic">🔈</span>
+					<span class="mmc-ic"><Icon name="volume-low" size={16} /></span>
 					<input
 						class="mmc-slider"
 						type="range"
@@ -4121,8 +4120,9 @@
 								if ($soundEnabled) fx('select');
 							}}
 						>
-							<span>🔊 Sound</span><span class="set-state" class:on={$soundEnabled}
-								>{$soundEnabled ? 'On' : 'Off'}</span
+							<span><Icon name={$soundEnabled ? 'volume' : 'mute'} size={16} /> Sound</span><span
+								class="set-state"
+								class:on={$soundEnabled}>{$soundEnabled ? 'On' : 'Off'}</span
 							>
 						</button>
 						<button
@@ -4132,7 +4132,9 @@
 								if ($hapticsEnabled) fx('tap');
 							}}
 						>
-							<span>📳 Haptics</span><span class="set-state" class:on={$hapticsEnabled}
+							<span
+								><Icon name={$hapticsEnabled ? 'vibrate' : 'vibrate-off'} size={16} /> Haptics</span
+							><span class="set-state" class:on={$hapticsEnabled}
 								>{$hapticsEnabled ? 'On' : 'Off'}</span
 							>
 						</button>
@@ -4143,7 +4145,7 @@
 						</button>
 						{#if $musicEnabled}
 							<div class="set-row sub">
-								<span class="mmc-ic">🔈</span>
+								<span class="mmc-ic"><Icon name="volume-low" size={16} /></span>
 								<input
 									class="mmc-slider"
 									type="range"
