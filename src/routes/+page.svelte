@@ -28,6 +28,7 @@
 		acceptAndPlayMatch,
 		resumeMatch,
 		matchTimeoutCheck,
+		refreshMatchMeta,
 		matchPowerup,
 		matchSabotageOpponent,
 		dailyFold,
@@ -1317,6 +1318,18 @@
 				'postgres_changes',
 				{ event: 'INSERT', schema: 'public', table: 'match_messages', filter: `match_id=eq.${id}` },
 				loadMatchMsgs
+			)
+			// Live board meta: a sabotage debuff (my row) or an opponent's score (their row)
+			// updates the banner + standing instantly — meta only, so it never disrupts typing.
+			.on(
+				'postgres_changes',
+				{
+					event: 'UPDATE',
+					schema: 'public',
+					table: 'challenge_participants',
+					filter: `match_id=eq.${id}`
+				},
+				() => refreshMatchMeta()
 			)
 			.subscribe();
 		matchChatPoll = setInterval(loadMatchMsgs, 20000);
