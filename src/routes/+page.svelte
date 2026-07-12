@@ -3350,7 +3350,7 @@
 				</div>
 				<div class="main-menu-buttons stagger">
 					<button
-						class="menu-card"
+						class="menu-card has-streaks"
 						class:done={dailyDone}
 						class:resumable={dailyInProgress}
 						class:fresh={!dailyDone && !dailyInProgress}
@@ -3361,29 +3361,31 @@
 							><ModeIcon mode="daily" size={14} /> {dailyStatus?.current_streak ?? 0}</span
 						>
 						<span class="mc-title">{dailyInProgress ? 'Resume Daily' : 'Daily'}</span>
-						<span class="mc-streak right" title="Win streak — solves in a row"
-							><svg class="mc-fire" viewBox="0 0 24 24" aria-hidden="true"
-								><path
-									d="M12 3s5 3.8 5 9a5 5 0 0 1-10 0c0-2 .9-3.5 2.4-4.6C10.2 8.7 12 7 12 3Z"
-								/></svg
-							>
-							{dailyStatus?.win_streak ?? 0}</span
-						>
-						{#if dailyDone}
-							{#if dailyStatus?.last_daily_won}
-								<span class="daily-chip won"
-									>✅ +${(dailyStatus?.today_score ?? 0).toLocaleString()}</span
-								>
-							{:else}
-								<span class="daily-chip lost"
-									>❌{dailyStatus?.today_score
-										? ' −$' + Math.abs(dailyStatus.today_score).toLocaleString()
-										: ''}</span
-								>
+						<span class="mc-right">
+							{#if dailyDone}
+								{#if dailyStatus?.last_daily_won}
+									<span class="daily-chip won"
+										>✅ +${(dailyStatus?.today_score ?? 0).toLocaleString()}</span
+									>
+								{:else}
+									<span class="daily-chip lost"
+										>❌{dailyStatus?.today_score
+											? ' −$' + Math.abs(dailyStatus.today_score).toLocaleString()
+											: ''}</span
+									>
+								{/if}
+							{:else if dailyInProgress}
+								<span class="daily-chip prog">▶ Resume</span>
 							{/if}
-						{:else if dailyInProgress}
-							<span class="daily-chip prog">▶ Resume</span>
-						{/if}
+							<span class="mc-streak win" title="Win streak — solves in a row"
+								><svg class="mc-fire" viewBox="0 0 24 24" aria-hidden="true"
+									><path
+										d="M12 3s5 3.8 5 9a5 5 0 0 1-10 0c0-2 .9-3.5 2.4-4.6C10.2 8.7 12 7 12 3Z"
+									/></svg
+								>
+								{dailyStatus?.win_streak ?? 0}</span
+							>
+						</span>
 					</button>
 					<button
 						class="menu-card"
@@ -6552,14 +6554,13 @@
 	}
 	/* 📅 / 🏆 streak chips on the Daily card */
 	.mc-streak {
-		position: absolute;
-		top: 50%;
-		transform: translateY(-50%);
+		position: relative;
 		z-index: 1;
+		flex-shrink: 0;
 		display: inline-flex;
 		align-items: center;
 		gap: 3px;
-		font-family: 'Orbitron', var(--font-display);
+		font-family: var(--font-display);
 		font-weight: 800;
 		font-size: 0.82rem;
 		color: #463413;
@@ -6573,11 +6574,22 @@
 		stroke-width: 1.7;
 		stroke-linejoin: round;
 	}
-	.mc-streak.left {
-		left: 13px;
+	/* Daily card: three zones (play-streak · title · status+win-streak) laid out with
+	   space-between + gap, so nothing can overlap regardless of label or chip width. */
+	.menu-card.has-streaks {
+		justify-content: space-between;
 	}
-	.mc-streak.right {
-		right: 13px;
+	.menu-card.has-streaks .mc-title {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+	.mc-right {
+		position: relative;
+		z-index: 1;
+		flex-shrink: 0;
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
 	}
 	.menu-card.done .mc-streak,
 	.menu-card.resumable .mc-streak {
