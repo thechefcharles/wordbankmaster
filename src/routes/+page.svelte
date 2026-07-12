@@ -2723,9 +2723,7 @@
 			{:else if dailyInfo === 'twist'}
 				<div class="info-big">{dailyMod?.emoji ?? '🎁'}</div>
 				<h3 class="info-title">{dailyMod?.name ?? "Today's Twist"}</h3>
-				<p class="info-sub">Today's special — applied automatically. ✓</p>
 				<p class="info-twist-do">{dailyMod?.blurb ?? ''}</p>
-				<p class="info-note">A different special each weekday — same for everyone.</p>
 			{:else if dailyInfo === 'streak'}
 				<div class="info-big">🏆 {dlWinStreak}</div>
 				<h3 class="info-title">Deposit Streak</h3>
