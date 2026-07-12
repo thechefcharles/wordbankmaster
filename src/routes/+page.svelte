@@ -645,8 +645,9 @@
 	/** @type {{rank:number,total:number,score:number}|null} */
 	let resultRank = null;
 	// While the opening reveal is landing boxes, hold the bounty at $0 so it can
-	// dramatically count up at the climax (introDone).
-	$: tweenNet.set(introBuilding ? 0 : soloHero ? Math.round(soloHero.net) : 0);
+	// dramatically count up at the climax (introDone). Cash Game stages the count-up manually
+	// (puzzle value → + carried run pile), so pause this auto-driver while climbStaging is on.
+	$: if (!climbStaging) tweenNet.set(introBuilding ? 0 : soloHero ? Math.round(soloHero.net) : 0);
 	// The Pot you're playing for = every player's ante. Reduced-stake joins can make
 	// the settled pot a bit lower; this is the headline "playing for" figure.
 	$: matchPot = isMatch
@@ -660,6 +661,10 @@
 	let introBuilding = false;
 	let _introFired = 0;
 	let introCountPop = false;
+	// 🎰 Cash Game two-stage reveal: after the boxes land, the hero counts 0 → this puzzle's
+	// value, then the carried run pile flies on (carryCue) and it ticks up to the new total.
+	let climbStaging = false;
+	let carryCue = 0;
 	// Play the armed opening reveal — but only when the board is truly on screen
 	// (no objective card up, not on the menu). Called from dismissObjective and,
 	// when the card is suppressed, right after the board renders.
@@ -685,6 +690,25 @@
 		setTimeout(() => {
 			introCountPop = false;
 		}, 1200);
+		// 🎰 Cash Game with a carried run pile → stage it: count up to THIS puzzle's value first,
+		// then fly the carried pile on and tick up to the new total.
+		if (isClimb && climb && (climb.bankroll ?? 0) > 0) {
+			const total = Math.round(soloHero?.net ?? 0);
+			const carried = Math.round(climb.bankroll ?? 0);
+			const bounty = Math.max(0, total - carried); // this puzzle's value (net − carried)
+			climbStaging = true;
+			tweenNet.set(0, { duration: 0 });
+			tweenNet.set(bounty, { duration: 650 }); // 0 → puzzle value
+			setTimeout(() => {
+				carryCue = carried; // "+$X run pile" floats onto the number
+				fx('multiplier');
+				tweenNet.set(total, { duration: 900 }); // puzzle value → puzzle value + run pile
+			}, 1050);
+			setTimeout(() => {
+				climbStaging = false;
+				carryCue = 0;
+			}, 2300);
+		}
 	}
 	// 🎬 Challenges auto-advance through a pack, so play the armed opening reveal on each
 	// new puzzle (and on first entry). Resets between matches so a new pack re-triggers.
@@ -1848,12 +1872,16 @@
 		if (cgBusy) return;
 		showDepositConfirm = false;
 		cgBusy = true;
+		const preBank = Math.round(menuBank ?? netWorth ?? 0);
 		const res = await cashOutClimb();
 		cgBusy = false;
 		if (res?.ok) {
 			cashoutResult = res;
-			showResultModal = true;
-			refreshBank();
+			await refreshBank(); // settle the account balance → exact count-up target
+			// 💸 Same "deposit lands" beat as the Daily: coins into the account + count up,
+			// then the cash-out slip. netRise = the real account rise (exact, skim-safe).
+			const netRise = Math.max(0, Math.round(menuBank ?? netWorth ?? 0) - preBank);
+			startDepositAnim(netRise);
 		}
 	}
 	// 🏳️ Give up: when you're stuck (can't afford letters, don't know it), forfeit
@@ -2388,13 +2416,11 @@
 
 	// 💸 The "deposit lands" beat: coins fly into the account card and the balance counts up,
 	// THEN we reveal the receipt. Assumes menuBank is already the settled (post-solve) balance.
-	function playDailyDepositAnim() {
-		const dr = $gameStore.dailyResult || {};
-		const banked = Math.round(dr.net ?? 0);
-		const loanRepaid = Math.round(dr.loan_repaid ?? 0);
-		const netRise = Math.max(0, banked - loanRepaid); // what actually landed in the account
+	// Generic "deposit lands" beat: coins fly into the account card, balance counts up, then the
+	// receipt shows. `netRise` = what actually landed in the account. Assumes menuBank is settled.
+	function startDepositAnim(/** @type {number} */ netRise) {
 		const to = Math.round(menuBank ?? netWorth ?? 0);
-		const from = to - netRise;
+		const from = to - Math.max(0, netRise);
 		if (netRise <= 0) {
 			showResultModal = true; // nothing to animate → straight to the slip
 			return;
@@ -2407,6 +2433,11 @@
 			depositBank.set(to); // count up old → new
 		}, 500);
 		_depTimer = setTimeout(finishDepositAnim, 2400); // auto-advance to the receipt
+	}
+	function playDailyDepositAnim() {
+		const dr = $gameStore.dailyResult || {};
+		const netRise = Math.max(0, Math.round(dr.net ?? 0) - Math.round(dr.loan_repaid ?? 0));
+		startDepositAnim(netRise);
 	}
 	function finishDepositAnim() {
 		if (_depTimer) {
@@ -4561,6 +4592,9 @@
 					{#each spendFloaters as f (f.id)}<span class="spend-float" class:wrong={f.wrong}
 							>{f.text}</span
 						>{/each}
+					{#if carryCue > 0}
+						<span class="carry-float">+${carryCue.toLocaleString()} run pile</span>
+					{/if}
 				</div>
 				{#if isMatch && matchLive}
 					<div class="ante-bar">
@@ -8964,6 +8998,35 @@
 		font-variant-numeric: tabular-nums;
 		white-space: nowrap;
 		animation: spendFloat 1.05s cubic-bezier(0.2, 0.75, 0.3, 1) forwards;
+	}
+	/* 🎰 Cash Game reveal: the carried run pile flying onto the puzzle-value number. */
+	.carry-float {
+		position: absolute;
+		left: 50%;
+		top: 118%;
+		pointer-events: none;
+		font-family: var(--font-display, sans-serif);
+		font-weight: 800;
+		font-size: 1.3rem;
+		color: #4ade80;
+		text-shadow: 0 0 14px rgba(74, 222, 128, 0.6);
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+		animation: carryFloat 1.15s cubic-bezier(0.2, 0.75, 0.3, 1) forwards;
+	}
+	@keyframes carryFloat {
+		0% {
+			opacity: 0;
+			transform: translate(-50%, 26px) scale(0.8);
+		}
+		25% {
+			opacity: 1;
+			transform: translate(-50%, 0) scale(1.1);
+		}
+		100% {
+			opacity: 0;
+			transform: translate(-50%, -62px) scale(0.9);
+		}
 	}
 	/* A wrong whole-phrase guess (Cash Game): same red, but bigger + a hard shake so it
 	   reads as a penalty, not a routine letter buy. */
