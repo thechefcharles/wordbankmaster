@@ -89,8 +89,15 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
 
 ## 🔵 Tier 4 — Permissions & membership
 
-- [ ] **20. Roster control inconsistent** — ⏸️ DEFERRED (product call): "members invite friends, owner moderates + approves requests" is a coherent, common model (Discord-style), not a clear bug. Was: — any member can `add_group_member`, but
-      remove/rename/approve are owner-only. **Fix:** pick one model.
+- [x] **20. Roster control inconsistent** — ✅ RESOLVED (working as intended): the
+      asymmetry is the intended Discord/Slack model — any member invites their own
+      friends (`add_group_member`, friend-gated), the owner moderates (remove / rename /
+      approve requests, owner-only), and ownership auto-transfers on owner-leave (#19).
+      Client hides all owner-only controls behind `{#if open.is_owner}`. Added the one
+      cheap enhancement worth having: **manual ownership transfer** (PR #587,
+      supabase-transfer-group-ownership.sql) — owner "Make owner" (crown) button per
+      member; owner-only, target must be a member, notifies the new owner; rollback-tested
+      (transfer ✓ / not_owner / not_member / self all correct).
 - [x] **21. Join-request approval only via transient notification** — ✅ FIXED (PR #572, supabase-group-pending-requests.sql): get_group returns pending requests (owner-only); GroupsPanel renders a "Requests to join" section with Approve/Deny. Was: — `respond_join_request`
       is only called from `NotificationsPanel.svelte:28`; no pending-requests list in
       `GroupsPanel`. **Fix:** render pending requests in the owner view.
