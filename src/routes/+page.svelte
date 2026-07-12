@@ -2842,7 +2842,9 @@
 			{#if climbInfo === 'heat'}
 				<div class="info-big">🔥 +{Math.round((climb?.heat ?? 100) - 100)}%</div>
 				<h3 class="info-title">Interest — grows your payouts</h3>
-				<p class="info-sub">Every new bounty lands in your Payout boosted by your Interest.</p>
+				<p class="info-sub">
+					Every puzzle you solve adds its value to your Payout — boosted by your Interest.
+				</p>
 				<div class="info-rows">
 					<div class="info-row"><span>Each solve</span><b class="pos">+5%</b></div>
 					<div class="info-row"><span>⚡ Solved cheaply</span><b class="pos">up to +10%</b></div>
@@ -2897,7 +2899,7 @@
 				</div>
 				<p class="info-note">
 					Each puzzle's <b>budget</b> shrinks as you buy letters — solve to lock it into your
-					Payout. Reveal less, keep more; the next bounty lands ×
+					Payout. Reveal less, keep more; the next puzzle's value lands ×
 					<button class="info-inline" on:click|stopPropagation={() => (climbInfo = 'heat')}
 						>Interest</button
 					>.
@@ -3587,8 +3589,9 @@
 					<h2>Cash Game</h2>
 					<div class="cg-tagline">🔥 Solve to Earn</div>
 					<p class="cat-sub">
-						Spend each bounty, keep what's left, and grow your Payout across puzzles. Cash out
-						anytime — but one wrong guess busts it. Higher tiers, bigger bounties.
+						Spend to solve each puzzle cheaply, keep what's left, and grow your Payout across
+						puzzles. Cash out anytime — but run out of budget and you bust. Higher tiers, bigger
+						payouts.
 					</p>
 					<div class="tier-balance">
 						Your Cash <b class:neg={cgBroke}>${(cgMeta?.bank ?? 0).toLocaleString()}</b>
@@ -4474,7 +4477,7 @@
 						{:else if isClimb}
 							<button
 								class="bp-mult-badge"
-								title="Interest — boosts each new bounty as it lands in your Payout"
+								title="Interest — boosts each puzzle's value as it lands in your Payout"
 								on:click={() => {
 									fx('tap');
 									climbInfo = 'heat';
@@ -4912,11 +4915,6 @@
 						{@const letters = Math.round(climb?.spent ?? 0)}
 						{@const payout = Math.round(climb?.last_gain ?? 0)}
 						{@const advance = payout + letters}
-						{@const intBase = Math.max(
-							1,
-							Math.round(((climb?.bounty ?? 0) * 100) / (climb?.heat ?? 100))
-						)}
-						{@const intPct = Math.round((advance / intBase - 1) * 100)}
 						{@const pendAfter = Math.round(climb?.bankroll ?? 0)}
 						{@const solves = Math.round(climb?.run_solves ?? 0)}
 						{@const runInt = Math.max(0, Math.round((climb?.heat ?? 100) - 100))}
@@ -4939,9 +4937,7 @@
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-cap">This solve</div>
 							<div class="rcpt-line">
-								<span>Bounty <small>(+{intPct}% Interest)</small></span><span
-									>${advance.toLocaleString()}</span
-								>
+								<span>Solved for</span><span>${advance.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
 								<span>Letters (debit)</span><span class="neg">−${letters.toLocaleString()}</span>
