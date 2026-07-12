@@ -16,7 +16,7 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
   (~$1.2–3k) while the host was only debited `stake = wager` (min $500). Decline → host
   pockets the difference. `_match_settle` correctly uses `coalesce(stake,…)`.
   **Fix:** refund `COALESCE(stake, wager)`. *(RPC `decline_match`)*
-- [ ] **2. `match_fold` never updated for `econ_v=2`** — uses OLD absolute-overwrite
+- [x] **2. `match_fold` never updated for `econ_v=2`** — ✅ FIXED (PR #557, supabase-match-fold-econ2-fix.sql): added econ_v=2 branch (accumulate total_score + fresh next bounty, mirrors solve path); rollback-verified final keeps prior $1200 and non-final advances with fresh bounty. Uses OLD absolute-overwrite
   semantics (`total_score = v_left`), so folding a later puzzle in a multi-puzzle match
   erases earlier winnings and advances with a $0 budget. `_match_resolve_and_advance`
   accumulates + resets bounty. **Fix:** add an `econ_v=2` branch mirroring it.
