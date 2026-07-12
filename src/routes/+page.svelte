@@ -4954,6 +4954,13 @@
 							<div class="rcpt-line">
 								<span>Interest · Solves</span><span>+{runInt}% · {solves}</span>
 							</div>
+							<div class="rcpt-rule"></div>
+							<!-- Ambient reference: your account (untouched until you Deposit the run). -->
+							<div class="rcpt-line rcpt-faint">
+								<span>Available balance</span><span
+									>${Math.round(menuBank ?? 0).toLocaleString()}</span
+								>
+							</div>
 						</div>
 						{#if climb?.next_category}
 							<div class="cg-peek">
@@ -9448,6 +9455,11 @@
 	.rcpt-line.balance {
 		font-weight: 800;
 		letter-spacing: 0.02em;
+	}
+	/* Ambient account reference on a run slip — de-emphasized so it doesn't read as run math. */
+	.rcpt-line.rcpt-faint {
+		font-size: 0.72rem;
+		color: #8a8172;
 	}
 	.rcpt-rule {
 		border-top: 1px dashed #b3a88f;
