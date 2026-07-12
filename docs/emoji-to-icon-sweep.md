@@ -47,6 +47,8 @@ Needs **new** line icons (design system has none yet):
 
 ## Wave 4 — Power-ups, buffs & sabotage (swap PUP_ICON map to icons)
 
+**Progress:** ✅ Store (PUP_META) + Inventory (META) power-up icons done (PR #577). Icon.svelte now has the full ~65-icon palette. Remaining: in-game vault/hotbar (mixed twist/boost/pup/sabotage sources) + DEBUFF banner + sabotage picker.
+
 - Buffs: 🛡 heat-shield · 🏧 overdrive · ⏭ free-skip · 🔍 free-reveal · 🅰 free-vowel ·
   🏷 half-off · 👁 vowel-vision · 📖 reveal-word · 💡 hint · 🔚 last-letters · 💥 boost
 - Sabotage/debuffs: 😈 sabotage · 🌫 fog · 🚧 toll · 🚫 vowel-block · 🔒 lock · 💸 tax
