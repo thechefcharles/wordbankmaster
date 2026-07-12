@@ -806,28 +806,37 @@
 							// Self-buffs work in BOTH the Cash Game and Challenges.
 							const climbUsed = (climb?.equipped ?? []).includes(it.id);
 							const matchUsed = (matchInfo?.used_powerups ?? []).includes(it.id);
+							// 🏧 Overdrive is a Cash-Game lifeline: only usable when you're out of money.
+							const isOverdrive = it.id === 'overdrive';
 							const climbAvail =
-								$gameStore.gameMode === 'climb' && gameActive && !climbUsed && (it.owned ?? 0) > 0;
+								$gameStore.gameMode === 'climb' &&
+								gameActive &&
+								!climbUsed &&
+								(it.owned ?? 0) > 0 &&
+								(!isOverdrive || !!climb?.must_guess);
 							const matchAvail =
 								isMatch &&
 								!!matchInfo?.items_allowed &&
 								gameActive &&
 								!matchUsed &&
-								(it.owned ?? 0) > 0;
+								(it.owned ?? 0) > 0 &&
+								!isOverdrive;
 							const avail = climbAvail || matchAvail;
 							out.push({
 								id: it.id,
 								emoji: PUP_ICON[it.id] ?? '✨',
 								name: it.name,
-								blurb: avail ? 'Tap to use now' : '',
+								blurb: avail ? (isOverdrive ? 'Then buy any letter — free' : 'Tap to use now') : '',
 								count: it.owned,
 								usable: avail,
 								reason:
 									climbUsed || matchUsed
 										? 'Already used on this puzzle.'
-										: $gameStore.gameMode === 'climb' || isMatch
-											? ''
-											: 'For the Cash Game or Challenges — not this mode.'
+										: isOverdrive && $gameStore.gameMode === 'climb' && !climb?.must_guess
+											? 'Use it when you run out of money.'
+											: $gameStore.gameMode === 'climb' || isMatch
+												? ''
+												: 'For the Cash Game or Challenges — not this mode.'
 							});
 						} else if (it.kind === 'sabotage') {
 							const sabAvail =
@@ -1198,6 +1207,7 @@
 		reveal_word: '📖',
 		free_vowel: '🅰️',
 		last_letters: '🔚',
+		overdrive: '🏧',
 		sabotage_tax: '💸',
 		sabotage_fog: '🌫️',
 		sabotage_toll: '🚧',
@@ -4379,7 +4389,16 @@
 		<!-- 🎰 Cash Game (Climb) HUD — account strip up top; Interest badge + Payout in the
          hero. Must-guess banner shows when this puzzle's budget is spent. -->
 		{#if isClimb && climb}
-			{#if mgBannerVisible && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
+			{#if (climb?.equipped ?? []).includes('overdrive') && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
+				<!-- 🏧 Overdrive armed → guide the player to spend the free letter. -->
+				<div class="bank-notif overdrive-armed">
+					<div class="bn-head">
+						<span class="bn-app">🏧 Overdrive</span><span class="bn-time">now</span>
+					</div>
+					<div class="bn-title">Overdrive armed</div>
+					<div class="bn-body">Pick any letter — it's free.</div>
+				</div>
+			{:else if mgBannerVisible && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
 				<div class="bank-notif">
 					<div class="bn-head">
 						<span class="bn-app">🏦 WordBank</span><span class="bn-time">now</span>
@@ -5747,6 +5766,14 @@
 		background: linear-gradient(180deg, rgba(32, 22, 24, 0.92), rgba(24, 17, 19, 0.92));
 		box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
 		text-align: left;
+	}
+	/* 🏧 Overdrive armed — green accent (a helpful lifeline, not the red warning). */
+	.bank-notif.overdrive-armed {
+		border-color: rgba(74, 222, 128, 0.4);
+		background: linear-gradient(180deg, rgba(20, 34, 26, 0.94), rgba(15, 26, 20, 0.94));
+	}
+	.bank-notif.overdrive-armed .bn-title {
+		color: #4ade80;
 	}
 	.bn-head {
 		display: flex;
