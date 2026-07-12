@@ -205,8 +205,7 @@
 
 		<h2 class="section">⚡ Power-ups</h2>
 		<p class="section-note">
-			Carry one of each. Bring them to the Cash Game or a challenge and use them whenever you like —
-			the Daily stays power-up-free.
+			Carry one of each. Bring them to the Cash Game or a challenge and use them whenever you like.
 		</p>
 		<div class="grid">
 			{#each pups as item}
