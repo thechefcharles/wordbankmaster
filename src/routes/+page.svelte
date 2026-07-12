@@ -3207,7 +3207,7 @@
 	</div>
 {/if}
 
-<main class:danger-active={dangerMode && !overdriveArmed}>
+<main class:danger-active={dangerMode && !overdriveArmed && $gameStore.gameState !== 'guess_mode'}>
 	<!-- 👤 First-run: pick a username (required to play socially) -->
 	{#if loggedIn && hasInitialized && needsUsername}
 		<div
@@ -4393,7 +4393,7 @@
 				<div class="danger-cue" role="alert">
 					<span class="dc-title">💸 OUT OF MONEY</span>
 					<span class="dc-sub">Last guess — solve now, or lose your run</span>
-					<button class="bn-forfeit" on:click={askForfeit}>Don't know it? Give up →</button>
+					<button class="bn-forfeit" on:click={askForfeit}>Give up?</button>
 				</div>
 			{/if}
 		{/if}
