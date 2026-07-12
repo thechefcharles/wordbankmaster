@@ -84,7 +84,6 @@
 		markChallengeNotifRead
 	} from '$lib/stores/notificationStore.js';
 	import { track } from '$lib/analytics.js';
-	import { reasonLabel } from '$lib/bankReasons.js';
 	import { BLITZ_ENABLED } from '$lib/features.js';
 	import { modifierInfo } from '$lib/powerups.js';
 	import {
@@ -123,7 +122,6 @@
 	import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
 	import InventoryList from '$lib/components/InventoryList.svelte';
 	import VaultReveal from '$lib/components/VaultReveal.svelte';
-	import LoanPanel from '$lib/components/LoanPanel.svelte';
 	import Keyboard from '$lib/components/Keyboard.svelte';
 	import GameButtons from '$lib/components/GameButtons.svelte';
 	import Auth from '$lib/components/Auth.svelte';
@@ -690,30 +688,9 @@
 	}
 
 	// 💰 Bank Account hub: a modal (not a route) so closing it returns to where you were.
-	let showBank = false;
-	/** @type {{ bank:number, net_worth:number, loan:number, loan_cap:number, in_the_red:boolean, ledger:any[], credit_tier?:string }|null} */
-	let bankData = null;
-	async function openBankModal() {
-		fx('tap');
-		showBank = true;
-		try {
-			bankData = await getBank();
-		} catch {
-			bankData = null;
-		}
-	}
-	// After a borrow/repay inside the hub: refresh the sheet + the top Bank Account chip.
-	async function reloadBank() {
-		try {
-			bankData = await getBank();
-		} catch {
-			/* keep last */
-		}
-		refreshBank();
-	}
-	const fmtCash = (/** @type {number} */ n) => '$' + Math.round(n ?? 0).toLocaleString();
-	/** @param {string} reason */
-	const bankReason = reasonLabel;
+	// In-game, tapping the ambient balance chip shows a tiny explainer (not the full Bank hub —
+	// no mid-puzzle loan repay / navigation). The Bank hub still opens from the menu (/bank).
+	let showBalanceInfo = false;
 
 	// 🔐 My Vault — owned inventory; use power-ups in-game (mode-eligible only).
 	let showBag = false;
@@ -2590,58 +2567,6 @@
 	</button>
 {/if}
 
-<!-- 💰 In-game bank modal: same info as /bank, but closing returns to the game -->
-{#if showBank}
-	<div
-		class="modal-overlay info-overlay"
-		role="button"
-		tabindex="0"
-		aria-label="Close"
-		on:click={() => (showBank = false)}
-		on:keydown={(e) => {
-			if (e.key === 'Escape' || e.key === 'Enter') showBank = false;
-		}}
-	>
-		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
-		<div class="info-card bank-card" on:click|stopPropagation role="dialog" aria-modal="true">
-			<button class="modal-x" on:click={() => (showBank = false)} aria-label="Close">✕</button>
-			<div class="bm-card-wrap">
-				<AccountCard
-					holder={$userProfile?.username ?? myUsername}
-					account={$userProfile?.account_number ?? ''}
-					member={$userProfile?.member_no ?? null}
-					balance={bankData?.bank ?? menuBank ?? netWorth ?? 0}
-					tier={bankData?.credit_tier ?? menuCreditTier ?? 'Good'}
-				/>
-			</div>
-			<!-- 🦈 Borrow / Repay, inline -->
-			<LoanPanel bank={bankData} on:changed={reloadBank} />
-			{#if bankData}
-				<div class="bm-hist-h">Recent activity</div>
-				{#if (bankData.ledger ?? []).length === 0}
-					<p class="info-note" style="text-align:center">
-						No transactions yet. Win the Daily, show up for attendance, or climb the Cash Game to
-						grow your Bank Account.
-					</p>
-				{:else}
-					<div class="bm-ledger">
-						{#each bankData.ledger.slice(0, 8) as e}
-							<div class="bm-row">
-								<span class="bm-reason">{bankReason(e.reason)}</span>
-								<span class="bm-delta" class:pos={e.delta > 0} class:neg={e.delta < 0}
-									>{e.delta > 0 ? '+' : '−'}{fmtCash(Math.abs(e.delta))}</span
-								>
-							</div>
-						{/each}
-					</div>
-					<button class="bm-fullledger" on:click={() => goto('/bank')}>See full Statement →</button>
-				{/if}
-			{/if}
-			<button class="info-close" on:click={() => (showBank = false)}>Back to game</button>
-		</div>
-	</div>
-{/if}
-
 <!-- 🔐 Vault door-open animation (from the main menu, after the PIN) → then items -->
 {#if vaultVideo}
 	<VaultReveal on:done={onVaultVideoEnd} />
@@ -2692,6 +2617,36 @@
 				{/if}
 			{/if}
 			{#if vaultMsg}<div class="bag-msg">{vaultMsg}</div>{/if}
+		</div>
+	</div>
+{/if}
+
+<!-- ℹ️ In-game account-balance explainer (tapping the ambient bankroll chip) -->
+{#if showBalanceInfo}
+	<div
+		class="modal-overlay info-overlay"
+		role="button"
+		tabindex="0"
+		aria-label="Close"
+		on:click={() => (showBalanceInfo = false)}
+		on:keydown={(e) => {
+			if (e.key === 'Escape' || e.key === 'Enter') showBalanceInfo = false;
+		}}
+	>
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
+		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
+			<button class="modal-x" on:click={() => (showBalanceInfo = false)} aria-label="Close"
+				>✕</button
+			>
+			<div class="info-big green">
+				${Math.round(menuBank ?? netWorth ?? 0).toLocaleString()}
+			</div>
+			<h3 class="info-title">Account Balance</h3>
+			<p class="info-sub">
+				Your Cash — banked winnings you keep between games. It doesn’t change mid-puzzle; solve to
+				add to it.
+			</p>
+			<button class="info-close" on:click={() => (showBalanceInfo = false)}>Got it</button>
 		</div>
 	</div>
 {/if}
@@ -4242,8 +4197,11 @@
              below is the game money. Static during play; tap → bank. -->
 				<button
 					class="bankroll-chip"
-					title="Your balance — game winnings bank into it"
-					on:click={openBankModal}
+					title="Your account balance"
+					on:click={() => {
+						fx('tap');
+						showBalanceInfo = true;
+					}}
 				>
 					<img class="brc-coin" src="/logo-coin.png" alt="" width="16" height="16" />
 					<span class="brc-amt">${Math.round(menuBank ?? netWorth ?? 0).toLocaleString()}</span>
@@ -8492,67 +8450,6 @@
 		background: linear-gradient(135deg, #fde047, #f59e0b);
 	}
 	/* in-game bank modal */
-	.bm-card-wrap {
-		margin: 4px 0 14px;
-	}
-	.bm-hist-h {
-		font-family: var(--font-display);
-		font-size: 0.78rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		color: var(--brand-2);
-		text-align: left;
-		margin: 16px 0 6px;
-	}
-	.bm-ledger {
-		display: flex;
-		flex-direction: column;
-		gap: 1px;
-		background: var(--border);
-		border-radius: 12px;
-		overflow: hidden;
-		max-height: 40vh;
-		overflow-y: auto;
-		margin-bottom: 14px;
-	}
-	.bm-row {
-		display: flex;
-		justify-content: space-between;
-		gap: 10px;
-		padding: 9px 11px;
-		background: var(--surface);
-	}
-	.bm-fullledger {
-		display: block;
-		width: 100%;
-		margin: -6px 0 12px;
-		padding: 4px;
-		background: none;
-		border: none;
-		color: var(--brand-2);
-		font-size: 0.82rem;
-		font-weight: 700;
-		cursor: pointer;
-		text-align: center;
-	}
-	.bm-reason {
-		color: var(--text-muted);
-		font-size: 0.84rem;
-		text-align: left;
-	}
-	.bm-delta {
-		font-family: 'Orbitron', var(--font-display);
-		font-weight: 800;
-		font-size: 0.84rem;
-		font-variant-numeric: tabular-nums;
-	}
-	.bm-delta.pos {
-		color: #4ade80;
-	}
-	.bm-delta.neg {
-		color: #fb7185;
-	}
 	.info-big {
 		font-family: var(--font-display, sans-serif);
 		font-weight: 800;
