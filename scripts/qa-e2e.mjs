@@ -205,18 +205,29 @@ try {
 		bad('daily-open', 'no Solve button — board did not load');
 	} else {
 		ok('daily-open');
-		// NOTE: today's Twist auto-reveals a letter, so only the remaining slots are editable.
-		// Typing the full DAILY answer misaligns the guess — this step is a known harness gap
-		// (the solve path itself is verified server-side). TODO: type only unrevealed slots.
 		await page
 			.getByRole('button', { name: /^solve$/i })
 			.first()
 			.click()
 			.catch(() => {}); // enter guess mode
 		await wait(700);
-		for (const ch of DAILY) {
-			await page.keyboard.press(ch);
-			await wait(70);
+		// Each .letter-box maps 1:1 to an answer letter in order; already-revealed ones
+		// (Twist auto-reveal, purchased) carry class `locked`. inputGuessLetter fills only
+		// the editable slots, so press a key ONLY for non-locked boxes — otherwise the full
+		// answer overflows and misaligns. Boxes align to DAILY char-for-char (spaces are word
+		// gaps, not boxes), so box k needs DAILY[k].
+		const boxes = await page.locator('.letter-box').all();
+		if (boxes.length !== DAILY.length) {
+			bad(
+				'daily-solve',
+				`board has ${boxes.length} slots but answer has ${DAILY.length} — wrong DAILY_ANSWER?`
+			);
+		}
+		for (let k = 0; k < boxes.length && k < DAILY.length; k++) {
+			const cls = (await boxes[k].getAttribute('class')) || '';
+			if (cls.includes('locked')) continue; // already revealed → not editable
+			await page.keyboard.press(DAILY[k]);
+			await wait(60);
 		}
 		await wait(500);
 		await shot('03-daily-filled');
@@ -225,17 +236,19 @@ try {
 			.first()
 			.click()
 			.catch(() => {});
-		// the redesigned Daily plays a slot-machine reveal before the SOLVED! banner — wait it out
+		// A solve plays a slot-machine reveal, then shows the DEPOSIT SLIP receipt
+		// (DEPOSIT / AVAILABLE BALANCE) — wait it out.
+		const winRe = /deposit|available balance|banking with wordbank/i;
 		await page
-			.getByText(/solved!|profit/i)
+			.getByText(winRe)
 			.first()
 			.waitFor({ timeout: 9000 })
 			.catch(() => {});
 		await shot('04-daily-result');
-		const won = await page.getByText(/solved!|profit/i).count();
+		const won = await page.getByText(winRe).count();
 		won > 0
-			? ok('daily-solve', 'win banner shown')
-			: bad('daily-solve', 'no win banner after submit');
+			? ok('daily-solve', 'deposit slip shown')
+			: bad('daily-solve', 'no deposit slip after submit');
 	}
 
 	// ---------- 6. Verify it landed in History ----------
