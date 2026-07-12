@@ -14,9 +14,12 @@ export const toasts = writable([]);
 export const inboxRequest = writable(0);
 /** Which Community tab the next inboxRequest should land on. */
 export const inboxTarget = writable(/** @type {'challenges'|'activity'|'people'} */ ('challenges'));
-/** @param {'challenges'|'activity'|'people'} [target] */
-export function requestInbox(target = 'challenges') {
+/** A specific match to auto-open once the Challenges hub loads (deep-link from a notification). */
+export const inboxMatch = writable(/** @type {string|null} */ (null));
+/** @param {'challenges'|'activity'|'people'} [target] @param {string|null} [matchId] */
+export function requestInbox(target = 'challenges', matchId = null) {
 	inboxTarget.set(target);
+	inboxMatch.set(matchId);
 	inboxRequest.update((n) => n + 1);
 }
 

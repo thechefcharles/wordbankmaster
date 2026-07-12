@@ -57,9 +57,9 @@
 	});
 	/** @param {any} n */
 	function notifNav(n) {
-		// Challenge invites/results → open the Challenges hub on the menu.
+		// Challenge invites/results → open the Challenges hub, deep-linked to the match if known.
 		if (n?.type === 'challenge_incoming' || n?.data?.match_id || n?.data?.challenge_id) {
-			requestInbox('challenges');
+			requestInbox('challenges', n?.data?.match_id ?? null);
 			goto('/');
 		}
 	}

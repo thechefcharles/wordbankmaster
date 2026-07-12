@@ -7,11 +7,13 @@
 	function open(t) {
 		fx('select');
 		dismissToast(t.id);
-		// Your-turn challenge → home Community ▸ Challenges; everything else (results,
-		// sabotage, chat, friend requests) → your alerts inbox in Profile.
-		if (t.type === 'challenge_incoming') {
+		// Any challenge notification (invite, your-turn, result, sabotage) → home Community ▸
+		// Challenges, deep-linked to the specific match when we have its id. Everything else
+		// (friend requests, etc.) → your alerts inbox in Profile.
+		const matchId = t?.data?.match_id ?? null;
+		if (matchId || String(t.type || '').startsWith('challenge')) {
 			goto('/');
-			requestInbox('challenges');
+			requestInbox('challenges', matchId);
 		} else goto('/profile?tab=alerts');
 	}
 </script>
