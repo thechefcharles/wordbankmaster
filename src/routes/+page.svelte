@@ -2611,7 +2611,7 @@
 					? `Your Interest resets to +0%${(climb?.spent ?? 0) > 0 ? ` and you forfeit the $${(climb?.spent ?? 0).toLocaleString()} spent on this one` : ''} — then a fresh puzzle.`
 					: $gameStore.gameMode === 'match'
 						? 'Skip this puzzle — you pay its full price and move on.'
-						: 'It counts as a loss and reveals the answer.'}
+						: 'It counts as a loss — you deposit nothing and the answer is revealed.'}
 			</p>
 			<div class="gu-actions">
 				<button class="gu-cancel" on:click={cancelGiveUp}>Keep playing</button>
