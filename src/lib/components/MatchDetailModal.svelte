@@ -1,6 +1,16 @@
 <script>
 	import { createEventDispatcher } from 'svelte';
 	import Icon from '$lib/components/Icon.svelte';
+	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
+	import { CATEGORIES } from '$lib/categories.js';
+
+	// daily_puzzles.category carries a trailing emoji in the string; show the clean
+	// label + the line icon instead of the raw emoji.
+	const catLabel = (/** @type {string} */ v) =>
+		CATEGORIES.find((c) => c.value === v)?.label ??
+		String(v ?? '')
+			.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}️]/gu, '')
+			.trim();
 
 	/** @type {any} */
 	export let detail = null; // get_match_detail() result, or { loading:true }
@@ -30,9 +40,12 @@
 	$: field = parts.length;
 	$: winner = parts.find((/** @type {any} */ p) => Number(p.rank) === 1);
 	$: iWon = me && Number(me.rank) === 1;
+	// A 1v1 tie: both participants share rank 1 (equal spend). Never call that a win.
+	$: isTie = field === 2 && !!me && !!opp && Number(me.rank) === 1 && Number(opp.rank) === 1;
 	$: tieback = (() => {
 		if (!me || noSolve || m?.status !== 'settled') return '';
 		const myS = dollars(me.spent);
+		if (isTie) return me.solved ? `Tie — you both solved for ${myS}.` : `Tie — no winner.`;
 		if (field === 2 && opp) {
 			const oS = dollars(opp.spent),
 				on = '@' + (opp.name || 'opponent');
@@ -100,7 +113,7 @@
 					{#each parts as p}
 						<div class="md-row" class:me={p.is_me}>
 							<span class="md-rank"
-								>{#if noSolve}<Icon
+								>{#if noSolve || isTie}<Icon
 										name="handshake"
 										size={16}
 									/>{:else if p.rank >= 1 && p.rank <= 3}<span class="rk-{p.rank}"
@@ -126,7 +139,9 @@
 						{#each detail.pack as pk}
 							<div class="md-pk">
 								<span class="md-pos">{pk.position}</span>
-								<span class="md-cat">{pk.category}</span>
+								<span class="md-cat"
+									><CategoryIcon category={pk.category} size={13} /> {catLabel(pk.category)}</span
+								>
 								<span class="md-ans"
 									>{#if pk.phrase}“{pk.phrase}”{:else}<Icon name="lock" size={13} /> hidden until settled{/if}</span
 								>
