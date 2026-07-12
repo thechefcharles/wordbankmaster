@@ -18,6 +18,7 @@
 		getGroupStandings
 	} from '$lib/stores/statsStore.js';
 	import { requireConfirm } from '$lib/confirm.js';
+	import Icon from '$lib/components/Icon.svelte';
 	import { supabase } from '$lib/supabaseClient.js';
 
 	/** Optional: list-view back button (e.g. the route's "← Menu"). Hidden if absent.
@@ -344,7 +345,9 @@
 						{#each open.members as m}
 							<tr class={m.is_me ? 'me-row' : (m.rank ?? 0) <= 3 ? 'top-three' : ''}>
 								<td class="rank"
-									>{#if m.rank === 1}🥇{:else if m.rank === 2}🥈{:else if m.rank === 3}🥉{:else}{m.rank}{/if}</td
+									>{#if m.rank >= 1 && m.rank <= 3}<span class="rk-medal rk-{m.rank}"
+											><Icon name="medal" size={16} /></span
+										>{:else}{m.rank}{/if}</td
 								>
 								<td class="name"
 									>{#if m.is_me}<span style={m.color ? `color:${m.color}` : ''}>You</span
@@ -390,7 +393,9 @@
 						{#each standings.members as m, i}
 							<tr class={m.is_me ? 'me-row' : i < 3 && m.wins > 0 ? 'top-three' : ''}>
 								<td class="rank"
-									>{#if i === 0 && m.wins > 0}🏆{:else}{i + 1}{/if}</td
+									>{#if i === 0 && m.wins > 0}<span class="rk-medal rk-1"
+											><Icon name="trophy" size={16} /></span
+										>{:else}{i + 1}{/if}</td
 								>
 								<td class="name">{m.is_me ? 'You' : m.name}</td>
 								<td class="score-cell">{m.wins}</td>
@@ -407,7 +412,10 @@
 					{#each standings.recent as r}
 						<div class="recent-row">
 							<span class="r-win"
-								>{#if r.winner}🏆 @{r.winner}{:else}🤝 Tie · no winner{/if}</span
+								>{#if r.winner}<Icon name="trophy" size={14} /> @{r.winner}{:else}<Icon
+										name="handshake"
+										size={14}
+									/> Tie · no winner{/if}</span
 							>
 							<span class="r-meta"
 								>{r.players} players · {r.pack_size} puzzle{r.pack_size === 1
@@ -477,7 +485,7 @@
 		{/if}
 
 		<div class="chat">
-			<h2 class="chat-title">💬 Chat</h2>
+			<h2 class="chat-title"><Icon name="chat" size={18} /> Chat</h2>
 			<div class="chat-msgs" bind:this={chatScroll}>
 				{#if messages.length}
 					{#each messages as m}
@@ -876,6 +884,19 @@
 	}
 	td.rank {
 		width: 36px;
+	}
+	.rk-medal {
+		display: inline-flex;
+		vertical-align: middle;
+	}
+	.rk-1 {
+		color: #fbbf24;
+	}
+	.rk-2 {
+		color: #cbd5e1;
+	}
+	.rk-3 {
+		color: #d19a66;
 	}
 	td.name {
 		font-weight: 600;

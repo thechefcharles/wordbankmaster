@@ -1,5 +1,6 @@
 <script>
 	import { createEventDispatcher } from 'svelte';
+	import Icon from '$lib/components/Icon.svelte';
 
 	/** @type {any} */
 	export let detail = null; // get_match_detail() result, or { loading:true }
@@ -14,8 +15,6 @@
 	$: noSolve = parts.length > 0 && parts.every((/** @type {any} */ p) => (p.solved ?? 0) === 0);
 	$: title = detail?.group_name || (opp ? '@' + (opp.name || 'player') : 'Challenge');
 	$: wagered = Number(m?.wager) > 0;
-	const rankIcon = (/** @type {number} */ r) =>
-		r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : '#' + r;
 	const money = (/** @type {any} */ n) =>
 		(Number(n) < 0 ? '−$' : '+$') + Math.abs(Math.round(Number(n ?? 0))).toLocaleString();
 	const mult = (/** @type {any} */ x) => (x ? (Number(x) / 100).toFixed(1) + '×' : '');
@@ -64,11 +63,17 @@
 	>
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="md" role="dialog" tabindex="0" on:click|stopPropagation on:keydown={() => {}}>
-			<button class="md-x" on:click={close}>✕</button>
+			<button class="md-x" on:click={close}><Icon name="close" size={16} /></button>
 			{#if detail.loading}
 				<p class="md-msg">Loading…</p>
 			{:else}
-				<h2 class="md-title">{noSolve ? '🤝' : '⚔️'} {title}</h2>
+				<h2 class="md-title">
+					{#if noSolve}<Icon name="handshake" size={18} />{:else}<Icon
+							name="swords"
+							size={18}
+						/>{/if}
+					{title}
+				</h2>
 				<p class="md-sub">
 					{m?.pack_size} puzzle{m?.pack_size === 1 ? '' : 's'}
 					· {m?.payout === 'podium' ? 'podium 3·2·1' : 'winner-take-all'}
@@ -88,13 +93,20 @@
 				{/if}
 
 				{#if tieback}
-					<p class="md-tieback">🎯 {tieback}</p>
+					<p class="md-tieback"><Icon name="target" size={14} /> {tieback}</p>
 				{/if}
 
 				<div class="md-standings">
 					{#each parts as p}
 						<div class="md-row" class:me={p.is_me}>
-							<span class="md-rank">{noSolve ? '🤝' : rankIcon(p.rank)}</span>
+							<span class="md-rank"
+								>{#if noSolve}<Icon
+										name="handshake"
+										size={16}
+									/>{:else if p.rank >= 1 && p.rank <= 3}<span class="rk-{p.rank}"
+										><Icon name="medal" size={16} /></span
+									>{:else}#{p.rank}{/if}</span
+							>
 							<span class="md-name">{p.is_me ? 'You' : '@' + (p.name || 'player')}</span>
 							<span class="md-meta">
 								{#if p.state === 'done'}solved {p.solved ?? 0}/{m?.pack_size}{#if p.spent != null}
@@ -116,7 +128,7 @@
 								<span class="md-pos">{pk.position}</span>
 								<span class="md-cat">{pk.category}</span>
 								<span class="md-ans"
-									>{pk.phrase ? '“' + pk.phrase + '”' : '🔒 hidden until settled'}</span
+									>{#if pk.phrase}“{pk.phrase}”{:else}<Icon name="lock" size={13} /> hidden until settled{/if}</span
 								>
 							</div>
 						{/each}
@@ -247,6 +259,15 @@
 	.md-rank {
 		flex: 0 0 28px;
 		font-weight: 700;
+	}
+	.md-rank .rk-1 {
+		color: #fbbf24;
+	}
+	.md-rank .rk-2 {
+		color: #cbd5e1;
+	}
+	.md-rank .rk-3 {
+		color: #d19a66;
 	}
 	.md-name {
 		flex: 1;

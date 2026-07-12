@@ -436,7 +436,7 @@ function reconcileClimbBoard(board, wrong = false) {
 	} else if (board.shielded) {
 		// 🛡️ Heat Shield turned a would-be bust into a fresh puzzle (Payout + interest kept).
 		fx('multiplier');
-		flashTwistCue('🛡️ Heat Shield · saved your run!');
+		flashTwistCue('Heat Shield · saved your run!');
 	} else playMoveCue(prev, board);
 }
 

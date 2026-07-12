@@ -3,6 +3,7 @@
 	// scope dropdown: Everyone · Friends · a specific group.
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import Icon from '$lib/components/Icon.svelte';
 	import {
 		getDailyBoard,
 		getClimbLeaderboard,
@@ -157,10 +158,6 @@
 		void board;
 		load();
 	});
-
-	/** @param {number} rank */
-	const medal = (rank) =>
-		rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : String(rank);
 </script>
 
 <!-- Game-type tabs -->
@@ -179,16 +176,17 @@
 <!-- Scope: Everyone · Friends · a specific group -->
 <div class="filters">
 	<select class="filter-select" bind:value={scope}>
-		<option value="global">🌍 Everyone</option>
-		<option value="friends">👋 Friends</option>
-		{#each groups as g}<option value={g.id}>👥 {g.name}</option>{/each}
+		<option value="global">Everyone</option>
+		<option value="friends">Friends</option>
+		{#each groups as g}<option value={g.id}>{g.name}</option>{/each}
 	</select>
 </div>
 
 <!-- ⓘ Column key: explains what each column on the current board means. -->
 <div class="lb-key-row">
 	<button class="lb-key-toggle" onclick={() => (showKey = !showKey)}>
-		{showKey ? '✕ Close key' : 'ⓘ What do these mean?'}
+		{#if showKey}<Icon name="close" size={13} /> Close key{:else}<Icon name="info" size={13} /> What
+			do these mean?{/if}
 	</button>
 </div>
 {#if showKey}
@@ -221,7 +219,11 @@
 			<tbody>
 				{#each rows as r}
 					<tr class={r.is_me ? 'me' : r.rank <= 3 ? 'top' : ''}>
-						<td class="rank">{medal(r.rank)}</td>
+						<td class="rank"
+							>{#if r.rank >= 1 && r.rank <= 3}<span class="rk-{r.rank}"
+									><Icon name="medal" size={15} /></span
+								>{:else}{r.rank}{/if}</td
+						>
 						<td class="name">
 							{#if r.is_me}
 								<button
@@ -310,7 +312,11 @@
 			<tbody>
 				{#each sortedRows as r}
 					<tr class={r.is_me ? 'me' : r._place <= 3 ? 'top' : ''}>
-						<td class="rank">{medal(r._place)}</td>
+						<td class="rank"
+							>{#if r._place >= 1 && r._place <= 3}<span class="rk-{r._place}"
+									><Icon name="medal" size={15} /></span
+								>{:else}{r._place}{/if}</td
+						>
 						<td class="name">
 							{#if r.is_me}
 								<button
@@ -471,6 +477,15 @@
 	td.rank {
 		width: 30px;
 		padding-left: 0.5rem;
+	}
+	td.rank .rk-1 {
+		color: #fbbf24;
+	}
+	td.rank .rk-2 {
+		color: #cbd5e1;
+	}
+	td.rank .rk-3 {
+		color: #d19a66;
 	}
 	td.name {
 		font-weight: 600;
