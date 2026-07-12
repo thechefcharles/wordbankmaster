@@ -5091,7 +5091,7 @@
 							</div>
 							{#if wiped > 0}
 								<div class="rcpt-note">
-									💔 You also forfeited a ${wiped.toLocaleString()} run pile.
+									Also forfeited a ${wiped.toLocaleString()} run pile.
 								</div>
 							{/if}
 							<div class="rcpt-rule"></div>
