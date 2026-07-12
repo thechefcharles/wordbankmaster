@@ -4937,7 +4937,7 @@
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-cap">This solve</div>
 							<div class="rcpt-line">
-								<span>Solved for</span><span>${advance.toLocaleString()}</span>
+								<span>Puzzle value</span><span>${advance.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
 								<span>Letters (debit)</span><span class="neg">−${letters.toLocaleString()}</span>
