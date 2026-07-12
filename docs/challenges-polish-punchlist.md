@@ -21,7 +21,7 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
   erases earlier winnings and advances with a $0 budget. `_match_resolve_and_advance`
   accumulates + resets bounty. **Fix:** add an `econ_v=2` branch mirroring it.
   *(RPC `match_fold`; single-puzzle matches unaffected)*
-- [ ] **3. Reduced-accept charges the wrong balance** — UI gates on `netWorth = bank − loan`
+- [x] **3. Reduced-accept charges the wrong balance** — ✅ FIXED (PR #558, supabase-accept-networth-fix.sql): accept_match now gates + caps on net worth (bank − loan); rollback-verified reduced caps at net worth, full blocks when net<wager, no-loan unchanged. UI gates on `netWorth = bank − loan`
   and shows a capped buy-in, but `accept_match` checks `profiles.bank`. A loan-holder
   (bank ≥ wager, netWorth < wager) is shown "capped" yet debited the full wager.
   **Fix:** align UI + RPC on one balance definition. *(`+page.svelte:2242,2260-2277`;
