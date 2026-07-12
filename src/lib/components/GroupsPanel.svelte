@@ -376,7 +376,9 @@
 				<div class="recent">
 					{#each standings.recent as r}
 						<div class="recent-row">
-							<span class="r-win">🏆 @{r.winner}</span>
+							<span class="r-win"
+								>{#if r.winner}🏆 @{r.winner}{:else}🤝 Tie · no winner{/if}</span
+							>
 							<span class="r-meta"
 								>{r.players} players · {r.pack_size} puzzle{r.pack_size === 1
 									? ''

@@ -51,14 +51,14 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
 - [ ] **9. PIN confirm always "Winner takes all"** — `mbPayout='winner'` never reassigned;
       group pots actually split 70/30 or 60/30/10. **Fix:** derive from field size / reuse
       `potSummary`. _(`+page.svelte:2020,2171`)_
-- [ ] **10. Compete "recent matches" shows 🏆 on no-winner/ties** — `get_group_standings`
+- [x] **10. Compete "recent matches" shows 🏆 on no-winner/ties** — ✅ FIXED (PR #568, supabase-group-standings-fix.sql): winner NULL unless a sole top scorer with score>0; client renders "🤝 Tie · no winner". Was: — `get_group_standings`
       picks `ORDER BY total_score DESC LIMIT 1` with no `>0`/tie guard; `GroupsPanel.svelte:379`
       renders it unconditionally. **Fix:** `winner=null` when top is 0 or tied.
 - [ ] **11. Leaderboard shows title as raw UUID + invalid color** —
       `get_challenge_leaderboard` returns cosmetic **ids**, not values (siblings join
       `public.cosmetics`). `LeaderboardPanel.svelte:239,328`. **Fix:** join cosmetics, return
       `.value`.
-- [ ] **12. Compete win-count treats tied-top as a win** — `get_group_standings` counts
+- [x] **12. Compete win-count treats tied-top as a win** — ✅ FIXED (PR #568): a win now requires being the UNIQUE top scorer (top_n=1); rollback-verified tie not counted, sole win counted. Was: — `get_group_standings` counts
       every co-leader as a win; `_match_settle` logs it as a tie. **Fix:** win only when
       uniquely top.
 
