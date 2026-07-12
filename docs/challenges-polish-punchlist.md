@@ -54,7 +54,7 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
 - [x] **10. Compete "recent matches" shows 🏆 on no-winner/ties** — ✅ FIXED (PR #568, supabase-group-standings-fix.sql): winner NULL unless a sole top scorer with score>0; client renders "🤝 Tie · no winner". Was: — `get_group_standings`
       picks `ORDER BY total_score DESC LIMIT 1` with no `>0`/tie guard; `GroupsPanel.svelte:379`
       renders it unconditionally. **Fix:** `winner=null` when top is 0 or tied.
-- [ ] **11. Leaderboard shows title as raw UUID + invalid color** —
+- [x] **11. Leaderboard shows title as raw UUID + invalid color** — ✅ FIXED (PR #569, supabase-challenge-lb-cosmetics-fix.sql): join public.cosmetics, return .value like sibling boards; rollback-verified title="On Fire", color="#fbbf24". Was: —
       `get_challenge_leaderboard` returns cosmetic **ids**, not values (siblings join
       `public.cosmetics`). `LeaderboardPanel.svelte:239,328`. **Fix:** join cosmetics, return
       `.value`.
