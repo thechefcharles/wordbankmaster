@@ -493,13 +493,14 @@
 		_attTimer = setTimeout(() => gameStore.update((s) => ({ ...s, cashToast: null })), 4000);
 	}
 	$: isClimb = $gameStore.gameMode === 'climb';
+	$: isDaily = $gameStore.gameMode === 'daily';
 	$: climb = $gameStore.climbInfo; // { wallet, bounty, budget_left, solve_reward, spent, heat, must_guess, cheapest, last_gain, state, run_solves, wiped, pups_locked, equipped }
 	$: overdriveArmed = isClimb && (climb?.equipped ?? []).includes('overdrive');
-	// 🚨 Last-stand: out of money, this guess decides the run. Persistent while stuck
+	// 🚨 Last-stand: out of budget, this guess decides it. Persistent while stuck
 	// (drives the red screen treatment + keyboard lock). Overdrive lifts the lock.
+	// Cash Game = your run is on the line; Daily = your one shot at today's win.
 	$: dangerMode =
-		isClimb &&
-		!!climb?.must_guess &&
+		((isClimb && !!climb?.must_guess) || (isDaily && !!$gameStore.dailyMustGuess)) &&
 		gameActive &&
 		$gameStore.gameState !== 'won' &&
 		$gameStore.gameState !== 'lost';
@@ -4270,7 +4271,7 @@
 
 		<!-- 🚨 Last-stand red vignette — frames the whole screen when you're out of money. -->
 		{#if dangerMode}
-			<div class="danger-vignette" aria-hidden="true"></div>
+			<div class="danger-vignette" class:daily={isDaily} aria-hidden="true"></div>
 		{/if}
 
 		<!-- 🧠 Game Logo -->
@@ -4396,6 +4397,15 @@
 					<button class="bn-forfeit" on:click={askForfeit}>Give up?</button>
 				</div>
 			{/if}
+		{/if}
+
+		<!-- 🚨 Daily out-of-budget wall — softer than Cash Game (no run to lose, just
+		     today's win on the line). Same red screen + keyboard lock structure. -->
+		{#if isDaily && dangerMode}
+			<div class="danger-cue daily" role="alert">
+				<span class="dc-title">💸 OUT OF BUDGET</span>
+				<span class="dc-sub">Last guess — get it right to win today</span>
+			</div>
 		{/if}
 
 		<!-- ⚔️ Challenge match HUD -->
@@ -5791,6 +5801,16 @@
 	.danger-cue.armed .dc-title {
 		color: #4ade80;
 		text-shadow: 0 0 14px rgba(74, 222, 128, 0.55);
+	}
+	/* Daily wall: same danger language, a notch calmer — no run on the line. */
+	.danger-cue.daily {
+		animation-duration: 1.5s;
+	}
+	.danger-cue.daily .dc-title {
+		font-size: 1.05rem;
+	}
+	.danger-vignette.daily {
+		opacity: 0.62;
 	}
 	/* full-screen red vignette framing the moment */
 	.danger-vignette {

@@ -95,6 +95,7 @@ import { track } from '$lib/analytics.js';
  *   bountyMult?: number,
  *   twistUsed?: boolean,
  *   wrongGuesses?: number,
+ *   dailyMustGuess?: boolean,
  *   clue?: string | null,
  *   challengeInfo?: any,
  *   makeupDate?: string | null,
@@ -171,6 +172,7 @@ export const gameStore = writable(
 		twistUsed: false, // have you used today's Twist? (unused → ×1.5 bounty)
 		bountyMult: 1, // bounty multiplier (1.0 once Twist used, else 1.5)
 		wrongGuesses: 0, // wrong phrase guesses this Daily (each −0.2× mult, floor 1.0)
+		dailyMustGuess: false, // Daily out-of-budget wall → last-guess danger treatment
 		clue: null, // witty one-line hint for the current puzzle
 		challengeInfo: null, // { mode, started_at, limit_seconds, play_state, score } for the active challenge
 		makeupDate: null, // YYYY-MM-DD of the make-up day being played (makeup mode only)
@@ -301,7 +303,10 @@ function reconcileDailyBoard(board) {
 			twistUsed: board.twist_used !== undefined ? board.twist_used : (prev.twistUsed ?? false),
 			bountyMult: board.bounty_mult !== undefined ? board.bounty_mult : (prev.bountyMult ?? 1),
 			wrongGuesses:
-				board.wrong_guesses !== undefined ? board.wrong_guesses : (prev.wrongGuesses ?? 0)
+				board.wrong_guesses !== undefined ? board.wrong_guesses : (prev.wrongGuesses ?? 0),
+			// Daily out-of-budget wall: bankroll < cheapest buyable letter on an active board.
+			dailyMustGuess:
+				board.must_guess !== undefined ? !!board.must_guess : (prev.dailyMustGuess ?? false)
 		})
 	);
 	// Only celebrate a FRESH solve: a board carrying daily_result (set by the solve),
