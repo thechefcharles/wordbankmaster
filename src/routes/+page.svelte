@@ -633,6 +633,15 @@
 	// 🏆 Win-banner animations: profit counts up, then Cash scrolls to the new total.
 	const resultProfit = tweened(0, { duration: 1100, easing: cubicOut });
 	const resultBankAnim = tweened(0, { duration: 1300, easing: cubicOut });
+	// 💸 "Deposit lands" beat (Daily): coins fly into the account card + the balance counts up,
+	// played AFTER the SOLVED reveal and BEFORE the receipt.
+	const depositBank = tweened(0, { duration: 1300, easing: cubicOut });
+	/** @type {{ amount:number, from:number, to:number }|null} */
+	let depositAnim = null;
+	/** @type {{ id:number, dx:number, dy:number, delay:number, rot:number }[]} */
+	let depositCoins = [];
+	/** @type {ReturnType<typeof setTimeout>|null} */
+	let _depTimer = null;
 	/** @type {{rank:number,total:number,score:number}|null} */
 	let resultRank = null;
 	// While the opening reveal is landing boxes, hold the bounty at $0 so it can
@@ -2358,57 +2367,99 @@
 		goto('/leaderboard?mode=daily');
 	};
 
-	const onPhraseRevealComplete = () => {
-		if (!hasTriggeredModal && ['won', 'lost'].includes($gameStore.gameState)) {
-			hasTriggeredModal = true;
-			const won = $gameStore.gameState === 'won';
-			if ($gameStore.gameMode === 'daily' && won) {
-				refreshBank(); // deposit + any loan skim just landed → refresh the slip's Available Balance
-				resultRank = null;
-				getMyDailyRank()
-					.then((r) => {
-						resultRank = r;
+	/** Build a little burst of coins that fly from the deposit amount up into the account card. */
+	function makeDepositCoins(/** @type {number} */ amount) {
+		const count = Math.max(6, Math.min(12, Math.round(amount / 40) + 6));
+		const arr = [];
+		for (let i = 0; i < count; i++) {
+			arr.push({
+				id: i,
+				dx: Math.round((Math.random() - 0.5) * 130), // launch spread
+				dy: 0,
+				delay: Math.round(i * 45 + Math.random() * 70),
+				rot: Math.round((Math.random() - 0.5) * 260)
+			});
+		}
+		return arr;
+	}
+
+	// 💸 The "deposit lands" beat: coins fly into the account card and the balance counts up,
+	// THEN we reveal the receipt. Assumes menuBank is already the settled (post-solve) balance.
+	function playDailyDepositAnim() {
+		const dr = $gameStore.dailyResult || {};
+		const banked = Math.round(dr.net ?? 0);
+		const loanRepaid = Math.round(dr.loan_repaid ?? 0);
+		const netRise = Math.max(0, banked - loanRepaid); // what actually landed in the account
+		const to = Math.round(menuBank ?? netWorth ?? 0);
+		const from = to - netRise;
+		if (netRise <= 0) {
+			showResultModal = true; // nothing to animate → straight to the slip
+			return;
+		}
+		depositBank.set(from, { duration: 0 });
+		depositCoins = makeDepositCoins(netRise);
+		depositAnim = { amount: netRise, from, to };
+		setTimeout(() => {
+			fx('multiplier'); // cash-register cue as the coins land
+			depositBank.set(to); // count up old → new
+		}, 500);
+		_depTimer = setTimeout(finishDepositAnim, 2400); // auto-advance to the receipt
+	}
+	function finishDepositAnim() {
+		if (_depTimer) {
+			clearTimeout(_depTimer);
+			_depTimer = null;
+		}
+		if (!depositAnim) return;
+		depositAnim = null;
+		depositCoins = [];
+		showResultModal = true;
+	}
+
+	const onPhraseRevealComplete = async () => {
+		if (hasTriggeredModal || !['won', 'lost'].includes($gameStore.gameState)) return;
+		hasTriggeredModal = true;
+		const won = $gameStore.gameState === 'won';
+
+		// Daily WIN → play the "deposit lands" beat first, then the receipt.
+		if ($gameStore.gameMode === 'daily' && won) {
+			await refreshBank(); // account balance now settled → exact count-up target
+			resultRank = null;
+			getMyDailyRank()
+				.then((r) => {
+					resultRank = r;
+				})
+				.catch(() => {});
+			const uid = get(user)?.id;
+			if (uid)
+				getDailyStatus(uid)
+					.then((s) => {
+						dailyStatus = s;
 					})
 					.catch(() => {});
-				const uid = get(user)?.id;
-				if (uid)
-					getDailyStatus(uid)
-						.then((s) => {
-							dailyStatus = s;
-						})
-						.catch(() => {});
-			}
-			setTimeout(() => {
-				showResultModal = true;
-				// 🏆 Win banner: count the profit up, then scroll Cash to the new total.
-				if ($gameStore.gameMode === 'daily' && won) {
-					const profit = $gameStore.dailyResult?.net ?? 0;
-					const newBank = Math.round($gameStore.bankroll ?? 0);
-					resultProfit.set(0, { duration: 0 });
-					resultBankAnim.set(newBank - profit, { duration: 0 });
-					setTimeout(() => {
-						resultProfit.set(profit);
-						fx('win');
-					}, 350);
-					setTimeout(() => {
-						resultBankAnim.set(newBank);
-					}, 1100);
-				} else if ($gameStore.gameMode === 'climb' && won) {
-					const c = $gameStore.climbInfo || {};
-					const profit = Math.round((c.last_gain ?? 0) - (c.spent ?? 0));
-					const newBank = Math.round($gameStore.bankroll ?? 0);
-					resultProfit.set(0, { duration: 0 });
-					resultBankAnim.set(newBank - profit, { duration: 0 });
-					setTimeout(() => {
-						resultProfit.set(profit);
-						fx('win');
-					}, 350);
-					setTimeout(() => {
-						resultBankAnim.set(newBank);
-					}, 1100);
-				}
-			}, 1000);
+			playDailyDepositAnim();
+			return;
 		}
+
+		// Everything else (loss, Cash Game, etc.) → straight to the receipt.
+		setTimeout(() => {
+			showResultModal = true;
+			// 🏆 Cash Game win banner: count the profit up, then scroll Cash to the new total.
+			if ($gameStore.gameMode === 'climb' && won) {
+				const c = $gameStore.climbInfo || {};
+				const profit = Math.round((c.last_gain ?? 0) - (c.spent ?? 0));
+				const newBank = Math.round($gameStore.bankroll ?? 0);
+				resultProfit.set(0, { duration: 0 });
+				resultBankAnim.set(newBank - profit, { duration: 0 });
+				setTimeout(() => {
+					resultProfit.set(profit);
+					fx('win');
+				}, 350);
+				setTimeout(() => {
+					resultBankAnim.set(newBank);
+				}, 1100);
+			}
+		}, 1000);
 	};
 </script>
 
@@ -4580,6 +4631,45 @@
 			<div class="banner lose">{isClimb ? '⚠ BUST' : 'No luck'}</div>
 		{/if}
 
+		<!-- 💸 Deposit-lands beat: coins fly into the account card + balance counts up, before the slip -->
+		{#if depositAnim}
+			<div
+				class="deposit-anim"
+				role="button"
+				tabindex="0"
+				aria-label="Continue to receipt"
+				on:click={finishDepositAnim}
+				on:keydown={(e) => {
+					if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') finishDepositAnim();
+				}}
+			>
+				<div class="da-title">Depositing…</div>
+				<div class="da-stage">
+					<div class="da-card">
+						<AccountCard
+							holder={$userProfile?.username ?? myUsername}
+							account={$userProfile?.account_number ?? ''}
+							member={$userProfile?.member_no ?? null}
+							balance={Math.round($depositBank)}
+							tier={menuCreditTier ?? 'Good'}
+						/>
+					</div>
+					<div class="da-amount">+${depositAnim.amount.toLocaleString()}</div>
+					<div class="da-coins">
+						{#each depositCoins as c (c.id)}
+							<img
+								class="da-coin"
+								src="/logo-coin.png"
+								alt=""
+								style="--dx:{c.dx}px; --delay:{c.delay}ms; --rot:{c.rot}deg"
+							/>
+						{/each}
+					</div>
+				</div>
+				<div class="da-hint">tap to continue</div>
+			</div>
+		{/if}
+
 		<!-- 🎯 Result Modal -->
 		{#if showResultModal && ['won', 'lost'].includes($gameStore.gameState)}
 			<div class="modal-overlay">
@@ -5220,6 +5310,134 @@
 		to {
 			opacity: 0;
 			transform: translate(-50%, -12px);
+		}
+	}
+	/* 💸 Deposit-lands beat */
+	.deposit-anim {
+		position: fixed;
+		inset: 0;
+		z-index: 3000;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 18px;
+		padding: 24px;
+		cursor: pointer;
+		background: radial-gradient(circle at 50% 38%, rgba(18, 22, 38, 0.97), rgba(0, 0, 0, 0.99));
+		animation: daFade 0.3s ease both;
+	}
+	.da-title {
+		font-family: var(--font-display);
+		font-weight: 700;
+		font-size: 0.9rem;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: var(--text-faint);
+	}
+	.da-stage {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 22px;
+		width: min(90vw, 360px);
+	}
+	.da-card {
+		width: 100%;
+		animation: daPulse 1.2s ease 0.5s;
+	}
+	.da-amount {
+		font-family: var(--font-display);
+		font-weight: 800;
+		font-size: 2rem;
+		color: #4ade80;
+		text-shadow: 0 0 20px rgba(74, 222, 128, 0.6);
+		font-variant-numeric: tabular-nums;
+		animation: daAmt 1.9s ease both;
+	}
+	/* coins launch from the amount (bottom of the stage) and fly up into the card */
+	.da-coins {
+		position: absolute;
+		left: 50%;
+		bottom: 6px;
+		width: 0;
+		height: 0;
+		pointer-events: none;
+	}
+	.da-coin {
+		position: absolute;
+		left: -14px;
+		bottom: 0;
+		width: 28px;
+		height: 28px;
+		opacity: 0;
+		filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+		animation: daCoin 0.95s cubic-bezier(0.3, 0.7, 0.4, 1) var(--delay, 0ms) forwards;
+	}
+	@keyframes daCoin {
+		0% {
+			transform: translate(var(--dx, 0), 0) scale(0.5) rotate(0deg);
+			opacity: 0;
+		}
+		15% {
+			opacity: 1;
+		}
+		70% {
+			opacity: 1;
+		}
+		100% {
+			transform: translate(0, -210px) scale(1) rotate(var(--rot, 180deg));
+			opacity: 0;
+		}
+	}
+	@keyframes daPulse {
+		0%,
+		100% {
+			transform: scale(1);
+			filter: brightness(1);
+		}
+		45% {
+			transform: scale(1.035);
+			filter: brightness(1.18);
+		}
+	}
+	@keyframes daAmt {
+		0% {
+			transform: translateY(10px);
+			opacity: 0;
+		}
+		18% {
+			opacity: 1;
+		}
+		80% {
+			opacity: 1;
+		}
+		100% {
+			transform: translateY(-6px);
+			opacity: 0.85;
+		}
+	}
+	@keyframes daFade {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+	.da-hint {
+		font-size: 0.8rem;
+		color: var(--text-faint);
+		animation: daHintPulse 1.5s ease-in-out infinite;
+	}
+	@keyframes daHintPulse {
+		0%,
+		100% {
+			opacity: 0.35;
+		}
+		50% {
+			opacity: 0.8;
 		}
 	}
 	main {
