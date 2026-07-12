@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { getActivityFeed } from '$lib/stores/statsStore.js';
+	import Icon from '$lib/components/Icon.svelte';
 
 	/** @type {any[]} */
 	let rows = $state([]);
@@ -12,13 +13,13 @@
 	let offset = $state(0);
 	const PAGE = 30;
 
-	/** @type {Record<string,string>} */
+	/** @type {Record<string,string>} icon = Icon.svelte name */
 	const ICON = {
-		daily_win: '📅',
-		challenge: '⚔️',
-		big_solve: '🎰',
-		badge: '🏅',
-		group_join: '👥'
+		daily_win: 'calendar',
+		challenge: 'swords',
+		big_solve: 'star',
+		badge: 'medal',
+		group_join: 'users'
 	};
 	const pretty = (/** @type {string} */ s) =>
 		(s || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -88,7 +89,9 @@
 		{#each rows as r, i (r.type + r.actor_id + r.ts + i)}
 			{@const l = line(r)}
 			<li class="ev">
-				<span class="ev-ic">{ICON[r.type] || '•'}</span>
+				<span class="ev-ic"
+					>{#if ICON[r.type]}<Icon name={ICON[r.type]} size={18} />{:else}•{/if}</span
+				>
 				<span class="ev-body">
 					<button
 						class="ev-actor"

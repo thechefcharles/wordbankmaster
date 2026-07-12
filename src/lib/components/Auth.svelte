@@ -140,9 +140,9 @@
 		});
 
 		if (error) {
-			resetMsg = `❌ ${error.message}`;
+			resetMsg = error.message;
 		} else {
-			resetMsg = '✅ Check your email to reset your password.';
+			resetMsg = 'Check your email to reset your password.';
 		}
 	}
 

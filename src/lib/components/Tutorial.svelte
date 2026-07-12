@@ -1,34 +1,36 @@
 <script>
 	import { createEventDispatcher } from 'svelte';
 	import { fx } from '$lib/sound.js';
+	import Icon from '$lib/components/Icon.svelte';
 
 	const dispatch = createEventDispatcher();
 
+	// icon = Icon.svelte name (rendered via <Icon>).
 	const steps = [
 		{
-			icon: '💰',
+			icon: 'cash',
 			title: 'Spend less, think more',
 			body: 'Crack the hidden phrase buying as few letters as you can.'
 		},
 		{
-			icon: '🔤',
+			icon: 'letter-a',
 			title: 'Buy letters',
 			body: 'Tap a letter to buy every copy. Wrong letters still cost you. Guessing the phrase is free — unlimited tries.'
 		},
 		{
-			icon: '💵',
+			icon: 'coin',
 			title: 'Cash is your score',
 			isNew: true,
 			body: 'Start with $2,000 — your balance and your leaderboard rank. Spend it smart.'
 		},
 		{
-			icon: '📅',
+			icon: 'calendar',
 			title: 'Daily paycheck',
 			isNew: true,
 			body: 'One puzzle a day for everyone. Just showing up pays — more for a streak.'
 		},
 		{
-			icon: '🧗',
+			icon: 'growth',
 			title: 'Cash Game & Challenges',
 			isNew: true,
 			body: 'Endless puzzles for Cash, or wager friends — solve efficiently and the highest Score takes the pot.'
@@ -59,7 +61,7 @@
 
 		{#key i}
 			{#if step.isNew}<span class="tut-new">NEW</span>{/if}
-			<div class="tut-icon">{step.icon}</div>
+			<div class="tut-icon"><Icon name={step.icon} size={40} /></div>
 			<h2 class="tut-title">{step.title}</h2>
 			<p class="tut-body">{step.body}</p>
 		{/key}

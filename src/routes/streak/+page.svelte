@@ -5,6 +5,7 @@
 	import { getStreakOverview } from '$lib/stores/statsStore.js';
 	import { enterMakeup } from '$lib/stores/GameStore.js';
 	import { track } from '$lib/analytics.js';
+	import Icon from '$lib/components/Icon.svelte';
 
 	/** @type {{ current_streak:number, highest_streak:number, freezes:number, days:{d:string,won:boolean}[] }|null} */
 	let ov = null;
@@ -104,7 +105,9 @@
 		<p class="loading">Loading…</p>
 	{:else}
 		<div class="hero">
-			<div class="flame" class:lit={ov && ov.current_streak > 0}>🔥</div>
+			<div class="flame" class:lit={ov && ov.current_streak > 0}>
+				<Icon name="fire" size={44} />
+			</div>
 			<div class="count">{ov?.current_streak ?? 0}</div>
 			<div class="count-label">play streak</div>
 		</div>
@@ -116,7 +119,9 @@
 				<span class="sv">{ov?.highest_streak ?? 0}</span><span class="sc">Longest</span>
 			</div>
 			<button class="stat stat-tap" on:click={() => (showFreezeInfo = !showFreezeInfo)}
-				><span class="sv">❄️ {ov?.freezes ?? 0}</span><span class="sc">Freezes ›</span></button
+				><span class="sv"><Icon name="snowflake" size={15} /> {ov?.freezes ?? 0}</span><span
+					class="sc">Freezes ›</span
+				></button
 			>
 			<div class="stat">
 				<span class="sv">{dayMap.size}</span><span class="sc">Days played</span>
@@ -124,9 +129,9 @@
 		</div>
 		{#if showFreezeInfo}
 			<div class="freeze-info">
-				<b>❄️ Streak freezes</b> protect your play streak. Miss a single day and a freeze is spent automatically
-				— your streak keeps going. You earn one every 7 days you show up (max 3). Miss two days in a
-				row and the streak resets.
+				<b><Icon name="snowflake" size={14} /> Streak freezes</b> protect your play streak. Miss a single
+				day and a freeze is spent automatically — your streak keeps going. You earn one every 7 days
+				you show up (max 3). Miss two days in a row and the streak resets.
 			</div>
 		{/if}
 
@@ -145,7 +150,9 @@
 							title={`Play ${MONTHS[month]} ${c.day}`}
 							on:click={() => onCellClick(c)}
 						>
-							<span class="cell-day">{c.day}</span><span class="cell-play">▶</span>
+							<span class="cell-day">{c.day}</span><span class="cell-play"
+								><Icon name="play" size={10} /></span
+							>
 						</button>
 					{:else}
 						<div
@@ -153,13 +160,14 @@
 							class:today={c.isToday}
 							title={`${MONTHS[month]} ${c.day}`}
 						>
-							{#if c.status === 'won'}🔥{:else}{c.day}{/if}
+							{#if c.status === 'won'}<Icon name="fire" size={16} />{:else}{c.day}{/if}
 						</div>
 					{/if}
 				{/each}
 			</div>
 			<p class="makeup-hint">
-				Tap a ▶ day to play that puzzle and fill your calendar — earns 🗓️ Perfect Week / 📅 Perfect
+				Tap a <Icon name="play" size={11} /> day to play that puzzle and fill your calendar — earns
+				<Icon name="calendar" size={13} /> Perfect Week / <Icon name="calendar" size={13} /> Perfect
 				Month badges. (Doesn’t change your streak.)
 			</p>
 			<div class="legend">
@@ -203,12 +211,13 @@
 		margin-top: 0.5rem;
 	}
 	.flame {
-		font-size: 4.2rem;
 		line-height: 1;
-		filter: grayscale(1) opacity(0.4);
+		color: #64748b;
+		opacity: 0.5;
 	}
 	.flame.lit {
-		filter: none;
+		color: #fb923c;
+		opacity: 1;
 		animation: flamePulse 2.2s ease-in-out infinite;
 	}
 	@keyframes flamePulse {
