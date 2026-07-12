@@ -73,7 +73,7 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
       routes only `challenge_incoming` to Challenges; `challenge_your_turn` (carries
       `match_id`) dead-ends at `/profile?tab=alerts`, and `notifNav` opens the _list_, not the
       match. **Fix:** use `data.match_id` to open the specific match.
-- [ ] **15. Unread bell never clears from viewing inbox** — `markAllNotificationsRead`
+- [x] **15. Unread bell never clears from viewing inbox** — ✅ FIXED (PR #564): alerts tab now calls markAllNotificationsRead on open. Was: — `markAllNotificationsRead`
       (`notificationStore.js:107`) has zero callers; alerts tab doesn't mark-all-read.
       **Fix:** call it on inbox open (or add a control).
 - [ ] **16. "Your turn" nudge only for the first finisher** — `_match_notify_opponent_played`
@@ -83,7 +83,7 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
       waits until nobody is `active`/`invited`. **Fix:** gate on accepted players only.
 - [ ] **18. Group decline silent to host** when the match survives (`decline_match` only
       notifies on void). **Fix:** optionally notify "@x declined."
-- [ ] **19. Possible double-toast race** — `notificationStore.poll()` computes `fresh`
+- [x] **19. Possible double-toast race** — ✅ FIXED (PR #564): added an in-flight guard to notificationStore.poll(). Was: — `notificationStore.poll()` computes `fresh`
       before writing `knownIds`; concurrent polls can both flag a row. **Fix:** in-flight guard
       / add ids before the async gap.
 
