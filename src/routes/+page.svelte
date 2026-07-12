@@ -600,8 +600,8 @@
 	// The doubled target payout (matches server: bounty ×2, then × heat, rounded).
 	$: donTarget =
 		isClimb && climb ? Math.round(((climb.bounty ?? 0) * 2 * (climb.heat ?? 100)) / 100) : 0;
-	// Climb live (Accumulator): "Solve to Earn" = leftover budget × heat, banked into the
-	// Wallet on solve. Server-computed as solve_reward.
+	// Climb live (Accumulator): "Solve to Earn" = leftover budget × heat, added to the
+	// Payout on solve. Server-computed as solve_reward.
 	$: climbLive =
 		isClimb && climb && climb.state === 'active'
 			? {
@@ -3597,8 +3597,8 @@
 								on:click={() => pickTier(t.tier)}
 							>
 								<span class="tt-label">{t.label}</span>
-								<span class="tt-buyin">${t.buy_in.toLocaleString()} <small>principal</small></span>
-								<span class="tt-meta">yield to +{Math.round(t.heat_cap - 100)}%</span>
+								<span class="tt-buyin">${t.buy_in.toLocaleString()} <small>buy-in</small></span>
+								<span class="tt-meta">interest to +{Math.round(t.heat_cap - 100)}%</span>
 								{#if !t.unlocked}<span class="tt-lock"
 										>🔒 {t.tier === 'silver'
 											? '3 Bronze deposits'
