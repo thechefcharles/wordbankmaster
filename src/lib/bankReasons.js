@@ -23,10 +23,6 @@ const LABELS = {
 	climb_bounty: 'Cash Game Bounty',
 	climb_letter: 'Cash Game Letter',
 
-	// ⚡ Blitz
-	blitz_buyin: 'Blitz Entry',
-	blitz_payout: 'Blitz Payout',
-
 	// ⚔️ Challenges (wager_* are the challenge staking system)
 	challenge_payout: 'Challenge Payout',
 	wager_stake: 'Challenge Entry',

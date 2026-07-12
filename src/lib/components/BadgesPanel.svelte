@@ -100,11 +100,10 @@
 	let goldCount = $derived(rows.filter((r) => (r.solves ?? 0) >= 25).length);
 
 	// Theme groups for the Achievements tab — inferred from the badge id.
-	const GROUP_ORDER = ['Milestones', 'Daily', 'Cash Game', 'Blitz', 'Challenges', 'Bank'];
+	const GROUP_ORDER = ['Milestones', 'Daily', 'Cash Game', 'Challenges', 'Bank'];
 	/** @param {string} id */
 	function groupFor(id) {
 		if (id.startsWith('cg_')) return 'Cash Game';
-		if (id.startsWith('bz_')) return 'Blitz';
 		if (['flawless', 'streak_7', 'streak_30', 'week_complete', 'month_complete'].includes(id))
 			return 'Daily';
 		if (['first_blood', 'gold_duelist', 'hustler'].includes(id)) return 'Challenges';

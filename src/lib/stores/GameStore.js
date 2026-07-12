@@ -45,13 +45,6 @@ import {
 	matchUsePowerup,
 	matchSabotage
 } from '$lib/stores/statsStore.js';
-import {
-	blitzStart,
-	blitzBuyLetter,
-	blitzSubmitGuess,
-	blitzSkip,
-	blitzEnd
-} from '$lib/stores/statsStore.js';
 import { track } from '$lib/analytics.js';
 
 /* ================================
@@ -90,7 +83,6 @@ import { track } from '$lib/analytics.js';
  *   makeupDate?: string | null,
  *   dailyResult?: any,
  *   climbInfo?: any,
- *   blitzInfo?: any,
  *   matchInfo?: any,
  *   cashToast?: { amount:number, label:string } | null,
  *   dailyLive?: { remaining:number, mult:number, winnings:number } | null,
@@ -165,7 +157,6 @@ export const gameStore = writable(
 		clue: null, // witty one-line hint for the current puzzle
 		makeupDate: null, // YYYY-MM-DD of the make-up day being played (makeup mode only)
 		climbInfo: null, // { bounty, heat, spent, position, final_guess, cheapest, wrong_penalty, last_gain, state } (climb mode)
-		blitzInfo: null, // { remaining_ms, combo, solved, winnings, tier, buy_in, base, state } (blitz mode)
 		matchInfo: null, // { position, pack_size, total_score, last_score, done, status } (challenge match)
 		cashToast: null, // { amount, label } — transient Cash-earned toast (attendance / free-play reward)
 		dailyLive: null, // { remaining, mult, winnings } — live Daily V2 HUD (Prize left → what you'd bank)
@@ -646,101 +637,6 @@ export async function climbPowerup(id) {
 	}
 }
 
-/* ===== Blitz (timed speed run) ===== */
-/** @param {any} resp */
-function reconcileBlitzBoard(resp) {
-	if (!resp) return;
-	const prev = get(gameStore);
-	const blitz = resp.blitz || {};
-	const ended = blitz.state === 'ended';
-	if (ended) {
-		gameStore.update((s) => ({ ...s, gameMode: 'blitz', gameState: 'lost', blitzInfo: blitz }));
-		fx('bust');
-		return;
-	}
-	gameStore.set(
-		/** @type {GameState} */ ({
-			...prev,
-			...boardToState(resp, prev),
-			gameMode: 'blitz',
-			gameState: 'default',
-			modifier: null,
-			blitzInfo: blitz
-		})
-	);
-	playMoveCue(prev, resp);
-}
-
-/** Buy in at a tier and start a timed run. @param {string} tier @returns {Promise<any>} */
-export async function startBlitz(tier) {
-	try {
-		track('blitz_start', { tier });
-		const resp = await blitzStart(tier);
-		if (!resp?.ok) return resp || { ok: false };
-		reconcileBlitzBoard(resp);
-		return resp;
-	} catch (err) {
-		console.error('❌ Error starting Blitz:', err instanceof Error ? err.message : String(err));
-		return { ok: false };
-	}
-}
-
-/** @param {GameState} state */
-async function confirmPurchaseBlitz(state) {
-	const purchase = state.selectedPurchase;
-	if (!purchase || dailyInFlight) return;
-	dailyInFlight = true;
-	try {
-		let resp = null;
-		if (purchase.type === 'letter') resp = await blitzBuyLetter(purchase.value ?? '');
-		if (resp) reconcileBlitzBoard(resp);
-		else gameStore.update((s) => ({ ...s, selectedPurchase: null, gameState: 'default' }));
-	} finally {
-		dailyInFlight = false;
-	}
-}
-
-/** @param {GameState} state */
-async function submitGuessBlitz(state) {
-	if (state.gameState !== 'guess_mode' || dailyInFlight) return;
-	/** @type {Record<string, string>} */
-	const guess = {};
-	for (const [k, v] of Object.entries(state.guessedLetters || {}))
-		guess[k] = /** @type {string} */ (v);
-	if (Object.keys(guess).length === 0) return;
-	dailyInFlight = true;
-	try {
-		const resp = await blitzSubmitGuess(guess);
-		if (resp) reconcileBlitzBoard(resp);
-	} finally {
-		dailyInFlight = false;
-	}
-}
-
-/** Skip the current Blitz puzzle (combo resets, −3s). */
-export async function blitzSkipPuzzle() {
-	if (dailyInFlight) return;
-	dailyInFlight = true;
-	try {
-		const resp = await blitzSkip();
-		if (resp) reconcileBlitzBoard(resp);
-	} finally {
-		dailyInFlight = false;
-	}
-}
-
-/** End the run when the clock hits 0 → bank winnings, show the result. */
-export async function endBlitz() {
-	try {
-		const resp = await blitzEnd();
-		reconcileBlitzBoard(resp);
-		return resp?.blitz ?? null;
-	} catch (err) {
-		console.error('❌ Error ending Blitz:', err instanceof Error ? err.message : String(err));
-		return null;
-	}
-}
-
 /* ===== Challenge Builder match play (pack of puzzles vs friends/group) ===== */
 /** @type {string|null} */
 let activeMatchId = null;
@@ -833,7 +729,7 @@ export async function acceptAndPlayMatch(id, reduced = false) {
 	return true;
 }
 
-/** Blitz: force the server to lock the score when the clock expires. */
+/** Force the server to lock a timed match's score when the clock expires. */
 export async function matchTimeoutCheck() {
 	if (!activeMatchId) return;
 	const board = await matchCheck(activeMatchId);
@@ -1097,7 +993,6 @@ export function confirmPurchase() {
 	if (current.gameMode === 'daily') confirmPurchaseDaily(current);
 	else if (current.gameMode === 'makeup') confirmPurchaseMakeup(current);
 	else if (current.gameMode === 'climb') confirmPurchaseClimb(current);
-	else if (current.gameMode === 'blitz') confirmPurchaseBlitz(current);
 	else if (current.gameMode === 'match') confirmPurchaseMatch(current);
 }
 /* ================================
@@ -1199,7 +1094,6 @@ export function submitGuess() {
 	if (current.gameMode === 'daily') submitGuessDaily(current);
 	else if (current.gameMode === 'makeup') submitGuessMakeup(current);
 	else if (current.gameMode === 'climb') submitGuessClimb(current);
-	else if (current.gameMode === 'blitz') submitGuessBlitz(current);
 	else if (current.gameMode === 'match') submitGuessMatch(current);
 }
 /* ================================

@@ -21,13 +21,9 @@
 		climbLeaveGame,
 		climbArmDoubleOrNothing,
 		climbPowerup,
-		startBlitz,
-		endBlitz,
-		blitzSkipPuzzle,
 		startMatch,
 		acceptAndPlayMatch,
 		resumeMatch,
-		matchTimeoutCheck,
 		refreshMatchMeta,
 		matchPowerup,
 		matchSabotageOpponent,
@@ -73,8 +69,7 @@
 		listFriendRequests,
 		deleteMyAccount,
 		getMyAvatar,
-		getCashgameMeta,
-		getBlitzMeta
+		getCashgameMeta
 	} from '$lib/stores/statsStore.js';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import {
@@ -86,7 +81,6 @@
 		markChallengeNotifRead
 	} from '$lib/stores/notificationStore.js';
 	import { track } from '$lib/analytics.js';
-	import { BLITZ_ENABLED } from '$lib/features.js';
 	import { modifierInfo } from '$lib/powerups.js';
 	import {
 		saveGameToLocalStorage,
@@ -394,8 +388,8 @@
 			fetchClimbGame().then((ok) => {
 				if (!ok) showMainMenu = true;
 			});
-		} else if (gameMode === 'match' || gameMode === 'blitz') {
-			// Matches (need the active id) + Blitz (a live timed run) aren't deep-link restorable.
+		} else if (gameMode === 'match') {
+			// Matches need the active id — not deep-link restorable; fall back to Daily.
 			localStorage.setItem('gameMode', 'daily');
 			showMainMenu = true;
 		} else {
@@ -536,54 +530,17 @@
 				return `${h}:${m} ${ap}`;
 			})()
 		: '';
-	// ⚡ Blitz — the live client clock counts down to blitzInfo.remaining_ms (server-authoritative);
-	// each action resyncs it. At 0 we call endBlitz() once.
-	$: isBlitz = $gameStore.gameMode === 'blitz';
-	$: blitz = $gameStore.blitzInfo; // { remaining_ms, combo, solved, winnings, tier, buy_in, base, state }
-	let blitzClockMs = 0;
-	/** @type {ReturnType<typeof setInterval>|undefined} */
-	let blitzTimer;
-	let blitzEnding = false;
-	// Resync the local clock whenever the server sends a fresh remaining_ms.
-	$: if (isBlitz && blitz && blitz.state !== 'ended' && blitz.remaining_ms != null) {
-		blitzClockMs = blitz.remaining_ms;
-	}
-	$: if (isBlitz && blitz && blitz.state !== 'ended') {
-		if (!blitzTimer) {
-			blitzEnding = false;
-			blitzTimer = setInterval(() => {
-				blitzClockMs = Math.max(0, blitzClockMs - 100);
-				if (blitzClockMs <= 0 && !blitzEnding) {
-					blitzEnding = true;
-					clearInterval(blitzTimer);
-					blitzTimer = undefined;
-					endBlitz();
-				}
-			}, 100);
-		}
-	} else if (blitzTimer) {
-		clearInterval(blitzTimer);
-		blitzTimer = undefined;
-	}
-	onDestroy(() => {
-		if (blitzTimer) clearInterval(blitzTimer);
-	});
-	$: blitzSec = Math.ceil(blitzClockMs / 1000);
 	// 🏷️ Which mode you're in — a consistent pill under the wordmark on every game screen.
 	$: modeLabel =
 		{
 			daily: { emoji: '📅', name: 'Daily' },
 			climb: { emoji: '', name: 'Cash Game' },
-			blitz: { emoji: '⚡', name: 'Blitz' },
 			makeup: { emoji: '📅', name: 'Make-up' },
 			match: { emoji: '⚔️', name: 'Challenge' },
 			challenge: { emoji: '⚔️', name: 'Challenge' }
 		}[$gameStore.gameMode] ?? null;
 	$: isMatch = $gameStore.gameMode === 'match';
 	$: matchInfo = $gameStore.matchInfo; // { position, pack_size, total_score, last_score, done, mode, solved, spent, budget, wager, items_allowed, used_powerups, started_at, clock_seconds, combo }
-	$: matchBlitz = isMatch && matchInfo?.mode === 'blitz' && !matchInfo?.done;
-	$: matchCombo = ((matchInfo?.combo ?? 100) / 100).toFixed(2);
-	let matchExpiredFired = false;
 	// 💥 Double or Nothing (Cash Game): server exposes don_armed + don_available (heat ≥ ×1.5).
 	$: donArmed = !!climb?.don_armed;
 	$: donAvailable = !!climb?.don_available;
@@ -603,7 +560,7 @@
 			: null;
 	// Challenge live: Spent of your ante budget — lowest spend wins (standard only).
 	$: matchLive =
-		isMatch && matchInfo && !matchInfo.done && matchInfo.mode !== 'blitz'
+		isMatch && matchInfo && !matchInfo.done
 			? { spent: matchInfo.spent ?? 0, budget: matchInfo.budget ?? 0 }
 			: null;
 	$: matchLeft = matchLive ? Math.max(0, (matchLive.budget ?? 0) - (matchLive.spent ?? 0)) : 0;
@@ -1162,18 +1119,6 @@
 		}
 	}
 
-	$: matchRemaining = (() => {
-		if (!matchBlitz || !matchInfo?.started_at) return 0;
-		const start = new Date(matchInfo.started_at).getTime();
-		const clockMs = (matchInfo.clock_seconds ?? 60) * 1000;
-		return Math.max(0, Math.ceil((start + clockMs - pressureNow) / 1000));
-	})();
-	$: if (matchBlitz && matchRemaining > 0) matchExpiredFired = false;
-	$: if (matchBlitz && matchRemaining <= 0 && !matchExpiredFired) fireMatchTimeout();
-	async function fireMatchTimeout() {
-		matchExpiredFired = true;
-		await matchTimeoutCheck();
-	}
 	// Heat IS the Cash Game win streak: each solve +0.1× (cap ×2.0), reset to ×1.0 when stuck.
 	$: climbStreak = Math.max(0, Math.round(((climb?.heat ?? 100) - 100) / 10));
 	// 🔥 The run: solves + cumulative profit since heat last reset (run_profit can be negative early).
@@ -1366,10 +1311,6 @@
 	$: resultBankroll = Math.max(0, Math.floor($gameStore.bankroll || 0));
 	$: resultMedal = medalFor(resultBankroll, resultWon);
 
-	// ⏱️ Shared 1s clock tick (drives the match-blitz countdown).
-	let pressureNow = browser ? Date.now() : 0;
-	/** @type {ReturnType<typeof setInterval>|undefined} */
-	let pressureTimer;
 	let shareCopied = false;
 	function buildShareText() {
 		const br = '$' + resultBankroll.toLocaleString();
@@ -1420,13 +1361,9 @@
 		['click', 'mousedown', 'touchstart'].forEach((event) =>
 			document.addEventListener(event, removeButtonFocus, true)
 		);
-		pressureTimer = setInterval(() => {
-			pressureNow = Date.now();
-		}, 250);
 	});
 	onDestroy(() => {
-		clearInterval(pressureTimer);
-		if (brokeTimer) if (brokeTimer) clearInterval(brokeTimer);
+		if (brokeTimer) clearInterval(brokeTimer);
 	});
 
 	// Bump this key whenever the tutorial gains new content — it re-shows for
@@ -1925,48 +1862,6 @@
 		cgBusy = false;
 	}
 
-	// ===== ⚡ Blitz — tier select + timed run =====
-	let showBlitzTier = false;
-	/** @type {any} */
-	let bzMeta = null;
-	let bzBusy = false;
-	/** @type {any} */
-	let blitzResult = null; // { solved, winnings, buy_in, net, best_combo, tier }
-	async function handleMenuBlitz() {
-		if (!get(user)?.id) return;
-		localStorage.setItem('gameMode', 'blitz');
-		bzMeta = await getBlitzMeta();
-		showBlitzTier = true;
-	}
-	/** @param {string} tier */
-	async function pickBlitzTier(tier) {
-		if (bzBusy) return;
-		bzBusy = true;
-		const res = await startBlitz(tier);
-		bzBusy = false;
-		if (res?.ok) {
-			hasInitialized = true;
-			showMainMenu = false;
-			showBlitzTier = false;
-			blitzResult = null;
-		} else if (res?.reason === 'insufficient') {
-			if (
-				confirm(
-					`You need $${(res.buy_in ?? 0).toLocaleString()} to buy in (you have $${(res.bank ?? 0).toLocaleString()}). Borrow from the Bank?`
-				)
-			) {
-				showBlitzTier = false;
-				goto('/bank');
-			}
-		}
-	}
-	// When the run ends (clock → 0), surface the result modal.
-	$: if (isBlitz && blitz && blitz.state === 'ended' && !blitzResult) {
-		blitzResult = blitz;
-		showResultModal = true;
-		refreshBank();
-	}
-
 	// ===== Challenge Builder (configurable packs vs friends/groups) =====
 	let showChallenges = false; // the New-Challenge builder modal
 	/** Which Community hub tab is showing. */
@@ -2010,7 +1905,6 @@
 	// Builder form
 	let mbTarget = 'friend'; // 'friend' | 'group'
 	let mbStep = 1; // wizard step: 1 Who · 2 Match · 3 Stakes
-	let mbMode = 'standard'; // 'standard' | 'blitz'
 	let mbOpponent = '';
 	let mbGroupId = '';
 	/** @type {string[]} */
@@ -2069,7 +1963,6 @@
 		if (!get(user)?.id) return;
 		mbMsg = '';
 		mbStep = 1;
-		if (!BLITZ_ENABLED) mbMode = 'standard'; // Blitz hidden → force Standard challenges
 		mbSearch = '';
 		mbResults = [];
 		showChallenges = true;
@@ -2185,7 +2078,7 @@
 			group_id: mbTarget === 'group' ? mbGroupId : null,
 			categories: mbCategories,
 			pack_size: mbPackSize,
-			mode: mbMode,
+			mode: 'standard',
 			wager: Math.floor(Number(mbWager) || 0),
 			payout: mbPayout,
 			window_seconds: mbWindow,
@@ -3521,13 +3414,6 @@
 						<ModeIcon mode="climb" size={22} /><span class="mc-title">Cash Game</span>
 						{#if climbInProgress}<span class="daily-chip prog">▶ Resume</span>{/if}
 					</button>
-					{#if BLITZ_ENABLED}
-						<button class="menu-card" style="--i: 2" on:click={handleMenuBlitz}>
-							<ModeIcon mode="blitz" size={22} /><span class="mc-title">Blitz</span><span
-								class="mc-stat">Beat the clock</span
-							>
-						</button>
-					{/if}
 				</div>
 			{:else if menuView === 'community'}
 				<div class="sub-head">
@@ -3716,48 +3602,6 @@
 			</div>
 		{/if}
 
-		<!-- ⚡ Blitz: tier select (timed run) -->
-		{#if showBlitzTier}
-			<div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Pick a Blitz tier">
-				<button
-					type="button"
-					class="modal-backdrop"
-					aria-label="Close"
-					on:click={() => (showBlitzTier = false)}
-				></button>
-				<div class="modal-content main-menu-modal tier-modal">
-					<button class="close-btn" on:click={() => (showBlitzTier = false)}>❌</button>
-					<h2><ModeIcon mode="blitz" size={20} /> Blitz</h2>
-					<p class="cat-sub">
-						Beat the clock. 45s to start — reveal costs 3s, a wrong guess costs 5s, each solve adds
-						8s + a combo-boosted payout. Bank whatever you win.
-					</p>
-					<div class="tier-grid tier-grid-3">
-						{#each bzMeta?.tiers ?? [] as t}
-							<button
-								class="tier-tile"
-								disabled={bzBusy || !t.affordable}
-								on:click={() => pickBlitzTier(t.tier)}
-							>
-								<span class="tt-label">{t.label}</span>
-								<span class="tt-buyin">${t.buy_in.toLocaleString()} <small>buy-in</small></span>
-								<span class="tt-meta">~${t.base}/solve × combo</span>
-								{#if !t.affordable}<span class="tt-lock">Need ${t.buy_in.toLocaleString()}</span
-									>{/if}
-							</button>
-						{/each}
-					</div>
-					{#if (bzMeta?.best_run ?? 0) > 0}
-						<p class="tier-stats">
-							Best run <b>{bzMeta.best_run}</b> solved · best combo
-							<b>×{((bzMeta.best_combo_x100 ?? 100) / 100).toFixed(2)}</b>
-							· biggest payout <b>${(bzMeta.best_payout ?? 0).toLocaleString()}</b>
-						</p>
-					{/if}
-				</div>
-			</div>
-		{/if}
-
 		<!-- Challenges: wager vs friends -->
 		{#if showChallenges}
 			<div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Challenge Friends">
@@ -3852,24 +3696,6 @@
 						{:else if mbStep === 2}
 							<!-- Step 2 · Match -->
 							<div class="ch-step-title">The match</div>
-							{#if BLITZ_ENABLED}
-								<div class="ch-modes">
-									<button
-										type="button"
-										class="ch-mode"
-										class:active={mbMode === 'standard'}
-										on:click={() => (mbMode = 'standard')}
-										>🧠 Standard<small>spend less</small></button
-									>
-									<button
-										type="button"
-										class="ch-mode"
-										class:active={mbMode === 'blitz'}
-										on:click={() => (mbMode = 'blitz')}
-										><ModeIcon mode="blitz" size={16} /> Blitz<small>timed · combos</small></button
-									>
-								</div>
-							{/if}
 
 							<div class="ch-field">
 								<span>Categories <em class="ch-opt">(optional)</em></span>
@@ -4328,47 +4154,19 @@
 
 		<!-- 💰 Bankroll — top of every mode. Challenge ante now lives in the bounty hero below. -->
 		{#if $gameStore.currentPhrase && $gameStore.gameMode}
-			{#if isBlitz && blitz && blitz.state !== 'ended'}
-				<!-- ⚡ Blitz HUD: big countdown clock + combo + live winnings -->
-				<div class="blitz-hud">
-					<div class="bz-clock" class:danger={blitzSec <= 10}>
-						⏱️ {blitzSec}<span class="bz-clock-s">s</span>
-					</div>
-					<div class="bz-row">
-						<span class="bz-stat"
-							><b class="bz-combo">×{((blitz.combo ?? 100) / 100).toFixed(2)}</b><small>combo</small
-							></span
-						>
-						<span class="bz-stat"
-							><b class="bz-win">${Math.round(blitz.winnings ?? 0).toLocaleString()}</b><small
-								>winnings</small
-							></span
-						>
-						<span class="bz-stat"><b>{blitz.solved ?? 0}</b><small>solved</small></span>
-					</div>
-					<button
-						class="bz-skip"
-						on:click={() => {
-							fx('tap');
-							blitzSkipPuzzle();
-						}}>Skip (−3s, combo resets)</button
-					>
-				</div>
-			{:else if !matchBlitz}
-				<!-- 🪙 Small ambient bankroll chip — your account, shown quietly; the hero number
+			<!-- 🪙 Small ambient bankroll chip — your account, shown quietly; the hero number
              below is the game money. Static during play; tap → bank. -->
-				<button
-					class="bankroll-chip"
-					title="Your account balance"
-					on:click={() => {
-						fx('tap');
-						showBalanceInfo = true;
-					}}
-				>
-					<img class="brc-coin" src="/logo-coin.png" alt="" width="16" height="16" />
-					<span class="brc-amt">${Math.round(menuBank ?? netWorth ?? 0).toLocaleString()}</span>
-				</button>
-			{/if}
+			<button
+				class="bankroll-chip"
+				title="Your account balance"
+				on:click={() => {
+					fx('tap');
+					showBalanceInfo = true;
+				}}
+			>
+				<img class="brc-coin" src="/logo-coin.png" alt="" width="16" height="16" />
+				<span class="brc-amt">${Math.round(menuBank ?? netWorth ?? 0).toLocaleString()}</span>
+			</button>
 		{/if}
 
 		<!-- 🔍 Diagnostic banner (shows when init failed) -->
@@ -4433,46 +4231,25 @@
 
 		<!-- ⚔️ Challenge match HUD -->
 		{#if isMatch && matchInfo && !matchInfo.done}
-			{#if matchBlitz}
-				<div class="climb-hud">
-					<div class="ch-cell">
-						<span class="ch-val">{matchInfo.position}/{matchInfo.pack_size}</span><span
-							class="ch-label">Puzzle</span
-						>
-					</div>
-					<div class="ch-cell">
-						<span class="ch-val ch-gold">{(matchInfo.total_score ?? 0).toLocaleString()}</span><span
-							class="ch-label">Score</span
-						>
-					</div>
-					<div class="ch-cell">
-						<span class="ch-val">×{matchCombo}</span><span class="ch-label">Combo</span>
-					</div>
-					<div class="ch-cell" class:hot={matchRemaining <= 10}>
-						<span class="ch-val">⏱️{matchRemaining}</span><span class="ch-label">Time</span>
-					</div>
-				</div>
-			{:else}
-				<!-- 🏆 Your Score — the accumulated bounty-kept you win the pot on. The center hero
+			<!-- 🏆 Your Score — the accumulated bounty-kept you win the pot on. The center hero
              below is just this puzzle's fresh bounty; this is the number that matters. -->
-				<div class="match-score">
-					<span class="ms-cap">Your Score</span>
-					<span class="ms-val">${Math.round(matchInfo.total_score ?? 0).toLocaleString()}</span>
-				</div>
-				<div class="match-meta">
-					{#if matchPot > 0}<span class="pot-chip">Pot ${matchPot.toLocaleString()}</span>{/if}
-					{#if matchInfo.target != null}<span class="beat-chip"
-							>Beat ${Number(
-								matchInfo.target
-							).toLocaleString()}{#if matchInfo.target_kind === 'place'}
-								to place{/if}</span
-						>{/if}
-					{#if matchInfo.pack_size > 1}<span class="match-pos"
-							>Puzzle {matchInfo.position}/{matchInfo.pack_size}</span
-						>{/if}
-				</div>
-				<StandingStrip standing={matchInfo.standing ?? null} />
-			{/if}
+			<div class="match-score">
+				<span class="ms-cap">Your Score</span>
+				<span class="ms-val">${Math.round(matchInfo.total_score ?? 0).toLocaleString()}</span>
+			</div>
+			<div class="match-meta">
+				{#if matchPot > 0}<span class="pot-chip">Pot ${matchPot.toLocaleString()}</span>{/if}
+				{#if matchInfo.target != null}<span class="beat-chip"
+						>Beat ${Number(
+							matchInfo.target
+						).toLocaleString()}{#if matchInfo.target_kind === 'place'}
+							to place{/if}</span
+					>{/if}
+				{#if matchInfo.pack_size > 1}<span class="match-pos"
+						>Puzzle {matchInfo.position}/{matchInfo.pack_size}</span
+					>{/if}
+			</div>
+			<StandingStrip standing={matchInfo.standing ?? null} />
 			{#if (matchInfo.my_debuffs ?? []).length}
 				<button
 					type="button"
@@ -5151,63 +4928,14 @@
 								}}>New Run</button
 							>
 						</div>
-					{:else if isBlitz && blitzResult}
-						<!-- ⚡ Blitz: time's up -->
-						{@const br = blitzResult}
-						<h2 class="win-h">⚡ Time!</h2>
-						<p class="result-sub">
-							{br.solved ?? 0} solved · best combo ×{((br.best_combo ?? 100) / 100).toFixed(2)}
-						</p>
-						<div class="win-math">
-							<div class="wm-row">
-								<span>Winnings</span><b>${(br.winnings ?? 0).toLocaleString()}</b>
-							</div>
-							<div class="wm-row">
-								<span>− Buy-in</span><b class="neg">−${(br.buy_in ?? 0).toLocaleString()}</b>
-							</div>
-							<div class="wm-row total">
-								<span>Net</span><b class="profit"
-									>{(br.net ?? 0) >= 0 ? '+' : '−'}${Math.abs(br.net ?? 0).toLocaleString()}</b
-								>
-							</div>
-						</div>
-						<p class="win-twist">
-							{(br.net ?? 0) >= 0
-								? '🔥 You beat the clock — banked to your Cash.'
-								: 'Whiffed the bet — the Daily always refills your Cash.'}
-						</p>
-						<div class="result-actions">
-							<button
-								class="share-btn"
-								on:click={() => {
-									blitzResult = null;
-									showResultModal = false;
-									hasTriggeredModal = false;
-									goToMainMenu();
-								}}>Done</button
-							>
-							<button
-								class="next-puzzle-button"
-								on:click={() => {
-									blitzResult = null;
-									showResultModal = false;
-									hasTriggeredModal = false;
-									handleMenuBlitz();
-								}}>New Run</button
-							>
-						</div>
 					{:else if isMatch}
 						<!-- Challenge match: finished the whole pack -->
 						<div class="result-medal">⚔️</div>
 						<h2>Challenge complete!</h2>
 						<p class="result-sub">
-							{#if matchInfo?.mode === 'blitz'}You scored {(
-									matchInfo?.total_score ?? 0
-								).toLocaleString()} across {matchInfo?.pack_size} puzzle{matchInfo?.pack_size === 1
-									? ''
-									: 's'}{:else}You solved {matchInfo?.solved ?? 0}/{matchInfo?.pack_size} spending ${(
-									matchInfo?.spent ?? 0
-								).toLocaleString()}{/if}
+							You solved {matchInfo?.solved ?? 0}/{matchInfo?.pack_size} spending ${(
+								matchInfo?.spent ?? 0
+							).toLocaleString()}
 						</p>
 						<p class="arcade-gain">
 							{matchInfo?.status === 'settled'
@@ -5536,13 +5264,6 @@
 		color: var(--text-muted);
 	}
 	/* Cash Game (Climb) HUD */
-	.climb-hud {
-		display: flex;
-		gap: 8px;
-		width: 100%;
-		max-width: 360px;
-		margin: 0 auto 12px;
-	}
 	/* 🏆 Challenge Score — the accumulated number you win the pot on (the hero below is
 	   just this puzzle's fresh bounty). */
 	.match-score {
@@ -5603,41 +5324,6 @@
 		padding: 3px 11px;
 		border-radius: 999px;
 		font-variant-numeric: tabular-nums;
-	}
-	.ch-cell {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 2px;
-		padding: 10px 6px;
-		background: var(--surface);
-		border: 1px solid var(--border);
-		border-radius: var(--r-md, 12px);
-	}
-	.ch-cell.hot {
-		border-color: rgba(251, 191, 36, 0.5);
-		background: linear-gradient(135deg, rgba(251, 191, 36, 0.14), rgba(251, 191, 36, 0.04));
-	}
-	.ch-val {
-		font-family: var(--font-display);
-		font-weight: 700;
-		font-size: 1.15rem;
-		color: var(--text);
-		font-variant-numeric: tabular-nums;
-	}
-	.ch-cell.hot .ch-val {
-		color: #fbbf24;
-	}
-	.ch-gold {
-		color: #fcd34d;
-	}
-	.ch-label {
-		font-size: 0.55rem;
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
-		color: var(--text-faint);
-		font-weight: 600;
 	}
 
 	.debuff-banner {
@@ -5961,82 +5647,6 @@
 		margin: 10px 0 0;
 		font-size: 0.74rem;
 		color: var(--text-faint);
-	}
-	.tier-grid-3 {
-		grid-template-columns: repeat(3, 1fr);
-	}
-	/* ⚡ Blitz HUD */
-	.blitz-hud {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 6px;
-		width: 100%;
-		max-width: 360px;
-		margin: 0 auto 12px;
-	}
-	.bz-clock {
-		font-family: 'Orbitron', var(--font-display);
-		font-weight: 800;
-		font-size: 2.6rem;
-		line-height: 1;
-		color: #fde047;
-		font-variant-numeric: tabular-nums;
-	}
-	.bz-clock-s {
-		font-size: 1.1rem;
-		color: var(--text-faint);
-		margin-left: 2px;
-	}
-	.bz-clock.danger {
-		color: #fb7185;
-		animation: pressurePulse 1s ease-in-out infinite;
-	}
-	.bz-row {
-		display: flex;
-		gap: 10px;
-	}
-	.bz-stat {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0;
-		padding: 5px 14px;
-		border-radius: 12px;
-		border: 1px solid var(--border);
-		background: var(--surface);
-	}
-	.bz-stat b {
-		font-family: 'Orbitron', var(--font-display);
-		font-weight: 800;
-		font-size: 1.05rem;
-		color: var(--text);
-	}
-	.bz-stat small {
-		font-size: 0.58rem;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--text-faint);
-	}
-	.bz-combo {
-		color: #fbbf24 !important;
-	}
-	.bz-win {
-		color: #6ee7b7 !important;
-	}
-	.bz-skip {
-		padding: 0.4rem 0.9rem;
-		border-radius: 999px;
-		border: 1px solid var(--border);
-		background: transparent;
-		color: var(--text-muted);
-		font-weight: 700;
-		font-size: 0.74rem;
-		cursor: pointer;
-	}
-	.bz-skip:hover {
-		border-color: #fb7185;
-		color: #fca5a5;
 	}
 	.arcade-gain {
 		font-family: var(--font-display);
@@ -6823,14 +6433,6 @@
 		text-shadow:
 			0 1px 1px rgba(70, 44, 0, 0.45),
 			0 0 1px rgba(120, 80, 0, 0.4);
-	}
-	.mc-stat {
-		position: relative;
-		z-index: 1;
-		font-family: var(--font-display);
-		font-weight: 800;
-		font-size: 0.9rem;
-		color: #b8860b;
 	}
 	/* notification badge — top-right corner of the bar */
 
@@ -9442,13 +9044,6 @@
 		margin: 0 0 16px;
 	}
 	/* 🏆 Win banner */
-	.win-h {
-		font-family: var(--font-display);
-		font-weight: 800;
-		font-size: 1.7rem;
-		margin: 0 0 2px;
-		animation: winPunch 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-	}
 	@keyframes winPunch {
 		0% {
 			opacity: 0;
@@ -9614,50 +9209,6 @@
 		letter-spacing: 0.02em;
 	}
 
-	.win-math {
-		display: flex;
-		flex-direction: column;
-		gap: 7px;
-		text-align: left;
-		margin: 14px auto 12px;
-		max-width: 300px;
-		padding: 14px 16px;
-		border-radius: 16px;
-		border: 1px solid rgba(253, 224, 71, 0.4);
-		background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(251, 191, 36, 0.04));
-	}
-	.wm-row {
-		display: flex;
-		justify-content: space-between;
-		align-items: baseline;
-		gap: 10px;
-		font-size: 0.92rem;
-		color: var(--text);
-	}
-	.wm-row b {
-		font-family: 'Orbitron', var(--font-display);
-		font-variant-numeric: tabular-nums;
-	}
-	.wm-row .neg {
-		color: #fb7185;
-	}
-	.wm-row.total {
-		border-top: 1px solid rgba(253, 224, 71, 0.3);
-		padding-top: 9px;
-		margin-top: 2px;
-		font-weight: 700;
-		font-size: 1rem;
-	}
-	.wm-row .profit {
-		font-size: 1.8rem;
-		color: #4ade80;
-		text-shadow: 0 0 18px rgba(74, 222, 128, 0.5);
-	}
-	.win-twist {
-		font-size: 0.82rem;
-		color: var(--text-muted);
-		margin: 0 0 12px;
-	}
 	.win-menu {
 		margin-top: 10px;
 		background: none;

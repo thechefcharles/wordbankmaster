@@ -27,15 +27,6 @@ export const BADGES = {
 		desc: 'Won a Gold Cash Game run — unlocks the 🦈 Gold Shark title'
 	},
 
-	// ⚡ Blitz
-	bz_bronze: { emoji: '🥉', name: 'Bronze Blitzer', desc: 'Played a Bronze Blitz run' },
-	bz_silver: { emoji: '🥈', name: 'Silver Blitzer', desc: 'Played a Silver Blitz run' },
-	bz_gold: { emoji: '🥇', name: 'Gold Blitzer', desc: 'Played a Gold Blitz run' },
-	bz_speed_demon: { emoji: '😈', name: 'Speed Demon', desc: 'Solved 10 in a single Blitz run' },
-	bz_combo_3: { emoji: '🔗', name: 'Combo x3', desc: 'Hit a ×3 combo in Blitz' },
-	bz_combo_5: { emoji: '⚡', name: 'Combo x5', desc: 'Maxed a ×5 combo in Blitz' },
-	bz_high_roller: { emoji: '💰', name: 'Big Blitz', desc: 'A $5,000+ Blitz payout' },
-
 	// ⚔️ Challenges
 	first_blood: { emoji: '🩸', name: 'First Blood', desc: 'Won your first challenge' },
 	gold_duelist: { emoji: '⚔️', name: 'Gold Duelist', desc: 'Won a Gold challenge' },
