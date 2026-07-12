@@ -698,16 +698,19 @@
 			const bounty = Math.max(0, total - carried); // this puzzle's value (net − carried)
 			climbStaging = true;
 			tweenNet.set(0, { duration: 0 });
-			tweenNet.set(bounty, { duration: 650 }); // 0 → puzzle value
+			tweenNet.set(bounty, { duration: 700 }); // 0 → puzzle value
+			// hold the puzzle value for a beat, THEN fly the carried pile on
 			setTimeout(() => {
-				carryCue = carried; // "+$X run pile" floats onto the number
+				carryCue = carried; // flashy "+$X run pile" floats onto the number
 				fx('multiplier');
-				tweenNet.set(total, { duration: 900 }); // puzzle value → puzzle value + run pile
-			}, 1050);
+				tweenNet.set(total, { duration: 950 }); // puzzle value → puzzle value + run pile
+			}, 1500);
 			setTimeout(() => {
-				climbStaging = false;
-				carryCue = 0;
-			}, 2300);
+				climbStaging = false; // count-up done → the reactive can drive again
+			}, 2600);
+			setTimeout(() => {
+				carryCue = 0; // float lingers ~2s before clearing
+			}, 3650);
 		}
 	}
 	// 🎬 Challenges auto-advance through a pack, so play the armed opening reveal on each
@@ -9003,29 +9006,51 @@
 	.carry-float {
 		position: absolute;
 		left: 50%;
-		top: 118%;
+		top: 120%;
 		pointer-events: none;
 		font-family: var(--font-display, sans-serif);
 		font-weight: 800;
-		font-size: 1.3rem;
+		font-size: 2rem;
+		letter-spacing: 0.01em;
 		color: #4ade80;
-		text-shadow: 0 0 14px rgba(74, 222, 128, 0.6);
+		text-shadow:
+			0 0 20px rgba(74, 222, 128, 0.9),
+			0 0 40px rgba(74, 222, 128, 0.5);
 		font-variant-numeric: tabular-nums;
 		white-space: nowrap;
-		animation: carryFloat 1.15s cubic-bezier(0.2, 0.75, 0.3, 1) forwards;
+		animation:
+			carryFloat 2s cubic-bezier(0.2, 0.7, 0.3, 1) forwards,
+			carryGlow 0.5s ease-in-out 3 alternate;
 	}
 	@keyframes carryFloat {
 		0% {
 			opacity: 0;
-			transform: translate(-50%, 26px) scale(0.8);
+			transform: translate(-50%, 34px) scale(0.6);
 		}
-		25% {
+		12% {
 			opacity: 1;
-			transform: translate(-50%, 0) scale(1.1);
+			transform: translate(-50%, -6px) scale(1.3);
+		}
+		22% {
+			transform: translate(-50%, 0) scale(1.12);
+		}
+		72% {
+			opacity: 1;
+			transform: translate(-50%, -6px) scale(1.12);
 		}
 		100% {
 			opacity: 0;
-			transform: translate(-50%, -62px) scale(0.9);
+			transform: translate(-50%, -58px) scale(0.95);
+		}
+	}
+	@keyframes carryGlow {
+		from {
+			text-shadow: 0 0 14px rgba(74, 222, 128, 0.6);
+		}
+		to {
+			text-shadow:
+				0 0 30px rgba(74, 222, 128, 1),
+				0 0 55px rgba(74, 222, 128, 0.65);
 		}
 	}
 	/* A wrong whole-phrase guess (Cash Game): same red, but bigger + a hard shake so it
