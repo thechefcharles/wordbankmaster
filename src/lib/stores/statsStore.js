@@ -815,15 +815,6 @@ export async function climbForfeit() {
 	}
 	return data;
 }
-/** Skip the current Cash Game puzzle for a fresh one (resets heat to ×1.0). @returns {Promise<any>} */
-export async function climbSkip() {
-	const { data, error } = await supabase.rpc('climb_skip');
-	if (error) {
-		console.error('❌ climb_skip:', error);
-		return null;
-	}
-	return data;
-}
 /** Arm Double-or-Nothing on the current Cash Game puzzle (heat ≥ ×1.5). @returns {Promise<any>} */
 export async function climbDoubleOrNothing() {
 	const { data, error } = await supabase.rpc('climb_double_or_nothing');

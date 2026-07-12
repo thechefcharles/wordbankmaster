@@ -38,7 +38,6 @@ import {
 	climbNext,
 	climbLeave,
 	climbForfeit,
-	climbSkip,
 	climbDoubleOrNothing,
 	climbUsePowerup,
 	getClimbClue
@@ -736,22 +735,6 @@ export async function climbLeaveGame() {
 		await climbLeave();
 	} catch {
 		/* non-fatal */
-	}
-}
-
-/** Skip the current Cash Game puzzle for a fresh one (resets heat to ×1.0). */
-export async function climbSkipPuzzle() {
-	if (dailyInFlight) return;
-	dailyInFlight = true;
-	try {
-		const board = await climbSkip();
-		if (board) {
-			reconcileClimbBoard(board);
-			maybeArmClimbIntro();
-			await refreshClimbClue();
-		}
-	} finally {
-		dailyInFlight = false;
 	}
 }
 

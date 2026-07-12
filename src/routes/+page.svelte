@@ -20,7 +20,6 @@
 		climbFreeSkip,
 		climbForfeitRun,
 		climbLeaveGame,
-		climbSkipPuzzle,
 		climbArmDoubleOrNothing,
 		climbPowerup,
 		startBlitz,
@@ -1113,13 +1112,10 @@
 		}
 		try {
 			fx(auto ? 'bust' : 'tap');
+			// Only Daily + Challenges reach this (brokeMode = match; Daily give-up = manual).
+			// Cash Game never folds here — it busts via the guess flow or forfeits its run.
 			if ($gameStore.gameMode === 'daily') await dailyFold();
 			else if ($gameStore.gameMode === 'match') await matchFold();
-			else if ($gameStore.gameMode === 'climb') {
-				await climbSkipPuzzle();
-				await tick();
-				playDailyIntroIfArmed();
-			} // fresh puzzle; heat resets; replay the dramatic build
 		} finally {
 			brokeFiring = false;
 		}
@@ -2624,20 +2620,16 @@
 		></button>
 		<div class="modal-content giveup-modal">
 			<h2 class="gu-title">
-				{isClimb
-					? 'Skip this puzzle?'
-					: `Give up ${$gameStore.gameMode === 'match' ? 'this puzzle' : "today's Daily"}?`}
+				Give up {$gameStore.gameMode === 'match' ? 'this puzzle' : "today's Daily"}?
 			</h2>
 			<p class="gu-text">
-				{isClimb
-					? `Your Interest resets to +0%${(climb?.spent ?? 0) > 0 ? ` and you forfeit the $${(climb?.spent ?? 0).toLocaleString()} spent on this one` : ''} — then a fresh puzzle.`
-					: $gameStore.gameMode === 'match'
-						? 'Skip this puzzle — you pay its full price and move on.'
-						: 'It counts as a loss — you deposit nothing and the answer is revealed.'}
+				{$gameStore.gameMode === 'match'
+					? 'Skip this puzzle — you pay its full price and move on.'
+					: 'It counts as a loss — you deposit nothing and the answer is revealed.'}
 			</p>
 			<div class="gu-actions">
 				<button class="gu-cancel" on:click={cancelGiveUp}>Keep playing</button>
-				<button class="gu-confirm" on:click={doGiveUp}>{isClimb ? '⏭️ Skip' : '🏳️ Give up'}</button>
+				<button class="gu-confirm" on:click={doGiveUp}>🏳️ Give up</button>
 			</div>
 		</div>
 	</div>
