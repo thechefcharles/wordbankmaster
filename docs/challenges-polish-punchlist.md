@@ -119,11 +119,11 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
 
 ## ⚪ Tier 6 — Polish
 
-- [ ] **27. Group chat has no unread indicator** (match chat has `matchChatUnread`).
-      _(`GroupsPanel.svelte:96-127`)_
-- [ ] **28. ActivityPanel uses emoji icons** instead of the line-icon system.
-      _(`ActivityPanel.svelte:16-22`)_
-- [ ] **29. Compete tab caches standings** — doesn't refresh after a settle while open.
+- [x] **27. Group chat has no unread indicator** — ✅ FIXED (PR #573, supabase-group-last-message.sql): get*my_groups returns last_message_at; group list shows an unread dot vs a localStorage per-group last-seen, cleared on open. Was: (match chat has `matchChatUnread`).
+      *(`GroupsPanel.svelte:96-127`)\_
+- [ ] **28. ActivityPanel uses emoji icons** — ⏸️ DEFERRED: ModeIcon/CategoryIcon only cover 2 of 5 activity types (daily*win, challenge); big_solve/badge/group_join have no line icon, so a partial swap is less consistent than the current uniform emoji set. Needs new icons. Was: instead of the line-icon system.
+      *(`ActivityPanel.svelte:16-22`)\_
+- [x] **29. Compete tab caches standings** — ✅ FIXED (PR #573): switchTab reloads standings every time Compete opens (spinner only on first load). Was: — doesn't refresh after a settle while open.
       _(`GroupsPanel.svelte:63`)_
 
 ---
