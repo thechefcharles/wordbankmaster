@@ -4384,8 +4384,8 @@
 					<div class="bn-head">
 						<span class="bn-app">🏦 WordBank</span><span class="bn-time">now</span>
 					</div>
-					<div class="bn-title">Out of budget for this word!</div>
-					<div class="bn-body">Solve it now — or bust and lose your Payout.</div>
+					<div class="bn-title">You're out of money</div>
+					<div class="bn-body">One guess left — guess wrong and you lose your run.</div>
 					<button class="bn-forfeit" on:click={askForfeit}>Don't know it? Give up →</button>
 				</div>
 			{/if}
