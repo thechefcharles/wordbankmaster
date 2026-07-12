@@ -11,7 +11,7 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
 
 ## 🔴 Tier 1 — Money & correctness bugs (fix first)
 
-- [ ] **1. `decline_match` refunds bounty, not stake** — exploit. Refund credits
+- [x] **1. `decline_match` refunds bounty, not stake** — ✅ FIXED (PR #556, supabase-decline-refund-fix.sql): refund now `COALESCE(stake, GREATEST(wager,500))`; rollback-verified 1500→500. Refund credits
   `COALESCE(start_budget, GREATEST(wager,500))`; `start_budget` is the puzzle bounty
   (~$1.2–3k) while the host was only debited `stake = wager` (min $500). Decline → host
   pockets the difference. `_match_settle` correctly uses `coalesce(stake,…)`.
