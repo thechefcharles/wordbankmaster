@@ -10,6 +10,7 @@
 		COLLECTOR
 	} from '$lib/categoryBadges.js';
 	import { BADGES, badgeInfo } from '$lib/badges.js';
+	import Icon from '$lib/components/Icon.svelte';
 	import { fx } from '$lib/sound.js';
 
 	/** @type {{category: string, solves: number}[]} */
@@ -122,7 +123,7 @@
 		})),
 		...SOLVE_MILESTONES.map((m) => ({
 			id: m.id,
-			emoji: m.emoji,
+			icon: m.icon,
 			name: m.name,
 			desc: m.desc,
 			earned: total >= m.at,
@@ -132,7 +133,7 @@
 		})),
 		{
 			id: 'collector',
-			emoji: COLLECTOR.emoji,
+			icon: COLLECTOR.icon,
 			name: COLLECTOR.name,
 			desc: COLLECTOR.desc,
 			earned: goldCount >= 12,
@@ -164,7 +165,7 @@
 				cands.push({
 					remaining: n,
 					label: `${n} more ${n === 1 ? 'solve' : 'solves'}`,
-					target: `${m.emoji} ${m.name}`
+					target: m.name
 				});
 			}
 		}
@@ -173,7 +174,7 @@
 			cands.push({
 				remaining: n,
 				label: `${n} more Gold categor${n === 1 ? 'y' : 'ies'}`,
-				target: `${COLLECTOR.emoji} ${COLLECTOR.name}`
+				target: COLLECTOR.name
 			});
 		}
 		for (const r of rows) {
@@ -182,7 +183,7 @@
 				cands.push({
 					remaining: n,
 					label: `${n} more ${r.label} solve${n === 1 ? '' : 's'}`,
-					target: `${r.next.medal} ${r.next.name}`
+					target: r.next.name
 				});
 			}
 		}
@@ -214,7 +215,10 @@
 			{total === 1 ? 'puzzle' : 'puzzles'} solved · {rankedCats}/{rows.length} categories ranked
 		</div>
 		{#if closest}
-			<div class="bp-nudge">🎯 {closest.label} → <b>{closest.target}</b></div>
+			<div class="bp-nudge">
+				<Icon name="target" size={15} />
+				{closest.label} → <b>{closest.target}</b>
+			</div>
 		{/if}
 	</div>
 
@@ -254,12 +258,13 @@
 							/>
 						</svg>
 						<span class="ring-emoji"><CategoryIcon category={r.value} size={24} /></span>
-						{#if r.current}<span class="ring-medal">{r.current.medal}</span>{/if}
+						{#if r.current}<span class="ring-medal"><Icon name={r.current.icon} size={18} /></span
+							>{/if}
 					</div>
 					<div class="cat-name">{r.label}</div>
 					<div class="cat-sub">
 						{#if r.next}
-							{r.toNext} → {r.next.medal}
+							{r.toNext} → {r.next.name}
 						{:else}
 							💎 Maxed · {r.solves}
 						{/if}
@@ -289,7 +294,7 @@
 							}
 						}}
 					>
-						<span class="ach-emoji">{a.emoji}</span>
+						<span class="ach-emoji"><Icon name={a.icon} size={26} /></span>
 						<span class="ach-name">{a.name}</span>
 						<span class="ach-desc">{a.desc}</span>
 						{#if a.progText && !a.earned}
@@ -341,7 +346,7 @@
 				{#each CATEGORY_TIERS as t}
 					{@const got = detail.solves >= t.at}
 					<div class="cd-tier" class:got>
-						<span class="cd-medal">{t.medal}</span>
+						<span class="cd-medal"><Icon name={t.icon} size={24} /></span>
 						<span class="cd-tname">{t.name}</span>
 						<span class="cd-treq"
 							>{#if got}✓ Unlocked{:else}{t.at - detail.solves} more{/if}</span
@@ -359,7 +364,9 @@
 		<button class="cd-backdrop" aria-label="Close" onclick={() => (achDetail = null)}></button>
 		<div class="cd-card" role="dialog" aria-modal="true">
 			<button class="cd-x" onclick={() => (achDetail = null)} aria-label="Close">✕</button>
-			<div class="cd-emoji" class:ad-dim={!achDetail.earned}>{achDetail.emoji}</div>
+			<div class="cd-emoji" class:ad-dim={!achDetail.earned}>
+				<Icon name={achDetail.icon} size={40} />
+			</div>
 			<h3 class="cd-name">{achDetail.name}</h3>
 			<p class="cd-solves">{achDetail.desc}</p>
 			{#if achDetail.earned}

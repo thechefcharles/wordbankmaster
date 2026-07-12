@@ -91,7 +91,17 @@
 		skull: `<svg ${A}><path d="M5.5 12.5a6.5 6.5 0 1 1 13 0v2.8l-1.5 1v2.4h-10v-2.4l-1.5-1z"/><circle cx="9.5" cy="12.5" r="1.4" ${DOT}/><circle cx="14.5" cy="12.5" r="1.4" ${DOT}/></svg>`,
 		'external-link': `<svg ${A}><path d="M14 5h5v5M19 5l-8.5 8.5"/><path d="M17 13.5V18a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V8.5A1.5 1.5 0 0 1 6 7h4.5"/></svg>`,
 		timer: `<svg ${A}><circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9M9.5 2.5h5M18.5 6.5l1.5-1.5"/></svg>`,
-		door: `<svg ${A}><path d="M6 20h12M8 20V4h8v16"/><circle cx="13.5" cy="12" r="0.9" ${DOT}/></svg>`
+		door: `<svg ${A}><path d="M6 20h12M8 20V4h8v16"/><circle cx="13.5" cy="12" r="0.9" ${DOT}/></svg>`,
+
+		// ── achievements / misc ─────────────────────────────────────────────────
+		calendar: `<svg ${A}><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>`,
+		swords: `<svg ${A}><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><line x1="16" y1="16" x2="20" y2="20"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" y1="14" x2="9" y2="18"/><line x1="7" y1="17" x2="4" y2="20"/></svg>`,
+		rocket: `<svg ${A}><path d="M12 3c3 1.4 5 4.5 5 8.5L14 15h-4l-3-3.5C7 7.5 9 4.4 12 3z"/><circle cx="12" cy="10" r="1.6"/><path d="M9.5 15l-2.5 4.5M14.5 15l2.5 4.5M10 19.5h4"/></svg>`,
+		shark: `<svg ${A}><path d="M14 17c-.5-5 2.5-9.5 6.5-11.5-1 4.3-1.3 8.4-2.5 11.5"/><path d="M3 18.5c2.6 0 3.6-1.2 6-1.2s3.4 1.2 6 1.2 3-1 3-1"/></svg>`,
+		drop: `<svg ${A}><path d="M12 3.2c3 4 5 6.6 5 9.8a5 5 0 0 1-10 0c0-3.2 2-5.8 5-9.8z"/></svg>`,
+		sprout: `<svg ${A}><path d="M12 20.5V12"/><path d="M12 13c0-3-2.2-5-5.2-5 0 3 2.2 5 5.2 5z"/><path d="M12 11c0-2.6 2.2-4.6 5.2-4.6 0 2.6-2.2 4.6-5.2 4.6z"/></svg>`,
+		bolt: `<svg ${A}><path d="M13 2 5 13.5h6l-1 8.5 8.5-11.5H12z"/></svg>`,
+		star: `<svg ${A}><path d="M12 3.5l2.7 5.4 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L5.3 9.8l6-.9z"/></svg>`
 	};
 
 	$: html = SVG[name] ?? '';

@@ -66,6 +66,10 @@ Mostly celebration/onboarding sparkle with no functional meaning:
 - **Recommendation:** drop most (or replace celebration with a single tasteful confetti/
   spark icon) rather than draw one-off icons for each.
 
+## Wave 3b — Achievements ✅ (PR #580)
+
+Badges/milestones/collector/category-tiers now render via `<Icon>` (badges.js + categoryBadges.js hold Icon names; BadgesPanel + profile converted). Added icons: calendar, swords, rocket, shark, drop, sprout, bolt, star.
+
 ## Category-puzzle emojis
 
 🍔 🎬 ✈ 🔬 📚 💻 … are puzzle categories — **CategoryIcon already exists**; just route call
