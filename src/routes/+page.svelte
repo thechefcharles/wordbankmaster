@@ -533,11 +533,11 @@
 	// 🏷️ Which mode you're in — a consistent pill under the wordmark on every game screen.
 	$: modeLabel =
 		{
-			daily: { emoji: '📅', name: 'Daily' },
-			climb: { emoji: '', name: 'Cash Game' },
-			makeup: { emoji: '📅', name: 'Make-up' },
-			match: { emoji: '⚔️', name: 'Challenge' },
-			challenge: { emoji: '⚔️', name: 'Challenge' }
+			daily: { name: 'Daily' },
+			climb: { name: 'Cash Game' },
+			makeup: { name: 'Make-up' },
+			match: { name: 'Challenge' },
+			challenge: { name: 'Challenge' }
 		}[$gameStore.gameMode] ?? null;
 	$: isMatch = $gameStore.gameMode === 'match';
 	$: matchInfo = $gameStore.matchInfo; // { position, pack_size, total_score, last_score, done, mode, solved, spent, budget, wager, items_allowed, used_powerups, started_at, clock_seconds, combo }
@@ -806,7 +806,7 @@
 								id: it.id,
 								emoji: PUP_ICON[it.id] ?? 'sabotage',
 								name: it.name,
-								blurb: sabAvail ? '😈 Tap to aim at an opponent' : '',
+								blurb: sabAvail ? 'Tap to aim at an opponent' : '',
 								count: it.owned,
 								usable: sabAvail,
 								kind: 'sabotage',
@@ -1172,10 +1172,10 @@
 		sabotage_lock: 'lock'
 	});
 	const DEBUFF_LABEL = /** @type {Record<string,string>} */ ({
-		tax: '💸 Taxed (letters +50%)',
-		fog: '🌫️ Fogged (clue hidden)',
-		toll: '🚧 Tolled (next letter 3×)',
-		vowel_block: '🚫 Vowel-blocked (vowels 3×)'
+		tax: 'Taxed (letters +50%)',
+		fog: 'Fogged (clue hidden)',
+		toll: 'Tolled (next letter 3×)',
+		vowel_block: 'Vowel-blocked (vowels 3×)'
 	});
 	const DEBUFF_DESC = /** @type {Record<string,string>} */ ({
 		tax: 'Every letter you buy costs +50% while this is active.',
@@ -1915,10 +1915,10 @@
 	let mbPayout = 'winner'; // derived from field size at settle; kept for the RPC signature
 	// Challenge tier antes (ante = stake = pot size; payout is by field size at settle).
 	const CHALLENGE_TIERS = [
-		{ v: 0, label: '🤝 Friendly' },
-		{ v: 500, label: '🥉 $500' },
-		{ v: 2000, label: '🥈 $2K' },
-		{ v: 10000, label: '🥇 $10K' }
+		{ v: 0, label: 'Friendly' },
+		{ v: 500, label: '$500' },
+		{ v: 2000, label: '$2K' },
+		{ v: 10000, label: '$10K' }
 	];
 	let mbWindow = 172800; // seconds
 	let mbItemsAllowed = false; // host toggle: allow power-ups in this challenge
@@ -2468,7 +2468,9 @@
 		title="Trash talk"
 		on:click={openMatchChat}
 	>
-		💬 <span class="mcb-label">Chat</span>{#if matchChatUnread}<span class="mc-dot"></span>{/if}
+		<Icon name="chat" size={18} /> <span class="mcb-label">Chat</span>{#if matchChatUnread}<span
+				class="mc-dot"
+			></span>{/if}
 	</button>
 {/if}
 {#if matchChatOpen && !showMainMenu}
@@ -2480,8 +2482,10 @@
 			on:click={() => (matchChatOpen = false)}
 		></button>
 		<div class="modal-content chat-modal">
-			<button class="close-btn" on:click={() => (matchChatOpen = false)}>❌</button>
-			<h2 class="chat-h">💬 Trash talk</h2>
+			<button class="close-btn" on:click={() => (matchChatOpen = false)}
+				><Icon name="close" size={16} /></button
+			>
+			<h2 class="chat-h"><Icon name="chat" size={18} /> Trash talk</h2>
 			<div class="chat-msgs" bind:this={matchChatScroll}>
 				{#if matchMessages.length}
 					{#each matchMessages as m}
@@ -2491,7 +2495,7 @@
 						</div>
 					{/each}
 				{:else}
-					<p class="chat-empty">No messages yet — start the smack talk 👀</p>
+					<p class="chat-empty">No messages yet — start the smack talk</p>
 				{/if}
 			</div>
 			<div class="chat-input-row">
@@ -2530,7 +2534,9 @@
 			</p>
 			<div class="gu-actions">
 				<button class="gu-cancel" on:click={cancelGiveUp}>Keep playing</button>
-				<button class="gu-confirm" on:click={doGiveUp}>🏳️ Give up</button>
+				<button class="gu-confirm" on:click={doGiveUp}
+					><Icon name="give-up" size={15} /> Give up</button
+				>
 			</div>
 		</div>
 	</div>
@@ -2541,7 +2547,7 @@
 	<div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Double or Nothing">
 		<button type="button" class="modal-backdrop" aria-label="Cancel" on:click={cancelDon}></button>
 		<div class="modal-content giveup-modal don-modal">
-			<h2 class="gu-title">💥 Double or Nothing?</h2>
+			<h2 class="gu-title"><Icon name="boost" size={18} /> Double or Nothing?</h2>
 			<p class="gu-text">
 				Solve this puzzle and your payout <b>doubles</b> to
 				<b class="don-win">${donTarget.toLocaleString()}</b>. But you're all in — you
@@ -2553,7 +2559,7 @@
 			<div class="gu-actions">
 				<button class="gu-cancel" on:click={cancelDon}>Not now</button>
 				<button class="gu-confirm don-confirm" on:click={armDon} disabled={donBusy}
-					>💥 Double it</button
+					><Icon name="boost" size={15} /> Double it</button
 				>
 			</div>
 		</div>
@@ -2568,10 +2574,12 @@
 			<h2 class="wc-title">Welcome to WordBank 🎉</h2>
 			<p class="wc-sub">We’ve officially launched — and everyone’s starting fresh.</p>
 			<ul class="wc-list">
-				<li><span>💰</span> <b>$2,000</b> in the bank to play with</li>
-				<li><span>📅</span> Today is <b>Day 1</b> of the Daily</li>
-				<li><span>🎰</span> Fresh puzzles waiting in the Cash Game</li>
-				<li><span>🏆</span> Leaderboards are wide open — go claim a spot</li>
+				<li><span><Icon name="cash" size={16} /></span> <b>$2,000</b> in the bank to play with</li>
+				<li><span><Icon name="calendar" size={16} /></span> Today is <b>Day 1</b> of the Daily</li>
+				<li><span><Icon name="star" size={16} /></span> Fresh puzzles waiting in the Cash Game</li>
+				<li>
+					<span><Icon name="trophy" size={16} /></span> Leaderboards are wide open — go claim a spot
+				</li>
 			</ul>
 			<button class="wc-btn" on:click={dismissLaunchWelcome}>Let’s play →</button>
 		</div>
@@ -2623,13 +2631,17 @@
 	>
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card bag-modal" on:click|stopPropagation role="dialog" aria-modal="true">
-			<button class="modal-x" on:click={() => (showBag = false)} aria-label="Close">✕</button>
+			<button class="modal-x" on:click={() => (showBag = false)} aria-label="Close"
+				><Icon name="close" size={16} /></button
+			>
 			<h3 class="info-title">
 				{#if showMainMenu}Items{:else}<img src="/vault.png" alt="" class="vault-ic-xs" /> My Vault{/if}
 			</h3>
 			{#if showMainMenu}
 				<div class="bag-inv"><InventoryList /></div>
-				<button class="bag-store" on:click={() => goto('/shop')}>🛍️ Go to the Store →</button>
+				<button class="bag-store" on:click={() => goto('/shop')}
+					><Icon name="bag" size={15} /> Go to the Store →</button
+				>
 			{:else}
 				<div class="bag-use-h">Your items</div>
 				{#if vaultItems.length}
@@ -2645,7 +2657,9 @@
 								<span class="bag-use-e"><Icon name={it.emoji} size={20} /></span>
 								{#if (it.count ?? 1) > 1}<span class="bag-use-n">×{it.count}</span>{/if}
 								<span class="bag-use-name">{it.name}</span>
-								<span class="bag-use-d">{it.usable ? it.blurb : '🔒 tap for why'}</span>
+								<span class="bag-use-d"
+									>{#if it.usable}{it.blurb}{:else}<Icon name="lock" size={12} /> tap for why{/if}</span
+								>
 							</button>
 						{/each}
 					</div>
@@ -2673,7 +2687,7 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
 			<button class="modal-x" on:click={() => (showBalanceInfo = false)} aria-label="Close"
-				>✕</button
+				><Icon name="close" size={16} /></button
 			>
 			<div class="info-big green">
 				${Math.round(menuBank ?? netWorth ?? 0).toLocaleString()}
@@ -2702,26 +2716,34 @@
 	>
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
-			<button class="modal-x" on:click={() => (dailyInfo = null)} aria-label="Close">✕</button>
+			<button class="modal-x" on:click={() => (dailyInfo = null)} aria-label="Close"
+				><Icon name="close" size={16} /></button
+			>
 			{#if dailyInfo === 'mult'}
 				<div class="info-big">+{Math.round((dlMult - 1) * 100)}%</div>
 				<h3 class="info-title">Interest</h3>
 				<p class="info-sub">Extra Interest on everything you Deposit from this puzzle.</p>
 				<div class="info-rows">
 					<div class="info-row">
-						<span>🏆 Win streak{dailyInterest ? ` (${dailyInterest.win_streak})` : ''}</span><b
-							class:pos={(dailyInterest?.streak ?? 0) > 0}
+						<span
+							><Icon name="trophy" size={14} /> Win streak{dailyInterest
+								? ` (${dailyInterest.win_streak})`
+								: ''}</span
+						><b class:pos={(dailyInterest?.streak ?? 0) > 0}
 							>+{Math.round((dailyInterest?.streak ?? 0) * 100)}%</b
 						>
 					</div>
 					<div class="info-row">
-						<span>💳 Credit{dailyInterest ? ` (${dailyInterest.tier})` : ''}</span><b
-							class:pos={(dailyInterest?.credit ?? 0) > 0}
+						<span
+							><Icon name="card" size={14} /> Credit{dailyInterest
+								? ` (${dailyInterest.tier})`
+								: ''}</span
+						><b class:pos={(dailyInterest?.credit ?? 0) > 0}
 							>+{Math.round((dailyInterest?.credit ?? 0) * 100)}%</b
 						>
 					</div>
 					{#if (dailyInterest?.boost ?? 0) > 0}<div class="info-row">
-							<span>💥 Boosts</span><b class="pos"
+							<span><Icon name="boost" size={14} /> Boosts</span><b class="pos"
 								>+{Math.round((dailyInterest?.boost ?? 0) * 100)}%</b
 							>
 						</div>{/if}
@@ -2730,15 +2752,19 @@
 					</div>
 				</div>
 				<p class="info-note">
-					Interest is earned — solve day after day to grow your 🏆 streak (up to +15%) and keep good
-					💳 credit (up to +10%). Tap in 💥/💎 Interest Boosts from the Store for more on top.
+					Interest is earned — solve day after day to grow your <Icon name="trophy" size={13} /> streak
+					(up to +15%) and keep good
+					<Icon name="card" size={13} /> credit (up to +10%). Tap in <Icon
+						name="boost"
+						size={13}
+					/>/<Icon name="gem" size={13} /> Interest Boosts from the Store for more on top.
 				</p>
 			{:else if dailyInfo === 'twist'}
 				<div class="info-big"><Icon name={dailyMod?.emoji ?? 'boost'} size={40} /></div>
 				<h3 class="info-title">{dailyMod?.name ?? "Today's Twist"}</h3>
 				<p class="info-twist-do">{dailyMod?.blurb ?? ''}</p>
 			{:else if dailyInfo === 'streak'}
-				<div class="info-big">🏆 {dlWinStreak}</div>
+				<div class="info-big"><Icon name="trophy" size={34} /> {dlWinStreak}</div>
 				<h3 class="info-title">Daily Win Streak</h3>
 				<p class="info-sub">Daily puzzles you've solved in a row.</p>
 				<div class="info-rows">
@@ -2789,17 +2815,25 @@
 	>
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
-			<button class="modal-x" on:click={() => (climbInfo = null)} aria-label="Close">✕</button>
+			<button class="modal-x" on:click={() => (climbInfo = null)} aria-label="Close"
+				><Icon name="close" size={16} /></button
+			>
 			{#if climbInfo === 'heat'}
-				<div class="info-big">🔥 +{Math.round((climb?.heat ?? 100) - 100)}%</div>
+				<div class="info-big">
+					<Icon name="fire" size={34} /> +{Math.round((climb?.heat ?? 100) - 100)}%
+				</div>
 				<h3 class="info-title">Interest — grows your payouts</h3>
 				<p class="info-sub">
 					Every puzzle you solve adds its value to your Payout — boosted by your Interest.
 				</p>
 				<div class="info-rows">
 					<div class="info-row"><span>Each solve</span><b class="pos">+5%</b></div>
-					<div class="info-row"><span>⚡ Solved cheaply</span><b class="pos">up to +10%</b></div>
-					<div class="info-row"><span>💳 Credit standing</span><b class="pos">up to +4%</b></div>
+					<div class="info-row">
+						<span><Icon name="bolt" size={14} /> Solved cheaply</span><b class="pos">up to +10%</b>
+					</div>
+					<div class="info-row">
+						<span><Icon name="card" size={14} /> Credit standing</span><b class="pos">up to +4%</b>
+					</div>
 					<div class="info-row">
 						<span>Maxes out at</span><b>+{Math.round((climb?.heat_cap ?? 200) - 100)}%</b>
 					</div>
@@ -2811,11 +2845,12 @@
 					Interest grows every <button
 						class="info-inline"
 						on:click|stopPropagation={() => (climbInfo = 'streak')}>solve</button
-					> — more when you solve cheaply and keep good credit. It resets to +0% on a bust, unless a
-					🛡️ Heat Shield saves you.
+					>
+					— more when you solve cheaply and keep good credit. It resets to +0% on a bust, unless a
+					<Icon name="shield" size={14} /> Heat Shield saves you.
 				</p>
 			{:else if climbInfo === 'streak'}
-				<div class="info-big">🔥 {climbStreak}</div>
+				<div class="info-big"><Icon name="fire" size={34} /> {climbStreak}</div>
 				<h3 class="info-title">Solve Streak</h3>
 				<p class="info-sub">Cash Game puzzles you've solved in a row.</p>
 				<div class="info-rows">
@@ -2920,7 +2955,9 @@
 	>
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
-			<button class="modal-x" on:click={() => (showAnteInfo = false)} aria-label="Close">✕</button>
+			<button class="modal-x" on:click={() => (showAnteInfo = false)} aria-label="Close"
+				><Icon name="close" size={16} /></button
+			>
 			<div class="info-big green">${Math.max(0, matchLeft).toLocaleString()}</div>
 			<h3 class="info-title">Bounty kept</h3>
 			<p class="info-sub">
@@ -2968,8 +3005,10 @@
 	>
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
-			<button class="modal-x" on:click={() => (debuffModal = null)} aria-label="Close">✕</button>
-			<div class="info-big">💥</div>
+			<button class="modal-x" on:click={() => (debuffModal = null)} aria-label="Close"
+				><Icon name="close" size={16} /></button
+			>
+			<div class="info-big"><Icon name="sabotage" size={38} /></div>
 			<h3 class="info-title">You got hit</h3>
 			{#if debuffModal.length}
 				<div class="info-rows">
@@ -3006,7 +3045,9 @@
 	>
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card" on:click|stopPropagation role="dialog" aria-modal="true">
-			<button class="modal-x" on:click={() => (sabPicker = null)} aria-label="Cancel">✕</button>
+			<button class="modal-x" on:click={() => (sabPicker = null)} aria-label="Cancel"
+				><Icon name="close" size={16} /></button
+			>
 			<div class="info-big">
 				<Icon name={PUP_ICON[sabPicker.item.id] ?? 'sabotage'} size={40} />
 			</div>
@@ -3016,7 +3057,9 @@
 					<button class="sab-target-row" on:click={() => applySabotage(o.id)}>
 						<span class="st-name">{o.name}</span>
 						<span class="st-stat"
-							>🧩 Puzzle {o.position} · ${Number(o.ante_left ?? 0).toLocaleString()}</span
+							><Icon name="puzzle" size={14} /> Puzzle {o.position} · ${Number(
+								o.ante_left ?? 0
+							).toLocaleString()}</span
 						>
 					</button>
 				{/each}
@@ -3036,7 +3079,8 @@
 			on:click={() => (showResumeMenu = false)}
 		></button>
 		<div class="info-card resume-menu" role="document">
-			<button class="modal-x" on:click={() => (showResumeMenu = false)} aria-label="Close">✕</button
+			<button class="modal-x" on:click={() => (showResumeMenu = false)} aria-label="Close"
+				><Icon name="close" size={16} /></button
 			>
 			<h3 class="info-title">Resume a game</h3>
 			<div class="rm-list">
@@ -3050,7 +3094,7 @@
 					>
 						<span class="rm-ic"><ModeIcon mode={r.modeKey} size={20} /></span><span class="rm-label"
 							>{r.label}</span
-						><span class="rm-arrow">▶</span>
+						><span class="rm-arrow"><Icon name="play" size={11} /></span>
 					</button>
 				{/each}
 			</div>
@@ -3072,7 +3116,9 @@
 	>
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_noninteractive_element_interactions a11y_no_noninteractive_tabindex -->
 		<div class="info-card audio-panel" on:click|stopPropagation role="dialog" aria-modal="true">
-			<button class="modal-x" on:click={() => (showAudio = false)} aria-label="Close">✕</button>
+			<button class="modal-x" on:click={() => (showAudio = false)} aria-label="Close"
+				><Icon name="close" size={16} /></button
+			>
 			<h3 class="info-title">Sound &amp; Music</h3>
 			<div class="ap-rows">
 				<button
@@ -3276,7 +3322,9 @@
 								<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
 								<path d="M3 6h18" />
 								<path d="M16 10a4 4 0 0 1-8 0" />
-							</svg><span class="qt-l">{menuLoan > 0 ? '🔒 Store' : 'Store'}</span>
+							</svg><span class="qt-l"
+								>{#if menuLoan > 0}<Icon name="lock" size={13} /> Store{:else}Store{/if}</span
+							>
 						</button>
 						<button class="qt" on:click={() => openCommunity('leaderboard')}>
 							<svg class="qt-svg" viewBox="0 0 24 24" aria-hidden="true">
@@ -3343,7 +3391,7 @@
 							fx('tap');
 						}}
 					>
-						<span class="pc-ic">▶</span>
+						<span class="pc-ic"><Icon name="play" size={12} /></span>
 						<span class="pc-label">Play Now</span>
 					</button>
 					<!-- ⚔️ Challenges hub (list + New). Incoming invites alert via the bell → tap routes here. -->
@@ -3386,17 +3434,19 @@
 							{#if dailyDone}
 								{#if dailyStatus?.last_daily_won}
 									<span class="daily-chip won"
-										>✅ +${(dailyStatus?.today_score ?? 0).toLocaleString()}</span
+										><Icon name="check" size={13} /> +${(
+											dailyStatus?.today_score ?? 0
+										).toLocaleString()}</span
 									>
 								{:else}
 									<span class="daily-chip lost"
-										>❌{dailyStatus?.today_score
+										><Icon name="close" size={13} />{dailyStatus?.today_score
 											? ' −$' + Math.abs(dailyStatus.today_score).toLocaleString()
 											: ''}</span
 									>
 								{/if}
 							{:else if dailyInProgress}
-								<span class="daily-chip prog">▶ Resume</span>
+								<span class="daily-chip prog"><Icon name="play" size={11} /> Resume</span>
 							{/if}
 							<span class="mc-streak win" title="Win streak — solves in a row"
 								><svg class="mc-fire" viewBox="0 0 24 24" aria-hidden="true"
@@ -3415,7 +3465,9 @@
 						on:click={handleMenuClimb}
 					>
 						<ModeIcon mode="climb" size={22} /><span class="mc-title">Cash Game</span>
-						{#if climbInProgress}<span class="daily-chip prog">▶ Resume</span>{/if}
+						{#if climbInProgress}<span class="daily-chip prog"
+								><Icon name="play" size={11} /> Resume</span
+							>{/if}
 					</button>
 				</div>
 			{:else if menuView === 'community'}
@@ -3436,7 +3488,7 @@
 					{:else}
 						<button class="sub-back" on:click={exitCommunity}>← Back</button>
 						<h2 class="sub-title">
-							{#if communityTab === 'leaderboard'}🏆 Leaderboard{:else}<ModeIcon
+							{#if communityTab === 'leaderboard'}<Icon name="trophy" size={16} /> Leaderboard{:else}<ModeIcon
 									mode="challenge"
 									size={17}
 								/> Challenges{/if}
@@ -3537,9 +3589,11 @@
 					on:click={() => (showTierSelect = false)}
 				></button>
 				<div class="modal-content main-menu-modal tier-modal">
-					<button class="close-btn" on:click={() => (showTierSelect = false)}>❌</button>
+					<button class="close-btn" on:click={() => (showTierSelect = false)}
+						><Icon name="close" size={16} /></button
+					>
 					<h2>Cash Game</h2>
-					<div class="cg-tagline">🔥 Solve to Earn</div>
+					<div class="cg-tagline"><Icon name="fire" size={16} /> Solve to Earn</div>
 					<p class="cat-sub">
 						Spend to solve each puzzle cheaply, keep what's left, and grow your Payout across
 						puzzles. Cash out anytime — but run out of budget and you bust. Higher tiers, bigger
@@ -3560,7 +3614,8 @@
 								<span class="tt-buyin">${t.buy_in.toLocaleString()} <small>buy-in</small></span>
 								<span class="tt-meta">interest to +{Math.round(t.heat_cap - 100)}%</span>
 								{#if !t.unlocked}<span class="tt-lock"
-										>🔒 {t.tier === 'silver'
+										><Icon name="lock" size={13} />
+										{t.tier === 'silver'
 											? '3 Bronze deposits'
 											: t.tier === 'gold'
 												? '3 Silver deposits'
@@ -3615,7 +3670,9 @@
 					on:click={() => (showChallenges = false)}
 				></button>
 				<div class="modal-content main-menu-modal ch-modal">
-					<button class="close-btn" on:click={() => (showChallenges = false)}>❌</button>
+					<button class="close-btn" on:click={() => (showChallenges = false)}
+						><Icon name="close" size={16} /></button
+					>
 
 					<h2><ModeIcon mode="challenge" size={20} /> New Challenge</h2>
 					<div class="ch-steps" aria-hidden="true">
@@ -3634,14 +3691,14 @@
 									class="ch-mode"
 									class:active={mbTarget === 'friend'}
 									on:click={() => (mbTarget = 'friend')}
-									>👤 A friend<small>by username</small></button
+									><Icon name="user" size={16} /> A friend<small>by username</small></button
 								>
 								<button
 									type="button"
 									class="ch-mode"
 									class:active={mbTarget === 'group'}
 									on:click={() => (mbTarget = 'group')}
-									>👥 A group<small>everyone in it</small></button
+									><Icon name="users" size={16} /> A group<small>everyone in it</small></button
 								>
 							</div>
 							{#if mbTarget === 'friend'}
@@ -3712,7 +3769,12 @@
 										>
 											<span class="ch-catemoji"><CategoryIcon category={c.value} size={19} /></span>
 											<span class="ch-catname">{c.label}</span>
-											<span class="ch-catcheck">{mbCategories.includes(c.value) ? '✓' : ''}</span>
+											<span class="ch-catcheck"
+												>{#if mbCategories.includes(c.value)}<Icon
+														name="check"
+														size={13}
+													/>{/if}</span
+											>
 										</button>
 									{/each}
 								</div>
@@ -3765,8 +3827,10 @@
 									fx('tap');
 								}}
 							>
-								<span class="ch-tog-box">{mbItemsAllowed ? '✓' : ''}</span>
-								⚡ Allow power-ups
+								<span class="ch-tog-box"
+									>{#if mbItemsAllowed}<Icon name="check" size={13} />{/if}</span
+								>
+								<Icon name="bolt" size={14} /> Allow power-ups
 							</button>
 							<p class="ch-objective">{potSummary}</p>
 						{/if}
@@ -3808,7 +3872,7 @@
 					on:click={() => (shortMatch = null)}
 				></button>
 				<div class="modal-content sm-modal">
-					<div class="sm-icon">💸</div>
+					<div class="sm-icon"><Icon name="broke" size={34} /></div>
 					<h2>Not enough for the full buy-in</h2>
 					<div class="sm-rows">
 						<div class="sm-row">
@@ -3842,8 +3906,15 @@
 					on:click={() => (showStreakMessage = false)}
 				></button>
 				<div class="modal-content main-menu-modal">
-					<button class="close-btn" on:click={() => (showStreakMessage = false)}>❌</button>
-					<div class="cbt-medal">{dailyStatus?.last_daily_won ? '✅' : '🏁'}</div>
+					<button class="close-btn" on:click={() => (showStreakMessage = false)}
+						><Icon name="close" size={16} /></button
+					>
+					<div class="cbt-medal">
+						{#if dailyStatus?.last_daily_won}<Icon name="check" size={30} />{:else}<Icon
+								name="flag"
+								size={30}
+							/>{/if}
+					</div>
 					<h2>{dailyStatus?.last_daily_won ? 'Daily Solved!' : "Today's Daily Done"}</h2>
 					<p class="cbt-result">
 						{dailyStatus?.last_daily_won
@@ -3858,16 +3929,17 @@
 						</div>
 						{#if (dailyStatus?.current_streak ?? 0) > 0}
 							<div class="cbt-stat">
-								<span class="cbt-val">🔥 {dailyStatus?.current_streak}</span><span class="cbt-cap"
-									>Play streak</span
-								>
+								<span class="cbt-val"
+									><Icon name="fire" size={15} /> {dailyStatus?.current_streak}</span
+								><span class="cbt-cap">Play streak</span>
 							</div>
 						{/if}
 					</div>
 					<p class="streak-message">
 						{#if (dailyStatus?.current_streak ?? 0) > 0}Come back tomorrow for a new puzzle to keep
-							your 🔥 {dailyStatus?.current_streak}-day streak alive!{:else}Come back tomorrow for a
-							fresh puzzle and start a streak!{/if}
+							your <Icon name="fire" size={13} />
+							{dailyStatus?.current_streak}-day streak alive!{:else}Come back tomorrow for a fresh
+							puzzle and start a streak!{/if}
 					</p>
 					<button
 						class="main-menu-btn"
@@ -3892,7 +3964,9 @@
 					on:click={() => (showMyAccount = false)}
 				></button>
 				<div class="modal-content main-menu-modal settings-modal">
-					<button class="close-btn" on:click={() => (showMyAccount = false)}>❌</button>
+					<button class="close-btn" on:click={() => (showMyAccount = false)}
+						><Icon name="close" size={16} /></button
+					>
 					<h2>Settings</h2>
 
 					<!-- Profile -->
@@ -4007,7 +4081,9 @@
 								showMyAccount = false;
 								peopleTab = 'friends';
 								openCommunity('people');
-							}}><span>👋 Friends</span><span class="chev">›</span></button
+							}}
+							><span><Icon name="hand" size={15} /> Friends</span><span class="chev">›</span
+							></button
 						>
 						<button
 							class="set-row nav"
@@ -4015,7 +4091,9 @@
 								showMyAccount = false;
 								peopleTab = 'groups';
 								openCommunity('people');
-							}}><span>👥 Groups</span><span class="chev">›</span></button
+							}}
+							><span><Icon name="users" size={15} /> Groups</span><span class="chev">›</span
+							></button
 						>
 					</div>
 
@@ -4024,10 +4102,12 @@
 						<div class="set-label">Security</div>
 						<div class="set-group">
 							<button class="set-row nav" on:click={changePin}
-								><span>🔑 Change PIN</span><span class="chev">›</span></button
+								><span><Icon name="key" size={15} /> Change PIN</span><span class="chev">›</span
+								></button
 							>
 							<button class="set-row nav" on:click={forgotPin}
-								><span>🔓 Forgot PIN?</span><span class="chev">›</span></button
+								><span><Icon name="unlock" size={15} /> Forgot PIN?</span><span class="chev">›</span
+								></button
 							>
 						</div>
 					{/if}
@@ -4040,16 +4120,23 @@
 							on:click={() => {
 								showMyAccount = false;
 								showTutorial = true;
-							}}><span>❓ How to Play</span><span class="chev">›</span></button
+							}}
+							><span><Icon name="help" size={15} /> How to Play</span><span class="chev">›</span
+							></button
 						>
 						<a class="set-row nav" href="/privacy" target="_blank" rel="noopener noreferrer"
-							><span>🔒 Privacy Policy</span><span class="chev">↗</span></a
+							><span><Icon name="lock" size={15} /> Privacy Policy</span><span class="chev">↗</span
+							></a
 						>
 						<a class="set-row nav" href="/terms" target="_blank" rel="noopener noreferrer"
-							><span>📄 Terms of Service</span><span class="chev">↗</span></a
+							><span><Icon name="doc" size={15} /> Terms of Service</span><span class="chev"
+								>↗</span
+							></a
 						>
 						<a class="set-row nav" href={`mailto:${SUPPORT_EMAIL}`}
-							><span>✉️ Contact Support</span><span class="chev">↗</span></a
+							><span><Icon name="mail" size={15} /> Contact Support</span><span class="chev"
+								>↗</span
+							></a
 						>
 					</div>
 
@@ -4061,7 +4148,9 @@
 							on:click={() => {
 								showMyAccount = false;
 								handleLogout();
-							}}><span>🚪 Log Out</span><span class="chev">›</span></button
+							}}
+							><span><Icon name="door" size={15} /> Log Out</span><span class="chev">›</span
+							></button
 						>
 						<button
 							class="set-row nav danger"
@@ -4069,7 +4158,9 @@
 								deleteInput = '';
 								maMsg = '';
 								showDeleteConfirm = true;
-							}}><span>🗑️ Delete Account</span><span class="chev">›</span></button
+							}}
+							><span><Icon name="trash" size={15} /> Delete Account</span><span class="chev">›</span
+							></button
 						>
 					</div>
 
@@ -4095,7 +4186,7 @@
 					}}
 				></button>
 				<div class="info-card del-card" role="document">
-					<div class="info-big">🗑️</div>
+					<div class="info-big"><Icon name="trash" size={38} /></div>
 					<h3 class="info-title">Delete your account?</h3>
 					<p class="del-body">
 						This permanently erases your account, Cash, stats, streaks, badges and history. <b
@@ -4151,7 +4242,7 @@
 						>· {(climb.tier ?? '').charAt(0).toUpperCase() + (climb.tier ?? '').slice(1)} · ${Math.round(
 							climb.buy_in ?? 0
 						).toLocaleString()}</span
-					>{/if}<span class="mp-info">ⓘ</span>
+					>{/if}<span class="mp-info"><Icon name="info" size={13} /></span>
 			</button>
 		{/if}
 
@@ -4198,7 +4289,7 @@
 		<!-- 🗓️ Make-up daily banner -->
 		{#if isMakeup}
 			<div class="makeup-banner">
-				<span class="mb-tag">🗓️ Make-up</span>
+				<span class="mb-tag"><Icon name="calendar" size={13} /> Make-up</span>
 				<span class="mb-text">{makeupLabel}</span>
 			</div>
 		{/if}
@@ -4209,13 +4300,13 @@
 			{#if overdriveArmed && $gameStore.gameState !== 'won' && $gameStore.gameState !== 'lost'}
 				<!-- 🏧 Overdrive armed → guide the player to spend the free letter (danger lifts). -->
 				<div class="danger-cue armed" role="status">
-					<span class="dc-title">🏧 OVERDRIVE ARMED</span>
+					<span class="dc-title"><Icon name="card" size={16} /> OVERDRIVE ARMED</span>
 					<span class="dc-sub">Pick any letter — it's free</span>
 				</div>
 			{:else if dangerMode}
 				<!-- 🚨 Last stand: out of money, this guess decides the run. -->
 				<div class="danger-cue" role="alert">
-					<span class="dc-title">💸 OUT OF MONEY</span>
+					<span class="dc-title"><Icon name="broke" size={16} /> OUT OF MONEY</span>
 					<span class="dc-sub">Last guess — solve now, or lose your run</span>
 					<button class="bn-forfeit" on:click={askForfeit}>Give up?</button>
 				</div>
@@ -4226,7 +4317,7 @@
 		     today's win on the line). Same red screen + keyboard lock structure. -->
 		{#if isDaily && dangerMode}
 			<div class="danger-cue daily" role="alert">
-				<span class="dc-title">💸 OUT OF BUDGET</span>
+				<span class="dc-title"><Icon name="broke" size={16} /> OUT OF BUDGET</span>
 				<span class="dc-sub">Last guess — get it right to win today</span>
 				<button class="bn-forfeit" on:click={confirmFold}>Give up?</button>
 			</div>
@@ -4262,7 +4353,7 @@
 				>
 					{(matchInfo.my_debuffs ?? [])
 						.map((/** @type {string} */ d) => DEBUFF_LABEL[d] ?? d)
-						.join(' · ')} <span class="db-info">ⓘ</span>
+						.join(' · ')} <span class="db-info"><Icon name="info" size={13} /></span>
 				</button>
 			{/if}
 			<!-- Power-ups & sabotage all live in the 🔐 vault beside Solve now. -->
@@ -4294,7 +4385,7 @@
 		{#if introBuilding && $gameStore.gameMode === 'daily' && dailyMod}
 			<div class="twist-announce" aria-hidden="true">
 				<span class="ta-label">Today's special</span>
-				<span class="ta-name">{dailyMod.emoji} {dailyMod.name}</span>
+				<span class="ta-name"><Icon name={dailyMod.emoji} size={20} /> {dailyMod.name}</span>
 				<span class="ta-blurb">{dailyMod.blurb} · applied automatically</span>
 			</div>
 		{/if}
@@ -4307,7 +4398,9 @@
 		<!-- ⏱ Out-of-Cash broke-timer — live Challenges only (Daily has no timer) -->
 		{#if brokeMode && gameActive && isBroke}
 			<div class="fold-bar broke">
-				<span class="fold-timer">⏱ 0:{String(brokeLeft).padStart(2, '0')}</span>
+				<span class="fold-timer"
+					><Icon name="timer" size={13} /> 0:{String(brokeLeft).padStart(2, '0')}</span
+				>
 				<span class="fold-warn">Out of Cash — guess in time or you give up this one</span>
 			</div>
 		{/if}
@@ -4439,12 +4532,12 @@
 		{#if isClimb && climb && $gameStore.gameState !== 'won'}
 			{#if donAvailable}
 				<button class="don-cta" on:click={openDon}>
-					<span class="don-cta-title">💥 Double or Nothing</span>
+					<span class="don-cta-title"><Icon name="boost" size={15} /> Double or Nothing</span>
 					<span class="don-cta-sub">Solve for <b>${donTarget.toLocaleString()}</b> · all-in</span>
 				</button>
 			{:else if donArmed}
 				<div class="don-armed" role="status">
-					<span class="don-armed-title">💥 Doubled — all in</span>
+					<span class="don-armed-title"><Icon name="boost" size={15} /> Doubled — all in</span>
 					<span class="don-armed-sub">Solve for <b>${donTarget.toLocaleString()}</b></span>
 				</div>
 			{/if}
@@ -4496,7 +4589,9 @@
 
 		<!-- 🏆 Game Outcome Banner (win celebration handled by the slot-machine reveal) -->
 		{#if $gameStore.gameState === 'lost'}
-			<div class="banner lose">{isClimb ? '⚠ BUST' : 'No luck'}</div>
+			<div class="banner lose">
+				{#if isClimb}<Icon name="warning" size={16} /> BUST{:else}No luck{/if}
+			</div>
 		{/if}
 
 		<!-- 💸 Deposit-lands beat: coins fly into the account card + balance counts up, before the slip -->
@@ -4626,19 +4721,22 @@
 							{#if dailyMod}
 								<div class="rcpt-rule"></div>
 								<div class="rcpt-line">
-									<span>{dailyMod.emoji} {dailyMod.name}</span><span>applied</span>
+									<span><Icon name={dailyMod.emoji} size={15} /> {dailyMod.name}</span><span
+										>applied</span
+									>
 								</div>
 							{/if}
 							{#if resultRank && resultRank.total > 0}
 								<div class="rcpt-foot">
-									🏆 #{resultRank.rank} of {resultRank.total.toLocaleString()} today
+									<Icon name="trophy" size={14} /> #{resultRank.rank} of {resultRank.total.toLocaleString()}
+									today
 								</div>
 							{/if}
 							<div class="rcpt-thanks">Thank you for banking with WordBank</div>
 						</div>
 						<div class="result-actions">
 							<button class="share-btn" on:click={handleShare}
-								>{shareCopied ? '✓ Copied!' : 'Share'}</button
+								>{#if shareCopied}<Icon name="check" size={13} /> Copied!{:else}Share{/if}</button
 							>
 							<button class="next-puzzle-button" on:click={goToDailyLeaderboard}>Leaderboard</button
 							>
@@ -4658,7 +4756,7 @@
 								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
 								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
 							</div>
-							<div class="rcpt-title void">⚠ BUST</div>
+							<div class="rcpt-title void"><Icon name="warning" size={18} /> BUST</div>
 							<div class="rcpt-acct">WORDBANK CHECKING</div>
 							<div class="rcpt-sub">
 								ACCT ·········{acctNo}{#if myUsername}
@@ -4684,7 +4782,7 @@
 						</div>
 						<div class="result-actions">
 							<button class="share-btn" on:click={handleShare}
-								>{shareCopied ? '✓ Copied!' : 'Share'}</button
+								>{#if shareCopied}<Icon name="check" size={13} /> Copied!{:else}Share{/if}</button
 							>
 							<button class="next-puzzle-button" on:click={goToDailyLeaderboard}>Leaderboard</button
 							>
@@ -4875,7 +4973,7 @@
 								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
 								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
 							</div>
-							<div class="rcpt-title void">⚠ BUST</div>
+							<div class="rcpt-title void"><Icon name="warning" size={18} /> BUST</div>
 							<div class="rcpt-acct">WORDBANK CHECKING</div>
 							<div class="rcpt-sub">
 								ACCT ·········{acctNo}{#if myUsername}
@@ -4933,7 +5031,7 @@
 						</div>
 					{:else if isMatch}
 						<!-- Challenge match: finished the whole pack -->
-						<div class="result-medal">⚔️</div>
+						<div class="result-medal"><Icon name="swords" size={40} /></div>
 						<h2>Challenge complete!</h2>
 						<p class="result-sub">
 							You solved {matchInfo?.solved ?? 0}/{matchInfo?.pack_size} spending ${(
@@ -4981,14 +5079,19 @@
 					{:else if isMakeup}
 						<!-- Make-up daily result (calendar fill; no streak/Bank) -->
 						{#if resultWon}
-							<div class="result-medal">🗓️</div>
+							<div class="result-medal"><Icon name="calendar" size={40} /></div>
 							<h2>Made it up!</h2>
 							<p class="result-sub">
 								{makeupLabel} is on your calendar · {$gameStore.currentPhrase}
 							</p>
-							<p class="arcade-gain">Counts toward 🗓️ Perfect Week / 📅 Perfect Month.</p>
+							<p class="arcade-gain">
+								Counts toward <Icon name="calendar" size={13} /> Perfect Week / <Icon
+									name="calendar"
+									size={13}
+								/> Perfect Month.
+							</p>
 						{:else}
-							<div class="result-medal">💸</div>
+							<div class="result-medal"><Icon name="broke" size={40} /></div>
 							<h2>Out of Cash</h2>
 							<p class="result-sub">The answer was {$gameStore.currentPhrase}</p>
 						{/if}
