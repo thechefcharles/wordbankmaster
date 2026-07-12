@@ -3,7 +3,23 @@
 	// scope dropdown: Everyone · Friends · a specific group.
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { getDailyBoard, getMyGroups } from '$lib/stores/statsStore.js';
+	import {
+		getDailyBoard,
+		getClimbLeaderboard,
+		getChallengeLeaderboard,
+		getWealthLeaderboard,
+		getMyGroups
+	} from '$lib/stores/statsStore.js';
+
+	// Which game-type board is showing. Daily is the rich sortable table; the rest are
+	// simple rank/metric boards fed by their own server RPCs (same scope convention).
+	const BOARDS = [
+		{ key: 'daily', label: 'Daily' },
+		{ key: 'climb', label: 'Cash Game' },
+		{ key: 'challenge', label: 'Challenges' },
+		{ key: 'wealth', label: 'Wealth' }
+	];
+	let board = $state('daily');
 
 	/** scope: 'global' (Everyone) | 'friends' | a group id */
 	let scope = $state('global');
@@ -62,12 +78,44 @@
 
 	const fmt = (/** @type {any} */ n) => '$' + Math.round(Number(n ?? 0)).toLocaleString();
 
+	// Metric columns for the simple (non-Daily) boards. Rows arrive pre-ranked from the server.
+	let modeCols = $derived(
+		board === 'climb'
+			? [{ label: 'Furthest', cell: (/** @type {any} */ r) => r.position ?? 0 }]
+			: board === 'challenge'
+				? [
+						{ label: 'Wins', cell: (/** @type {any} */ r) => r.metric ?? 0 },
+						{
+							label: 'Win %',
+							cell: (/** @type {any} */ r) =>
+								r.played ? Math.round(((r.metric ?? 0) / r.played) * 100) + '%' : '—'
+						}
+					]
+				: board === 'wealth'
+					? [{ label: 'Cash', cell: (/** @type {any} */ r) => fmt(r.cash ?? r.net_worth) }]
+					: []
+	);
+	let caption = $derived(
+		board === 'daily'
+			? "Today's Daily — same puzzle for everyone. Tap a column to sort."
+			: board === 'climb'
+				? 'Cash Game — ranked by how far you’ve climbed.'
+				: board === 'challenge'
+					? 'Challenges — ranked by wins (all-time).'
+					: 'Wealth — ranked by total Cash (net worth).'
+	);
+
 	async function load() {
 		loading = true;
 		error = '';
 		try {
 			const isGroup = scope !== 'global' && scope !== 'friends';
-			rows = await getDailyBoard(isGroup ? 'group' : scope, isGroup ? scope : null);
+			const sc = isGroup ? 'group' : scope;
+			const grp = isGroup ? scope : null;
+			if (board === 'climb') rows = await getClimbLeaderboard(sc, grp);
+			else if (board === 'challenge') rows = await getChallengeLeaderboard(sc, grp, 'all');
+			else if (board === 'wealth') rows = await getWealthLeaderboard(sc, 'all', grp);
+			else rows = await getDailyBoard(sc, grp);
 		} catch (e) {
 			error = (e instanceof Error ? e.message : String(e)) || 'Failed to load';
 		} finally {
@@ -81,6 +129,7 @@
 	});
 	$effect(() => {
 		void scope;
+		void board;
 		load();
 	});
 
@@ -88,6 +137,19 @@
 	const medal = (rank) =>
 		rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : String(rank);
 </script>
+
+<!-- Game-type tabs -->
+<div class="lb-tabs" role="tablist">
+	{#each BOARDS as b}
+		<button
+			class="lb-tab"
+			class:on={board === b.key}
+			role="tab"
+			aria-selected={board === b.key}
+			onclick={() => (board = b.key)}>{b.label}</button
+		>
+	{/each}
+</div>
 
 <!-- Scope: Everyone · Friends · a specific group -->
 <div class="filters">
@@ -98,14 +160,51 @@
 	</select>
 </div>
 
-<p class="caption">Today's Daily — same puzzle for everyone. Tap a column to sort.</p>
+<p class="caption">{caption}</p>
 
 {#if loading}
 	<p class="muted">Loading…</p>
 {:else if error}
 	<p class="error">{error}</p>
 {:else if rows.length === 0}
-	<p class="muted">Nobody here yet — add friends or play today's Daily!</p>
+	<p class="muted">Nobody here yet. Add friends or play!</p>
+{:else if board !== 'daily'}
+	<!-- Simple mode board: rank · player · metric(s), pre-ranked by the server. -->
+	<div class="table-wrap">
+		<table>
+			<thead>
+				<tr>
+					<th>#</th>
+					<th>Player</th>
+					{#each modeCols as c}<th class="num">{c.label}</th>{/each}
+				</tr>
+			</thead>
+			<tbody>
+				{#each rows as r}
+					<tr class={r.is_me ? 'me' : r.rank <= 3 ? 'top' : ''}>
+						<td class="rank">{medal(r.rank)}</td>
+						<td class="name">
+							{#if r.is_me}
+								<button
+									class="name-link"
+									onclick={() => goto('/profile')}
+									style={r.color ? `color:${r.color}` : ''}>You</button
+								>
+							{:else}
+								<button
+									class="name-link"
+									onclick={() => goto('/u/' + encodeURIComponent(r.name || ''))}
+									style={r.color ? `color:${r.color}` : ''}>{r.name || 'Player'}</button
+								>
+							{/if}
+							{#if r.title}<span class="title">{r.title}</span>{/if}
+						</td>
+						{#each modeCols as c}<td class="metric gold">{c.cell(r)}</td>{/each}
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
 {:else}
 	<div class="table-wrap">
 		<table>
@@ -159,7 +258,7 @@
 									r="1.2"
 								/></svg
 							>
-							Earnings{arrow('score')}</button
+							Daily Earnings{arrow('score')}</button
 						></th
 					>
 					<th class="num"
@@ -239,9 +338,41 @@
 	</div>
 {/if}
 
-<p class="hint">Same puzzle for everyone today. Spend less, score more.</p>
+{#if board === 'daily'}
+	<p class="hint">Same puzzle for everyone today. Spend less, score more.</p>
+{/if}
 
 <style>
+	.lb-tabs {
+		display: flex;
+		gap: 0.4rem;
+		justify-content: center;
+		flex-wrap: wrap;
+		margin-bottom: 0.7rem;
+	}
+	.lb-tab {
+		padding: 0.4rem 0.85rem;
+		border-radius: 999px;
+		border: 1px solid var(--border);
+		background: var(--surface);
+		color: var(--text-muted);
+		font-family: var(--font-display);
+		font-weight: 700;
+		font-size: 0.82rem;
+		cursor: pointer;
+		transition:
+			background 0.15s,
+			color 0.15s,
+			border-color 0.15s;
+	}
+	.lb-tab:hover {
+		color: var(--text);
+	}
+	.lb-tab.on {
+		background: var(--brand-2);
+		border-color: var(--brand-2);
+		color: #0a0a0a;
+	}
 	.filters {
 		display: flex;
 		gap: 0.5rem;
