@@ -40,6 +40,10 @@
 			icon: '🏧',
 			desc: 'Out of money? Reveal one more letter of your choice — free'
 		},
+		free_skip: {
+			icon: '⏭️',
+			desc: 'Swap this puzzle for a fresh one — keep your Interest, Payout & run. Anytime, no streak lost'
+		},
 		reveal_word: { icon: '📖', desc: 'Reveal a whole word' },
 		extra_hint: { icon: '💡', desc: 'Reveal the first letter of each word' },
 		last_letters: { icon: '🔚', desc: 'Reveal the last letter of each word' },

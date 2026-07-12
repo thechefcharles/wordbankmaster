@@ -22,6 +22,7 @@
 		vowel_vision: { icon: '👁️', desc: 'Reveal every vowel' },
 		heat_shield: { icon: '🛡️', desc: 'Escape one bust — keep your Payout & Interest' },
 		overdrive: { icon: '🏧', desc: 'Out of money? Reveal one more letter, free' },
+		free_skip: { icon: '⏭️', desc: 'Swap this puzzle for a fresh one — keep your Interest & run' },
 		reveal_word: { icon: '📖', desc: 'Reveal a whole word' },
 		extra_hint: { icon: '💡', desc: 'First letter of each word' },
 		last_letters: { icon: '🔚', desc: 'Last letter of each word' },

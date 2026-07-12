@@ -17,6 +17,7 @@
 		startCashGame,
 		cashOutClimb,
 		climbAdvance,
+		climbFreeSkip,
 		climbForfeitRun,
 		climbLeaveGame,
 		climbSkipPuzzle,
@@ -797,6 +798,8 @@
 							const matchUsed = (matchInfo?.used_powerups ?? []).includes(it.id);
 							// 🏧 Overdrive is a Cash-Game lifeline: only usable when you're out of money.
 							const isOverdrive = it.id === 'overdrive';
+							// ⏭️ Free Skip swaps the run's puzzle — Cash Game only, not Challenges.
+							const isFreeSkip = it.id === 'free_skip';
 							const climbAvail =
 								$gameStore.gameMode === 'climb' &&
 								gameActive &&
@@ -809,13 +812,20 @@
 								gameActive &&
 								!matchUsed &&
 								(it.owned ?? 0) > 0 &&
-								!isOverdrive;
+								!isOverdrive &&
+								!isFreeSkip;
 							const avail = climbAvail || matchAvail;
 							out.push({
 								id: it.id,
 								emoji: PUP_ICON[it.id] ?? '✨',
 								name: it.name,
-								blurb: avail ? (isOverdrive ? 'Then buy any letter — free' : 'Tap to use now') : '',
+								blurb: avail
+									? isOverdrive
+										? 'Then buy any letter — free'
+										: isFreeSkip
+											? 'Fresh puzzle — keep your Interest'
+											: 'Tap to use now'
+									: '',
 								count: it.owned,
 								usable: avail,
 								reason:
@@ -823,9 +833,11 @@
 										? 'Already used on this puzzle.'
 										: isOverdrive && $gameStore.gameMode === 'climb' && !climb?.must_guess
 											? 'Use it when you run out of money.'
-											: $gameStore.gameMode === 'climb' || isMatch
-												? ''
-												: 'For the Cash Game or Challenges — not this mode.'
+											: isFreeSkip && isMatch
+												? 'For the Cash Game — not Challenges.'
+												: $gameStore.gameMode === 'climb' || isMatch
+													? ''
+													: 'For the Cash Game or Challenges — not this mode.'
 							});
 						} else if (it.kind === 'sabotage') {
 							const sabAvail =
@@ -873,10 +885,19 @@
 			useBoost(item.id);
 			loadVault();
 		} else if ($gameStore.gameMode === 'climb') {
-			climbPowerup(item.id).then(() => {
-				refreshClimbPups();
-				loadVault();
-			});
+			if (item.id === 'free_skip') {
+				// Fresh puzzle mid-run — replay the dramatic opening reveal.
+				climbFreeSkip().then(() => {
+					refreshClimbPups();
+					loadVault();
+					tick().then(playDailyIntroIfArmed);
+				});
+			} else {
+				climbPowerup(item.id).then(() => {
+					refreshClimbPups();
+					loadVault();
+				});
+			}
 		} else if (isMatch && item?.kind === 'sabotage') {
 			openSabotagePicker(item);
 			return;
@@ -1197,6 +1218,7 @@
 		free_vowel: '🅰️',
 		last_letters: '🔚',
 		overdrive: '🏧',
+		free_skip: '⏭️',
 		sabotage_tax: '💸',
 		sabotage_fog: '🌫️',
 		sabotage_toll: '🚧',
