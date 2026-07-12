@@ -722,8 +722,8 @@
 	let vaultMsg = '';
 	/** @type {ReturnType<typeof setTimeout>|undefined} */ let _vaultMsgTimer;
 	const BOOST_META = /** @type {Record<string,{emoji:string,blurb:string}>} */ ({
-		bounty_boost: { emoji: '💥', blurb: 'Adds +50% to your bounty' },
-		jackpot_boost: { emoji: '💎', blurb: 'Adds +100% to your bounty' }
+		bounty_boost: { emoji: '💥', blurb: 'Adds +50% Interest to your deposit' },
+		jackpot_boost: { emoji: '💎', blurb: 'Adds +100% Interest to your deposit' }
 	});
 	async function loadVault() {
 		try {
@@ -2705,20 +2705,20 @@
 			<button class="modal-x" on:click={() => (dailyInfo = null)} aria-label="Close">✕</button>
 			{#if dailyInfo === 'mult'}
 				<div class="info-big">+{Math.round((dlMult - 1) * 100)}%</div>
-				<h3 class="info-title">Boost</h3>
-				<p class="info-sub">A power-up boost on everything you Deposit from this puzzle.</p>
+				<h3 class="info-title">Interest</h3>
+				<p class="info-sub">Extra Interest on everything you Deposit from this puzzle.</p>
 				<div class="info-rows">
 					<div class="info-row"><span>Base</span><b>+0%</b></div>
 					{#if dlBoost > 0}<div class="info-row">
 							<span>💥 Boosts</span><b class="pos">+{Math.round(dlBoost * 100)}%</b>
 						</div>{/if}
 					<div class="info-row total">
-						<span>Your Boost</span><b>+{Math.round((dlMult - 1) * 100)}%</b>
+						<span>Your Interest</span><b>+{Math.round((dlMult - 1) * 100)}%</b>
 					</div>
 				</div>
 				<p class="info-note">
-					Stock up on 💥/💎 boosts in the Store and tap one in before you solve — the Daily itself
-					has no streak multiplier, so your score is just what you keep of the bounty.
+					Stock up on 💥/💎 Interest Boosts in the Store and tap one in before you solve — the Daily
+					itself has no streak multiplier, so your score is just what you keep of the bounty.
 				</p>
 			{:else if dailyInfo === 'twist'}
 				<div class="info-big">{dailyMod?.emoji ?? '🎁'}</div>
@@ -2748,7 +2748,7 @@
 						<span>Balance Remaining</span><b class="pos">${dlRemaining.toLocaleString()}</b>
 					</div>
 					{#if dlMult > 1}<div class="info-row">
-							<span>Boost</span><b class="pos">+{Math.round((dlMult - 1) * 100)}%</b>
+							<span>Interest</span><b class="pos">+{Math.round((dlMult - 1) * 100)}%</b>
 						</div>{/if}
 					<div class="info-row total">
 						<span>You deposit</span><b class="green">${dlWinnings.toLocaleString()}</b>
@@ -2757,7 +2757,7 @@
 				<p class="info-note">
 					Deduce letters instead of buying them — keep more of your balance. Grows your <button
 						class="info-inline"
-						on:click|stopPropagation={() => (dailyInfo = 'mult')}>multiplier</button
+						on:click|stopPropagation={() => (dailyInfo = 'mult')}>Interest</button
 					> too.
 				</p>
 			{/if}
@@ -4402,7 +4402,7 @@
 							<!-- Daily badge only appears when a 💥/💎 boost is active (no streak interest). -->
 							<button
 								class="bp-mult-badge"
-								title="Boost — a power-up multiplier on your deposit"
+								title="Interest — a power-up multiplier on your deposit"
 								on:click={() => {
 									fx('tap');
 									dailyInfo = 'mult';

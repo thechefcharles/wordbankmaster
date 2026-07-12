@@ -1275,7 +1275,7 @@ export async function useDailyTwist() {
 	}
 }
 
-/** Spend an owned Bounty Boost on today's Daily (bumps the bounty multiplier). */
+/** Spend an owned Interest Boost on today's Daily (bumps the deposit multiplier). */
 /** @param {string} id */
 export async function useDailyBoost(id) {
 	try {

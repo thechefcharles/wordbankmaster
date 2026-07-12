@@ -601,7 +601,7 @@ export async function dailyUseTwist() {
 	return data;
 }
 
-/** Spend an owned Bounty Boost on today's Daily (adds to the bounty multiplier). @param {string} id */
+/** Spend an owned Interest Boost on today's Daily (adds to the deposit multiplier). @param {string} id */
 export async function dailyUseBoost(id) {
 	const { data, error } = await supabase.rpc('daily_use_boost', { p_id: id });
 	if (error) {
