@@ -818,13 +818,13 @@ function detectDailyBuyCue(letter, prevBankroll, prevWrong, mod) {
 	const base = LETTER_COSTS[letter] || 0;
 	// Insured: the first wrong letter is free.
 	if (mod === 'insured' && wasWrong && charged === 0) {
-		flashTwistCue(`${info.emoji} ${info.name} · first wrong letter free`);
+		flashTwistCue(`${info.name} · first wrong letter free`);
 		return;
 	}
 	// Pricing Twists: only when the Twist actually made this letter cheaper.
 	const pricing = ['discount', 'flat_rate', 'vowel_vision', 'consonant_sale'];
 	if (pricing.includes(mod) && charged > 0 && base > charged) {
-		flashTwistCue(`${info.emoji} ${info.name} · saved $${(base - charged).toLocaleString()}`);
+		flashTwistCue(`${info.name} · saved $${(base - charged).toLocaleString()}`);
 	}
 }
 
@@ -1165,7 +1165,7 @@ export async function fetchDailyGame() {
 			const mod = ab.modifier;
 			if (mod === 'head_start' || mod === 'free_vowel') {
 				const info = MODIFIERS[mod];
-				if (info) flashTwistCue(`${info.emoji} ${info.name} · ${info.blurb.toLowerCase()}`);
+				if (info) flashTwistCue(`${info.name} · ${info.blurb.toLowerCase()}`);
 			}
 		}
 		try {

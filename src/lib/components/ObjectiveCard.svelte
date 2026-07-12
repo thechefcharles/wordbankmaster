@@ -5,6 +5,7 @@
 	import { createEventDispatcher } from 'svelte';
 	import { MODIFIERS } from '$lib/powerups.js';
 	import ModeIcon from '$lib/components/ModeIcon.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	const dispatch = createEventDispatcher();
 
 	let page = 0; // 0 = how to win, 1 = power-ups (daily only)
@@ -14,8 +15,8 @@
 		{
 			group: 'Interest Boosts — buy in the Store, stack your rate',
 			items: [
-				{ emoji: '💥', name: 'Interest Boost', blurb: 'Adds +50% Interest to your deposit' },
-				{ emoji: '💎', name: 'Jackpot', blurb: 'Adds +100% Interest to your deposit' }
+				{ emoji: 'boost', name: 'Interest Boost', blurb: 'Adds +50% Interest to your deposit' },
+				{ emoji: 'gem', name: 'Jackpot', blurb: 'Adds +100% Interest to your deposit' }
 			]
 		}
 	];
@@ -30,7 +31,7 @@
 		switch (m) {
 			case 'daily':
 				return {
-					icon: '📅',
+					icon: 'calendar',
 					title: "Today's Daily",
 					goal: 'Solve the hidden phrase.',
 					win: 'Spend as little as you can — your leftover Deposits to your account.',
@@ -38,7 +39,7 @@
 				};
 			case 'climb':
 				return {
-					icon: '🎰',
+					icon: 'coin',
 					title: 'Cash Game',
 					goal: 'Invest your buy-in → grow it by solving puzzles cheaply.',
 					win: 'Bank between puzzles — once you start one, it’s solve or bust. Your Interest climbs with each solve.',
@@ -46,7 +47,7 @@
 				};
 			case 'makeup':
 				return {
-					icon: '🗓️',
+					icon: 'calendar',
 					title: 'Make-up Daily',
 					goal: 'Play a daily you missed.',
 					win: 'Same rules — solve it as cheaply as you can.',
@@ -55,14 +56,14 @@
 			case 'match': {
 				if ((c.fieldSize ?? 2) > 2)
 					return {
-						icon: '👥',
+						icon: 'users',
 						title: 'Group Challenge',
 						goal: `Solve ${pk} — keep the most of each bounty for a higher Score.`,
 						win: 'Highest Score takes the pot. Your ante is the stake.',
 						bar: 'A wrong guess busts the puzzle.'
 					};
 				return {
-					icon: '⚔️',
+					icon: 'swords',
 					title: c.opponent ? `Duel vs @${c.opponent}` : 'Challenge',
 					goal: `Solve ${pk} — keep the most of each bounty for a higher Score.`,
 					win: 'Highest Score takes the pot. Your ante is the stake.',
@@ -71,7 +72,7 @@
 			}
 			default:
 				return {
-					icon: '🎯',
+					icon: 'target',
 					title: 'WordBank',
 					goal: 'Solve the hidden phrase.',
 					win: 'Spend as little as you can.',
@@ -93,11 +94,11 @@
 
 <div class="obj-overlay" role="dialog" aria-modal="true" aria-label="How to win">
 	<div class="obj-card">
-		<button class="obj-x" on:click={go} aria-label="Close">✕</button>
+		<button class="obj-x" on:click={go} aria-label="Close"><Icon name="close" size={16} /></button>
 		{#if page === 0}
-			<span class="obj-pill">🎯 How to win</span>
+			<span class="obj-pill"><Icon name="target" size={14} /> How to win</span>
 			<div class="obj-icon">
-				{#if useModeIcon}<ModeIcon {mode} size={44} />{:else}{c.icon}{/if}
+				{#if useModeIcon}<ModeIcon {mode} size={44} />{:else}<Icon name={c.icon} size={44} />{/if}
 			</div>
 			<h2 class="obj-title">{c.title}</h2>
 
@@ -106,18 +107,18 @@
 			{#if c.bar}<p class="obj-bar">{c.bar}</p>{/if}
 
 			{#if mode === 'daily'}
-				<button class="obj-link" on:click={() => (page = 1)}>🎁 Power-ups &amp; boosts →</button>
+				<button class="obj-link" on:click={() => (page = 1)}>Power-ups &amp; boosts →</button>
 			{/if}
 			<button class="obj-btn" on:click={go}>Let’s go →</button>
 		{:else}
-			<span class="obj-pill">🎁 Power-ups</span>
+			<span class="obj-pill">Power-ups</span>
 			<h2 class="obj-title">Daily Power-ups</h2>
 			<div class="pup-list">
 				{#each DAILY_PUPS as grp}
 					<div class="pup-group-h">{grp.group}</div>
 					{#each grp.items as it}
 						<div class="pup-row">
-							<span class="pup-e">{it.emoji}</span>
+							<span class="pup-e"><Icon name={it.emoji} size={22} /></span>
 							<span class="pup-txt"
 								><span class="pup-n">{it.name}</span><span class="pup-d">{it.blurb}</span></span
 							>

@@ -53,6 +53,10 @@ Needs **new** line icons (design system has none yet):
   🏷 half-off · 👁 vowel-vision · 📖 reveal-word · 💡 hint · 🔚 last-letters · 💥 boost
 - Sabotage/debuffs: 😈 sabotage · 🌫 fog · 🚧 toll · 🚫 vowel-block · 🔒 lock · 💸 tax
 
+## Wave 4b — in-game power-ups ✅ (PR #581)
+
+Vault/hotbar + Twist done: +page `PUP_ICON`/`BOOST_META` → Icon names, vault-item render + sabotage picker via `<Icon>`; `MODIFIERS` (daily Twist) → Icon names (removed dead arcade `POWERUPS`); GameStore twist cues drop the emoji prefix; ObjectiveCard fully converted; deleted dead `PowerupHotbar.svelte`.
+
 ## Wave 5 — Social, alerts, misc
 
 - Social: 👥 groups · 💬 chat · 🤝 friendly/tie · 🙋 request · 👋 hi
