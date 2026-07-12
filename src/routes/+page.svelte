@@ -2726,16 +2726,12 @@
 				<p class="info-twist-do">{dailyMod?.blurb ?? ''}</p>
 			{:else if dailyInfo === 'streak'}
 				<div class="info-big">🏆 {dlWinStreak}</div>
-				<h3 class="info-title">Deposit Streak</h3>
+				<h3 class="info-title">Daily Win Streak</h3>
 				<p class="info-sub">Daily puzzles you've solved in a row.</p>
 				<div class="info-rows">
 					<div class="info-row"><span>Solve today's Daily</span><b class="pos">+1</b></div>
 					<div class="info-row"><span>Lose or give up</span><b class="neg">back to 0</b></div>
 				</div>
-				<p class="info-note">
-					Bragging rights — your streak shows on every deposit slip. It no longer changes your
-					score; the Daily is pure skill now.
-				</p>
 			{:else}
 				<div class="info-big green">${Math.max(0, dlWinnings).toLocaleString()}</div>
 				<h3 class="info-title">You'll deposit</h3>
