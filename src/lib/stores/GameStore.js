@@ -840,6 +840,21 @@ export async function matchTimeoutCheck() {
 	if (board) reconcileMatchBoard(board);
 }
 
+/** Light live refresh — re-pull only the match meta (my_debuffs, standing, opponents'
+ *  scores) without touching local input (guess mode / pending purchase). Called on
+ *  realtime participant changes so a sabotage debuff or an opponent's score shows instantly. */
+export async function refreshMatchMeta() {
+	if (!activeMatchId) return;
+	const board = await matchCheck(activeMatchId);
+	if (!board) return;
+	const match = board.match || {};
+	gameStore.update((s) =>
+		s.gameMode === 'match'
+			? { ...s, matchInfo: { ...match, id: activeMatchId, standing: board.standing ?? null } }
+			: s
+	);
+}
+
 /** Resume a match I'm already in. @param {string} id @returns {Promise<boolean>} */
 export async function resumeMatch(id) {
 	activeMatchId = id;

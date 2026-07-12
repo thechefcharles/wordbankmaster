@@ -64,11 +64,11 @@ Live engine is `match_*` / `_match_*` (tables `challenge_matches` + `challenge_p
 
 ## 🟡 Tier 3 — Notifications & turn-flow (the async heart of Challenges)
 
-- [ ] **13. Sabotage debuffs + opponent standing not live** — only realtime channel is
+- [x] **13. Sabotage debuffs + opponent standing not live** — ✅ FIXED (PR #567): added a realtime challenge*participants UPDATE subscription → refreshMatchMeta (meta-only, never disrupts typing); the sabotage debuff lands on the victim’s own row (RLS-visible) so the banner shows instantly. Standing still refreshes on the victim’s own actions (RLS blocks direct opponent-row reads). Was: — only realtime channel is
       `match_messages` (chat); the `sabotaged` notification never calls `reconcileMatchBoard`.
       Victim sees the "you got hit" banner only after buying a letter (i.e. after overpaying).
       **Fix:** subscribe to the victim's `challenge_participants` row / refresh board on the
-      sabotaged notification. _(`+page.svelte:1315,4476`)_
+      sabotaged notification. *(`+page.svelte:1315,4476`)\_
 - [ ] **14. Turn notifications don't deep-link to the match** — `Toaster.svelte:12-15`
       routes only `challenge_incoming` to Challenges; `challenge_your_turn` (carries
       `match_id`) dead-ends at `/profile?tab=alerts`, and `notifNav` opens the _list_, not the
