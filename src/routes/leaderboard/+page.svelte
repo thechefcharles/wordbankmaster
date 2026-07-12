@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import PageNav from '$lib/components/PageNav.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import LeaderboardPanel from '$lib/components/LeaderboardPanel.svelte';
 	import { track } from '$lib/analytics.js';
 	onMount(() => track('leaderboard_view'));
@@ -10,7 +11,7 @@
 
 <main class="lb-page">
 	<PageNav />
-	<h1>🏆 Leaderboard</h1>
+	<h1><Icon name="trophy" size={22} /> Leaderboard</h1>
 	<LeaderboardPanel />
 </main>
 

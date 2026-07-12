@@ -5,6 +5,7 @@
 	import { notifications, dismissNotification } from '$lib/stores/notificationStore.js';
 	import { respondFriendRequest, respondJoinRequest } from '$lib/stores/statsStore.js';
 	import { fx } from '$lib/sound.js';
+	import Icon from '$lib/components/Icon.svelte';
 
 	/** @type {{ onNavigate?: ((n:any)=>void)|null, onChange?: (()=>void)|null }} */
 	let { onNavigate = null, onChange = null } = $props();
@@ -52,7 +53,7 @@
 						class="ni-dismiss"
 						onclick={() => dismissNotification(n.id)}
 						aria-label="Dismiss"
-						title="Dismiss">✕</button
+						title="Dismiss"><Icon name="close" size={14} /></button
 					>
 				{/if}
 				<button

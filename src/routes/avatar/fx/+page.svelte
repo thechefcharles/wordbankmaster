@@ -46,12 +46,10 @@
 	</div>
 
 	<div class="fxp-toggles">
-		<button class="fxp-t" class:on={holo} on:click={() => (holo = !holo)}
-			>✨ Holographic Shirt</button
-		>
-		<button class="fxp-t" class:on={frame} on:click={() => (frame = !frame)}>🌀 Neon Frame</button>
-		<button class="fxp-t" class:on={crown} on:click={() => (crown = !crown)}>👑 Crown</button>
-		<button class="fxp-t" class:on={aura} on:click={() => (aura = !aura)}>🔆 Glow Aura</button>
+		<button class="fxp-t" class:on={holo} on:click={() => (holo = !holo)}>Holographic Shirt</button>
+		<button class="fxp-t" class:on={frame} on:click={() => (frame = !frame)}>Neon Frame</button>
+		<button class="fxp-t" class:on={crown} on:click={() => (crown = !crown)}>Crown</button>
+		<button class="fxp-t" class:on={aura} on:click={() => (aura = !aura)}>Glow Aura</button>
 	</div>
 </main>
 

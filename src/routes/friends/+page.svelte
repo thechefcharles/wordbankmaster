@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import PageNav from '$lib/components/PageNav.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import FriendsPanel from '$lib/components/FriendsPanel.svelte';
 	import { track } from '$lib/analytics.js';
 	onMount(() => track('friends_view'));
@@ -11,7 +12,7 @@
 
 <main class="friends-page">
 	<PageNav />
-	<h1>👥 Friends</h1>
+	<h1><Icon name="users" size={22} /> Friends</h1>
 	<FriendsPanel
 		onChallenge={(/** @type {string} */ u) => goto('/?challenge=' + encodeURIComponent(u))}
 	/>

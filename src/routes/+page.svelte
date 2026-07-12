@@ -2571,7 +2571,7 @@
 	<div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Welcome to WordBank">
 		<div class="modal-content welcome-modal">
 			<img class="wc-coin" src="/logo-coin.png" alt="" width="76" height="76" />
-			<h2 class="wc-title">Welcome to WordBank 🎉</h2>
+			<h2 class="wc-title">Welcome to WordBank</h2>
 			<p class="wc-sub">We’ve officially launched — and everyone’s starting fresh.</p>
 			<ul class="wc-list">
 				<li><span><Icon name="cash" size={16} /></span> <b>$2,000</b> in the bank to play with</li>
@@ -4266,7 +4266,7 @@
 		<!-- 🔍 Diagnostic banner (shows when init failed) -->
 		{#if initError}
 			<div class="diagnostic-banner">
-				<strong>⚠️ Diagnostic:</strong>
+				<strong><Icon name="warning" size={14} /> Diagnostic:</strong>
 				{initError}
 				<br />
 				<small>Open DevTools (F12) → Console for details.</small>

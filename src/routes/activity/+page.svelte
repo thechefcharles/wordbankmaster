@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import PageNav from '$lib/components/PageNav.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import ActivityPanel from '$lib/components/ActivityPanel.svelte';
 	import { track } from '$lib/analytics.js';
 	onMount(() => track('activity_view'));
@@ -10,7 +11,7 @@
 
 <main class="a-page">
 	<PageNav back="/" />
-	<h1>📣 Activity</h1>
+	<h1><Icon name="bell" size={22} /> Activity</h1>
 	<p class="sub">You, your friends, and your groups.</p>
 	<ActivityPanel />
 </main>
