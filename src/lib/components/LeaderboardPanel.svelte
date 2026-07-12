@@ -98,15 +98,6 @@
 						]
 					: []
 	);
-	let caption = $derived(
-		board === 'daily'
-			? "Today's Daily — same puzzle for everyone. Tap a column to sort."
-			: board === 'climb'
-				? 'Cash Game — ranked by how far you’ve climbed.'
-				: board === 'challenge'
-					? 'Challenges — ranked by wins (all-time).'
-					: 'Wealth — your Cash & Credit; ranked by net worth.'
-	);
 	// Per-board column legend for the "ⓘ What do these mean?" key.
 	let legend = $derived(
 		board === 'daily'
@@ -193,8 +184,6 @@
 		{#each groups as g}<option value={g.id}>👥 {g.name}</option>{/each}
 	</select>
 </div>
-
-<p class="caption">{caption}</p>
 
 <!-- ⓘ Column key: explains what each column on the current board means. -->
 <div class="lb-key-row">
@@ -349,10 +338,6 @@
 	</div>
 {/if}
 
-{#if board === 'daily'}
-	<p class="hint">Same puzzle for everyone today. Spend less, score more.</p>
-{/if}
-
 <style>
 	.lb-tabs {
 		display: flex;
@@ -400,12 +385,6 @@
 		color: var(--text);
 		font-size: 0.95rem;
 		font-weight: 600;
-	}
-	.caption {
-		color: var(--text-faint);
-		font-size: 0.8rem;
-		margin: 0.2rem 0 0.5rem;
-		text-align: center;
 	}
 	.lb-key-row {
 		display: flex;
@@ -572,12 +551,5 @@
 		color: var(--text-faint);
 		margin-left: 0.35rem;
 		white-space: nowrap;
-	}
-	.hint {
-		margin-top: 1.2rem;
-		font-size: 0.76rem;
-		color: var(--text-faint);
-		line-height: 1.5;
-		text-align: center;
 	}
 </style>
