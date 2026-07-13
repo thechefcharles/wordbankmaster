@@ -45,7 +45,7 @@
 		display: inline-flex;
 		align-items: baseline;
 		gap: 8px;
-		font-family: 'Orbitron', var(--font-display, monospace);
+		font-family: var(--font-ui);
 		font-variant-numeric: tabular-nums;
 		color: var(--text-faint, #8090a0);
 		font-size: 0.8rem;
