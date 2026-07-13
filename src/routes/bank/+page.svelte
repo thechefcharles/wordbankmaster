@@ -5,8 +5,14 @@
 	import CreditGauge from '$lib/components/CreditGauge.svelte';
 	import LoanPanel from '$lib/components/LoanPanel.svelte';
 	import { reasonLabel } from '$lib/bankReasons.js';
-	import { cardName } from '$lib/creditTiers.js';
+	import { cardName, TIER_LADDER } from '$lib/creditTiers.js';
+	import Icon from '$lib/components/Icon.svelte';
 	import { track } from '$lib/analytics.js';
+
+	// Info modals: the credit-tier ladder (which score unlocks which card) and the
+	// "how loans work" explainer.
+	let showTiers = false;
+	let showLoanHelp = false;
 
 	/** @type {{ bank:number, net_worth:number, loan:number, loan_cap:number, in_the_red:boolean, ledger:any[], credit_score:number, credit_tier:string, credit_delta:number }|null} */
 	let b = null;
@@ -112,11 +118,21 @@
 				detail={cd}
 				hero
 			/>
-			<div class="credit-card-name">WordBank {cardName(b.credit_tier ?? 'Good')}</div>
+			<button
+				class="credit-card-name"
+				onclick={() => (showTiers = true)}
+				title="See what each card tier needs"
+			>
+				WordBank {cardName(b.credit_tier ?? 'Good')}
+				<Icon name="info" size={13} />
+			</button>
 		</section>
 
 		<!-- 💸 Loan Shark -->
 		<LoanPanel bank={b} on:changed={load} />
+		<button class="loan-help-link" onclick={() => (showLoanHelp = true)}>
+			<Icon name="info" size={13} /> How loans work
+		</button>
 
 		<!-- Ledger -->
 		<div class="led-head">
@@ -220,6 +236,110 @@
 	{/if}
 </main>
 
+<!-- 💳 Credit tier ladder — which score unlocks which card, and how it affects loans. -->
+{#if showTiers}
+	<div
+		class="bk-modal-overlay"
+		role="button"
+		tabindex="0"
+		aria-label="Close"
+		onclick={() => (showTiers = false)}
+		onkeydown={(e) => (e.key === 'Escape' || e.key === 'Enter') && (showTiers = false)}
+	>
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events -->
+		<div
+			class="bk-modal"
+			role="dialog"
+			aria-modal="true"
+			aria-label="Card tiers"
+			onclick={(e) => e.stopPropagation()}
+		>
+			<div class="bk-modal-head">
+				<h2>Card tiers</h2>
+				<button class="bk-modal-x" onclick={() => (showTiers = false)} aria-label="Close"
+					><Icon name="close" size={16} /></button
+				>
+			</div>
+			<p class="bk-modal-intro">
+				Your credit score (300–850) sets your card. A better card raises your loan limit and lowers
+				your interest.
+			</p>
+			<div class="tier-list">
+				{#each TIER_LADDER as t}
+					<div class="tier-row" class:current={t.tier === (b?.credit_tier ?? 'Good')}>
+						<div class="tier-l">
+							<span class="tier-card">WordBank {t.card}</span>
+							<span class="tier-range">{t.range}</span>
+						</div>
+						<span class="tier-effect">{t.effect}</span>
+						{#if t.tier === (b?.credit_tier ?? 'Good')}<span class="tier-you">You</span>{/if}
+					</div>
+				{/each}
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- 🦈 How loans work — limit, interest, upfront fee, repayment. -->
+{#if showLoanHelp}
+	<div
+		class="bk-modal-overlay"
+		role="button"
+		tabindex="0"
+		aria-label="Close"
+		onclick={() => (showLoanHelp = false)}
+		onkeydown={(e) => (e.key === 'Escape' || e.key === 'Enter') && (showLoanHelp = false)}
+	>
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events -->
+		<div
+			class="bk-modal"
+			role="dialog"
+			aria-modal="true"
+			aria-label="How loans work"
+			onclick={(e) => e.stopPropagation()}
+		>
+			<div class="bk-modal-head">
+				<h2>How loans work</h2>
+				<button class="bk-modal-x" onclick={() => (showLoanHelp = false)} aria-label="Close"
+					><Icon name="close" size={16} /></button
+				>
+			</div>
+			<div class="help-list">
+				<div class="help-item">
+					<h3>How much you can borrow</h3>
+					<p>
+						Your limit is set by your card tier — better credit means a higher cap (see Card tiers).
+						The base grows as you rank up in Cash Game.
+					</p>
+				</div>
+				<div class="help-item">
+					<h3>Your interest rate</h3>
+					<p>
+						Charged per day and it compounds. The base rate rises with how much of your limit you
+						borrow: up to 25% of your limit is 5%/day, up to 50% is 8%/day, up to 75% is 12%/day,
+						above that 15%/day. Your card tier then adjusts it — Reserve −3%, Plus +3%, Freedom +6%.
+					</p>
+				</div>
+				<div class="help-item">
+					<h3>The upfront fee</h3>
+					<p>
+						Borrowing costs an immediate fee — one day of interest, or 10% of the loan, whichever is
+						larger. It's added to what you owe the moment you borrow.
+					</p>
+				</div>
+				<div class="help-item">
+					<h3>Paying it back</h3>
+					<p>
+						Repay any amount, any time. While you owe, the Store is locked and half of every payout
+						auto-repays your loan. What you owe keeps growing daily until it's clear, capped at 2.5×
+						what you borrowed.
+					</p>
+				</div>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <style>
 	.bank-page {
 		max-width: 480px;
@@ -285,12 +405,166 @@
 		text-align: center;
 	}
 	.credit-card-name {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
 		margin-top: 8px;
+		padding: 4px 10px;
+		border-radius: 999px;
+		cursor: pointer;
+		background: none;
+		border: 1px solid var(--border);
 		font-family: var(--font-display, sans-serif);
 		font-weight: 800;
 		font-size: 0.9rem;
 		letter-spacing: 0.02em;
 		color: var(--brand-2, #fde047);
+		transition: border-color 0.15s;
+	}
+	.credit-card-name:hover {
+		border-color: var(--brand-2, #fde047);
+	}
+	/* "How loans work" link under the loan panel. */
+	.loan-help-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		margin: -4px auto 18px;
+		padding: 4px 8px;
+		background: none;
+		border: none;
+		cursor: pointer;
+		color: var(--text-muted);
+		font-size: 0.8rem;
+		font-weight: 600;
+	}
+	.loan-help-link:hover {
+		color: var(--text);
+	}
+	/* Info modals (card tiers + how loans work) */
+	.bk-modal-overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 4000;
+		display: grid;
+		place-items: center;
+		padding: 22px;
+		background: rgba(4, 8, 14, 0.72);
+		backdrop-filter: blur(6px);
+	}
+	.bk-modal {
+		width: 100%;
+		max-width: 380px;
+		max-height: 82vh;
+		overflow-y: auto;
+		padding: 20px 20px 22px;
+		border-radius: 18px;
+		text-align: left;
+		background: var(--surface-strong, rgba(20, 26, 38, 0.98));
+		border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16));
+		box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+	}
+	.bk-modal-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 6px;
+	}
+	.bk-modal-head h2 {
+		margin: 0;
+		font-family: var(--font-display, sans-serif);
+		font-size: 1.2rem;
+		font-weight: 800;
+	}
+	.bk-modal-x {
+		display: grid;
+		place-items: center;
+		width: 32px;
+		height: 32px;
+		border-radius: 10px;
+		background: var(--surface);
+		border: 1px solid var(--border);
+		color: var(--text-muted);
+		cursor: pointer;
+	}
+	.bk-modal-intro {
+		margin: 0 0 14px;
+		font-size: 0.84rem;
+		line-height: 1.45;
+		color: var(--text-muted);
+	}
+	.tier-list {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.tier-row {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 10px 12px;
+		border-radius: 12px;
+		background: var(--surface);
+		border: 1px solid var(--border);
+	}
+	.tier-row.current {
+		border-color: var(--brand-2, #fde047);
+		background: rgba(253, 224, 71, 0.08);
+	}
+	.tier-l {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		flex: none;
+		min-width: 108px;
+	}
+	.tier-card {
+		font-family: var(--font-display, sans-serif);
+		font-weight: 800;
+		font-size: 0.86rem;
+		color: var(--brand-2, #fde047);
+	}
+	.tier-range {
+		font-size: 0.72rem;
+		color: var(--text-faint);
+		font-variant-numeric: tabular-nums;
+	}
+	.tier-effect {
+		flex: 1;
+		font-size: 0.76rem;
+		line-height: 1.35;
+		color: var(--text-muted);
+	}
+	.tier-you {
+		flex: none;
+		align-self: flex-start;
+		font-size: 0.6rem;
+		font-weight: 800;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: #2a1005;
+		background: var(--brand-2, #fde047);
+		padding: 2px 6px;
+		border-radius: 999px;
+	}
+	.help-list {
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+		margin-top: 8px;
+	}
+	.help-item h3 {
+		margin: 0 0 3px;
+		font-family: var(--font-display, sans-serif);
+		font-size: 0.92rem;
+		font-weight: 800;
+		color: var(--text);
+	}
+	.help-item p {
+		margin: 0;
+		font-size: 0.82rem;
+		line-height: 1.5;
+		color: var(--text-muted);
 	}
 
 	.led-head {
