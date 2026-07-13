@@ -48,14 +48,31 @@
 	$: activeRatePct = (bank?.loan_rate_bp ?? 0) / 100;
 	$: owedTomorrow = bank?.loan_owed_tomorrow ?? owed;
 	$: loanDays = bank?.loan_days ?? 0;
+	// Only snap DOWN past the ceiling so the editable amount field isn't fought while
+	// typing (the min is enforced on blur + the disabled Borrow button, not reactively).
 	$: if (borrowAmt > loanCap) borrowAmt = loanCap;
-	$: if (borrowAmt < MIN_BORROW && loanCap >= MIN_BORROW) borrowAmt = MIN_BORROW;
 	$: maxRepay = Math.max(0, Math.min(owed, bank?.bank ?? 0));
 	// Can you fully clear the loan right now? (Bank covers the whole owed amount.)
 	$: canClear = owed > 0 && (bank?.bank ?? 0) >= owed;
 	$: if (repayAmt > maxRepay) repayAmt = maxRepay;
-	// seed the repay dial when we (re)load into a debt state
-	$: if (bank) repayAmt = Math.min(repayAmt || maxRepay, maxRepay);
+	// Seed the repay dial to the full owed amount ONCE when we first load into a debt
+	// state — a guard (not a live reactive) so it never snaps back while you're typing.
+	let repaySeeded = false;
+	$: if (bank && maxRepay > 0 && !repaySeeded) {
+		repayAmt = maxRepay;
+		repaySeeded = true;
+	}
+	/** Clamp the typed borrow amount into [MIN_BORROW, cap] on blur. */
+	function clampBorrow() {
+		borrowAmt = Math.min(
+			loanCap,
+			Math.max(MIN_BORROW, Math.round(Number(borrowAmt) || MIN_BORROW))
+		);
+	}
+	/** Clamp the typed repay amount into [0, maxRepay] on blur. */
+	function clampRepay() {
+		repayAmt = Math.min(maxRepay, Math.max(0, Math.round(Number(repayAmt) || 0)));
+	}
 
 	const fmt = (/** @type {number} */ n) => '$' + Math.round(n ?? 0).toLocaleString();
 	const delay = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
@@ -170,9 +187,18 @@
 					disabled={repayAmt <= 0}>−</button
 				>
 				<div class="loan-amt">
-					<span class="loan-usd">{fmt(repayAmt)}</span><span class="loan-sub"
-						>of {fmt(owed)} owed</span
-					>
+					<span class="loan-usd"
+						>$<input
+							class="loan-input"
+							type="number"
+							inputmode="numeric"
+							aria-label="Repay amount"
+							min="0"
+							max={maxRepay}
+							bind:value={repayAmt}
+							on:blur={clampRepay}
+						/></span
+					><span class="loan-sub">of {fmt(owed)} owed</span>
 				</div>
 				<button
 					class="loan-step"
@@ -186,7 +212,7 @@
 				type="range"
 				min="0"
 				max={maxRepay}
-				step="10"
+				step="1"
 				bind:value={repayAmt}
 			/>
 			<div class="loan-actions">
@@ -227,9 +253,18 @@
 				disabled={borrowAmt <= MIN_BORROW}>−</button
 			>
 			<div class="loan-amt">
-				<span class="loan-usd">{fmt(borrowAmt)}</span><span class="loan-sub"
-					>owe {fmt(owedNow)} · {ratePct}%/day</span
-				>
+				<span class="loan-usd"
+					>$<input
+						class="loan-input"
+						type="number"
+						inputmode="numeric"
+						aria-label="Borrow amount"
+						min={MIN_BORROW}
+						max={loanCap}
+						bind:value={borrowAmt}
+						on:blur={clampBorrow}
+					/></span
+				><span class="loan-sub">owe {fmt(owedNow)} · {ratePct}%/day</span>
 			</div>
 			<button
 				class="loan-step"
@@ -243,7 +278,7 @@
 			type="range"
 			min={MIN_BORROW}
 			max={loanCap}
-			step="10"
+			step="1"
 			bind:value={borrowAmt}
 		/>
 		<button
@@ -517,12 +552,41 @@
 		gap: 1px;
 	}
 	.loan-usd {
+		display: inline-flex;
+		align-items: baseline;
 		font-family: var(--font-display, sans-serif);
 		font-weight: 800;
 		color: var(--brand-2);
 		font-size: 1.7rem;
 		line-height: 1;
 		font-variant-numeric: tabular-nums;
+	}
+	/* Editable amount — type an exact dollar figure. Styled to read like the big number. */
+	.loan-input {
+		width: 4.2ch;
+		min-width: 2ch;
+		max-width: 7ch;
+		padding: 0;
+		border: none;
+		background: transparent;
+		font: inherit;
+		color: inherit;
+		text-align: left;
+		font-variant-numeric: tabular-nums;
+		field-sizing: content;
+	}
+	.loan-input:focus {
+		outline: none;
+		border-bottom: 2px solid var(--brand-2);
+	}
+	.loan-input::-webkit-outer-spin-button,
+	.loan-input::-webkit-inner-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+	.loan-input {
+		-moz-appearance: textfield;
+		appearance: textfield;
 	}
 	.loan-sub {
 		font-size: 0.68rem;
