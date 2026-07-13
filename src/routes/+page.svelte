@@ -9249,6 +9249,36 @@
 		mask:
 			linear-gradient(#000 0 0) top / 100% calc(100% - 7px) no-repeat,
 			radial-gradient(6px 7px at 6px 0, #0000 98%, #000) bottom left / 12px 7px repeat-x;
+		/* 🧾 Feed out of the printer: reveal top→bottom in mechanical steps (paper emerging,
+		   torn edge last) with a faint side-to-side jitter like a thermal head. */
+		position: relative;
+		transform-origin: top center;
+		will-change: clip-path, transform;
+		animation:
+			receipt-print 1.15s steps(24, end) both,
+			receipt-jitter 0.15s steps(2, end) 7 both;
+	}
+	@keyframes receipt-print {
+		from {
+			clip-path: inset(0 0 100% 0);
+		}
+		to {
+			clip-path: inset(0 0 -2% 0);
+		}
+	}
+	@keyframes receipt-jitter {
+		0%,
+		100% {
+			transform: translateX(0);
+		}
+		50% {
+			transform: translateX(0.6px);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.receipt {
+			animation: none;
+		}
 	}
 	.rcpt-brand {
 		display: flex;
