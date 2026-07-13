@@ -75,12 +75,26 @@ export function toBoard(state) {
 	/** @type {Record<string,string>} */
 	const revealed = {};
 	for (const i of state.revealed) revealed[i] = state.phrase[i];
+	// A letter is "locked" (fully owned) once every one of its positions is revealed — the
+	// keyboard greys those so you can't try to re-buy an already-owned letter. Matches the
+	// server's _daily_board rule (GROUP BY letter HAVING all-positions-revealed).
+	const revealedSet = new Set(state.revealed);
+	const lockedLetters = [
+		...new Set(state.phrase.replace(/[^A-Z]/g, '').split(''))
+	]
+		.filter((ch) => {
+			for (let i = 0; i < state.phrase.length; i++) {
+				if (state.phrase[i] === ch && !revealedSet.has(i)) return false;
+			}
+			return true;
+		})
+		.sort();
 	const budgetLeft = Math.max(0, state.budget - state.spent);
 	return {
 		word_lengths: wordLengths,
 		revealed,
 		incorrect_letters: state.incorrect,
-		locked_letters: [],
+		locked_letters: lockedLetters,
 		bankroll: budgetLeft,
 		guesses_remaining: 99,
 		category: state.category,
