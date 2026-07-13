@@ -285,7 +285,7 @@
 									r="1.2"
 								/></svg
 							>
-							Daily Earnings{arrow('score')}</button
+							Earned{arrow('score')}</button
 						></th
 					>
 					<th class="num"
@@ -482,12 +482,12 @@
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
 		color: var(--text-faint);
-		padding: 0.6rem 0.45rem;
+		padding: 0.55rem 0.28rem;
 		text-align: left;
 		border-bottom: 1px solid var(--border);
 	}
 	td {
-		padding: 0.6rem 0.45rem;
+		padding: 0.55rem 0.28rem;
 		border-bottom: 1px solid var(--border);
 		font-size: 0.9rem;
 		text-align: left;
@@ -518,6 +518,12 @@
 		font: inherit;
 		color: inherit;
 		cursor: pointer;
+		display: inline-block;
+		max-width: 108px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		vertical-align: bottom;
 		text-decoration: underline;
 		text-decoration-color: rgba(255, 255, 255, 0.2);
 		text-underline-offset: 2px;
