@@ -101,6 +101,10 @@
 					]
 				: board === 'wealth'
 					? [
+							{
+								label: 'Net Worth',
+								cell: (/** @type {any} */ r) => fmt(r.net_worth ?? r.cash)
+							},
 							{ label: 'Cash', cell: (/** @type {any} */ r) => fmt(r.cash ?? r.net_worth) },
 							{ label: 'Credit', cell: (/** @type {any} */ r) => r.credit ?? 650 }
 						]
@@ -133,7 +137,14 @@
 							{ term: 'Win %', desc: 'Share of the challenges you played that you won.' }
 						]
 					: [
-							{ term: 'Cash', desc: 'Your Available Balance — total net worth.' },
+							{
+								term: 'Net Worth',
+								desc: 'Your true wealth — Available Balance minus any loan you owe. This is what the board ranks by.'
+							},
+							{
+								term: 'Cash',
+								desc: 'Your Available Balance — spendable money, before subtracting debt.'
+							},
 							{
 								term: 'Credit',
 								desc: 'Your credit score (300-850) — reputation from responsible money management.'
