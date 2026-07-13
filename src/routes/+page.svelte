@@ -301,6 +301,12 @@
 					/* ignore — nothing to clear */
 				}
 				user.set(null);
+				// Also show the menu (not just init): if the user then logs in / signs up on this
+				// same page instance (Auth flips loggedIn before its window.location reload), a
+				// false showMainMenu would let the game-restorer reactive fire and auto-start a
+				// game from a leftover gameMode. showMainMenu=true keeps that guard closed; the
+				// <Auth/> screen still shows because loggedIn is false.
+				showMainMenu = true;
 				hasInitialized = true;
 				return;
 			}
@@ -333,6 +339,13 @@
 				return;
 			}
 
+			// Cold open → land on the menu. Drop any stale transient gameMode first: it's a
+			// device-global key (not per-account), so a value left over from a previous session
+			// or a different account on this device would otherwise let the game-restorer
+			// auto-start/resume a game the user never chose — e.g. silently firing daily_start
+			// on a brand-new account (burning the attendance bonus). Real starts re-set it;
+			// Resume uses the per-user saved slot, not this.
+			if (localStorage.getItem('gameMode')) localStorage.removeItem('gameMode');
 			// Into the menu immediately — the loading screen only gates on auth + profile.
 			showMainMenu = true;
 			// Load any in-progress game so the menu shows "Resume" (not "Missed") after
