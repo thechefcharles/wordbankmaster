@@ -612,13 +612,23 @@
 	// The hero number: the bounty you spend down THIS puzzle. Daily & Cash Game keep the
 	// leftover; Challenge's resets each puzzle (fresh bounty) — the accumulated total is the
 	// Score, shown up top. Cash Game's carries via climb.balance (secured pile + current budget).
+	// Free Play: the current puzzle's spendable points budget drives the bounty hero,
+	// exactly where the money modes show their prize/budget.
+	$: fpLive =
+		$gameStore.gameMode === 'freeplay' &&
+		$gameStore.gameState !== 'won' &&
+		$gameStore.gameState !== 'lost'
+			? ($gameStore.dailyLive?.remaining ?? 0)
+			: null;
 	$: soloHero = climbLive
 		? { net: climbLive.net }
 		: dLive
 			? { net: dLive.remaining }
 			: matchLive
 				? { net: matchLeft }
-				: null;
+				: fpLive !== null
+					? { net: fpLive }
+					: null;
 
 	// Solve timer runs on the Daily board while unsolved and past the opening reveal.
 	$: dailyTimerActive =
@@ -4328,8 +4338,6 @@
 		<!-- ★ Free Play HUD — points earned this device + Next/Skip (freeplay only, no money). -->
 		{#if $gameStore.gameMode === 'freeplay'}
 			<div class="fp-hud">
-				<span class="fp-pts">★ {fpPoints.total} pts</span>
-				<span class="fp-budget">Budget: {$gameStore.dailyLive?.remaining ?? 0}</span>
 				<button
 					class="fp-next"
 					on:click={() => {
@@ -4356,17 +4364,25 @@
 		{#if $gameStore.currentPhrase && $gameStore.gameMode}
 			<!-- 🪙 Small ambient bankroll chip — your account, shown quietly; the hero number
              below is the game money. Static during play; tap → bank. -->
-			<button
-				class="bankroll-chip"
-				title="Your account balance"
-				on:click={() => {
-					fx('tap');
-					showBalanceInfo = true;
-				}}
-			>
-				<img class="brc-coin" src="/logo-coin.png" alt="" width="16" height="16" />
-				<span class="brc-amt">${Math.round(menuBank ?? netWorth ?? 0).toLocaleString()}</span>
-			</button>
+			{#if $gameStore.gameMode === 'freeplay'}
+				<!-- Free Play: points total sits where Available Balance usually is (no money). -->
+				<div class="bankroll-chip" title="Free Play points">
+					<span class="brc-star" aria-hidden="true">★</span>
+					<span class="brc-amt">{fpPoints.total.toLocaleString()} pts</span>
+				</div>
+			{:else}
+				<button
+					class="bankroll-chip"
+					title="Your account balance"
+					on:click={() => {
+						fx('tap');
+						showBalanceInfo = true;
+					}}
+				>
+					<img class="brc-coin" src="/logo-coin.png" alt="" width="16" height="16" />
+					<span class="brc-amt">${Math.round(menuBank ?? netWorth ?? 0).toLocaleString()}</span>
+				</button>
+			{/if}
 		{/if}
 
 		<!-- 🔍 Diagnostic banner (shows when init failed) -->
@@ -4576,6 +4592,8 @@
 									showAnteInfo = true;
 								}}>${Math.max(0, Math.round($tweenNet)).toLocaleString()}</button
 							>
+						{:else if $gameStore.gameMode === 'freeplay'}
+							<span class="bp-amount">{Math.max(0, Math.round($tweenNet)).toLocaleString()}</span>
 						{:else}
 							<span class="bp-amount"
 								>{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(
@@ -8959,6 +8977,11 @@
 		object-fit: contain;
 		opacity: 0.9;
 	}
+	.brc-star {
+		font-size: 0.9rem;
+		line-height: 1;
+		color: var(--brand-2, #fde047);
+	}
 	.brc-amt {
 		font-family: var(--font-display, sans-serif);
 		font-weight: 700;
@@ -9036,19 +9059,10 @@
 	.fp-hud {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
+		justify-content: flex-end;
 		gap: 10px;
 		margin: 6px auto 4px;
 		max-width: 340px;
-	}
-	.fp-pts {
-		font-family: var(--font-display, sans-serif);
-		font-weight: 800;
-		color: var(--brand-2, #fde047);
-	}
-	.fp-budget {
-		font-weight: 700;
-		color: var(--text-muted);
 	}
 	.fp-next {
 		background: none;
