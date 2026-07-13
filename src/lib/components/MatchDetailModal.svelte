@@ -105,7 +105,7 @@
 				</h2>
 				<p class="md-sub">
 					{m?.pack_size} puzzle{m?.pack_size === 1 ? '' : 's'}
-					· {m?.payout === 'podium' ? 'podium 3·2·1' : 'winner-take-all'}
+					· {field >= 3 ? 'podium 3·2·1' : 'winner-take-all'}
 					{#if wagered}· ${Number(m.wager).toLocaleString()} buy-in{:else}· friendly{/if}
 					{#if m?.status !== 'settled'}· <em>in progress</em>{/if}
 					{#if noSolve && wagered}· buy-in refunded{/if}
