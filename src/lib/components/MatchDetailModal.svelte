@@ -34,27 +34,43 @@
 		return n + (s[(v - 20) % 10] || s[v] || s[0]);
 	};
 	const dollars = (/** @type {any} */ n) => '$' + Number(n ?? 0).toLocaleString();
+	// Human solve time, e.g. "12s" or "1m 05s".
+	const fmtSecs = (/** @type {any} */ s) => {
+		if (s == null) return '';
+		const n = Math.round(Number(s));
+		return n < 60 ? `${n}s` : `${Math.floor(n / 60)}m ${String(n % 60).padStart(2, '0')}s`;
+	};
 
 	// The spend "tie-back": frame the outcome in the universal metric — who solved
 	// for the least. Works for 1v1 and groups, wagered or friendly.
 	$: field = parts.length;
 	$: winner = parts.find((/** @type {any} */ p) => Number(p.rank) === 1);
 	$: iWon = me && Number(me.rank) === 1;
-	// A 1v1 tie: both participants share rank 1 (equal spend). Never call that a win.
+	// A 1v1 tie: both participants share rank 1 (equal spend AND equal time).
 	$: isTie = field === 2 && !!me && !!opp && Number(me.rank) === 1 && Number(opp.rank) === 1;
+	// 1v1 speed gap — the decider when spends are equal.
+	$: haveTimes = field === 2 && me?.elapsed_seconds != null && opp?.elapsed_seconds != null;
+	$: speedGap = haveTimes ? Math.abs(me.elapsed_seconds - opp.elapsed_seconds) : null;
+	$: sameSpend = !!me && !!opp && Number(me.spent) === Number(opp.spent);
 	$: tieback = (() => {
 		if (!me || noSolve || m?.status !== 'settled') return '';
 		const myS = dollars(me.spent);
-		if (isTie) return me.solved ? `Tie — you both solved for ${myS}.` : `Tie — no winner.`;
+		if (isTie) return me.solved ? `Dead heat — you both solved for ${myS}.` : `Tie — no winner.`;
 		if (field === 2 && opp) {
 			const oS = dollars(opp.spent),
 				on = '@' + (opp.name || 'opponent');
-			if (iWon)
+			if (iWon) {
+				if (me.solved && sameSpend && speedGap)
+					return `Matched ${on}'s ${oS} — you solved ${fmtSecs(speedGap)} faster.`;
 				return me.solved
 					? `You solved for ${myS} — beat ${on}'s ${oS}.`
 					: `You took it — ${on} didn't solve.`;
-			if (Number(opp.rank) === 1)
+			}
+			if (Number(opp.rank) === 1) {
+				if (opp.solved && sameSpend && speedGap)
+					return `Matched ${on}'s ${oS} — but ${on} solved ${fmtSecs(speedGap)} faster.`;
 				return opp.solved ? `${on} solved for ${oS} — you spent ${myS}.` : `You spent ${myS}.`;
+			}
 			return `You spent ${myS}.`;
 		}
 		if (iWon) return `You solved for ${myS} — cheapest of ${field}.`;
@@ -123,7 +139,8 @@
 							<span class="md-name">{p.is_me ? 'You' : '@' + (p.name || 'player')}</span>
 							<span class="md-meta">
 								{#if p.state === 'done'}solved {p.solved ?? 0}/{m?.pack_size}{#if p.spent != null}
-										· ${Number(p.spent).toLocaleString()} spent{/if}{#if wagered && p.net != null}
+										· ${Number(p.spent).toLocaleString()} spent{/if}{#if p.elapsed_seconds != null}
+										· {fmtSecs(p.elapsed_seconds)}{/if}{#if wagered && p.net != null}
 										· <span class:pos={Number(p.net) >= 0} class:neg={Number(p.net) < 0}
 											>{money(p.net)}</span
 										>{/if}
