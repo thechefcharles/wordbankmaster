@@ -1784,6 +1784,23 @@
 		showMainMenu = false;
 		hasInitialized = true;
 	}
+	// Skip → new puzzle. After a solve it's just "Next" (no confirm). Skipping an unsolved
+	// puzzle forfeits the points you could have banked from it, so confirm + explain first.
+	async function handleFreePlayNext() {
+		fx('tap');
+		if ($gameStore.gameState === 'won') {
+			freePlayNext();
+			return;
+		}
+		const ok = await requireConfirm({
+			title: 'Skip this puzzle?',
+			message:
+				"You'll get a fresh puzzle and won't bank any points from this one. Your points total stays safe — you just won't earn anything for the puzzle you're skipping.",
+			confirmText: 'Skip',
+			cancelText: 'Keep playing'
+		});
+		if (ok) freePlayNext();
+	}
 
 	// Today's shared Daily Modifier banner (id lives in the game store, set by fetchDailyGame).
 	$: dailyMod =
@@ -4338,12 +4355,8 @@
 		<!-- ★ Free Play HUD — points earned this device + Next/Skip (freeplay only, no money). -->
 		{#if $gameStore.gameMode === 'freeplay'}
 			<div class="fp-hud">
-				<button
-					class="fp-next"
-					on:click={() => {
-						fx('tap');
-						freePlayNext();
-					}}>{$gameStore.gameState === 'won' ? 'Next puzzle →' : 'Skip →'}</button
+				<button class="fp-next" on:click={handleFreePlayNext}
+					>{$gameStore.gameState === 'won' ? 'Next puzzle →' : 'Skip →'}</button
 				>
 			</div>
 		{/if}
