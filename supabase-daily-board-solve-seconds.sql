@@ -22,7 +22,7 @@ BEGIN
       (CASE WHEN pr.last_daily_solve_date >= CURRENT_DATE - 1 THEN COALESCE(pr.current_daily_solve_streak,0) ELSE 0 END) AS win_streak,
       g.score AS score,
       (CASE WHEN g.won AND v_base > 0 THEN GREATEST(0, LEAST(100, round(COALESCE(g.kept,0)::numeric / v_base * 100)::int)) ELSE NULL END) AS efficiency,
-      (CASE WHEN g.won AND g.time_ms BETWEEN 2000 AND 1800000 THEN round(g.time_ms/1000.0)::int ELSE NULL END) AS solve_seconds,
+      (CASE WHEN g.won AND g.time_ms BETWEEN 2000 AND 1800000 THEN round(GREATEST(0, g.time_ms - 1800)/1000.0)::int ELSE NULL END) AS solve_seconds,
       pr.equipped_title, pr.equipped_color
     FROM circle c
     JOIN public.profiles pr ON pr.id = c.id
