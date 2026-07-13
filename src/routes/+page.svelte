@@ -1685,6 +1685,12 @@
 		location.reload();
 	}
 
+	/** Svelte action: play the printer buzz the moment a receipt mounts (feeds out). */
+	function printSound(/** @type {HTMLElement} */ _node) {
+		fx('print');
+		return {};
+	}
+
 	/** Start daily: resume if in progress, else show "already played" or fetch new daily.
 	 *  Daily has no personal power-ups — everyone shares the same Daily Modifier. */
 	async function handleMenuDaily() {
@@ -4714,7 +4720,8 @@
 						<!-- Account before today: back out the show-up bonus + this deposit (net of the skim). -->
 						{@const startBal = acctNow - attendance - banked + loanRepaid}
 						<!-- 🧾 Daily DEPOSIT slip: Budget − Letters = Subtotal ×Interest = Deposit -->
-						<div class="receipt">
+						<div class="rcpt-slot" aria-hidden="true"></div>
+						<div class="receipt" use:printSound>
 							<div class="rcpt-brand">
 								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
 								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
@@ -4813,7 +4820,8 @@
 						>
 					{:else if isDailyResult}
 						<!-- 🧾 Daily VOID slip: didn't solve → no deposit, balance untouched -->
-						<div class="receipt void">
+						<div class="rcpt-slot" aria-hidden="true"></div>
+						<div class="receipt void" use:printSound>
 							<div class="rcpt-brand">
 								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
 								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
@@ -4856,7 +4864,8 @@
 						{@const skim = Math.round(co.loan_repaid ?? 0)}
 						{@const endBal = Math.round(menuBank ?? 0)}
 						{@const startBal = Math.round(co.run_start_bal ?? endBal - prof + skim)}
-						<div class="receipt">
+						<div class="rcpt-slot" aria-hidden="true"></div>
+						<div class="receipt" use:printSound>
 							<div class="rcpt-brand">
 								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
 								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
@@ -4947,7 +4956,8 @@
 						{@const runInt = Math.max(0, Math.round((climb?.heat ?? 100) - 100))}
 						{@const tierName =
 							(climb?.tier ?? '').charAt(0).toUpperCase() + (climb?.tier ?? '').slice(1)}
-						<div class="receipt">
+						<div class="rcpt-slot" aria-hidden="true"></div>
+						<div class="receipt" use:printSound>
 							<div class="rcpt-brand">
 								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
 								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
@@ -5030,7 +5040,8 @@
 						{@const ante = Math.round(climb?.buy_in ?? 0)}
 						{@const endBal = Math.round(menuBank ?? 0)}
 						{@const startBal = endBal + ante}
-						<div class="receipt void">
+						<div class="rcpt-slot" aria-hidden="true"></div>
+						<div class="receipt void" use:printSound>
 							<div class="rcpt-brand">
 								<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
 								<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
@@ -9231,11 +9242,45 @@
 		}
 	}
 	/* 🧾 Receipt-style Cash Game results */
+	/* 🖨️ Printer slot the receipt feeds out of — a dark housing bar just above the slip,
+	   with a black paper-exit gap. Sits above the paper (z-index) so the slip emerges from
+	   behind it. It's a sibling of .receipt (not a child) so the slip's clip-path reveal
+	   doesn't clip it. */
+	.rcpt-slot {
+		width: 100%;
+		max-width: 306px;
+		height: 13px;
+		margin: 0.4rem auto -7px;
+		position: relative;
+		z-index: 2;
+		border-radius: 7px 7px 4px 4px;
+		background: linear-gradient(#45454f, #17171d 62%, #0b0b0f);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.09),
+			inset 0 -3px 5px rgba(0, 0, 0, 0.7),
+			0 3px 8px rgba(0, 0, 0, 0.5);
+	}
+	.rcpt-slot::after {
+		content: '';
+		position: absolute;
+		left: 9px;
+		right: 9px;
+		bottom: 2px;
+		height: 3px;
+		border-radius: 2px;
+		background: #05050a;
+		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.9);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.rcpt-slot {
+			display: none;
+		}
+	}
 	.receipt {
 		font-family: 'Courier New', 'Courier', ui-monospace, monospace;
 		width: 100%;
 		max-width: 290px;
-		margin: 0.4rem auto 1.1rem;
+		margin: 0 auto 1.1rem;
 		padding: 18px 20px 20px;
 		background: #f6f1e6;
 		color: #23201a;
@@ -9249,14 +9294,16 @@
 		mask:
 			linear-gradient(#000 0 0) top / 100% calc(100% - 7px) no-repeat,
 			radial-gradient(6px 7px at 6px 0, #0000 98%, #000) bottom left / 12px 7px repeat-x;
-		/* 🧾 Feed out of the printer: reveal top→bottom in mechanical steps (paper emerging,
-		   torn edge last) with a faint side-to-side jitter like a thermal head. */
+		/* 🧾 Feed out of the printer: reveal top→bottom in mechanical steps (paper emerging
+		   from behind the slot, torn edge last) with a faint side-to-side jitter like a
+		   thermal head. Slow (~3s) so you can watch it print. */
 		position: relative;
+		z-index: 1;
 		transform-origin: top center;
 		will-change: clip-path, transform;
 		animation:
-			receipt-print 1.15s steps(24, end) both,
-			receipt-jitter 0.15s steps(2, end) 7 both;
+			receipt-print 3s steps(60, end) both,
+			receipt-jitter 0.14s steps(2, end) 21 both;
 	}
 	@keyframes receipt-print {
 		from {
