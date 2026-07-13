@@ -20,7 +20,12 @@ export const load = async ({ cookies }) => {
 				cookies.set(name, value, {
 					...options,
 					path: '/',
-					httpOnly: true,
+					// MUST stay non-httpOnly: the browser Supabase client (createBrowserClient)
+					// reads the session token from this cookie via document.cookie. Forcing
+					// httpOnly hides it from the client, so after the server refreshes an expired
+					// token (rewriting the cookie httpOnly) the client can't see the session at
+					// all — every client call becomes unauthenticated and the app hangs on load.
+					httpOnly: false,
 					sameSite: 'lax',
 					secure: import.meta.env.PROD // false in dev so cookies persist on http://localhost
 				});
@@ -29,7 +34,7 @@ export const load = async ({ cookies }) => {
 				cookies.delete(name, {
 					...options,
 					path: '/',
-					httpOnly: true,
+					httpOnly: false,
 					sameSite: 'lax',
 					secure: import.meta.env.PROD
 				});
