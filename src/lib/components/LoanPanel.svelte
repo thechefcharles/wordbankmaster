@@ -213,7 +213,7 @@
 	</div>
 {:else if loanCap > 0}
 	<!-- No debt: borrow panel -->
-	<details class="loan-card" open={expanded}>
+	<details class="loan-card" bind:open={expanded}>
 		<summary class="loan-summary">Apply for a Loan <span class="loan-cv">▾</span></summary>
 		<p class="loan-tier">
 			Credit <b>{creditTier}</b> ({creditScore}) — sets your ${loanCap.toLocaleString()} limit{#if creditAdjBp(creditTier) !== 0}
