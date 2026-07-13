@@ -28,7 +28,10 @@
 		matchPowerup,
 		matchSabotageOpponent,
 		dailyFold,
-		matchFold
+		matchFold,
+		startFreePlay,
+		freePlayNext,
+		freePlayPoints
 	} from '$lib/stores/GameStore.js';
 	import {
 		getPowerups,
@@ -1760,6 +1763,16 @@
 		} else {
 			initError = 'Daily puzzle failed to load.';
 		}
+	}
+
+	// Free Play: device-local points, refreshed whenever the mode is active.
+	let fpPoints = { total: 0, best: 0 };
+	$: if ($gameStore.gameMode === 'freeplay' && $gameStore.gameState) fpPoints = freePlayPoints();
+	function handleFreePlay() {
+		fx('tap');
+		startFreePlay();
+		showMainMenu = false;
+		hasInitialized = true;
 	}
 
 	// Today's shared Daily Modifier banner (id lives in the game store, set by fetchDailyGame).
@@ -3514,10 +3527,16 @@
 							>
 						</span>
 					</button>
+					<button class="menu-card fp-card" style="--i: 1" on:click={handleFreePlay}>
+						<Icon name="puzzle" size={20} /><span class="mc-title">Free Play</span>
+						<span class="mc-right"
+							><span class="daily-chip">Best {freePlayPoints().best} pts</span></span
+						>
+					</button>
 					<button
 						class="menu-card"
 						class:resumable={climbInProgress}
-						style="--i: 1"
+						style="--i: 2"
 						on:click={handleMenuClimb}
 					>
 						<ModeIcon mode="climb" size={22} /><span class="mc-title">Cash Game</span>
@@ -4302,6 +4321,20 @@
 			</button>
 		{/if}
 
+		<!-- ★ Free Play HUD — points earned this device + Next/Skip (freeplay only, no money). -->
+		{#if $gameStore.gameMode === 'freeplay'}
+			<div class="fp-hud">
+				<span class="fp-pts">★ {fpPoints.total} pts</span>
+				<button
+					class="fp-next"
+					on:click={() => {
+						fx('tap');
+						freePlayNext();
+					}}>{$gameStore.gameState === 'won' ? 'Next puzzle →' : 'Skip →'}</button
+				>
+			</div>
+		{/if}
+
 		<!-- Daily solve timer — subtle server-anchored count-up (Daily only). -->
 		{#if $gameStore.gameMode === 'daily' && $gameStore.currentPhrase}
 			<div class="daily-timer-wrap">
@@ -4376,6 +4409,7 @@
 				<div class="danger-cue" role="alert">
 					<span class="dc-title"><Icon name="broke" size={16} /> OUT OF MONEY</span>
 					<span class="dc-sub">Last guess — solve now, or lose your run</span>
+					<button class="dc-freeplay" on:click={handleFreePlay}>Keep playing free →</button>
 					<button class="bn-forfeit" on:click={askForfeit}>Give up?</button>
 				</div>
 			{/if}
@@ -5675,6 +5709,17 @@
 		cursor: pointer;
 		text-decoration: underline;
 		text-underline-offset: 2px;
+	}
+	/* ★ escape hatch on the out-of-money banner — keep playing with no money on the line */
+	.dc-freeplay {
+		margin-top: 8px;
+		background: none;
+		border: none;
+		color: var(--brand-2, #fde047);
+		font-weight: 700;
+		font-size: 0.85rem;
+		cursor: pointer;
+		text-decoration: underline;
 	}
 
 	.dep-ic {
@@ -8981,6 +9026,29 @@
 		text-transform: none;
 		opacity: 0.62;
 		color: var(--text-muted, #cbd5e1);
+	}
+	/* ★ Free Play in-game HUD — points + Next/Skip, no money involved */
+	.fp-hud {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		margin: 6px auto 4px;
+		max-width: 340px;
+	}
+	.fp-pts {
+		font-family: var(--font-display, sans-serif);
+		font-weight: 800;
+		color: var(--brand-2, #fde047);
+	}
+	.fp-next {
+		background: none;
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		padding: 4px 12px;
+		color: var(--text);
+		font-weight: 700;
+		cursor: pointer;
 	}
 
 	.game-logo {
