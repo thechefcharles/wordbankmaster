@@ -166,8 +166,11 @@
 					>WordBank Checking{#if d.account_number}
 						····{String(d.account_number).slice(-4)}{/if}</span
 				>
-				<span class="acct-bal">{fmt(d.net_worth)}</span>
+				<span class="acct-bal">{fmt(d.cash ?? d.net_worth)}</span>
 				<span class="acct-lbl">Available Balance</span>
+				{#if Number(d.net_worth ?? 0) !== Number(d.cash ?? d.net_worth ?? 0)}
+					<span class="acct-net">Net worth {fmt(d.net_worth)}</span>
+				{/if}
 			</button>
 
 			<button class="ov-sec-link" onclick={() => (tab = 'stats')}>
@@ -746,6 +749,16 @@
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 		color: var(--text-faint);
+	}
+	/* True net worth (Available − loan) — a small line under the balance when in debt. */
+	.acct-net {
+		text-align: right;
+		margin-top: 4px;
+		font-family: var(--font-display);
+		font-weight: 700;
+		font-size: 0.9rem;
+		color: #7ee0a8;
+		font-variant-numeric: tabular-nums;
 	}
 	/* Badges: header link + item-style tiles */
 	.ov-sec-link {
