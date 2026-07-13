@@ -2464,7 +2464,7 @@
 		class="giveup-btn"
 		title="Give up"
 		aria-label="Give up"
-		on:click={isClimb ? askForfeit : confirmFold}><Icon name="give-up" size={18} /></button
+		on:click={isClimb ? askForfeit : confirmFold}><Icon name="flag" size={18} /></button
 	>
 {/if}
 <!-- Skip retired in Cash Game V4 — Cash Out is the graceful bail. -->
@@ -2544,7 +2544,7 @@
 			<div class="gu-actions">
 				<button class="gu-cancel" on:click={cancelGiveUp}>Keep playing</button>
 				<button class="gu-confirm" on:click={doGiveUp}
-					><Icon name="give-up" size={15} /> Give up</button
+					><Icon name="flag" size={15} /> Give up</button
 				>
 			</div>
 		</div>
