@@ -73,6 +73,11 @@
 	}
 
 	const fmt = (/** @type {any} */ n) => '$' + Math.round(Number(n ?? 0)).toLocaleString();
+	// Signed money: renders a leading minus outside the $ (−$51, not $-51).
+	const fmtSigned = (/** @type {any} */ n) => {
+		const v = Math.round(Number(n ?? 0));
+		return (v < 0 ? '−$' : '$') + Math.abs(v).toLocaleString();
+	};
 	const mult = (/** @type {any} */ x) => (x ? (Number(x) / 100).toFixed(1) + '×' : '—');
 	const time = (/** @type {any} */ ms) =>
 		!ms
@@ -169,8 +174,11 @@
 				<span class="acct-bal">{fmt(d.cash ?? d.net_worth)}</span>
 				<span class="acct-lbl">Available Balance</span>
 				{#if Number(d.net_worth ?? 0) !== Number(d.cash ?? d.net_worth ?? 0)}
-					<span class="acct-net">Net worth {fmt(d.net_worth)}</span>
+					<span class="acct-net" class:neg={Number(d.net_worth ?? 0) < 0}
+						>Net worth {fmtSigned(d.net_worth)}</span
+					>
 				{/if}
+				<img class="acct-coin" src="/logo-coin.png" alt="" width="30" height="30" />
 			</button>
 
 			<button class="ov-sec-link" onclick={() => (tab = 'stats')}>
@@ -710,6 +718,7 @@
 
 	/* 🏦 Available Balance account row (bank-app style) */
 	.acct-card {
+		position: relative;
 		display: flex;
 		flex-direction: column;
 		width: 100%;
@@ -722,6 +731,17 @@
 		transition:
 			border-color 0.2s,
 			transform 0.15s;
+	}
+	/* WordBank coin — anchored to the bottom-left of the checking card. */
+	.acct-coin {
+		position: absolute;
+		left: 16px;
+		bottom: 14px;
+		width: 30px;
+		height: 30px;
+		object-fit: contain;
+		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+		pointer-events: none;
 	}
 	.acct-card:hover {
 		border-color: var(--brand-2);
@@ -759,6 +779,9 @@
 		font-size: 0.9rem;
 		color: #7ee0a8;
 		font-variant-numeric: tabular-nums;
+	}
+	.acct-net.neg {
+		color: #fb7185;
 	}
 	/* Badges: header link + item-style tiles */
 	.ov-sec-link {
