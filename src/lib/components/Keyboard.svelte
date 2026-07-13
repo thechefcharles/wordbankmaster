@@ -111,12 +111,15 @@
 	$: lockedLetters = ($gameStore.lockedLetters || {}) as LockedLetters;
 	$: incorrectLetters = ($gameStore.incorrectLetters || []) as string[];
 
-	// The pool letters are bought from: Cash Game spends the per-puzzle BUDGET (not the
-	// accumulated Wallet); every other mode spends the bankroll.
+	// The pool letters are bought from the mode's own budget — NOT $gameStore.bankroll, which
+	// doubles as the user's Cash bank and can be stale mid-game. Cash Game → per-puzzle budget;
+	// Daily → the Prize budget the HUD shows (dailyLive.remaining, matches the server charge).
 	$: affordPool =
 		$gameStore.gameMode === 'climb'
 			? Number($gameStore.climbInfo?.budget_left ?? 0)
-			: $gameStore.bankroll;
+			: $gameStore.gameMode === 'daily'
+				? Number($gameStore.dailyLive?.remaining ?? $gameStore.bankroll ?? 0)
+				: Number($gameStore.bankroll ?? 0);
 	// 🔹 Disable keys that are unaffordable or already marked incorrect (modifier-adjusted prices).
 	$: disabledKeys = Object.keys(letterCosts).filter(
 		(letter: string) => (effCosts[letter] ?? 0) > affordPool || incorrectLetters.includes(letter)
