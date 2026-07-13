@@ -4593,7 +4593,12 @@
 								}}>${Math.max(0, Math.round($tweenNet)).toLocaleString()}</button
 							>
 						{:else if $gameStore.gameMode === 'freeplay'}
-							<span class="bp-amount">{Math.max(0, Math.round($tweenNet)).toLocaleString()}</span>
+							<span class="bp-amount"
+								><span class="bp-fp-mark" aria-hidden="true">★</span>{Math.max(
+									0,
+									Math.round($tweenNet)
+								).toLocaleString()}</span
+							>
 						{:else}
 							<span class="bp-amount"
 								>{$tweenNet >= 0 ? '$' : '−$'}{Math.abs(
@@ -8329,6 +8334,15 @@
 		text-shadow: 0 0 18px rgba(52, 211, 153, 0.5);
 		font-variant-numeric: tabular-nums;
 		transition: color 0.2s;
+	}
+	/* Free Play "currency" mark — a gold star before the points budget (the star is
+	   Free Play's unit, like $ is for the money modes). */
+	.bp-fp-mark {
+		color: var(--brand-2, #fde047);
+		font-size: 0.62em;
+		margin-right: 5px;
+		vertical-align: 0.2em;
+		text-shadow: 0 0 12px rgba(253, 224, 71, 0.55);
 	}
 	.bp-amount-btn {
 		background: none;

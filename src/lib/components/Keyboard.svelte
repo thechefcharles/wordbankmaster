@@ -121,6 +121,8 @@
 			: $gameStore.gameMode === 'daily' || $gameStore.gameMode === 'freeplay'
 				? Number($gameStore.dailyLive?.remaining ?? $gameStore.bankroll ?? 0)
 				: Number($gameStore.bankroll ?? 0);
+	// Free Play spends points, not Cash — mark letter prices with the ★ unit, not $.
+	$: priceMark = $gameStore.gameMode === 'freeplay' ? '★' : '$';
 	// 🔹 Disable keys that are unaffordable or already marked incorrect (modifier-adjusted prices).
 	$: disabledKeys = Object.keys(letterCosts).filter(
 		(letter: string) => (effCosts[letter] ?? 0) > affordPool || incorrectLetters.includes(letter)
@@ -246,7 +248,7 @@
 				<span class="braille">{BRAILLE[letter]}</span>
 				<div class="letter">{letter}</div>
 				<div class="price">
-					${effCosts[letter] ?? 0}
+					{priceMark}{effCosts[letter] ?? 0}
 				</div>
 			</button>
 		{/each}
@@ -274,7 +276,7 @@
 				<span class="braille">{BRAILLE[letter]}</span>
 				<div class="letter">{letter}</div>
 				<div class="price">
-					${effCosts[letter] ?? 0}
+					{priceMark}{effCosts[letter] ?? 0}
 				</div>
 			</button>
 		{/each}
@@ -302,7 +304,7 @@
 				<span class="braille">{BRAILLE[letter]}</span>
 				<div class="letter">{letter}</div>
 				<div class="price">
-					${effCosts[letter] ?? 0}
+					{priceMark}{effCosts[letter] ?? 0}
 				</div>
 			</button>
 		{/each}
