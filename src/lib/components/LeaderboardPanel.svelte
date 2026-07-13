@@ -100,7 +100,8 @@
 				]
 			: board === 'challenge'
 				? [
-						{ label: 'Wins', cell: (/** @type {any} */ r) => r.metric ?? 0 },
+						{ label: '1v1', cell: (/** @type {any} */ r) => r.wins_1v1 ?? 0 },
+						{ label: 'Group', cell: (/** @type {any} */ r) => r.wins_group ?? 0 },
 						{
 							label: 'Win %',
 							cell: (/** @type {any} */ r) =>
@@ -151,8 +152,12 @@
 					]
 				: board === 'challenge'
 					? [
-							{ term: 'Wins', desc: "Challenge matches you've won (all-time)." },
-							{ term: 'Win %', desc: 'Share of the challenges you played that you won.' }
+							{ term: '1v1', desc: "Head-to-head challenges you've won (2 players)." },
+							{ term: 'Group', desc: "Group challenges you've won (3+ players)." },
+							{
+								term: 'Win %',
+								desc: 'Share of all the challenges you played that you won. The board ranks by total wins.'
+							}
 						]
 					: [
 							{
