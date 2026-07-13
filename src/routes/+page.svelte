@@ -140,6 +140,9 @@
 	let showResultModal = false;
 	let hasTriggeredModal = false;
 	let hasInitialized = false;
+	// Set once the client confirms it has no usable session — stops the SSR data.user
+	// reactive from re-asserting loggedIn (see the reactive below).
+	let noClientSession = false;
 	let sessionUid = ''; // current session user id (for the PIN gate)
 	let pinNotSet = false; // logged in on this device with no PIN yet → prompt setup
 	/** @type {string | null} */
@@ -282,6 +285,16 @@
 				// would otherwise strand the user on "Loading…" forever (loggedIn=true but init
 				// never completes). Purge the stale auth and fall through to the login screen.
 				console.warn('⛔ No client session — clearing stale auth, showing login.', error?.message);
+				noClientSession = true; // suppress the SSR data.user reactive so login actually shows
+				// Mismatch: SSR read a user from the cookie but the browser has no usable session.
+				// That means a stale server-side cookie (e.g. a legacy httpOnly one the client
+				// can't read or overwrite) — only the server can delete it, so bounce through the
+				// /signout route to purge it, then land on a clean login. Guard with a one-shot
+				// query flag so we never loop once the cookie is gone.
+				if (data?.user && !window.location.search.includes('signedout')) {
+					window.location.href = '/signout';
+					return;
+				}
 				try {
 					await supabase.auth.signOut({ scope: 'local' });
 				} catch {
@@ -405,8 +418,12 @@
 		}
 	}
 
-	// ✅ Set user from SSR if present (profile load happens once in onMount)
-	$: if (data?.user) {
+	// ✅ Set user from SSR if present (profile load happens once in onMount).
+	// Suppressed once the client confirms it has NO usable session (noClientSession): the
+	// SSR cookie can still decode server-side (esp. a legacy httpOnly cookie the browser
+	// can't read) and would otherwise re-assert loggedIn=true, stranding the user in the
+	// signed-in-but-every-call-401 game screen instead of the login screen.
+	$: if (data?.user && !noClientSession) {
 		user.set(/** @type {{ id: string }} */ (data.user));
 	}
 
