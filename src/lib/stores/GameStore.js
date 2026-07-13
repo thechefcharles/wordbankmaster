@@ -930,14 +930,16 @@ export async function matchFold() {
 export function selectLetter(letter) {
 	gameStore.update(
 		/** @param {GameState} state */ (state) => {
-			// Cash Game scales letter cost by the tier stake multiplier, and spends the per-puzzle
-			// BUDGET (not the accumulated Wallet); server matches both.
+			// Cash Game scales letter cost by the tier stake multiplier, and spends the ONE shared
+			// balance (banked run money + this puzzle's budget); server matches both.
 			const isClimb = state.gameMode === 'climb';
 			const climbMult = isClimb ? Number(state.climbInfo?.stake ?? 1) || 1 : 1;
 			// 🏧 Overdrive armed → the next letter is free (any letter), even with an empty budget.
 			const overdrive = isClimb && (state.climbInfo?.equipped ?? []).includes('overdrive');
 			const cost = overdrive ? 0 : (LETTER_COSTS[letter] || 0) * climbMult;
-			const affordPool = isClimb ? Number(state.climbInfo?.budget_left ?? 0) : state.bankroll;
+			const affordPool = isClimb
+				? Number(state.climbInfo?.balance ?? state.climbInfo?.budget_left ?? 0)
+				: state.bankroll;
 			if (affordPool < cost) {
 				console.log(`Insufficient funds to purchase letter ${letter}`);
 				return state;
