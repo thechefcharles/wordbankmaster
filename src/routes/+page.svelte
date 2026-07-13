@@ -2444,6 +2444,10 @@
 	}
 
 	const onPhraseRevealComplete = async () => {
+		// Free Play has its own in-game HUD "Next puzzle →" button and never uses the
+		// result modal — fx('win') already played in the reconcile, so there's nothing
+		// left for this handler to do. Bail before the modal-trigger bookkeeping below.
+		if ($gameStore.gameMode === 'freeplay') return;
 		if (hasTriggeredModal || !['won', 'lost'].includes($gameStore.gameState)) return;
 		hasTriggeredModal = true;
 		const won = $gameStore.gameState === 'won';
