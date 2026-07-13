@@ -113,7 +113,7 @@
 								label: 'Net Worth',
 								cell: (/** @type {any} */ r) => fmt(r.net_worth ?? r.cash)
 							},
-							{ label: 'Cash', cell: (/** @type {any} */ r) => fmt(r.cash ?? r.net_worth) },
+							{ label: 'Earned', cell: (/** @type {any} */ r) => fmt(r.lifetime_earned ?? 0) },
 							{ label: 'Credit', cell: (/** @type {any} */ r) => r.credit ?? 650 }
 						]
 					: []
@@ -160,8 +160,8 @@
 								desc: 'Your true wealth — Available Balance minus any loan you owe. This is what the board ranks by.'
 							},
 							{
-								term: 'Cash',
-								desc: 'Your Available Balance — spendable money, before subtracting debt.'
+								term: 'Earned',
+								desc: 'Lifetime Cash earned across every mode — total career winnings.'
 							},
 							{
 								term: 'Credit',
