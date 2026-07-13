@@ -395,10 +395,15 @@
 		hasInitialized &&
 		loggedIn &&
 		!showMainMenu &&
+		!needsUsername &&
 		$gameStore.currentPhrase === '' &&
 		!$gameWasRestored
 	) {
-		const gameMode = localStorage.getItem('gameMode') || 'daily';
+		// Restore an in-progress game when returning to this route (e.g. back from the Store).
+		// Only act on an EXPLICITLY-set gameMode — never default to 'daily', or a brand-new
+		// user mid-onboarding (showMainMenu still false, no gameMode yet) would silently
+		// auto-start the Daily: burning the attendance bonus + a session before they chose to.
+		const gameMode = localStorage.getItem('gameMode');
 		if (gameMode === 'makeup') {
 			fetchMakeupGame().then((ok) => {
 				if (!ok) showMainMenu = true;
@@ -407,14 +412,15 @@
 			fetchClimbGame().then((ok) => {
 				if (!ok) showMainMenu = true;
 			});
-		} else if (gameMode === 'match') {
-			// Matches need the active id — not deep-link restorable; fall back to Daily.
-			localStorage.setItem('gameMode', 'daily');
-			showMainMenu = true;
-		} else {
+		} else if (gameMode === 'daily') {
 			fetchDailyGame().then((ok) => {
 				if (!ok) initError = 'Daily puzzle failed to load.';
 			});
+		} else {
+			// 'match' isn't deep-link restorable, and no/unknown gameMode means nothing to
+			// resume — show the menu instead of auto-starting anything.
+			if (gameMode === 'match') localStorage.setItem('gameMode', 'daily');
+			showMainMenu = true;
 		}
 	}
 
