@@ -2,6 +2,7 @@
 
 import { writable, get } from 'svelte/store';
 import { fx } from '$lib/sound.js';
+import { LETTER_COSTS } from '$lib/letterCosts.js';
 import { MODIFIERS } from '$lib/powerups.js';
 import {
 	dailyStart,
@@ -100,37 +101,8 @@ import { track } from '$lib/analytics.js';
    Constants & Store Initialization
 =================================== */
 
-// Letter purchase costs
-/** @type {Record<string, number>} */
-// Mirror of server public.letter_cost() (economy v3.2: −25%, cheapest $20).
-export const LETTER_COSTS = {
-	Q: 20,
-	W: 40,
-	E: 100,
-	R: 90,
-	T: 90,
-	Y: 50,
-	U: 60,
-	I: 80,
-	O: 70,
-	P: 60,
-	A: 100,
-	S: 90,
-	D: 60,
-	F: 50,
-	G: 50,
-	H: 50,
-	J: 20,
-	K: 40,
-	L: 60,
-	Z: 30,
-	X: 30,
-	C: 60,
-	V: 40,
-	B: 50,
-	N: 80,
-	M: 50
-};
+// Letter purchase costs (mirror of server public.letter_cost())
+export { LETTER_COSTS };
 
 /** @type {import('svelte/store').Writable<GameState>} */
 export const gameStore = writable(
