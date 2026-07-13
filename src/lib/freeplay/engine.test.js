@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newGame, buyLetter, applyGuess, scoreOnSolve, toBoard } from './engine.js';
+import { newGame, buyLetter, applyGuess, scoreOnSolve, toBoard, mustGuess } from './engine.js';
 
 const P = { id: 'x', phrase: 'CAT HAT', category: 'C', clue: 'k' };
 
@@ -78,4 +78,24 @@ test('toBoard locks a letter only when ALL its positions are revealed', () => {
 	assert.deepEqual(toBoard(s).locked_letters, []);
 	s = { ...s, revealed: [0, 2] };
 	assert.deepEqual(toBoard(s).locked_letters, ['A']);
+});
+
+test('mustGuess flips true only when you cannot afford the cheapest letter', () => {
+	const s = newGame(P); // budget 360, cheapest buyable is 20
+	assert.equal(mustGuess(s), false);
+	const broke = { ...s, spent: s.budget - 10 }; // 10 left < 20
+	assert.equal(mustGuess(broke), true);
+	assert.equal(toBoard(broke).must_guess, true);
+});
+
+test('a wrong guess loses the puzzle only when out of budget', () => {
+	// With budget left, a wrong guess just keeps it active (no penalty).
+	let ok = applyGuess(newGame(P), { 0: 'X', 1: 'A', 2: 'T', 4: 'H', 5: 'A', 6: 'T' });
+	assert.equal(ok.status, 'active');
+	// Out of budget → the wrong guess is fatal: lost, answer revealed, 0 points.
+	const broke = { ...newGame(P), spent: newGame(P).budget };
+	const lost = applyGuess(broke, { 0: 'X', 1: 'A', 2: 'T', 4: 'H', 5: 'A', 6: 'T' });
+	assert.equal(lost.status, 'lost');
+	assert.equal(scoreOnSolve(lost), 0);
+	assert.equal(toBoard(lost).state, 'lost');
 });

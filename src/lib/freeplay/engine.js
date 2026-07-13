@@ -9,7 +9,7 @@ function distinctLetters(phrase) {
 }
 
 /** @param {{id:string,phrase:string,category:string,clue:string}} puzzle
- * @returns {{puzzleId:string,phrase:string,category:string,clue:string,budget:number,spent:number,revealed:number[],incorrect:string[],status:'active'|'won'}} */
+ * @returns {{puzzleId:string,phrase:string,category:string,clue:string,budget:number,spent:number,revealed:number[],incorrect:string[],status:'active'|'won'|'lost'}} */
 export function newGame(puzzle) {
 	const phrase = puzzle.phrase.toUpperCase();
 	const base = distinctLetters(phrase).reduce((sum, c) => sum + (LETTER_COSTS[c] || 0), 0);
@@ -24,7 +24,7 @@ export function newGame(puzzle) {
 		spent: 0,
 		/** @type {number[]} */ revealed: [],
 		/** @type {string[]} */ incorrect: [],
-		/** @type {'active'|'won'} */ status: 'active'
+		/** @type {'active'|'won'|'lost'} */ status: 'active'
 	};
 }
 
@@ -47,19 +47,55 @@ export function buyLetter(state, rawLetter) {
 	return { ...state, spent: state.spent + cost, revealed };
 }
 
+/** Cheapest letter you could still buy (not wrong, not already fully revealed), or null
+ * if none remain. @param {ReturnType<typeof newGame>} state @returns {number|null} */
+function cheapestBuyable(state) {
+	const revealedSet = new Set(state.revealed);
+	let min = Infinity;
+	for (const letter of Object.keys(LETTER_COSTS)) {
+		if (state.incorrect.includes(letter)) continue;
+		let fullyRevealed = true;
+		let present = false;
+		for (let i = 0; i < state.phrase.length; i++) {
+			if (state.phrase[i] === letter) {
+				present = true;
+				if (!revealedSet.has(i)) fullyRevealed = false;
+			}
+		}
+		if (present && fullyRevealed) continue; // already own every position → can't re-buy
+		if (LETTER_COSTS[letter] < min) min = LETTER_COSTS[letter];
+	}
+	return min === Infinity ? null : min;
+}
+
+/** Out of budget for any further letter → the next guess is the last chance.
+ * @param {ReturnType<typeof newGame>} state @returns {boolean} */
+export function mustGuess(state) {
+	if (state.status !== 'active') return false;
+	const cheapest = cheapestBuyable(state);
+	return cheapest === null || state.budget - state.spent < cheapest;
+}
+
 /** @param {ReturnType<typeof newGame>} state @param {Record<number,string>} filled
  * @returns {ReturnType<typeof newGame>} */
 export function applyGuess(state, filled) {
 	if (state.status !== 'active') return state;
+	let correct = true;
 	for (let i = 0; i < state.phrase.length; i++) {
 		if (state.phrase[i] === ' ') continue;
 		const ch = (filled[i] ?? (state.revealed.includes(i) ? state.phrase[i] : '')).toUpperCase();
-		if (ch !== state.phrase[i]) return state; // any mismatch → not solved (no penalty)
+		if (ch !== state.phrase[i]) {
+			correct = false;
+			break;
+		}
 	}
-	// every non-space position matches → win; reveal all
 	const all = [];
 	for (let i = 0; i < state.phrase.length; i++) if (state.phrase[i] !== ' ') all.push(i);
-	return { ...state, revealed: all, status: 'won' };
+	if (correct) return { ...state, revealed: all, status: 'won' };
+	// Wrong. If you can't afford another letter, that was your last chance → lost (reveal the
+	// answer). Otherwise no penalty — keep playing.
+	if (mustGuess(state)) return { ...state, revealed: all, status: 'lost' };
+	return state;
 }
 
 /** @param {ReturnType<typeof newGame>} state
@@ -69,7 +105,7 @@ export function scoreOnSolve(state) {
 }
 
 /** @param {ReturnType<typeof newGame>} state
- * @returns {{word_lengths:number[],revealed:Record<string,string>,incorrect_letters:string[],locked_letters:any[],bankroll:number,guesses_remaining:number,category:string,subcategory:string,clue:string,state:'active'|'won',phrase?:string,live:{remaining:number}}} */
+ * @returns {{word_lengths:number[],revealed:Record<string,string>,incorrect_letters:string[],locked_letters:any[],must_guess:boolean,bankroll:number,guesses_remaining:number,category:string,subcategory:string,clue:string,state:'active'|'won'|'lost',phrase?:string,live:{remaining:number}}} */
 export function toBoard(state) {
 	const wordLengths = state.phrase.split(' ').map((w) => w.length);
 	/** @type {Record<string,string>} */
@@ -79,9 +115,7 @@ export function toBoard(state) {
 	// keyboard greys those so you can't try to re-buy an already-owned letter. Matches the
 	// server's _daily_board rule (GROUP BY letter HAVING all-positions-revealed).
 	const revealedSet = new Set(state.revealed);
-	const lockedLetters = [
-		...new Set(state.phrase.replace(/[^A-Z]/g, '').split(''))
-	]
+	const lockedLetters = [...new Set(state.phrase.replace(/[^A-Z]/g, '').split(''))]
 		.filter((ch) => {
 			for (let i = 0; i < state.phrase.length; i++) {
 				if (state.phrase[i] === ch && !revealedSet.has(i)) return false;
@@ -95,6 +129,7 @@ export function toBoard(state) {
 		revealed,
 		incorrect_letters: state.incorrect,
 		locked_letters: lockedLetters,
+		must_guess: mustGuess(state),
 		bankroll: budgetLeft,
 		guesses_remaining: 99,
 		category: state.category,

@@ -539,8 +539,11 @@
 	// 🚨 Last-stand: out of budget, this guess decides it. Persistent while stuck
 	// (drives the red screen treatment + keyboard lock). Overdrive lifts the lock.
 	// Cash Game = your run is on the line; Daily = your one shot at today's win.
+	$: isFreeplay = $gameStore.gameMode === 'freeplay';
 	$: dangerMode =
-		((isClimb && !!climb?.must_guess) || (isDaily && !!$gameStore.dailyMustGuess)) &&
+		((isClimb && !!climb?.must_guess) ||
+			(isDaily && !!$gameStore.dailyMustGuess) ||
+			(isFreeplay && !!$gameStore.dailyMustGuess)) &&
 		gameActive &&
 		$gameStore.gameState !== 'won' &&
 		$gameStore.gameState !== 'lost';
@@ -1788,7 +1791,8 @@
 	// puzzle forfeits the points you could have banked from it, so confirm + explain first.
 	async function handleFreePlayNext() {
 		fx('tap');
-		if ($gameStore.gameState === 'won') {
+		// Already resolved (solved or lost) → just advance, no confirm.
+		if ($gameStore.gameState === 'won' || $gameStore.gameState === 'lost') {
 			freePlayNext();
 			return;
 		}
@@ -4356,7 +4360,9 @@
 		{#if $gameStore.gameMode === 'freeplay'}
 			<div class="fp-hud">
 				<button class="fp-next" on:click={handleFreePlayNext}
-					>{$gameStore.gameState === 'won' ? 'Next puzzle →' : 'Skip →'}</button
+					>{$gameStore.gameState === 'won' || $gameStore.gameState === 'lost'
+						? 'Next puzzle →'
+						: 'Skip →'}</button
 				>
 			</div>
 		{/if}
@@ -4456,6 +4462,22 @@
 				<span class="dc-title"><Icon name="broke" size={16} /> OUT OF BUDGET</span>
 				<span class="dc-sub">Last guess — get it right to win today</span>
 				<button class="bn-forfeit" on:click={confirmFold}>Give up?</button>
+			</div>
+		{/if}
+
+		<!-- 🚨 Free Play out-of-points wall — last guess (no money, just this puzzle). -->
+		{#if isFreeplay && dangerMode}
+			<div class="danger-cue daily" role="alert">
+				<span class="dc-title"><Icon name="broke" size={16} /> OUT OF POINTS</span>
+				<span class="dc-sub">Last guess — solve it, or skip to a new puzzle</span>
+				<button class="bn-forfeit" on:click={handleFreePlayNext}>Skip →</button>
+			</div>
+		{/if}
+		<!-- 💀 Free Play miss — out of points and the last guess was wrong; answer revealed. -->
+		{#if isFreeplay && $gameStore.gameState === 'lost'}
+			<div class="danger-cue daily" role="alert">
+				<span class="dc-title"><Icon name="broke" size={16} /> OUT OF POINTS</span>
+				<span class="dc-sub">No points that time — here's the answer. Try the next one!</span>
 			</div>
 		{/if}
 

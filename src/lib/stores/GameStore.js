@@ -402,28 +402,33 @@ function reconcileFreeplayBoard() {
 	const board = toBoard(freeplayState);
 	const prev = get(gameStore);
 	const won = board.state === 'won';
+	const lost = board.state === 'lost';
 	const justWon = won && prev.gameState !== 'won';
+	const justLost = lost && prev.gameState !== 'lost';
 	gameStore.set(
 		/** @type {GameState} */ ({
 			...prev,
 			...boardToState(board, prev),
 			gameMode: 'freeplay',
-			gameState: won ? 'won' : 'default',
+			gameState: won ? 'won' : lost ? 'lost' : 'default',
 			clue: board.clue ?? null,
 			dailyLive: board.live,
+			// Out-of-points "last guess" wall — reuses the Daily must-guess flag + danger screen.
+			dailyMustGuess: !!board.must_guess,
 			// freeplay never uses these money/daily fields:
 			climbInfo: null,
 			matchInfo: null,
 			dailyResult: null,
-			modifier: null,
-			dailyMustGuess: false
+			modifier: null
 		})
 	);
 	if (justWon) {
 		const gained = scoreOnSolve(freeplayState);
 		recordSolve(fpStorage(), gained);
 		fx('win');
-	} else if (!won) {
+	} else if (justLost) {
+		fx('bust');
+	} else if (!won && !lost) {
 		playMoveCue(prev, board);
 	}
 }
