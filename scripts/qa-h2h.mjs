@@ -9,6 +9,8 @@ const BASE = process.env.BASE || 'http://localhost:5174';
 const DB = process.env.SUPABASE_DB_URL;
 const PASS = 'TestPass123!';
 const PACK = Number(process.env.PACK || 2);
+const WAGER = Number(process.env.WAGER || 0); // 0=friendly, else 500/2000/10000
+const WAGER_LABEL = { 500: '$500', 2000: '$2K', 10000: '$10K' }[WAGER] || null;
 const stamp = String(Date.now());
 const A = { email: `qaa${stamp}@example.com`, uname: 'qaa' + stamp.slice(-7) };
 const B = { email: `qab${stamp}@example.com`, uname: 'qab' + stamp.slice(-7) };
@@ -161,8 +163,17 @@ try {
 	await pa.page.getByRole('button', { name: /continue/i }).first().click().catch(() => {});
 	await wait(pa.page, 700);
 	await shot(pa.page, 'A-wizard-step3');
-	// step 3: Friendly ante, send
-	await pa.page.locator('button.ante-chip', { hasText: /friendly/i }).first().click().catch(() => {});
+	// step 3: ante (friendly or a wager), send
+	if (WAGER_LABEL) {
+		await pa.page
+			.locator('button.ante-chip', { hasText: new RegExp('\\' + WAGER_LABEL.replace('$', '\\$')) })
+			.first()
+			.click()
+			.catch(() => {});
+		note(`A: wager ${WAGER_LABEL} selected`);
+	} else {
+		await pa.page.locator('button.ante-chip', { hasText: /friendly/i }).first().click().catch(() => {});
+	}
 	await wait(pa.page, 400);
 	await pa.page.getByRole('button', { name: /send challenge/i }).first().click().catch(() => {});
 	await wait(pa.page, 4000);
@@ -215,9 +226,18 @@ try {
 		status = sql(`SELECT status FROM challenge_matches WHERE id='${mid}'`);
 		note(`match status after settle_expired_matches(): ${status}`);
 	}
-	const parts = sql(`SELECT p.username || ' score=' || cp.total_score || ' spent=' || (cp.start_budget - cp.bankroll) || ' solved=' || cp.solved || ' state=' || cp.state FROM challenge_participants cp JOIN profiles p ON p.id=cp.user_id WHERE cp.match_id='${mid}' ORDER BY cp.total_score DESC`);
-	note('final standings (DB):');
+	const parts = sql(
+		`SELECT p.username || ' | score=' || cp.total_score || ' solved=' || cp.solved || '/' || (SELECT pack_size FROM challenge_matches WHERE id='${mid}') || ' elapsed=' || round(public._match_elapsed(cp.started_at, cp.finished_at, cp.joined_at),1) || 's | outcome=' || coalesce(gr.outcome,'-') || ' rank=' || coalesce(gr.rank::text,'-') || ' earned=$' || coalesce(gr.earned,0) || ' net=$' || coalesce(gr.net,0) FROM challenge_participants cp JOIN profiles p ON p.id=cp.user_id LEFT JOIN game_results gr ON gr.match_id=cp.match_id AND gr.user_id=cp.user_id WHERE cp.match_id='${mid}' ORDER BY gr.rank NULLS LAST`
+	);
+	note(`final standings (DB) — wager=$${WAGER}:`);
 	parts.split('\n').forEach((r) => console.log('       ' + r));
+	if (WAGER > 0) {
+		const bankDelta = sql(
+			`SELECT p.username || ' bank=$' || pr.bank FROM challenge_participants cp JOIN profiles p ON p.id=cp.user_id JOIN profiles pr ON pr.id=cp.user_id WHERE cp.match_id='${mid}'`
+		);
+		note('post-settle bank:');
+		bankDelta.split('\n').forEach((r) => console.log('       ' + r));
+	}
 
 	// ---- A opens Results ----
 	console.log('\n── A views results ──');
