@@ -402,6 +402,7 @@ function reconcileFreeplayBoard() {
 	const board = toBoard(freeplayState);
 	const prev = get(gameStore);
 	const won = board.state === 'won';
+	const justWon = won && prev.gameState !== 'won';
 	gameStore.set(
 		/** @type {GameState} */ ({
 			...prev,
@@ -412,16 +413,17 @@ function reconcileFreeplayBoard() {
 			dailyLive: board.live,
 			// freeplay never uses these money/daily fields:
 			climbInfo: null,
+			matchInfo: null,
 			dailyResult: null,
 			modifier: null,
 			dailyMustGuess: false
 		})
 	);
-	if (won) {
+	if (justWon) {
 		const gained = scoreOnSolve(freeplayState);
 		recordSolve(fpStorage(), gained);
 		fx('win');
-	} else {
+	} else if (!won) {
 		playMoveCue(prev, board);
 	}
 }
@@ -440,6 +442,7 @@ export function freePlayNext() {
 
 /** @param {GameState} current */
 function confirmPurchaseFreeplay(current) {
+	if (current.gameState === 'won') return;
 	const sel = current.selectedPurchase;
 	if (!freeplayState || !sel || sel.type !== 'letter') return;
 	freeplayState = buyLetter(freeplayState, sel.value ?? '');
@@ -448,6 +451,7 @@ function confirmPurchaseFreeplay(current) {
 
 /** @param {GameState} current */
 function submitGuessFreeplay(current) {
+	if (current.gameState === 'won') return;
 	if (!freeplayState) return;
 	/** @type {Record<number,string>} */
 	const filled = {};
