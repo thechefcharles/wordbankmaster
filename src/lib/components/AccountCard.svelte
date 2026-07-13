@@ -25,6 +25,9 @@
 	$: holderName = (holder ? String(holder) : 'Wordbanker').toUpperCase();
 	$: memberLabel = member != null ? '#' + String(member).padStart(4, '0') : '—';
 	$: amount = Math.round(Number(balance) || 0).toLocaleString();
+	// True net worth = Available Balance − loan owed. Can go negative when deep in debt.
+	$: netWorthAmt = (Math.round(Number(balance) || 0) - loanAmt) | 0;
+	$: netWorthLabel = (netWorthAmt < 0 ? '−$' : '$') + Math.abs(netWorthAmt).toLocaleString();
 </script>
 
 <div class="acct-card {tierClass}">
@@ -41,7 +44,12 @@
 		<div class="ac-bal">
 			<div class="ac-cap">Available Balance</div>
 			<div class="ac-amt">${amount}</div>
-			{#if loanAmt > 0}<div class="ac-loan">Loan −${loanAmt.toLocaleString()}</div>{/if}
+			{#if loanAmt > 0}
+				<div class="ac-loan">Loan −${loanAmt.toLocaleString()}</div>
+				<div class="ac-net" class:neg={netWorthAmt < 0}>
+					<span class="ac-net-cap">Net worth</span>{netWorthLabel}
+				</div>
+			{/if}
 		</div>
 		<div class="ac-num">•••• •••• •••• {last4}</div>
 		<div class="ac-foot">
@@ -185,6 +193,26 @@
 		font-size: 0.82rem;
 		color: #fb7185;
 		font-variant-numeric: tabular-nums;
+	}
+	/* True net worth (Available − loan) — the real position, one line under the loan. */
+	.ac-net {
+		margin-top: 2px;
+		font-family: var(--font-display, sans-serif);
+		font-weight: 700;
+		font-size: 0.82rem;
+		color: #7ee0a8;
+		font-variant-numeric: tabular-nums;
+	}
+	.ac-net.neg {
+		color: #fb7185;
+	}
+	.ac-net-cap {
+		font-weight: 600;
+		opacity: 0.7;
+		margin-right: 6px;
+		text-transform: uppercase;
+		font-size: 0.68rem;
+		letter-spacing: 0.05em;
 	}
 	.ac-num {
 		font-family: 'Courier New', 'Courier', ui-monospace, monospace;
