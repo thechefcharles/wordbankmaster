@@ -116,6 +116,7 @@
 	import { goto, replaceState } from '$app/navigation';
 
 	import PhraseDisplay from '$lib/components/PhraseDisplay.svelte';
+	import SolveTimer from '$lib/components/SolveTimer.svelte';
 	import InventoryList from '$lib/components/InventoryList.svelte';
 	import VaultReveal from '$lib/components/VaultReveal.svelte';
 	import Keyboard from '$lib/components/Keyboard.svelte';
@@ -574,6 +575,14 @@
 			: matchLive
 				? { net: matchLeft }
 				: null;
+
+	// Solve timer runs on the Daily board while unsolved and past the opening reveal.
+	$: dailyTimerActive =
+		$gameStore.gameMode === 'daily' &&
+		!showMainMenu &&
+		!introBuilding &&
+		$gameStore.gameState !== 'won' &&
+		$gameStore.gameState !== 'lost';
 
 	// 🎰 Slot-machine money feel: count the hero number up/down; float a −$X off it on each spend.
 	const tweenNet = tweened(0, { duration: 900, easing: cubicOut });
@@ -4244,6 +4253,18 @@
 						).toLocaleString()}</span
 					>{/if}<span class="mp-info"><Icon name="info" size={13} /></span>
 			</button>
+		{/if}
+
+		<!-- Daily solve timer — subtle server-anchored count-up (Daily only). -->
+		{#if $gameStore.gameMode === 'daily' && $gameStore.currentPhrase}
+			<div class="daily-timer-wrap">
+				<SolveTimer
+					openedAt={$gameStore.dailyOpenedAt}
+					bestSeconds={$gameStore.dailyBestSeconds}
+					active={dailyTimerActive}
+					solved={$gameStore.gameState === 'won'}
+				/>
+			</div>
 		{/if}
 
 		<!-- 💰 Bankroll — top of every mode. Challenge ante now lives in the bounty hero below. -->
@@ -8855,6 +8876,11 @@
 		margin: -4px 0 8px;
 	}
 	/* 🏷️ Game-mode pill — centered under the wordmark, same for every mode */
+	.daily-timer-wrap {
+		display: flex;
+		justify-content: center;
+		margin-top: 3px;
+	}
 	.mode-pill {
 		display: inline-flex;
 		align-items: center;

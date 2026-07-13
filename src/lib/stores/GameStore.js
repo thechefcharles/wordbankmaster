@@ -89,6 +89,8 @@ import { track } from '$lib/analytics.js';
  *   dailyIntro?: number,
  *   dailyIntroGo?: number,
  *   dailyIntroPlayed?: number,
+ *   dailyOpenedAt?: number|null,
+ *   dailyBestSeconds?: number|null,
  *   wrongTick?: number,
  *   twistCue?: { id:number, text:string } | null
  * }} GameState
@@ -163,6 +165,8 @@ export const gameStore = writable(
 		dailyIntro: 0, // bumps on a FRESH daily open → ARMS the opening reveal (pending)
 		dailyIntroGo: 0, // bumps once the board is actually visible → PLAYS the opening reveal
 		dailyIntroPlayed: 0, // the dailyIntro token that has already played (persists across remounts)
+		dailyOpenedAt: null, // epoch ms the server stamped for today's Daily (solve-timer anchor)
+		dailyBestSeconds: null, // player's fastest valid Daily solve, seconds (PB ghost)
 		wrongTick: 0, // bumps on a non-busting wrong whole-phrase guess → UI flashes a distinct "✗ Wrong" cue
 		twistCue: null // { id, text } — transient "the Twist just did X" toast (Daily), cleared by the UI
 	})
@@ -285,7 +289,11 @@ function reconcileDailyBoard(board) {
 				board.wrong_guesses !== undefined ? board.wrong_guesses : (prev.wrongGuesses ?? 0),
 			// Daily out-of-budget wall: bankroll < cheapest buyable letter on an active board.
 			dailyMustGuess:
-				board.must_guess !== undefined ? !!board.must_guess : (prev.dailyMustGuess ?? false)
+				board.must_guess !== undefined ? !!board.must_guess : (prev.dailyMustGuess ?? false),
+			// Solve-timer anchor (server opened_at, ms) + PB ghost. Keep prior value when a
+			// board refresh omits them, so buying letters mid-solve doesn't clear the timer.
+			dailyOpenedAt: board.opened_at ?? prev.dailyOpenedAt ?? null,
+			dailyBestSeconds: board.best_solve_seconds ?? prev.dailyBestSeconds ?? null
 		})
 	);
 	// Only celebrate a FRESH solve: a board carrying daily_result (set by the solve),
