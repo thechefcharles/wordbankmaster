@@ -88,6 +88,11 @@
 		<div class="bal-line">
 			<span class="bal-cap">Available Balance</span>
 			<span class="bal-amt">{fmt(b.bank)}</span>
+			{#if Number(b.loan ?? 0) > 0}
+				<span class="bal-net" class:neg={Number(b.net_worth ?? 0) < 0}
+					>Net worth {fmt(b.net_worth)}</span
+				>
+			{/if}
 		</div>
 
 		<!-- 💳 Credit score — the hero -->
@@ -244,6 +249,19 @@
 		line-height: 1.1;
 		font-variant-numeric: tabular-nums;
 		color: var(--text);
+	}
+	/* True net worth (Available − loan) — shown under the balance only when in debt. */
+	.bal-net {
+		display: block;
+		margin-top: 4px;
+		font-family: var(--font-display, sans-serif);
+		font-weight: 700;
+		font-size: 0.98rem;
+		font-variant-numeric: tabular-nums;
+		color: #7ee0a8;
+	}
+	.bal-net.neg {
+		color: #fb7185;
 	}
 	.credit-sec {
 		margin: 4px 0 18px;
