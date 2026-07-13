@@ -15,11 +15,15 @@ const WAGER = Number(process.env.WAGER || 0);
 const WAGER_LABEL = { 500: '$500', 2000: '$2K', 10000: '$10K' }[WAGER] || null;
 const stamp = String(Date.now());
 const GNAME = 'QA Group ' + stamp.slice(-5);
-const PLAYERS = ['a', 'b', 'c'].map((x) => ({
-	email: `qg${x}${stamp}@example.com`,
-	uname: `qg${x}${stamp.slice(-6)}`,
-	tag: x.toUpperCase()
-}));
+const NP = Math.min(Math.max(Number(process.env.PLAYERS || 3), 2), 8);
+const PLAYERS = 'abcdefgh'
+	.slice(0, NP)
+	.split('')
+	.map((x) => ({
+		email: `qg${x}${stamp}@example.com`,
+		uname: `qg${x}${stamp.slice(-6)}`,
+		tag: x.toUpperCase()
+	}));
 mkdirSync('screenshots', { recursive: true });
 
 const sql = (q) =>
@@ -156,7 +160,7 @@ try {
 	for (let i = 0; i < ids.length; i++)
 		for (let j = 0; j < ids.length; j++)
 			if (i !== j) sql(`INSERT INTO friendships(user_id, friend_id) VALUES ('${ids[i]}','${ids[j]}') ON CONFLICT DO NOTHING`);
-	note(`seeded group "${GNAME}" (${gid}) with 3 members`);
+	note(`seeded group "${GNAME}" (${gid}) with ${ids.length} members`);
 
 	// ---- A creates a GROUP challenge ----
 	console.log('\n── A creates group challenge ──');
@@ -215,14 +219,14 @@ try {
 	note(`pack (${packLen}): ` + Object.entries(phrases).map(([k, v]) => `${k}:"${v}"`).join('  '));
 	note(`participants enrolled: ${sql(`SELECT count(*) FROM challenge_participants WHERE match_id='${mid}'`)}`);
 
-	// ---- A plays; B & C accept + play ----
-	console.log('\n── A plays ──');
-	const aPlayed = await playMatch(pa, phrases, packLen);
-	console.log('\n── B accepts + plays ──');
-	const bPlayed = await acceptAndPlay(P[1], phrases, packLen);
-	console.log('\n── C accepts + plays ──');
-	const cPlayed = await acceptAndPlay(P[2], phrases, packLen);
-	note(`played — A:${aPlayed} B:${bPlayed} C:${cPlayed}`);
+	// ---- A (host) plays; everyone else accepts + plays ----
+	console.log('\n── A (host) plays ──');
+	const played = { A: await playMatch(pa, phrases, packLen) };
+	for (let i = 1; i < P.length; i++) {
+		console.log(`\n── ${P[i].tag} accepts + plays ──`);
+		played[P[i].tag] = await acceptAndPlay(P[i], phrases, packLen);
+	}
+	note('played — ' + Object.entries(played).map(([k, v]) => `${k}:${v}`).join(' '));
 
 	// ---- settlement ----
 	console.log('\n── settlement ──');
@@ -241,7 +245,8 @@ try {
 	parts.split('\n').forEach((r) => console.log('       ' + r));
 	if (WAGER > 0) {
 		const pot = sql(`SELECT coalesce(sum(stake),0) FROM challenge_participants WHERE match_id='${mid}' AND paid`);
-		note(`pot=$${pot} (should split 70/30 across top 2 of 3)`);
+		const split = NP >= 4 ? '60/30/10 across top 3' : '70/30 across top 2';
+		note(`pot=$${pot} of ${NP} players (should split ${split})`);
 	}
 
 	// ---- A opens Results ----
