@@ -468,7 +468,8 @@ export async function fetchClimbGame() {
 		if (!board) return false;
 		if (board.needs_tier) return 'needs_tier';
 		reconcileClimbBoard(board);
-		maybeArmClimbIntro();
+		// Resume = no dramatic reveal (you've already seen this puzzle). The reveal is armed
+		// only on genuine new puzzles — startCashGame, climbAdvance, free-skip, Heat-Shield jump.
 		await refreshClimbClue();
 		return true;
 	} catch (err) {
