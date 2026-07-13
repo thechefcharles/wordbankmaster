@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
+	import { fmtSecs } from '$lib/time.js';
 	import {
 		getDailyBoard,
 		getClimbLeaderboard,
@@ -33,7 +34,7 @@
 
 	// Sortable columns (client-side). Default: by place, best → worst. Tap # again to
 	// flip and bring LAST place to the top.
-	/** @typedef {'place'|'name'|'score'|'efficiency'|'play_streak'|'win_streak'} SortKey */
+	/** @typedef {'place'|'name'|'score'|'efficiency'|'play_streak'|'win_streak'|'time'} SortKey */
 	let sortKey = $state(/** @type {SortKey} */ ('place'));
 	let sortDir = $state(/** @type {'asc'|'desc'} */ ('asc'));
 	/** @param {SortKey} k */
@@ -41,7 +42,7 @@
 		if (sortKey === k) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
 		else {
 			sortKey = k;
-			sortDir = k === 'name' || k === 'place' ? 'asc' : 'desc';
+			sortDir = k === 'name' || k === 'place' || k === 'time' ? 'asc' : 'desc';
 		}
 	}
 	/** @param {SortKey} k */
@@ -70,6 +71,12 @@
 						sensitivity: 'base'
 					})
 				);
+			if (sortKey === 'time') {
+				// Fastest-solve: ascending = fastest first; unsolved (null) always last.
+				const av = a.solve_seconds ?? Infinity;
+				const bv = b.solve_seconds ?? Infinity;
+				return dir * (av - bv) || a._place - b._place;
+			}
 			const nullLast = sortKey === 'score' || sortKey === 'efficiency';
 			const av = nullLast ? (a[sortKey] ?? -Infinity) : Number(a[sortKey] ?? 0);
 			const bv = nullLast ? (b[sortKey] ?? -Infinity) : Number(b[sortKey] ?? 0);
@@ -112,7 +119,11 @@
 						desc: "Share of the puzzle's base budget you kept. Same for everyone — pure spend-less skill."
 					},
 					{ term: 'Play', desc: "Play streak — days in a row you've shown up for the Daily." },
-					{ term: 'Win', desc: "Win streak — Dailies you've solved in a row." }
+					{ term: 'Win', desc: "Win streak — Dailies you've solved in a row." },
+					{
+						term: 'Time',
+						desc: "How fast you solved today's Daily — same puzzle for everyone, so fastest wins. Blank until you solve it."
+					}
 				]
 			: board === 'climb'
 				? [{ term: 'Furthest', desc: "The highest rung you've reached in the Cash Game." }]
@@ -307,6 +318,15 @@
 							onclick={() => setSort('win_streak')}>Win{arrow('win_streak')}</button
 						></th
 					>
+					<th class="num"
+						><button
+							class="sort"
+							class:on={sortKey === 'time'}
+							onclick={() => setSort('time')}
+							title="Solve time — how fast you cracked today's Daily (same puzzle for everyone)"
+							>Time{arrow('time')}</button
+						></th
+					>
 				</tr>
 			</thead>
 			<tbody>
@@ -337,6 +357,7 @@
 						<td class="metric eff">{r.efficiency != null ? r.efficiency + '%' : '—'}</td>
 						<td class="metric small">{r.play_streak > 0 ? r.play_streak : '—'}</td>
 						<td class="metric small">{r.win_streak > 0 ? r.win_streak : '—'}</td>
+						<td class="metric small">{fmtSecs(r.solve_seconds)}</td>
 					</tr>
 				{/each}
 			</tbody>

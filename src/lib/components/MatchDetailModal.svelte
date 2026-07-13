@@ -3,6 +3,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import CategoryIcon from '$lib/components/CategoryIcon.svelte';
 	import { CATEGORIES } from '$lib/categories.js';
+	import { fmtSecs } from '$lib/time.js';
 
 	// daily_puzzles.category carries a trailing emoji in the string; show the clean
 	// label + the line icon instead of the raw emoji.
@@ -34,12 +35,6 @@
 		return n + (s[(v - 20) % 10] || s[v] || s[0]);
 	};
 	const dollars = (/** @type {any} */ n) => '$' + Number(n ?? 0).toLocaleString();
-	// Human solve time, e.g. "12s" or "1m 05s".
-	const fmtSecs = (/** @type {any} */ s) => {
-		if (s == null) return '';
-		const n = Math.round(Number(s));
-		return n < 60 ? `${n}s` : `${Math.floor(n / 60)}m ${String(n % 60).padStart(2, '0')}s`;
-	};
 
 	// The spend "tie-back": frame the outcome in the universal metric — who solved
 	// for the least. Works for 1v1 and groups, wagered or friendly.

@@ -4,6 +4,7 @@
 	import { page } from '$app/stores';
 	import { getProfileDetail, getMyAvatar, getUserBadges } from '$lib/stores/statsStore.js';
 	import { badgeInfo } from '$lib/badges.js';
+	import { fmtSecs } from '$lib/time.js';
 	import Icon from '$lib/components/Icon.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import InventoryList from '$lib/components/InventoryList.svelte';
@@ -81,12 +82,6 @@
 				: (Number(ms) / 60000).toFixed(1) + 'm';
 	const pct = (/** @type {number} */ w, /** @type {number} */ n) =>
 		n > 0 ? Math.round((w / n) * 100) + '%' : '—';
-	// Human solve time, e.g. "12s" or "1m 05s".
-	const fmtSecs = (/** @type {any} */ s) => {
-		if (s == null) return '—';
-		const n = Math.round(Number(s));
-		return n < 60 ? `${n}s` : `${Math.floor(n / 60)}m ${String(n % 60).padStart(2, '0')}s`;
-	};
 </script>
 
 <svelte:head><title>WordBank — Profile</title></svelte:head>
