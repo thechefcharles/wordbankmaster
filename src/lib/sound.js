@@ -123,6 +123,48 @@ const SOUNDS = {
 		tone(58, 0.42, 'triangle', 0.24, 0.05); // low body
 		tone(360, 0.2, 'triangle', 0.07, 0.04); // metallic ring
 		sweep(520, 180, 0.3, 'sawtooth', 0.06, 0.05); // dampened resonance
+	},
+	// 🧾 Thermal-receipt printer: a buzzy stepper-motor ratchet that feeds for ~2.8s while
+	// the slip prints, then a soft cut. Built from a bandpassed sawtooth gated by a fast
+	// square LFO (the "brrrt"), with a gentle overall fade in/out.
+	print: () => {
+		const c = ac();
+		if (!c) return;
+		const t0 = c.currentTime;
+		const dur = 2.8;
+		const out = c.createGain();
+		out.gain.value = 0.6;
+		out.connect(c.destination);
+		// Motor whine carrier, drifting slightly down as the roll spins out.
+		const osc = c.createOscillator();
+		osc.type = 'sawtooth';
+		osc.frequency.setValueAtTime(152, t0);
+		osc.frequency.linearRampToValueAtTime(136, t0 + dur);
+		// Bandpass → mechanical buzz rather than a raw saw.
+		const bp = c.createBiquadFilter();
+		bp.type = 'bandpass';
+		bp.frequency.value = 880;
+		bp.Q.value = 3.2;
+		// Ratchet: a square LFO gates amplitude on/off (~46 steps/sec) → the "brrr".
+		const gate = c.createGain();
+		gate.gain.value = 0.5;
+		const lfo = c.createOscillator();
+		lfo.type = 'square';
+		lfo.frequency.value = 46;
+		const lfoAmt = c.createGain();
+		lfoAmt.gain.value = 0.45;
+		lfo.connect(lfoAmt).connect(gate.gain);
+		// Overall envelope.
+		const env = c.createGain();
+		env.gain.setValueAtTime(0, t0);
+		env.gain.linearRampToValueAtTime(0.055, t0 + 0.08);
+		env.gain.setValueAtTime(0.055, t0 + dur - 0.18);
+		env.gain.linearRampToValueAtTime(0, t0 + dur);
+		osc.connect(bp).connect(gate).connect(env).connect(out);
+		osc.start(t0);
+		lfo.start(t0);
+		osc.stop(t0 + dur + 0.05);
+		lfo.stop(t0 + dur + 0.05);
 	}
 };
 
@@ -138,7 +180,9 @@ const HAPTICS = {
 	bust: [60, 30, 60],
 	multiplier: [10, 24, 10],
 	lead: [12, 20, 16],
-	vault: [50, 30, 90]
+	vault: [50, 30, 90],
+	// Light stutter that rides along with the ~2.8s print buzz.
+	print: [14, 60, 14, 60, 14, 60, 14, 60, 14, 60, 14, 60, 14]
 };
 
 /** Play an audio cue by name (no-op when disabled). @param {string} name */
