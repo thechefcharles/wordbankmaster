@@ -27,6 +27,11 @@
 	});
 
 	const fmt = (/** @type {number} */ n) => '$' + Math.round(n ?? 0).toLocaleString();
+	// Signed money: renders a leading minus outside the $ (−$51, not $-51).
+	const fmtSigned = (/** @type {number} */ n) => {
+		const v = Math.round(n ?? 0);
+		return (v < 0 ? '−$' : '$') + Math.abs(v).toLocaleString();
+	};
 	const dateOnly = (/** @type {string} */ at) =>
 		at ? new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
 
@@ -87,10 +92,13 @@
 		<!-- 💰 Available Balance — clean line, no card -->
 		<div class="bal-line">
 			<span class="bal-cap">Available Balance</span>
-			<span class="bal-amt">{fmt(b.bank)}</span>
+			<span class="bal-amt">
+				<img class="bal-coin" src="/logo-coin.png" alt="" width="28" height="28" />
+				{fmt(b.bank)}
+			</span>
 			{#if Number(b.loan ?? 0) > 0}
 				<span class="bal-net" class:neg={Number(b.net_worth ?? 0) < 0}
-					>Net worth {fmt(b.net_worth)}</span
+					>Net worth {fmtSigned(b.net_worth)}</span
 				>
 			{/if}
 		</div>
@@ -242,13 +250,22 @@
 		color: var(--text-muted);
 	}
 	.bal-amt {
-		display: block;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
 		font-family: var(--font-display, sans-serif);
 		font-weight: 800;
 		font-size: 2rem;
 		line-height: 1.1;
 		font-variant-numeric: tabular-nums;
 		color: var(--text);
+	}
+	.bal-coin {
+		width: 28px;
+		height: 28px;
+		object-fit: contain;
+		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
 	}
 	/* True net worth (Available − loan) — shown under the balance only when in debt. */
 	.bal-net {
