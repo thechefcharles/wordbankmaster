@@ -81,6 +81,12 @@
 				: (Number(ms) / 60000).toFixed(1) + 'm';
 	const pct = (/** @type {number} */ w, /** @type {number} */ n) =>
 		n > 0 ? Math.round((w / n) * 100) + '%' : '—';
+	// Human solve time, e.g. "12s" or "1m 05s".
+	const fmtSecs = (/** @type {any} */ s) => {
+		if (s == null) return '—';
+		const n = Math.round(Number(s));
+		return n < 60 ? `${n}s` : `${Math.floor(n / 60)}m ${String(n % 60).padStart(2, '0')}s`;
+	};
 </script>
 
 <svelte:head><title>WordBank — Profile</title></svelte:head>
@@ -330,6 +336,10 @@
 					)}
 					{@render chip(pct(d.challenges_1v1.wins ?? 0, d.challenges_1v1.played ?? 0), 'Win rate')}
 					{@render chip(fmt(d.challenges_1v1.biggest_pot), 'Biggest pot')}
+					{#if d.challenges_1v1.best_solve_seconds != null}
+						{@render chip(fmtSecs(d.challenges_1v1.avg_solve_seconds), 'Avg solve')}
+						{@render chip(fmtSecs(d.challenges_1v1.best_solve_seconds), 'Fastest')}
+					{/if}
 				</div>
 			{:else}
 				<button class="st-empty" onclick={() => goto('/')}
