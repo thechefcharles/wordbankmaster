@@ -89,7 +89,15 @@
 	// Metric columns for the simple (non-Daily) boards. Rows arrive pre-ranked from the server.
 	let modeCols = $derived(
 		board === 'climb'
-			? [{ label: 'Furthest', cell: (/** @type {any} */ r) => r.position ?? 0 }]
+			? [
+					{ label: 'Best Run', cell: (/** @type {any} */ r) => fmt(r.best_run ?? 0) },
+					{ label: 'Streak', cell: (/** @type {any} */ r) => r.best_streak ?? 0 },
+					{
+						label: 'Heat',
+						cell: (/** @type {any} */ r) =>
+							r.best_heat ? (r.best_heat / 100).toFixed(1) + '×' : '—'
+					}
+				]
 			: board === 'challenge'
 				? [
 						{ label: 'Wins', cell: (/** @type {any} */ r) => r.metric ?? 0 },
@@ -130,7 +138,17 @@
 					}
 				]
 			: board === 'climb'
-				? [{ term: 'Furthest', desc: "The highest rung you've reached in the Cash Game." }]
+				? [
+						{
+							term: 'Best Run',
+							desc: "The most Cash you've ever banked in a single run — the board is ranked by this."
+						},
+						{
+							term: 'Streak',
+							desc: 'Most puzzles solved in one run before you cashed out or busted.'
+						},
+						{ term: 'Heat', desc: "The highest heat multiplier you've reached in a run." }
+					]
 				: board === 'challenge'
 					? [
 							{ term: 'Wins', desc: "Challenge matches you've won (all-time)." },
