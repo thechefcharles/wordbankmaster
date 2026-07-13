@@ -1,6 +1,7 @@
 // src/lib/stores/GameStore.js
 
 import { writable, get } from 'svelte/store';
+import { browser } from '$app/environment';
 import { fx } from '$lib/sound.js';
 import { LETTER_COSTS } from '$lib/letterCosts.js';
 import { MODIFIERS } from '$lib/powerups.js';
@@ -47,6 +48,9 @@ import {
 	matchSabotage
 } from '$lib/stores/statsStore.js';
 import { track } from '$lib/analytics.js';
+import { newGame, buyLetter, applyGuess, scoreOnSolve, toBoard } from '$lib/freeplay/engine.js';
+import { FREEPLAY_PUZZLES } from '$lib/freeplay/puzzles.js';
+import { loadPoints, recordSolve } from '$lib/freeplay/points.js';
 
 /* ================================
    Types (JSDoc for checkJs)
@@ -121,7 +125,7 @@ export const gameStore = writable(
 		shakenLetters: [],
 		message: '',
 		subcategory: '',
-		gameMode: 'daily', // 'daily' | 'climb' | 'match' | 'makeup'
+		gameMode: 'daily', // 'daily' | 'climb' | 'match' | 'makeup' | 'freeplay'
 		freeReveals: 0, // owned Free Reveal power-ups (daily)
 		modifier: null, // today's Daily Twist power-up id (daily only)
 		twistUsed: false, // have you used today's Twist? (unused → ×1.5 bounty)
@@ -376,6 +380,81 @@ async function submitGuessMakeup(state) {
 	} finally {
 		dailyInFlight = false;
 	}
+}
+
+/* ===== Free Play (offline-ready, points-only, no server) ===== */
+/** @type {ReturnType<typeof newGame>|null} */
+let freeplayState = null;
+
+/** localStorage-or-null; safe on SSR. */
+function fpStorage() {
+	return browser ? window.localStorage : { getItem: () => null, setItem: () => {} };
+}
+
+/** Read this device's Free Play totals. */
+export function freePlayPoints() {
+	return loadPoints(fpStorage());
+}
+
+/** Map the engine board into gameStore, reusing the shared boardToState mapper. */
+function reconcileFreeplayBoard() {
+	if (!freeplayState) return;
+	const board = toBoard(freeplayState);
+	const prev = get(gameStore);
+	const won = board.state === 'won';
+	gameStore.set(
+		/** @type {GameState} */ ({
+			...prev,
+			...boardToState(board, prev),
+			gameMode: 'freeplay',
+			gameState: won ? 'won' : 'default',
+			clue: board.clue ?? null,
+			dailyLive: board.live,
+			// freeplay never uses these money/daily fields:
+			climbInfo: null,
+			dailyResult: null,
+			modifier: null,
+			dailyMustGuess: false
+		})
+	);
+	if (won) {
+		const gained = scoreOnSolve(freeplayState);
+		recordSolve(fpStorage(), gained);
+		fx('win');
+	} else {
+		playMoveCue(prev, board);
+	}
+}
+
+/** Begin Free Play (fresh random puzzle). */
+export function startFreePlay() {
+	freePlayNext();
+}
+
+/** Load the next random Free Play puzzle. */
+export function freePlayNext() {
+	const puzzle = FREEPLAY_PUZZLES[Math.floor(Math.random() * FREEPLAY_PUZZLES.length)];
+	freeplayState = newGame(puzzle);
+	reconcileFreeplayBoard();
+}
+
+/** @param {GameState} current */
+function confirmPurchaseFreeplay(current) {
+	const sel = current.selectedPurchase;
+	if (!freeplayState || !sel || sel.type !== 'letter') return;
+	freeplayState = buyLetter(freeplayState, sel.value ?? '');
+	reconcileFreeplayBoard();
+}
+
+/** @param {GameState} current */
+function submitGuessFreeplay(current) {
+	if (!freeplayState) return;
+	/** @type {Record<number,string>} */
+	const filled = {};
+	for (const [k, v] of Object.entries(current.guessedLetters || {})) filled[Number(k)] = String(v);
+	freeplayState = applyGuess(freeplayState, filled);
+	gameStore.update((s) => ({ ...s, gameState: 'default', guessedLetters: {} }));
+	reconcileFreeplayBoard();
 }
 
 /* ===== Cash Game / the Climb (real-Cash, fluid, par/bounty + heat) ===== */
@@ -977,6 +1056,7 @@ export function confirmPurchase() {
 	else if (current.gameMode === 'makeup') confirmPurchaseMakeup(current);
 	else if (current.gameMode === 'climb') confirmPurchaseClimb(current);
 	else if (current.gameMode === 'match') confirmPurchaseMatch(current);
+	else if (current.gameMode === 'freeplay') confirmPurchaseFreeplay(current);
 }
 /* ================================
    Guess Mode Functions
@@ -1078,6 +1158,7 @@ export function submitGuess() {
 	else if (current.gameMode === 'makeup') submitGuessMakeup(current);
 	else if (current.gameMode === 'climb') submitGuessClimb(current);
 	else if (current.gameMode === 'match') submitGuessMatch(current);
+	else if (current.gameMode === 'freeplay') submitGuessFreeplay(current);
 }
 /* ================================
    Puzzle Fetch Functions
