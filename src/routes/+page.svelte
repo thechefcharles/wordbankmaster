@@ -277,13 +277,18 @@
 				error
 			} = await supabase.auth.getSession();
 			if (!session || error) {
-				initError =
-					'No session (session: ' +
-					(session ? 'yes' : 'no') +
-					', error: ' +
-					(error?.message || 'none') +
-					')';
-				console.warn('⛔', initError);
+				// No usable client session. This can happen when an SSR cookie (or a hydrated
+				// $user) marks us logged-in while the client's token is expired/invalid — which
+				// would otherwise strand the user on "Loading…" forever (loggedIn=true but init
+				// never completes). Purge the stale auth and fall through to the login screen.
+				console.warn('⛔ No client session — clearing stale auth, showing login.', error?.message);
+				try {
+					await supabase.auth.signOut({ scope: 'local' });
+				} catch {
+					/* ignore — nothing to clear */
+				}
+				user.set(null);
+				hasInitialized = true;
 				return;
 			}
 
