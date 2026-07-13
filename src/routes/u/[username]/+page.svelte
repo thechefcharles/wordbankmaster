@@ -88,6 +88,7 @@
 				<AccountCard
 					holder={p.name || p.username}
 					balance={p.net_worth}
+					balanceLabel="Net Worth"
 					tier={p.credit_tier ?? 'Good'}
 				/>
 			</div>

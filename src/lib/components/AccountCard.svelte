@@ -10,6 +10,9 @@
 	/** @type {string} */ export let tier = 'Good';
 	/** Outstanding loan — shows a small "Loan −$X" debit line under the balance. 0 = hidden. */
 	/** @type {any} */ export let loan = 0;
+	/** Caption over the headline figure. Defaults to the owner's spendable balance; the
+	    public profile passes "Net Worth" since it feeds the debt-adjusted number here. */
+	/** @type {string} */ export let balanceLabel = 'Available Balance';
 
 	$: loanAmt = Math.round(Number(loan) || 0);
 	$: cardTitle = cardName(tier);
@@ -42,7 +45,7 @@
 			<span class="ac-chip" aria-hidden="true"></span>
 		</div>
 		<div class="ac-bal">
-			<div class="ac-cap">Available Balance</div>
+			<div class="ac-cap">{balanceLabel}</div>
 			<div class="ac-amt">${amount}</div>
 			{#if loanAmt > 0}
 				<div class="ac-loan">Loan −${loanAmt.toLocaleString()}</div>
