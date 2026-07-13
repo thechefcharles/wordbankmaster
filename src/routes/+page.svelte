@@ -1600,7 +1600,7 @@
 		) {
 			_wasMenu = false;
 			showObjectiveFor($gameStore.gameMode);
-			refreshBank(); // keep the on-board "Cash" fresh (e.g. a challenge buy-in was just paid)
+			if ($gameStore.gameMode !== 'freeplay') refreshBank(); // keep the on-board "Cash" fresh (e.g. a challenge buy-in was just paid)
 		}
 	}
 
@@ -4325,6 +4325,7 @@
 		{#if $gameStore.gameMode === 'freeplay'}
 			<div class="fp-hud">
 				<span class="fp-pts">★ {fpPoints.total} pts</span>
+				<span class="fp-budget">Budget: {$gameStore.dailyLive?.remaining ?? 0}</span>
 				<button
 					class="fp-next"
 					on:click={() => {
@@ -9040,6 +9041,10 @@
 		font-family: var(--font-display, sans-serif);
 		font-weight: 800;
 		color: var(--brand-2, #fde047);
+	}
+	.fp-budget {
+		font-weight: 700;
+		color: var(--text-muted);
 	}
 	.fp-next {
 		background: none;
