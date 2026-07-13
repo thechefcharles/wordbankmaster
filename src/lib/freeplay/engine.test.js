@@ -67,4 +67,15 @@ test('toBoard emits the server-shaped board', () => {
 	assert.equal(b.live.remaining, 360 - 100);
 	assert.equal(b.state, 'active');
 	assert.equal(b.phrase, undefined); // hidden until won
+	// A is fully revealed (both positions) → locked so the keyboard greys it; T/H aren't.
+	assert.deepEqual(b.locked_letters, ['A']);
+});
+
+test('toBoard locks a letter only when ALL its positions are revealed', () => {
+	// "AHA" has A at 0 and 2; revealing just index 0 must NOT lock A.
+	let s = newGame({ id: 'y', phrase: 'AHA', category: 'C', clue: 'k' });
+	s = { ...s, revealed: [0] };
+	assert.deepEqual(toBoard(s).locked_letters, []);
+	s = { ...s, revealed: [0, 2] };
+	assert.deepEqual(toBoard(s).locked_letters, ['A']);
 });
