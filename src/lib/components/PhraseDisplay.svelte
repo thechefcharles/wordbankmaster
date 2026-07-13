@@ -1,5 +1,6 @@
 <script>
 	import { gameStore } from '$lib/stores/GameStore.js';
+	import { get } from 'svelte/store';
 	import { onDestroy, createEventDispatcher } from 'svelte';
 	import { getGlobalIndex } from '$lib/helpers/gameUtils.js';
 	import { fx } from '$lib/sound.js';
@@ -11,7 +12,9 @@
 	// by gameStore.dailyIntro, which bumps once on a fresh daily open.
 	const INTRO_STEP = 0.34; // seconds between box landings (slow, dramatic)
 	let introActive = false;
-	let introToken = 0;
+	// Seed from the persisted store value so a REMOUNT (menu → resume) doesn't replay a reveal
+	// that already played — introToken is component-local and would otherwise reset to 0.
+	let introToken = get(gameStore).dailyIntroGo || 0;
 	/** @type {ReturnType<typeof setTimeout>[]} */
 	let introTimers = [];
 	/** @param {number} gi */
