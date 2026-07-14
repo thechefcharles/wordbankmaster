@@ -122,7 +122,8 @@
 				? Number($gameStore.dailyLive?.remaining ?? $gameStore.bankroll ?? 0)
 				: Number($gameStore.bankroll ?? 0);
 	// Free Play spends points, not Cash — mark letter prices with the ★ unit, not $.
-	$: priceMark = $gameStore.gameMode === 'freeplay' ? '★' : '$';
+	$: priceMark =
+		$gameStore.gameMode === 'freeplay' || $gameStore.matchInfo?.friendly ? '★' : '$';
 	// 🔹 Disable keys that are unaffordable or already marked incorrect (modifier-adjusted prices).
 	$: disabledKeys = Object.keys(letterCosts).filter(
 		(letter: string) => (effCosts[letter] ?? 0) > affordPool || incorrectLetters.includes(letter)

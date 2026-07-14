@@ -50,7 +50,7 @@ import {
 import { track } from '$lib/analytics.js';
 import { newGame, buyLetter, applyGuess, scoreOnSolve, toBoard } from '$lib/freeplay/engine.js';
 import { FREEPLAY_PUZZLES } from '$lib/freeplay/puzzles.js';
-import { loadPoints, recordSolve } from '$lib/freeplay/points.js';
+import { loadPoints, recordSolve, bankMatchPoints } from '$lib/freeplay/points.js';
 
 /* ================================
    Types (JSDoc for checkJs)
@@ -724,12 +724,21 @@ function reconcileMatchBoard(board) {
 			gameState: done ? 'won' : 'default',
 			modifier: null,
 			clue: done ? prev.clue : (board.clue ?? null),
-			matchInfo: { ...match, id: activeMatchId, standing: board.standing ?? null }
+			matchInfo: {
+				...match,
+				id: activeMatchId,
+				standing: board.standing ?? null,
+				friendly: (match.wager ?? 0) === 0
+			}
 		})
 	);
 	if (done) {
 		setTimeout(() => launchConfetti(), 250);
 		fx('win');
+		// Friendly (wager 0) banks its ★ into the device Free Play total — once per match.
+		if ((match.wager ?? 0) === 0) {
+			bankMatchPoints(fpStorage(), activeMatchId, match.total_score ?? 0);
+		}
 	}
 	// Celebrate EACH solved puzzle — but only on an in-session advance (prev.matchInfo
 	// exists), so opening/resuming a match never fires the winner fireworks.
@@ -815,7 +824,15 @@ export async function refreshMatchMeta() {
 	const match = board.match || {};
 	gameStore.update((s) =>
 		s.gameMode === 'match'
-			? { ...s, matchInfo: { ...match, id: activeMatchId, standing: board.standing ?? null } }
+			? {
+					...s,
+					matchInfo: {
+						...match,
+						id: activeMatchId,
+						standing: board.standing ?? null,
+						friendly: (match.wager ?? 0) === 0
+					}
+				}
 			: s
 	);
 }
