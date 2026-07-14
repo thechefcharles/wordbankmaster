@@ -1781,7 +1781,8 @@
 
 	// Free Play: device-local points, refreshed whenever the mode is active.
 	let fpPoints = { total: 0, best: 0 };
-	$: if ($gameStore.gameMode === 'freeplay' && $gameStore.gameState) fpPoints = freePlayPoints();
+	$: if (($gameStore.gameMode === 'freeplay' || isFriendlyMatch) && $gameStore.gameState)
+		fpPoints = freePlayPoints();
 	function handleFreePlay() {
 		fx('tap');
 		startFreePlay();
