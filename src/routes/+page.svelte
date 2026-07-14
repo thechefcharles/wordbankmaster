@@ -589,6 +589,7 @@
 		}[$gameStore.gameMode] ?? null;
 	$: isMatch = $gameStore.gameMode === 'match';
 	$: matchInfo = $gameStore.matchInfo; // { position, pack_size, total_score, last_score, done, mode, solved, spent, budget, wager, items_allowed, used_powerups, started_at, clock_seconds, combo }
+	$: isFriendlyMatch = isMatch && (matchInfo?.wager ?? 0) === 0;
 	// 💥 Double or Nothing (Cash Game): server exposes don_armed + don_available (heat ≥ ×1.5).
 	$: donArmed = !!climb?.don_armed;
 	$: donAvailable = !!climb?.don_available;
@@ -3062,34 +3063,65 @@
 			<button class="modal-x" on:click={() => (showAnteInfo = false)} aria-label="Close"
 				><Icon name="close" size={16} /></button
 			>
-			<div class="info-big green">${Math.max(0, matchLeft).toLocaleString()}</div>
-			<h3 class="info-title">Bounty kept</h3>
-			<p class="info-sub">
-				Each puzzle gives you a <b>fresh bounty</b> to spend on letters — it's <b>not</b> your
-				money. Whatever you don't spend adds to your <b>Score</b>. Highest Score across the pack
-				takes the pot.
-			</p>
-			<div class="info-rows">
-				<div class="info-row">
-					<span>This puzzle's bounty left</span><b>${Math.max(0, matchLeft).toLocaleString()}</b>
+			{#if isFriendlyMatch}
+				<div class="info-big">
+					<span class="bp-fp-mark" aria-hidden="true">★</span>{Math.max(
+						0,
+						matchLeft
+					).toLocaleString()}
 				</div>
-				<div class="info-row">
-					<span>Your Score so far</span><b class="pos"
-						>${Math.round(matchInfo?.total_score ?? 0).toLocaleString()}</b
-					>
+				<h3 class="info-title">Bounty kept</h3>
+				<p class="info-sub">
+					This is a <b>friendly</b> — no money, no stakes. Each puzzle gives you a
+					<b>fresh ★ bounty</b> to spend on letters; whatever you don't spend adds to your
+					<b>★ Score</b>, and your ★ bank into your <b>Free Play points</b>.
+				</p>
+				<div class="info-rows">
+					<div class="info-row">
+						<span>This puzzle's bounty left</span><b>★{Math.max(0, matchLeft).toLocaleString()}</b>
+					</div>
+					<div class="info-row">
+						<span>Your Score so far</span><b class="pos"
+							>★{Math.round(matchInfo?.total_score ?? 0).toLocaleString()}</b
+						>
+					</div>
+					<div class="info-row"><span>Stakes</span><b>None — friendly</b></div>
 				</div>
-				<div class="info-row">
-					<span>Your ante</span><b>${(matchInfo?.wager ?? 0).toLocaleString()}</b>
+				<p class="info-note">
+					Highest Score wins the duel (a tie splits the bragging rights). A wrong guess busts the
+					puzzle, so guess only when you're sure. Friendlies don't count toward leaderboards, badges,
+					or your balance.
+				</p>
+			{:else}
+				<div class="info-big green">${Math.max(0, matchLeft).toLocaleString()}</div>
+				<h3 class="info-title">Bounty kept</h3>
+				<p class="info-sub">
+					Each puzzle gives you a <b>fresh bounty</b> to spend on letters — it's <b>not</b> your
+					money. Whatever you don't spend adds to your <b>Score</b>. Highest Score across the pack
+					takes the pot.
+				</p>
+				<div class="info-rows">
+					<div class="info-row">
+						<span>This puzzle's bounty left</span><b>${Math.max(0, matchLeft).toLocaleString()}</b>
+					</div>
+					<div class="info-row">
+						<span>Your Score so far</span><b class="pos"
+							>${Math.round(matchInfo?.total_score ?? 0).toLocaleString()}</b
+						>
+					</div>
+					<div class="info-row">
+						<span>Your ante</span><b>${(matchInfo?.wager ?? 0).toLocaleString()}</b>
+					</div>
+					<div class="info-row">
+						<span>Playing for</span><b class="pos">${matchPot.toLocaleString()} pot</b>
+					</div>
+					<div class="info-row"><span>Lose the duel</span><b class="neg">forfeit your ante</b></div>
 				</div>
-				<div class="info-row">
-					<span>Playing for</span><b class="pos">${matchPot.toLocaleString()} pot</b>
-				</div>
-				<div class="info-row"><span>Lose the duel</span><b class="neg">forfeit your ante</b></div>
-			</div>
-			<p class="info-note">
-				Highest Score wins the pot. Duel = winner-take-all (tie splits 50/50); groups pay a podium
-				(3 → 70/30, 4+ → 60/30/10). A wrong guess busts the puzzle, so guess only when you're sure.
-			</p>
+				<p class="info-note">
+					Highest Score wins the pot. Duel = winner-take-all (tie splits 50/50); groups pay a podium
+					(3 → 70/30, 4+ → 60/30/10). A wrong guess busts the puzzle, so guess only when you're sure.
+				</p>
+			{/if}
 			<button class="info-close" on:click={() => (showAnteInfo = false)}>Got it</button>
 		</div>
 	</div>
@@ -4383,7 +4415,7 @@
 		{#if $gameStore.currentPhrase && $gameStore.gameMode}
 			<!-- 🪙 Small ambient bankroll chip — your account, shown quietly; the hero number
              below is the game money. Static during play; tap → bank. -->
-			{#if $gameStore.gameMode === 'freeplay'}
+			{#if $gameStore.gameMode === 'freeplay' || isFriendlyMatch}
 				<!-- Free Play: points total sits where Available Balance usually is (no money). -->
 				<div class="bankroll-chip" title="Free Play points">
 					<span class="brc-star" aria-hidden="true">★</span>
@@ -4487,12 +4519,12 @@
              below is just this puzzle's fresh bounty; this is the number that matters. -->
 			<div class="match-score">
 				<span class="ms-cap">Your Score</span>
-				<span class="ms-val">${Math.round(matchInfo.total_score ?? 0).toLocaleString()}</span>
+				<span class="ms-val">{isFriendlyMatch ? '★' : '$'}{Math.round(matchInfo.total_score ?? 0).toLocaleString()}</span>
 			</div>
 			<div class="match-meta">
 				{#if matchPot > 0}<span class="pot-chip">Pot ${matchPot.toLocaleString()}</span>{/if}
 				{#if matchInfo.target != null}<span class="beat-chip"
-						>Beat ${Number(
+						>Beat {isFriendlyMatch ? '★' : '$'}{Number(
 							matchInfo.target
 						).toLocaleString()}{#if matchInfo.target_kind === 'place'}
 							to place{/if}</span
@@ -4625,7 +4657,11 @@
 								on:click={() => {
 									fx('tap');
 									showAnteInfo = true;
-								}}>${Math.max(0, Math.round($tweenNet)).toLocaleString()}</button
+								}}
+								>{#if isFriendlyMatch}<span class="bp-fp-mark" aria-hidden="true">★</span>{:else}${/if}{Math.max(
+									0,
+									Math.round($tweenNet)
+								).toLocaleString()}</button
 							>
 						{:else if $gameStore.gameMode === 'freeplay'}
 							<span class="bp-amount"
