@@ -543,7 +543,8 @@
 	$: dangerMode =
 		((isClimb && !!climb?.must_guess) ||
 			(isDaily && !!$gameStore.dailyMustGuess) ||
-			(isFreeplay && !!$gameStore.dailyMustGuess)) &&
+			(isFreeplay && !!$gameStore.dailyMustGuess) ||
+			(isMatch && !!matchInfo?.must_guess)) &&
 		gameActive &&
 		$gameStore.gameState !== 'won' &&
 		$gameStore.gameState !== 'lost';
@@ -641,6 +642,18 @@
 		!introBuilding &&
 		$gameStore.gameState !== 'won' &&
 		$gameStore.gameState !== 'lost';
+
+	// Same server-anchored count-up for a live match — driven by matchInfo.started_at
+	// (challenge_participants.started_at, stamped once at match_start; not per-puzzle).
+	$: matchTimerActive =
+		isMatch &&
+		!!matchInfo &&
+		!matchInfo.done &&
+		!showMainMenu &&
+		!introBuilding &&
+		$gameStore.gameState !== 'won' &&
+		$gameStore.gameState !== 'lost';
+	$: matchOpenedAt = matchInfo?.started_at ? new Date(matchInfo.started_at).getTime() : null;
 
 	// 🎰 Slot-machine money feel: count the hero number up/down; float a −$X off it on each spend.
 	const tweenNet = tweened(0, { duration: 900, easing: cubicOut });
@@ -1040,38 +1053,12 @@
 		_prevNet = v ?? null;
 	}
 
-	// ── Fold + broke-timer (Daily + Challenges) ──────────────────────────────
-	// You're "broke" when you can't afford the cheapest still-buyable letter →
-	// a 60s clock starts; guess it or you auto-Fold (lose the puzzle).
-	// Mirror of the server-authoritative public.letter_cost() (economy v3.2: −25%, cheapest $20).
-	const LETTER_COSTS = {
-		Q: 20,
-		W: 40,
-		E: 100,
-		R: 90,
-		T: 90,
-		Y: 50,
-		U: 60,
-		I: 80,
-		O: 70,
-		P: 60,
-		A: 100,
-		S: 90,
-		D: 60,
-		F: 50,
-		G: 50,
-		H: 50,
-		J: 20,
-		K: 40,
-		L: 60,
-		Z: 30,
-		X: 30,
-		C: 60,
-		V: 40,
-		B: 50,
-		N: 80,
-		M: 50
-	};
+	// ── Fold + broke-timer (Match last-stand) ──────────────────────────────
+	// Broke = the server says nothing is affordable (matchInfo.must_guess —
+	// authoritative, already accounts for debuffs/tax/vowel_block/toll). The
+	// player gets the danger screen + a visible 60s countdown for ONE final
+	// guess: a wrong guess folds server-side (match_submit_guess), the timer
+	// expiring folds client-side via doFold(true).
 	// foldMode = modes with a "Give up" button (Daily + Challenges).
 	$: foldMode = $gameStore.gameMode === 'daily' || $gameStore.gameMode === 'match';
 	// brokeMode = modes with the out-of-Cash auto-fold CLOCK. The Daily has NO timer —
@@ -1136,24 +1123,9 @@
 			flashMatchNotice('They have no revealed letter to erase');
 	}
 
-	$: isBroke = (() => {
-		// Only while actively on a game screen — never on the menu.
-		if (!brokeMode || !gameActive || showMainMenu) return false;
-		const mod = $gameStore.modifier,
-			discount = mod === 'discount',
-			vowelHalf = mod === 'vowel_vision';
-		const purchased = new Set(($gameStore.purchasedLetters || []).filter(Boolean));
-		const incorrect = new Set($gameStore.incorrectLetters || []);
-		let minCost = Infinity;
-		for (const [L, base] of Object.entries(LETTER_COSTS)) {
-			if (purchased.has(L) || incorrect.has(L)) continue;
-			let c = base;
-			if (discount) c = Math.ceil(c * 0.75);
-			if (vowelHalf && 'AEIOU'.includes(L)) c = Math.ceil(c * 0.5);
-			if (c < minCost) minCost = c;
-		}
-		return minCost !== Infinity && ($gameStore.bankroll || 0) < minCost;
-	})();
+	// Server-authoritative: matchInfo.must_guess already applies the real cost
+	// stack (half_off/tax/vowel_block) for THIS player's debuffs — no local mirror needed.
+	$: isBroke = brokeMode && gameActive && !showMainMenu && !!matchInfo?.must_guess;
 	let brokeDeadline = 0,
 		brokeLeft = 0,
 		brokeFiring = false;
@@ -4476,6 +4448,20 @@
 			</div>
 		{/if}
 
+		<!-- Match solve timer — same server-anchored count-up treatment as Daily. Anchored to
+		     matchInfo.started_at (challenge_participants.started_at, stamped once when the
+		     player starts the match — NOT reset per puzzle), so it tracks total time in the
+		     match, pausing its visual only at each puzzle's win screen like Daily does. -->
+		{#if isMatch && matchInfo && !matchInfo.done && $gameStore.currentPhrase}
+			<div class="daily-timer-wrap">
+				<SolveTimer
+					openedAt={matchOpenedAt}
+					active={matchTimerActive}
+					solved={$gameStore.gameState === 'won'}
+				/>
+			</div>
+		{/if}
+
 		<!-- 💰 Bankroll — top of every mode. Challenge ante now lives in the bounty hero below. -->
 		{#if $gameStore.currentPhrase && $gameStore.gameMode}
 			<!-- 🪙 Small ambient bankroll chip — your account, shown quietly; the hero number
@@ -4578,6 +4564,20 @@
 			</div>
 		{/if}
 
+		<!-- 🚨 Match out-of-money last stand — same danger treatment as Daily/Free Play, plus
+		     a live countdown: ONE guess left. A wrong guess folds server-side
+		     (match_submit_guess); the countdown expiring folds it client-side (doFold(true)). -->
+		{#if isMatch && dangerMode}
+			<div class="danger-cue daily" role="alert">
+				<span class="dc-title"><Icon name="broke" size={16} /> OUT OF MONEY</span>
+				<span class="dc-sub">Last guess — solve it now, or you fold</span>
+				<span class="dc-sub"
+					><Icon name="timer" size={13} /> 0:{String(brokeLeft).padStart(2, '0')}</span
+				>
+				<button class="bn-forfeit" on:click={confirmFold}>Give up now?</button>
+			</div>
+		{/if}
+
 		<!-- ⚔️ Challenge match HUD -->
 		{#if isMatch && matchInfo && !matchInfo.done}
 			<!-- 🏆 Your Score — the accumulated bounty-kept you win the pot on. The center hero
@@ -4649,16 +4649,6 @@
 		<section class="phrase-section">
 			<PhraseDisplay on:revealComplete={onPhraseRevealComplete} on:introDone={onDailyIntroDone} />
 		</section>
-
-		<!-- ⏱ Out-of-Cash broke-timer — live Challenges only (Daily has no timer) -->
-		{#if brokeMode && gameActive && isBroke}
-			<div class="fold-bar broke">
-				<span class="fold-timer"
-					><Icon name="timer" size={13} /> 0:{String(brokeLeft).padStart(2, '0')}</span
-				>
-				<span class="fold-warn">Out of Cash — guess in time or you give up this one</span>
-			</div>
-		{/if}
 
 		<!-- 💰 Money hero -->
 		<section class="stats-section">
@@ -5607,15 +5597,6 @@
 		justify-content: safe center;
 	}
 
-	@keyframes pressurePulse {
-		0%,
-		100% {
-			box-shadow: 0 0 0 rgba(248, 113, 113, 0);
-		}
-		50% {
-			box-shadow: 0 0 16px rgba(248, 113, 113, 0.35);
-		}
-	}
 	.makeup-banner {
 		display: flex;
 		align-items: center;
@@ -6087,35 +6068,6 @@
 	}
 	.twist-chip:active {
 		transform: scale(0.92);
-	}
-	/* ⓘ re-open the "How to win" card */
-	.fold-bar {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 10px;
-		flex-wrap: wrap;
-		margin: 6px auto 2px;
-	}
-	.fold-bar.broke {
-		padding: 8px 14px;
-		border-radius: 12px;
-		max-width: 340px;
-		background: rgba(248, 113, 113, 0.12);
-		border: 1px solid rgba(248, 113, 113, 0.5);
-		animation: pressurePulse 1s ease-in-out infinite;
-	}
-	.fold-timer {
-		font-family: 'Orbitron', var(--font-display);
-		font-weight: 800;
-		font-size: 1.25rem;
-		color: #f87171;
-	}
-	.fold-warn {
-		font-size: 0.76rem;
-		color: #fca5a5;
-		flex: 1 1 140px;
-		text-align: left;
 	}
 	.puzzle-clue {
 		max-width: 340px;
