@@ -58,6 +58,7 @@
 		"@capacitor/ios": "^8.4.1",
 		"@dicebear/collection": "^9.4.2",
 		"@dicebear/core": "^9.4.2",
+		"@sentry/sveltekit": "^10.66.0",
 		"@supabase/ssr": "^0.6.1",
 		"@supabase/supabase-js": "^2.48.1",
 		"bufferutil": "^4.0.8",
