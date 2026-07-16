@@ -940,6 +940,12 @@
 	// 😈 Sabotage from the bag → pick a target (auto-applies vs a single opponent).
 	/** @type {{ item:any, opponents:any[] }|null} */
 	let sabPicker = null;
+	// 🌫️ Fog only lands on the target's NEXT puzzle → uncastable when they're on their last one.
+	/** @param {string} id → can this opponent be fogged right now? (server: opponents[].can_fog) */
+	function canFogTarget(id) {
+		const o = (matchInfo?.opponents ?? []).find((/** @type {any} */ x) => x.id === id);
+		return o ? o.can_fog !== false : true;
+	}
 	/** @param {any} item */
 	async function openSabotagePicker(item) {
 		showBag = false;
@@ -950,10 +956,15 @@
 			vaultMsg = 'No opponents left to hit.';
 			return;
 		}
+		// Auto-apply vs a single opponent — unless it's Fog with nothing left to fog,
+		// in which case fall through to the picker so the disabled row explains why.
 		if (opps.length === 1) {
-			await matchSabotageOpponent(opps[0].id, item.id);
-			await refreshClimbPups();
-			return;
+			const blocked = item.id === 'sabotage_fog' && !canFogTarget(opps[0].id);
+			if (!blocked) {
+				await matchSabotageOpponent(opps[0].id, item.id);
+				await refreshClimbPups();
+				return;
+			}
 		}
 		sabPicker = { item, opponents: opps };
 	}
@@ -1240,13 +1251,13 @@
 	});
 	const DEBUFF_LABEL = /** @type {Record<string,string>} */ ({
 		tax: 'Taxed (letters +50%)',
-		fog: 'Fogged (clue hidden)',
+		fog: 'Fogged (clue hidden — buy 3 to clear)',
 		toll: 'Tolled (next letter 3×)',
 		vowel_block: 'Vowel-blocked (vowels 3×)'
 	});
 	const DEBUFF_DESC = /** @type {Record<string,string>} */ ({
 		tax: 'Every letter you buy costs +50% while this is active.',
-		fog: 'Your clue is hidden — you have to solve it blind.',
+		fog: 'Your next puzzle starts blind — buy 3 letters to clear the fog.',
 		toll: 'Your next letter purchase costs 3×, then it clears.',
 		vowel_block: 'Vowels cost 3× while this is active.'
 	});
@@ -3191,13 +3202,27 @@
 			<h3 class="info-title">{sabPicker.item.name} — hit who?</h3>
 			<div class="sab-target-list">
 				{#each sabPicker.opponents as o}
-					<button class="sab-target-row" on:click={() => applySabotage(o.id)}>
-						<span class="st-name">{o.name}</span>
-						<span class="st-stat"
-							><Icon name="puzzle" size={14} /> Puzzle {o.position} · ${Number(
-								o.ante_left ?? 0
-							).toLocaleString()}</span
-						>
+					{@const isFog = sabPicker.item.id === 'sabotage_fog'}
+					{@const fogBlocked = isFog && !canFogTarget(o.id)}
+					<button
+						class="sab-target-row"
+						class:is-disabled={fogBlocked}
+						disabled={fogBlocked}
+						title={fogBlocked ? 'Nothing left to fog.' : ''}
+						on:click={() => applySabotage(o.id)}
+					>
+						<span class="st-name">{isFog ? `Fog ${o.name}` : o.name}</span>
+						<span class="st-stat">
+							{#if fogBlocked}
+								Nothing left to fog.
+							{:else if isFog}
+								Their next puzzle starts blind (3 buys)
+							{:else}
+								<Icon name="puzzle" size={14} /> Puzzle {o.position} · ${Number(
+									o.ante_left ?? 0
+								).toLocaleString()}
+							{/if}
+						</span>
 					</button>
 				{/each}
 			</div>
@@ -5691,6 +5716,14 @@
 	}
 	.sab-target-row:active {
 		transform: scale(0.98);
+	}
+	.sab-target-row.is-disabled {
+		opacity: 0.45;
+		cursor: not-allowed;
+		filter: grayscale(0.7);
+	}
+	.sab-target-row.is-disabled:active {
+		transform: none;
 	}
 	.st-name {
 		font-weight: 800;
