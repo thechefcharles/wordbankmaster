@@ -1247,7 +1247,7 @@
 		sabotage_fog: 'fog',
 		sabotage_toll: 'toll',
 		sabotage_vowel_block: 'block',
-		sabotage_lock: 'lock'
+		sabotage_lock: 'trash'
 	});
 	const DEBUFF_LABEL = /** @type {Record<string,string>} */ ({
 		tax: 'Taxed (letters +50%)',
