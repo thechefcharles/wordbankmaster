@@ -2583,6 +2583,11 @@
 {/if}
 <!-- Skip retired in Cash Game V4 — Cash Out is the graceful bail. -->
 
+<!-- 🏆 Pot — top bar, left of the WORDBANK title, mirroring the chat control on the right -->
+{#if isMatch && matchPot > 0 && !showMainMenu}
+	<div class="pot-chip-top">Pot <b>${matchPot.toLocaleString()}</b></div>
+{/if}
+
 <!-- 💬 Match chat (1v1 + group challenges) — only inside a live match, never on the menu -->
 {#if isMatch && matchInfo && !showMainMenu}
 	<button
@@ -4587,7 +4592,6 @@
 				<span class="ms-val">{isFriendlyMatch ? '★' : '$'}{Math.round(matchInfo.total_score ?? 0).toLocaleString()}</span>
 			</div>
 			<div class="match-meta">
-				{#if matchPot > 0}<span class="pot-chip">Pot ${matchPot.toLocaleString()}</span>{/if}
 				{#if matchInfo.target != null}<span class="beat-chip"
 						>Beat {isFriendlyMatch ? '★' : '$'}{Number(
 							matchInfo.target
@@ -5658,18 +5662,6 @@
 		font-weight: 700;
 		font-size: 0.8rem;
 		color: var(--text-muted);
-	}
-	/* 🏆 Pot you're playing for — the prize, off the Score headline */
-	.pot-chip {
-		font-family: var(--font-display);
-		font-weight: 800;
-		font-size: 0.8rem;
-		color: #fcd34d;
-		background: rgba(252, 211, 77, 0.12);
-		border: 1px solid rgba(252, 211, 77, 0.3);
-		padding: 3px 11px;
-		border-radius: 999px;
-		font-variant-numeric: tabular-nums;
 	}
 	/* 🎯 The score to beat (opponent has played) — the async duel's live target */
 	.beat-chip {
@@ -7216,6 +7208,32 @@
 		transform: scale(0.93);
 	}
 	/* match chat — sits just below the help button so they never overlap */
+	/* 🏆 Pot — top bar, left of the title, mirrors .match-chat-btn on the opposite side */
+	.pot-chip-top {
+		position: fixed;
+		top: 60px;
+		left: 14px;
+		z-index: 1000;
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		padding: 9px 14px;
+		border-radius: 999px;
+		font-family: var(--font-display);
+		font-size: 0.84rem;
+		font-weight: 700;
+		color: #fcd34d;
+		background: var(--surface-strong, rgba(20, 28, 40, 0.9));
+		border: 1px solid rgba(252, 211, 77, 0.5);
+		backdrop-filter: blur(10px);
+		box-shadow:
+			0 2px 12px rgba(0, 0, 0, 0.4),
+			0 0 12px rgba(252, 211, 77, 0.15);
+		font-variant-numeric: tabular-nums;
+	}
+	.pot-chip-top b {
+		font-weight: 800;
+	}
 	.match-chat-btn {
 		position: fixed;
 		top: 60px;
