@@ -822,7 +822,9 @@
 							if (it.id === 'heat_shield') continue;
 							// Self-buffs work in BOTH the Cash Game and Challenges.
 							const climbUsed = (climb?.equipped ?? []).includes(it.id);
-							const matchUsed = (matchInfo?.used_powerups ?? []).includes(it.id);
+							// Match cap: ONE power-up total per puzzle (server: powerup_reason=one_per_puzzle).
+							// Grey the whole tray once any power-up has been used this puzzle, not just this one.
+							const matchCapReached = (matchInfo?.used_powerups ?? []).length >= 1;
 							// 🏧 Overdrive is a Cash-Game lifeline: only usable when you're out of money.
 							const isOverdrive = it.id === 'overdrive';
 							// ⏭️ Free Skip swaps the run's puzzle — Cash Game only, not Challenges.
@@ -837,7 +839,7 @@
 								isMatch &&
 								!!matchInfo?.items_allowed &&
 								gameActive &&
-								!matchUsed &&
+								!matchCapReached &&
 								(it.owned ?? 0) > 0 &&
 								!isOverdrive &&
 								!isFreeSkip;
@@ -856,7 +858,7 @@
 								count: it.owned,
 								usable: avail,
 								reason:
-									climbUsed || matchUsed
+									climbUsed || matchCapReached
 										? 'Already used on this puzzle.'
 										: isOverdrive && $gameStore.gameMode === 'climb' && !climb?.must_guess
 											? 'Use it when you run out of money.'
@@ -930,7 +932,8 @@
 			return;
 		} // keeps flow for the target step
 		else if (isMatch) {
-			matchPowerup(item.id).then(() => {
+			matchPowerup(item.id).then((board) => {
+				noticeFromBoard(board);
 				refreshClimbPups();
 				loadVault();
 			});
@@ -961,7 +964,8 @@
 		if (opps.length === 1) {
 			const blocked = item.id === 'sabotage_fog' && !canFogTarget(opps[0].id);
 			if (!blocked) {
-				await matchSabotageOpponent(opps[0].id, item.id);
+				const board = await matchSabotageOpponent(opps[0].id, item.id);
+				noticeFromBoard(board, opps[0].name);
 				await refreshClimbPups();
 				return;
 			}
@@ -972,8 +976,12 @@
 	async function applySabotage(targetId) {
 		if (!sabPicker) return;
 		const item = sabPicker.item;
+		const targetName = (sabPicker.opponents ?? []).find(
+			(/** @type {any} */ o) => o.id === targetId
+		)?.name;
 		sabPicker = null;
-		await matchSabotageOpponent(targetId, item.id);
+		const board = await matchSabotageOpponent(targetId, item.id);
+		noticeFromBoard(board, targetName);
 		await refreshClimbPups();
 	}
 
@@ -1099,6 +1107,35 @@
 		}, 2600);
 	}
 
+	// 💥 Match usage-cap notices: the server rejects a 2nd power-up / a repeat sabotage
+	// (or an uncastable fog/erase) and tags the board with powerup_reason/sabotage_reason.
+	// Flash a short toast so the tap doesn't feel like a silent no-op.
+	let matchNotice = /** @type {{ id:number, text:string }|null} */ (null);
+	let _matchNoticeId = 0;
+	/** @param {string} text */
+	function flashMatchNotice(text) {
+		if (!browser || !text) return;
+		const id = ++_matchNoticeId;
+		matchNotice = { id, text };
+		setTimeout(() => {
+			if (matchNotice?.id === id) matchNotice = null;
+		}, 2600);
+	}
+	/**
+	 * Inspect a returned match board for a cap/reject reason and toast it.
+	 * @param {any} board @param {string} [targetName]
+	 */
+	function noticeFromBoard(board, targetName) {
+		const pr = board?.powerup_reason,
+			sr = board?.sabotage_reason;
+		if (pr === 'one_per_puzzle') flashMatchNotice('One power-up per puzzle');
+		else if (sr === 'already_sabotaged')
+			flashMatchNotice(`You've already sabotaged ${targetName || 'them'} this puzzle`);
+		else if (sr === 'no_next_puzzle') flashMatchNotice('Nothing left to fog');
+		else if (sr === 'nothing_to_erase')
+			flashMatchNotice('They have no revealed letter to erase');
+	}
+
 	$: isBroke = (() => {
 		// Only while actively on a game screen — never on the menu.
 		if (!brokeMode || !gameActive || showMainMenu) return false;
@@ -1207,11 +1244,8 @@
 			).length
 		: 0;
 	$: usableMatchPups =
-		isMatch && matchInfo?.items_allowed
-			? selfPups.filter(
-					(/** @type {any} */ i) =>
-						(i.owned ?? 0) > 0 && !(matchInfo?.used_powerups ?? []).includes(i.id)
-				).length
+		isMatch && matchInfo?.items_allowed && (matchInfo?.used_powerups ?? []).length === 0
+			? selfPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0).length
 			: 0;
 	/** @type {'heat'|'earn'|'streak'|null} ℹ️ Cash Game explainers (mirror of dailyInfo). */
 	let climbInfo = null;
@@ -2727,6 +2761,11 @@
 <!-- 🎁 Daily Twist "as it happens" explainer toast -->
 {#if twistToast}
 	<div class="twist-toast" role="status">{twistToast.text}</div>
+{/if}
+
+<!-- 💥 Match usage-cap notice (one power-up / already sabotaged / nothing to fog·erase) -->
+{#if matchNotice}
+	<div class="twist-toast" role="status">{matchNotice.text}</div>
 {/if}
 
 <!-- 🔐 Vault door-open animation (from the main menu, after the PIN) → then items -->

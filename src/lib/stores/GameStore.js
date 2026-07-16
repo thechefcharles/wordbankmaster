@@ -776,6 +776,7 @@ export async function matchPowerup(powerupId) {
 	try {
 		const board = await matchUsePowerup(activeMatchId, powerupId);
 		if (board) reconcileMatchBoard(board);
+		return board;
 	} finally {
 		dailyInFlight = false;
 	}
@@ -788,6 +789,7 @@ export async function matchSabotageOpponent(targetId, powerupId) {
 	try {
 		const board = await matchSabotage(activeMatchId, targetId, powerupId);
 		if (board) reconcileMatchBoard(board);
+		return board;
 	} finally {
 		dailyInFlight = false;
 	}
