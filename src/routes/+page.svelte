@@ -4789,16 +4789,6 @@
 						<span class="carry-float">+${carryCue.toLocaleString()}</span>
 					{/if}
 				</div>
-				{#if isMatch && matchLive}
-					<div class="ante-bar">
-						<span
-							class="ante-fill"
-							style="width:{(matchLive.budget ?? 0) > 0
-								? Math.max(0, Math.min(100, (matchLeft / matchLive.budget) * 100))
-								: 100}%"
-						></span>
-					</div>
-				{/if}
 			{/if}
 		</section>
 
@@ -8492,23 +8482,6 @@
 		color: #cbd5e1;
 		text-shadow: none;
 	}
-	.ante-bar {
-		width: 100%;
-		max-width: 240px;
-		height: 7px;
-		margin: 6px auto 0;
-		border-radius: 999px;
-		background: rgba(255, 255, 255, 0.1);
-		overflow: hidden;
-	}
-	.ante-fill {
-		display: block;
-		height: 100%;
-		border-radius: 999px;
-		background: linear-gradient(90deg, #fbbf24, #fde047);
-		transition: width 0.35s ease;
-	}
-
 	/* lit gold bounty multiplier badge (left of the bounty) — ×1.0 today, boostable later */
 	/* badge · amount · badge row — a 3-col grid keeps the amount dead-centered and clear */
 	.bp-row {
