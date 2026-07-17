@@ -176,7 +176,9 @@
 	.pin-screen {
 		position: fixed;
 		inset: 0;
-		z-index: 2500;
+		/* Above every other fixed overlay (menu top bar 3000, others up to 9999) so nothing
+		   can sit over the keypad and steal taps on the top row. */
+		z-index: 10000;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -224,7 +226,7 @@
 	.vault {
 		position: fixed;
 		inset: 0;
-		z-index: 2600;
+		z-index: 10001;
 		display: grid;
 		place-items: center;
 		cursor: pointer;
