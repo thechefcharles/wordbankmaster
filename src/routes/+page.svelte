@@ -2051,7 +2051,9 @@
 		mbWager === 0
 			? 'Friendly — no stakes, just bragging rights.'
 			: mbTarget === 'group'
-				? `Everyone antes $${mbWager.toLocaleString()} → the pot; top finishers split it. Spend less to keep more.`
+				? mbPayout === 'winner'
+					? `Everyone antes $${mbWager.toLocaleString()} → the pot; winner takes the whole pot. Spend less to keep more.`
+					: `Everyone antes $${mbWager.toLocaleString()} → the pot; top finishers split it. Spend less to keep more.`
 				: `You both ante $${mbWager.toLocaleString()} → $${(mbWager * 2).toLocaleString()} pot · winner takes all.`;
 	/** @type {{username:string,is_friend:boolean}[]} */
 	let mbResults = [];
