@@ -3944,6 +3944,18 @@
 							<div class="ch-field">
 								<span>Categories <em class="ch-opt">(optional)</em></span>
 								<div class="ch-catlist">
+									<button
+										type="button"
+										class="ch-catrow"
+										class:on={mbCategories.length === 0}
+										on:click={() => (mbCategories = [])}
+									>
+										<span class="ch-catemoji"><Icon name="globe" size={19} /></span>
+										<span class="ch-catname">All Categories</span>
+										<span class="ch-catcheck"
+											>{#if mbCategories.length === 0}<Icon name="check" size={13} />{/if}</span
+										>
+									</button>
 									{#each CATEGORIES as c}
 										<button
 											type="button"
@@ -3963,7 +3975,9 @@
 									{/each}
 								</div>
 								<p class="ch-hint">
-									{mbCategories.length ? mbCategories.length + ' selected' : 'Any category'}
+									{mbCategories.length
+										? mbCategories.length + ' selected'
+										: 'All Categories selected (default) — pack draws from every category'}
 								</p>
 							</div>
 
