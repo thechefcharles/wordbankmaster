@@ -274,6 +274,13 @@
 	onMount(async () => {
 		initError = null;
 		track('app_open');
+		// Native push is a DEVICE capability, not a session one — check it on every mount so
+		// the Settings toggle appears no matter how the user signed in (fresh login, restored
+		// session, etc). Never prompts here; the one iOS prompt lives behind the toggle.
+		pushStatus().then((st) => {
+			pushState = st;
+			if (st === 'granted') initPush();
+		});
 		// Safety net: never strand a logged-in user on the loading screen if a slow or
 		// failed secondary call blocks init.
 		const initFallback = setTimeout(() => {
@@ -321,12 +328,6 @@
 
 			user.set(/** @type {{ id: string }} */ (session.user));
 			const profile = await loadUserProfile(session.user.id);
-			// Native push: register silently if already granted; NEVER prompts here
-			// (iOS gives one prompt ever — the ask lives behind the Settings toggle/primer).
-			pushStatus().then((st) => {
-				pushState = st;
-				if (st === 'granted') initPush();
-			});
 			if (!profile) {
 				initError =
 					'Profile failed to load or create. Check Supabase profiles table and RLS policies.';
