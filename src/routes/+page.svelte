@@ -2031,7 +2031,7 @@
 	let mbCategories = [];
 	let mbPackSize = 3;
 	let mbWager = 500;
-	let mbPayout = 'winner'; // derived from field size at settle; kept for the RPC signature
+	let mbPayout = 'winner'; // 'winner' (whole pot to top scorer) | 'podium' (top finishers split). Group-only choice; 1v1 is always 'winner'.
 	// Challenge tier antes (ante = stake = pot size; payout is by field size at settle).
 	const CHALLENGE_TIERS = [
 		{ v: 0, label: 'Friendly' },
@@ -2045,6 +2045,8 @@
 	let mbBusy = false;
 	// Wizard: step 1 (Who) needs an opponent before Continue is allowed.
 	$: mbStep1Ok = mbTarget === 'friend' ? mbOpponent.trim().length > 0 : !!mbGroupId;
+	// A 1v1 is winner-take-all only — force it whenever the target is a friend (any entry path).
+	$: if (mbTarget === 'friend') mbPayout = 'winner';
 	$: potSummary =
 		mbWager === 0
 			? 'Friendly — no stakes, just bragging rights.'
@@ -2183,7 +2185,7 @@
 			{ label: 'Buy-in', value: w > 0 ? '$' + w.toLocaleString() : 'Friendly' },
 			{
 				label: 'Payout',
-				value: mbTarget === 'group' ? 'Top finishers split the pot' : 'Winner takes all'
+				value: mbPayout === 'podium' ? 'Top finishers split the pot' : 'Winner takes all'
 			}
 		];
 		try {
@@ -2236,10 +2238,12 @@
 				label: 'Buy-in',
 				value: Number(m.wager) > 0 ? '$' + Number(m.wager).toLocaleString() : 'Friendly'
 			},
-			// _match_settle: ≤2 paid → winner takes all; 3+ → top finishers split (70/30, 60/30/10).
+			// Payout is the creator's stored choice: 'winner' → whole pot to the top scorer;
+			// 'podium' → top finishers split (70/30 for 3, 60/30/10 for 4+). 1v1 is always winner.
 			{
 				label: 'Payout',
-				value: Number(m.players) > 2 ? 'Top finishers split the pot' : 'Winner takes all'
+				value:
+					(m.payout === 'podium' && Number(m.players) > 2) ? 'Top finishers split the pot' : 'Winner takes all'
 			}
 		];
 		if (Number(m.wager) > 0 && netWorth != null)
@@ -3881,7 +3885,10 @@
 									type="button"
 									class="ch-mode"
 									class:active={mbTarget === 'group'}
-									on:click={() => (mbTarget = 'group')}
+									on:click={() => {
+											mbTarget = 'group';
+											mbPayout = 'podium';
+										}}
 									><Icon name="users" size={16} /> A group<small>everyone in it</small></button
 								>
 							</div>
@@ -4011,6 +4018,31 @@
 									{/each}
 								</div>
 							</div>
+							{#if mbTarget === 'group'}
+								<div class="ch-field">
+									<span>Payout</span>
+									<div class="ch-seg">
+										<button
+											type="button"
+											class="ch-seg-btn"
+											class:on={mbPayout === 'winner'}
+											on:click={() => {
+												mbPayout = 'winner';
+												fx('tap');
+											}}>Winner takes all</button
+										>
+										<button
+											type="button"
+											class="ch-seg-btn"
+											class:on={mbPayout === 'podium'}
+											on:click={() => {
+												mbPayout = 'podium';
+												fx('tap');
+											}}>Top finishers split</button
+										>
+									</div>
+								</div>
+							{/if}
 							<label class="ch-field"
 								><span>Respond within</span>
 								<select class="ch-input" bind:value={mbWindow}
