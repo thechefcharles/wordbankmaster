@@ -106,14 +106,21 @@ export async function requestPushPermission() {
 }
 
 /** Current permission state, for rendering the Settings toggle.
- * @returns {Promise<'granted'|'denied'|'prompt'|'prompt-with-rationale'|'unsupported'>} */
+ * TEMP DIAGNOSTIC: returns a descriptive reason instead of swallowing failures, so we can
+ * see WHY the toggle hides. Reverted once the root cause is known.
+ * @returns {Promise<string>} */
 export async function pushStatus() {
-	if (!isNative()) return 'unsupported';
+	if (!browser) return 'nobrowser';
 	try {
+		const nat = Capacitor?.isNativePlatform?.();
+		const plat = Capacitor?.getPlatform?.();
+		if (nat !== true) return 'notnative(' + String(nat) + '/' + String(plat) + ')';
 		const PushNotifications = await plugin();
-		return (await PushNotifications.checkPermissions()).receive;
-	} catch {
-		return 'unsupported';
+		if (!PushNotifications) return 'noplugin';
+		const r = await PushNotifications.checkPermissions();
+		return String(r?.receive ?? 'noreceive');
+	} catch (/** @type {any} */ e) {
+		return 'err:' + String((e && e.message) || e).slice(0, 45);
 	}
 }
 
