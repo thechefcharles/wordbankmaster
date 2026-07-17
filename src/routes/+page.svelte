@@ -92,6 +92,7 @@
 	} from '$lib/stores/localGameUtils.js';
 	import { gameWasRestored } from '$lib/stores/GameStateFlags.js';
 	import { soundEnabled, toggleSound, hapticsEnabled, toggleHaptics, fx } from '$lib/sound.js';
+	import { initPush, requestPushPermission, pushStatus } from '$lib/push.js';
 	import {
 		startMusic,
 		stopMusic,
@@ -320,6 +321,12 @@
 
 			user.set(/** @type {{ id: string }} */ (session.user));
 			const profile = await loadUserProfile(session.user.id);
+			// Native push: register silently if already granted; NEVER prompts here
+			// (iOS gives one prompt ever — the ask lives behind the Settings toggle/primer).
+			pushStatus().then((st) => {
+				pushState = st;
+				if (st === 'granted') initPush();
+			});
 			if (!profile) {
 				initError =
 					'Profile failed to load or create. Check Supabase profiles table and RLS policies.';
@@ -1831,6 +1838,14 @@
 
 	// Free Play: device-local points, refreshed whenever the mode is active.
 	let fpPoints = { total: 0, best: 0 };
+	// Native push: 'granted' | 'denied' | 'prompt' | 'unsupported' (web = unsupported, toggle hidden).
+	let pushState = 'unsupported';
+	async function togglePush() {
+		fx('tap');
+		if (pushState === 'granted') return; // iOS: can't revoke from in-app; Settings owns it
+		const ok = await requestPushPermission();
+		pushState = ok ? 'granted' : await pushStatus();
+	}
 	$: if (($gameStore.gameMode === 'freeplay' || isFriendlyMatch) && $gameStore.gameState)
 		fpPoints = freePlayPoints();
 	function handleFreePlay() {
@@ -3410,6 +3425,15 @@
 					<span><Icon name={$hapticsEnabled ? 'vibrate' : 'vibrate-off'} size={16} /> Haptics</span
 					><span class="ap-state" class:on={$hapticsEnabled}>{$hapticsEnabled ? 'On' : 'Off'}</span>
 				</button>
+				{#if pushState !== 'unsupported'}
+					<button class="ap-toggle" on:click={togglePush}>
+						<span><Icon name="bell" size={16} /> Notifications</span><span
+							class="ap-state"
+							class:on={pushState === 'granted'}
+							>{pushState === 'granted' ? 'On' : pushState === 'denied' ? 'Blocked' : 'Enable'}</span
+						>
+					</button>
+				{/if}
 				<button class="ap-toggle" on:click={toggleMusic}>
 					<span>Music</span><span class="ap-state" class:on={$musicEnabled}
 						>{$musicEnabled ? 'On' : 'Off'}</span
