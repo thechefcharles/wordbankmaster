@@ -34,15 +34,15 @@
 					icon: 'calendar',
 					title: "Today's Daily",
 					goal: 'Solve the hidden phrase.',
-					win: 'Spend as little as you can — your leftover Deposits to your account.',
-					bar: 'Earn Interest on every Deposit — from your streak, credit & boosts.'
+					win: 'Spend as little as you can — whatever’s left is deposited to your account.',
+					bar: 'Every deposit earns Interest — from your streak, credit & boosts.'
 				};
 			case 'climb':
 				return {
 					icon: 'coin',
 					title: 'Cash Game',
-					goal: 'Invest your buy-in → grow it by solving puzzles cheaply.',
-					win: 'Bank between puzzles — once you start one, it’s solve or bust. Your Interest climbs with each solve.',
+					goal: 'Invest your buy-in and grow it by solving puzzles cheaply.',
+					win: 'Bank your cash between puzzles — once you start one, it’s solve or bust. Your Interest climbs with every solve.',
 					bar: 'A wrong guess drains your budget — run out and you bust.'
 				};
 			case 'makeup':

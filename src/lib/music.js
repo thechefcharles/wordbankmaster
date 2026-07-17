@@ -14,10 +14,12 @@ export const TRACKS = [
 	{ id: 'stu-ball-recipes', title: 'Stu Ball Recipes', src: '/music/stu-ball-recipes.mp3' }
 ];
 
-const VOL_KEY = 'wb_music_vol';
+// VOL_KEY bumped to _v2 so the lower default takes effect for everyone (old saved
+// volumes are ignored). Menu-only music + this quieter default = a soft background bed.
+const VOL_KEY = 'wb_music_vol_v2';
 const ON_KEY = 'wb_music_on';
 const TRACK_KEY = 'wb_music_track';
-const DEFAULT_VOL = 0.2; // quiet by default (~20%)
+const DEFAULT_VOL = 0.08; // soft background (~8%) — menu-only, shouldn't dominate
 
 /** @param {any} v @param {number} d */
 function clamp01(v, d) {
