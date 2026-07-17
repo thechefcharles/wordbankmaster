@@ -4441,6 +4441,19 @@
 								>{$hapticsEnabled ? 'On' : 'Off'}</span
 							>
 						</button>
+						{#if pushState !== 'unsupported'}
+							<button class="set-row" on:click={togglePush}>
+								<span><Icon name="bell" size={16} /> Notifications</span><span
+									class="set-state"
+									class:on={pushState === 'granted'}
+									>{pushState === 'granted'
+										? 'On'
+										: pushState === 'denied'
+											? 'Blocked'
+											: 'Enable'}</span
+								>
+							</button>
+						{/if}
 						<button class="set-row" on:click={toggleMusic}>
 							<span>Music</span><span class="set-state" class:on={$musicEnabled}
 								>{$musicEnabled ? 'On' : 'Off'}</span
