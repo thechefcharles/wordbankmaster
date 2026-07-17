@@ -3538,6 +3538,11 @@
 	{:else if !hasInitialized}
 		<!-- ⏳ Loading (prevents flash of game UI / diagnostic before we know menu vs game) -->
 		<div class="init-loading">Loading…</div>
+	{:else if showPinUnlock || showPinSetup}
+		<!-- 🔒 PIN gate is up (the PinGate overlay above owns the screen). Render NOTHING
+		     behind it: the menu's fixed top bar sits at z-index 3000+ (above the PIN's 2500),
+		     so if the menu rendered here it would overlap the keypad and swallow taps on the
+		     top row — and it would flash the menu before the PIN appears. -->
 	{:else if showMainMenu}
 		<!-- 🏠 Main Menu (after sign-in) -->
 		<div class="main-menu fade-up">
