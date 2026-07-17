@@ -10,30 +10,30 @@
 		{
 			icon: 'cash',
 			title: 'Spend less, think more',
-			body: 'Crack the hidden phrase buying as few letters as you can.'
+			body: 'Crack the hidden phrase by buying as few letters as you can.'
 		},
 		{
 			icon: 'letter-a',
 			title: 'Buy letters',
-			body: 'Tap a letter to buy every copy. Wrong letters still cost you. Guessing the phrase is free — unlimited tries.'
+			body: 'Tap a letter to buy every copy of it. A letter that’s not in the phrase still costs you. Guessing the phrase is always free — try as often as you like.'
 		},
 		{
 			icon: 'coin',
 			title: 'Cash is your score',
 			isNew: true,
-			body: 'Start with $2,000 — your balance and your leaderboard rank. Spend it smart.'
+			body: 'You start with $2,000. It’s both your balance and your rank — the less you spend, the more you keep.'
 		},
 		{
 			icon: 'calendar',
 			title: 'Daily paycheck',
 			isNew: true,
-			body: 'One puzzle a day for everyone. Just showing up pays — more for a streak.'
+			body: 'One puzzle a day for everyone. Just showing up pays — and a streak pays more.'
 		},
 		{
 			icon: 'growth',
 			title: 'Cash Game & Challenges',
 			isNew: true,
-			body: 'Endless puzzles for Cash, or wager friends — solve efficiently and the highest Score takes the pot.'
+			body: 'Play endless puzzles in Cash Game, or challenge friends head-to-head — solve for the least and the top Score takes the pot.'
 		}
 	];
 
