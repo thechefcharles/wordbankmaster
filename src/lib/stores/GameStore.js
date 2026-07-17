@@ -3,6 +3,7 @@
 import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
 import { fx } from '$lib/sound.js';
+import { armPushPrimer } from '$lib/pushPrimer.js';
 import { LETTER_COSTS } from '$lib/letterCosts.js';
 import { MODIFIERS } from '$lib/powerups.js';
 import {
@@ -758,6 +759,7 @@ export async function startMatch(opts) {
 	const resp = await createMatch(opts);
 	if (resp?.ok && resp.match) {
 		track('match_create', { wager: opts.wager ?? 0, pack: opts.pack_size ?? 1 });
+		armPushPrimer(); // ask about notifications at the next pause, not over the puzzle
 		const id = resp.match.id;
 		activeMatchId = id;
 		const board = await matchStart(id);
@@ -800,6 +802,7 @@ export async function acceptAndPlayMatch(id, reduced = false) {
 	const resp = await acceptMatch(id, reduced);
 	if (!resp?.ok) return false;
 	track('match_accept');
+	armPushPrimer(); // ask about notifications at the next pause, not over the puzzle
 	activeMatchId = id;
 	const board = await matchStart(id);
 	if (board) {
