@@ -1,10 +1,11 @@
 // 1v1 challenge walkthrough. Phases via env PHASE: setup | create | play | results.
 // Fixed creds so phases coordinate; clean up vsa@/vsb@ after.
 import { chromium } from 'playwright';
+import { qaBase } from './_qa-guard.mjs';
 import { mkdirSync } from 'node:fs';
 mkdirSync('screenshots', { recursive: true });
 
-const BASE = process.env.BASE || 'http://localhost:5173';
+const BASE = qaBase('http://localhost:5173');
 const PHASE = process.env.PHASE || 'setup';
 const ANSWER = (process.env.ANSWER || '').toUpperCase().replace(/[^A-Z]/g, '');
 const A = { email: 'vsa@example.com', pass: 'TestPass123!', user: 'vsalice' };

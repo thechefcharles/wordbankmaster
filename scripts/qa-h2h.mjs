@@ -2,10 +2,11 @@
 // real friendly match end-to-end. Reports console errors + UX observations.
 // Run: set -a; . ./.env; set +a; BASE=http://localhost:5174 node scripts/qa-h2h.mjs
 import { chromium } from 'playwright';
+import { qaBase } from './_qa-guard.mjs';
 import { execSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 
-const BASE = process.env.BASE || 'http://localhost:5174';
+const BASE = qaBase('http://localhost:5174');
 const DB = process.env.SUPABASE_DB_URL;
 const PASS = 'TestPass123!';
 const PACK = Number(process.env.PACK || 2);

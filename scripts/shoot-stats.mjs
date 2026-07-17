@@ -1,8 +1,9 @@
 // Screenshots for the stats/history/profile/group/activity UI (seeded pwtest account).
 import { chromium } from 'playwright';
+import { qaBase } from './_qa-guard.mjs';
 import { mkdirSync } from 'node:fs';
 
-const BASE = process.env.BASE || 'http://localhost:5174';
+const BASE = qaBase('http://localhost:5174');
 const EMAIL = process.env.PW_EMAIL || 'pwtest+wb@example.com';
 const PASS = process.env.PW_PASS || 'TestPass123!';
 mkdirSync('screenshots', { recursive: true });
