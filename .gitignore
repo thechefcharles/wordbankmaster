@@ -42,3 +42,4 @@ Wordbank Stuff/
 !.env.example
 # Session scratch
 scratchpad/
+build/
