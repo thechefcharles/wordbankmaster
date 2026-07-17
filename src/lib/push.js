@@ -8,17 +8,19 @@
 // `requestPushPermission()` is the one that prompts, and it's called from a deliberate,
 // high-intent moment (the primer after a first challenge, or the Settings toggle).
 import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
 import { browser } from '$app/environment';
 import { supabase } from '$lib/supabaseClient.js';
 import { goto } from '$app/navigation';
 
 const isNative = () => browser && Capacitor?.isNativePlatform?.() === true;
 
-/** Lazily import so the web bundle never touches the native plugin. */
-async function plugin() {
-	const { PushNotifications } = await import('@capacitor/push-notifications');
-	return PushNotifications;
-}
+// NOTE: import this plugin STATICALLY, exactly like @capacitor/haptics.
+// A dynamic import() here hangs forever inside the iOS WKWebView: Vite wraps it in
+// __vitePreload, which injects <link rel="modulepreload"> elements and awaits their
+// load/error events — and WKWebView fires neither, so the promise never settles and
+// push silently does nothing. The module is ~100 bytes and is inert on the web (it
+// only calls registerPlugin), so there is nothing to lazy-load anyway.
 
 let wired = false;
 
@@ -52,7 +54,6 @@ function routeFor(data) {
 async function wireListeners() {
 	if (wired) return;
 	wired = true;
-	const PushNotifications = await plugin();
 
 	await PushNotifications.addListener('registration', (t) => {
 		if (t?.value) saveToken(t.value);
@@ -74,7 +75,6 @@ async function wireListeners() {
 export async function initPush() {
 	if (!isNative()) return 'unsupported';
 	try {
-		const PushNotifications = await plugin();
 		const perm = await PushNotifications.checkPermissions();
 		if (perm.receive !== 'granted') return perm.receive; // 'prompt' | 'denied'
 		await wireListeners();
@@ -93,7 +93,6 @@ export async function initPush() {
 export async function requestPushPermission() {
 	if (!isNative()) return false;
 	try {
-		const PushNotifications = await plugin();
 		const res = await PushNotifications.requestPermissions();
 		if (res.receive !== 'granted') return false;
 		await wireListeners();
@@ -106,14 +105,17 @@ export async function requestPushPermission() {
 }
 
 /** Current permission state, for rendering the Settings toggle.
+ * Never throws and never hangs: a native call that fails resolves to 'prompt' so the
+ * toggle stays visible and tappable rather than silently vanishing.
  * @returns {Promise<'granted'|'denied'|'prompt'|'prompt-with-rationale'|'unsupported'>} */
 export async function pushStatus() {
 	if (!isNative()) return 'unsupported';
 	try {
-		const PushNotifications = await plugin();
-		return (await PushNotifications.checkPermissions()).receive;
-	} catch {
-		return 'unsupported';
+		const r = await PushNotifications.checkPermissions();
+		return r?.receive ?? 'prompt';
+	} catch (e) {
+		console.warn('[push] checkPermissions failed', e);
+		return 'prompt';
 	}
 }
 
@@ -121,7 +123,6 @@ export async function pushStatus() {
 export async function clearBadge() {
 	if (!isNative()) return;
 	try {
-		const PushNotifications = await plugin();
 		await PushNotifications.removeAllDeliveredNotifications();
 	} catch {
 		/* no-op */
@@ -132,7 +133,6 @@ export async function clearBadge() {
 export async function unregisterPush() {
 	if (!isNative()) return;
 	try {
-		const PushNotifications = await plugin();
 		const perm = await PushNotifications.checkPermissions();
 		if (perm.receive !== 'granted') return;
 		// Best-effort: we can't read the token back, so rely on the server pruning 410s.

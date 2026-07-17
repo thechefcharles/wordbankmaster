@@ -38,3 +38,7 @@ scripts/check-nav.mjs
 *.mobileprovision
 # Local scratch folder (music, images, old backend) — not part of the app
 Wordbank Stuff/
+.env*
+!.env.example
+# Session scratch
+scratchpad/

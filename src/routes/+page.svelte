@@ -3426,15 +3426,6 @@
 					<span><Icon name={$hapticsEnabled ? 'vibrate' : 'vibrate-off'} size={16} /> Haptics</span
 					><span class="ap-state" class:on={$hapticsEnabled}>{$hapticsEnabled ? 'On' : 'Off'}</span>
 				</button>
-				{#if pushState !== 'unsupported'}
-					<button class="ap-toggle" on:click={togglePush}>
-						<span><Icon name="bell" size={16} /> Notifications</span><span
-							class="ap-state"
-							class:on={pushState === 'granted'}
-							>{pushState === 'granted' ? 'On' : pushState === 'denied' ? 'Blocked' : 'Enable'}</span
-						>
-					</button>
-				{/if}
 				<button class="ap-toggle" on:click={toggleMusic}>
 					<span>Music</span><span class="ap-state" class:on={$musicEnabled}
 						>{$musicEnabled ? 'On' : 'Off'}</span
