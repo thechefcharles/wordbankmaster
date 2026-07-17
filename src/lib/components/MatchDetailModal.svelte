@@ -26,6 +26,7 @@
 	$: noSolve = parts.length > 0 && parts.every((/** @type {any} */ p) => (p.solved ?? 0) === 0);
 	$: title = detail?.group_name || (opp ? '@' + (opp.name || 'player') : 'Challenge');
 	$: wagered = Number(m?.wager) > 0;
+	$: settled = m?.status === 'settled';
 	const money = (/** @type {any} */ n) =>
 		(Number(n) < 0 ? '−$' : '+$') + Math.abs(Math.round(Number(n ?? 0))).toLocaleString();
 	const mult = (/** @type {any} */ x) => (x ? (Number(x) / 100).toFixed(1) + '×' : '');
@@ -36,43 +37,49 @@
 	};
 	const dollars = (/** @type {any} */ n) => '$' + Number(n ?? 0).toLocaleString();
 
-	// The spend "tie-back": frame the outcome in the universal metric — who solved
-	// for the least. Works for 1v1 and groups, wagered or friendly.
 	$: field = parts.length;
 	$: winner = parts.find((/** @type {any} */ p) => Number(p.rank) === 1);
 	$: iWon = me && Number(me.rank) === 1;
-	// A 1v1 tie: both participants share rank 1 (equal spend AND equal time).
+	// A 1v1 tie: both participants share rank 1 (equal kept score AND equal time).
 	$: isTie = field === 2 && !!me && !!opp && Number(me.rank) === 1 && Number(opp.rank) === 1;
-	// 1v1 speed gap — the decider when spends are equal.
+	// 1v1 speed gap — the decider when kept scores are equal.
 	$: haveTimes = field === 2 && me?.elapsed_seconds != null && opp?.elapsed_seconds != null;
 	$: speedGap = haveTimes ? Math.abs(me.elapsed_seconds - opp.elapsed_seconds) : null;
-	$: sameSpend = !!me && !!opp && Number(me.spent) === Number(opp.spent);
-	$: tieback = (() => {
-		if (!me || noSolve || m?.status !== 'settled') return '';
-		const myS = dollars(me.spent);
-		if (isTie) return me.solved ? `Dead heat — you both solved for ${myS}.` : `Tie — no winner.`;
+	$: sameScore = !!me && !!opp && Number(me.score) === Number(opp.score);
+
+	$: verdictKind = noSolve || isTie ? 'tie' : iWon ? 'win' : 'loss';
+	$: verdictHead = noSolve ? 'NO CONTEST' : isTie ? 'TIE' : iWon ? 'VICTORY' : 'DEFEAT';
+
+	// The one-line reason: solve count first (the real driver), then kept score,
+	// then speed — never leads with "spent" (inverted: lower used to read as better).
+	$: reason = (() => {
+		if (!me || !settled) return '';
+		if (noSolve) return wagered ? 'Nobody solved — buy-in refunded.' : 'Nobody solved.';
+		if (isTie) return me.solved ? `Dead heat — you both kept ${dollars(me.score)}.` : 'Tie — no winner.';
 		if (field === 2 && opp) {
-			const oS = dollars(opp.spent),
-				on = '@' + (opp.name || 'opponent');
+			const on = '@' + (opp.name || 'opponent');
+			const solvedDiff = Number(me.solved ?? 0) !== Number(opp.solved ?? 0);
 			if (iWon) {
-				if (me.solved && sameSpend && speedGap)
-					return `Matched ${on}'s ${oS} — you solved ${fmtSecs(speedGap)} faster.`;
-				return me.solved
-					? `You solved for ${myS} — beat ${on}'s ${oS}.`
-					: `You took it — ${on} didn't solve.`;
+				if (!opp.solved) return `You took it — ${on} didn't solve.`;
+				if (solvedDiff) return `You solved ${me.solved} — ${on} got ${opp.solved}.`;
+				if (sameScore && speedGap) return `Tied on kept — you were ${fmtSecs(speedGap)} faster.`;
+				return `You kept ${dollars(me.score)} — ${on} kept ${dollars(opp.score)}.`;
 			}
-			if (Number(opp.rank) === 1) {
-				if (opp.solved && sameSpend && speedGap)
-					return `Matched ${on}'s ${oS} — but ${on} solved ${fmtSecs(speedGap)} faster.`;
-				return opp.solved ? `${on} solved for ${oS} — you spent ${myS}.` : `You spent ${myS}.`;
-			}
-			return `You spent ${myS}.`;
+			if (!me.solved) return `${on} solved — you didn't.`;
+			if (solvedDiff) return `${on} solved ${opp.solved} — you got ${me.solved}.`;
+			if (sameScore && speedGap) return `Tied on kept — ${on} was ${fmtSecs(speedGap)} faster.`;
+			return `${on} kept ${dollars(opp.score)} — you kept ${dollars(me.score)}.`;
 		}
-		if (iWon) return `You solved for ${myS} — cheapest of ${field}.`;
+		// Group / podium (3+).
+		if (iWon) return `You solved ${me.solved} — best of ${field}.`;
 		if (winner)
-			return `Winner @${winner.name || 'player'} solved for ${dollars(winner.spent)} — you placed ${ordinal(Number(me.rank))} (${myS}).`;
-		return `You placed ${ordinal(Number(me.rank))} — you spent ${myS}.`;
+			return `@${winner.name || 'player'} solved ${winner.solved} — you placed ${ordinal(Number(me.rank))} with ${me.solved}.`;
+		return `You placed ${ordinal(Number(me.rank))}.`;
 	})();
+
+	// Per-puzzle ✓/✗ needs solved_positions on at least one participant; older
+	// matches (recorded before this field existed) fall back to a plain list.
+	$: hasMarks = parts.some((/** @type {any} */ p) => (p.solved_positions?.length ?? 0) > 0);
 </script>
 
 {#if detail}
@@ -101,23 +108,26 @@
 				<p class="md-sub">
 					{m?.pack_size} puzzle{m?.pack_size === 1 ? '' : 's'}
 					· {field >= 3 ? 'podium 3·2·1' : 'winner-take-all'}
-					{#if wagered}· ${Number(m.wager).toLocaleString()} buy-in{:else}· friendly{/if}
+					{#if !wagered}· friendly{/if}
 					{#if m?.status !== 'settled'}· <em>in progress</em>{/if}
 					{#if noSolve && wagered}· buy-in refunded{/if}
 				</p>
 
-				{#if wagered && m?.status === 'settled' && me && me.net != null && !noSolve}
-					<div class="md-outcome {Number(me.net) >= 0 ? 'win' : 'loss'}">
-						<span class="md-out-net">{money(me.net)}</span>
-						<span class="md-out-lbl">
-							{#if Number(me.net) >= 0}you took the pot{#if mult(me.multiple_x100)}
-									· {mult(me.multiple_x100)}{/if}{:else}you spent ${me.spent}{/if}
-						</span>
+				{#if settled && me}
+					<div class="md-verdict {verdictKind}">
+						<div class="md-verdict-head">{verdictHead}</div>
+						{#if reason}<div class="md-verdict-reason">{reason}</div>{/if}
 					</div>
 				{/if}
 
-				{#if tieback}
-					<p class="md-tieback"><Icon name="target" size={14} /> {tieback}</p>
+				{#if wagered && settled && !noSolve && me?.net != null}
+					<p class="md-pot {Number(me.net) >= 0 ? 'win' : 'loss'}">
+						<span class="md-pot-amt">{money(me.net)}</span>
+						<span class="md-pot-lbl"
+							>{Number(me.net) >= 0 ? 'Pot won' : 'Buy-in lost'}{#if Number(me.net) >= 0 && mult(me.multiple_x100)}
+								· {mult(me.multiple_x100)}{/if}</span
+						>
+					</p>
 				{/if}
 
 				<div class="md-standings">
@@ -133,12 +143,8 @@
 							>
 							<span class="md-name">{p.is_me ? 'You' : '@' + (p.name || 'player')}</span>
 							<span class="md-meta">
-								{#if p.state === 'done'}solved {p.solved ?? 0}/{m?.pack_size}{#if p.spent != null}
-										· ${Number(p.spent).toLocaleString()} spent{/if}{#if p.elapsed_seconds != null}
-										· {fmtSecs(p.elapsed_seconds)}{/if}{#if wagered && p.net != null}
-										· <span class:pos={Number(p.net) >= 0} class:neg={Number(p.net) < 0}
-											>{money(p.net)}</span
-										>{/if}
+								{#if p.state === 'done'}Kept {dollars(p.score)} · solved {p.solved ?? 0}/{m?.pack_size}{#if p.elapsed_seconds != null}
+										· {fmtSecs(p.elapsed_seconds)}{/if}
 								{:else}{p.state}{/if}
 							</span>
 						</div>
@@ -147,7 +153,20 @@
 
 				{#if detail.pack?.length}
 					<div class="md-pack">
-						<div class="md-pack-h">Puzzles</div>
+						<div class="md-pack-h">
+							<span>Puzzles</span>
+							{#if hasMarks}
+								<span class="md-pack-legend">
+									{#each parts as p}
+										<span
+											class="md-pack-who"
+											title={p.is_me ? 'You' : '@' + (p.name || 'player')}
+											>{p.is_me ? 'Y' : (p.name || '?').charAt(0).toUpperCase()}</span
+										>
+									{/each}
+								</span>
+							{/if}
+						</div>
 						{#each detail.pack as pk}
 							<div class="md-pk">
 								<span class="md-pos">{pk.position}</span>
@@ -157,6 +176,20 @@
 								<span class="md-ans"
 									>{#if pk.phrase}“{pk.phrase}”{:else}<Icon name="lock" size={13} /> hidden until settled{/if}</span
 								>
+								{#if hasMarks}
+									<span class="md-marks">
+										{#each parts as p}
+											{@const got = (p.solved_positions ?? []).includes(pk.position)}
+											<span
+												class="md-mark"
+												class:got
+												title={(p.is_me ? 'You' : '@' + (p.name || 'player')) +
+													(got ? ' solved this' : " didn't solve this")}
+												><Icon name={got ? 'check' : 'close'} size={11} /></span
+											>
+										{/each}
+									</span>
+								{/if}
 							</div>
 						{/each}
 					</div>
@@ -214,55 +247,68 @@
 		padding: 24px 0;
 	}
 
-	.md-outcome {
-		display: flex;
-		align-items: baseline;
-		gap: 10px;
-		justify-content: center;
-		padding: 12px;
-		margin: 0 0 16px;
+	.md-verdict {
+		text-align: center;
+		padding: 16px 12px;
+		margin: 0 0 12px;
 		border-radius: var(--r-md);
 		border: 1px solid var(--border);
+		background: var(--surface);
 	}
-	.md-outcome.win {
+	.md-verdict.win {
 		background: rgba(126, 224, 168, 0.1);
 		border-color: rgba(126, 224, 168, 0.3);
 	}
-	.md-outcome.loss {
+	.md-verdict.loss {
 		background: rgba(251, 113, 133, 0.08);
 		border-color: rgba(251, 113, 133, 0.25);
 	}
-	.md-out-net {
+	.md-verdict.tie {
+		background: var(--surface);
+		border-color: var(--border-strong);
+	}
+	.md-verdict-head {
 		font-family: 'Orbitron', var(--font-display);
 		font-weight: 800;
-		font-size: 1.6rem;
+		font-size: 1.7rem;
+		letter-spacing: 0.04em;
 	}
-	.md-outcome.win .md-out-net {
+	.md-verdict.win .md-verdict-head {
 		color: #7ee0a8;
 	}
-	.md-outcome.loss .md-out-net {
+	.md-verdict.loss .md-verdict-head {
 		color: #fb7185;
 	}
-	.md-out-lbl {
-		color: var(--text-muted);
-		font-size: 0.82rem;
-	}
-	.md-tieback {
-		text-align: center;
-		font-size: 0.9rem;
-		font-weight: 600;
+	.md-verdict.tie .md-verdict-head {
 		color: var(--text);
-		margin: 0 0 16px;
-		padding: 10px 12px;
-		border-radius: var(--r-md);
-		background: rgba(251, 191, 36, 0.08);
-		border: 1px solid rgba(251, 191, 36, 0.25);
 	}
-	.md-meta .pos {
+	.md-verdict-reason {
+		margin-top: 6px;
+		color: var(--text-muted);
+		font-size: 0.86rem;
+	}
+
+	.md-pot {
+		display: flex;
+		align-items: baseline;
+		justify-content: center;
+		gap: 8px;
+		margin: 0 0 16px;
+	}
+	.md-pot-amt {
+		font-family: 'Orbitron', var(--font-display);
+		font-weight: 800;
+		font-size: 1.1rem;
+	}
+	.md-pot.win .md-pot-amt {
 		color: #7ee0a8;
 	}
-	.md-meta .neg {
+	.md-pot.loss .md-pot-amt {
 		color: #fb7185;
+	}
+	.md-pot-lbl {
+		color: var(--text-faint);
+		font-size: 0.8rem;
 	}
 
 	.md-standings {
@@ -312,11 +358,32 @@
 		padding-top: 12px;
 	}
 	.md-pack-h {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
 		color: var(--text-faint);
 		font-size: 0.72rem;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
 		margin-bottom: 8px;
+	}
+	.md-pack-legend {
+		display: flex;
+		gap: 4px;
+		text-transform: none;
+		letter-spacing: normal;
+	}
+	.md-pack-who {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 16px;
+		height: 16px;
+		border-radius: 4px;
+		font-size: 0.62rem;
+		font-weight: 700;
+		color: var(--text-faint);
+		background: rgba(255, 255, 255, 0.04);
 	}
 	.md-pk {
 		display: flex;
@@ -335,10 +402,31 @@
 		font-size: 0.74rem;
 	}
 	.md-ans {
+		flex: 1 1 auto;
+		min-width: 0;
 		color: var(--gold);
 		font-weight: 600;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+	}
+	.md-marks {
+		display: flex;
+		flex: 0 0 auto;
+		gap: 4px;
+	}
+	.md-mark {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 16px;
+		height: 16px;
+		border-radius: 4px;
+		color: var(--text-faint);
+		background: rgba(255, 255, 255, 0.04);
+	}
+	.md-mark.got {
+		color: #7ee0a8;
+		background: rgba(126, 224, 168, 0.12);
 	}
 </style>
