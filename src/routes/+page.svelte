@@ -93,6 +93,7 @@
 	import { gameWasRestored } from '$lib/stores/GameStateFlags.js';
 	import { soundEnabled, toggleSound, hapticsEnabled, toggleHaptics, fx } from '$lib/sound.js';
 	import { initPush, requestPushPermission, pushStatus, syncTimezone } from '$lib/push.js';
+	import { showPushPrimer, maybeShowPushPrimer, resolvePushPrimer } from '$lib/pushPrimer.js';
 	import {
 		startMusic,
 		stopMusic,
@@ -1843,6 +1844,20 @@
 	let fpPoints = { total: 0, best: 0 };
 	// Native push: 'granted' | 'denied' | 'prompt' | 'unsupported' (web = unsupported, toggle hidden).
 	let pushState = 'unsupported';
+	// The primer waits for a natural pause: a challenge arms it, the menu shows it. Checked
+	// once per mount — pushStatus() is a native round-trip, not something to run per render.
+	let primerChecked = false;
+	$: if (showMainMenu && hasInitialized && !primerChecked) {
+		primerChecked = true;
+		maybeShowPushPrimer();
+	}
+	/** @param {boolean} yes */
+	async function primerAnswer(yes) {
+		fx('tap');
+		const granted = await resolvePushPrimer(yes);
+		// Reflect the outcome in Settings without waiting for a reload.
+		pushState = granted ? 'granted' : await pushStatus();
+	}
 	async function togglePush() {
 		fx('tap');
 		if (pushState === 'granted') return; // iOS: can't revoke from in-app; Settings owns it
@@ -5602,6 +5617,25 @@
 		{/if}
 	{/if}
 </main>
+
+{#if $showPushPrimer}
+	<div class="modal-overlay" role="dialog" aria-modal="true" aria-label="Turn on notifications">
+		<button type="button" class="modal-backdrop" aria-label="Close" on:click={() => primerAnswer(false)}
+		></button>
+		<div class="modal-content primer-modal">
+			<div class="primer-icon"><Icon name="bell" size={28} /></div>
+			<h2 class="primer-h">Know when it's your turn</h2>
+			<p class="primer-body">
+				Challenges play out over hours. Turn on notifications and we'll tell you the moment your
+				opponent makes their move — or when a challenge is about to expire.
+			</p>
+			<div class="primer-actions">
+				<button class="primer-yes" on:click={() => primerAnswer(true)}>Turn on notifications</button>
+				<button class="primer-no" on:click={() => primerAnswer(false)}>Not now</button>
+			</div>
+		</div>
+	</div>
+{/if}
 
 <style>
 	.attendance-toast {
@@ -9522,6 +9556,56 @@
 		outline: none !important;
 	}
 
+	.primer-modal {
+		max-width: 22rem;
+		padding: 1.5rem 1.25rem 1.25rem;
+		text-align: center;
+	}
+	.primer-icon {
+		display: grid;
+		place-items: center;
+		width: 3.25rem;
+		height: 3.25rem;
+		margin: 0 auto 0.75rem;
+		border-radius: 50%;
+		background: color-mix(in srgb, var(--brand-1) 15%, transparent);
+		color: var(--brand-1);
+	}
+	.primer-h {
+		margin: 0 0 0.5rem;
+		font-size: 1.15rem;
+		text-wrap: balance;
+	}
+	.primer-body {
+		margin: 0 0 1.25rem;
+		font-size: 0.9rem;
+		line-height: 1.5;
+		color: var(--text-muted);
+	}
+	.primer-actions {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+	.primer-yes {
+		padding: 0.75rem 1rem;
+		border: none;
+		border-radius: 0.6rem;
+		background: var(--brand-grad);
+		color: #101010;
+		font-weight: 700;
+		font-size: 0.95rem;
+		cursor: pointer;
+	}
+	.primer-no {
+		padding: 0.6rem 1rem;
+		border: none;
+		border-radius: 0.6rem;
+		background: transparent;
+		color: var(--text-muted);
+		font-size: 0.9rem;
+		cursor: pointer;
+	}
 	.modal-overlay {
 		position: fixed;
 		inset: 0;
