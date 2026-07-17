@@ -1,7 +1,8 @@
 import { chromium } from 'playwright';
+import { qaBase } from './_qa-guard.mjs';
 import { mkdirSync } from 'node:fs';
 mkdirSync('screenshots', { recursive: true });
-const BASE = process.env.BASE || 'http://localhost:5173';
+const BASE = qaBase('http://localhost:5173');
 const PHASE = process.env.PHASE || 'setup';
 const ACC = { email: 'mka@example.com', pass: 'TestPass123!', user: 'mkalice' };
 const ANSWER = 'THEICEAGE';

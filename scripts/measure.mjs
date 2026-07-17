@@ -1,9 +1,10 @@
 // Measure the fixed bottom UI (keyboard / action buttons / wager bar) and screenshot
 // the game on mobile + desktop, in both daily and arcade(+wager) states.
 import { chromium } from 'playwright';
+import { qaBase } from './_qa-guard.mjs';
 import { mkdirSync } from 'node:fs';
 
-const BASE = process.env.BASE || 'http://localhost:5173';
+const BASE = qaBase('http://localhost:5173');
 const EMAIL = process.env.PW_EMAIL || 'pwtest+wb@example.com';
 const PASS = process.env.PW_PASS || 'TestPass123!';
 mkdirSync('screenshots', { recursive: true });

@@ -1,9 +1,10 @@
 // End-to-end QA sweep: signup → gates → page sweep (console-error/hang detection) →
 // play a Daily to a real solve. Run: BASE=http://localhost:5174 node scripts/qa-e2e.mjs
 import { chromium } from 'playwright';
+import { qaBase } from './_qa-guard.mjs';
 import { mkdirSync } from 'node:fs';
 
-const BASE = process.env.BASE || 'http://localhost:5174';
+const BASE = qaBase('http://localhost:5174');
 const PASS = 'TestPass123!';
 const EMAIL = process.env.QA_EMAIL || `qa${Date.now()}@example.com`;
 const UNAME = 'qa' + String(Date.now()).slice(-7);
