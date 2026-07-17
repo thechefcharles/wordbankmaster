@@ -31,3 +31,10 @@ playwright-report/
 # dev scratch / one-off
 .agents/
 scripts/check-nav.mjs
+
+# Signing keys / secrets — NEVER commit
+*.p8
+*.p12
+*.mobileprovision
+# Local scratch folder (music, images, old backend) — not part of the app
+Wordbank Stuff/
