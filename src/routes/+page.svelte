@@ -277,7 +277,10 @@
 		// Native push is a DEVICE capability, not a session one — check it on every mount so
 		// the Settings toggle appears no matter how the user signed in (fresh login, restored
 		// session, etc). Never prompts here; the one iOS prompt lives behind the toggle.
-		pushStatus().then((st) => {
+		pushState = 's0:called';
+		pushStatus((s) => {
+			pushState = s;
+		}).then((st) => {
 			pushState = st;
 			if (st === 'granted') initPush();
 		});

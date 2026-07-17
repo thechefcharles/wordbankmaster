@@ -105,20 +105,42 @@ export async function requestPushPermission() {
 	}
 }
 
+/** Reject/settle a promise that may never settle, so a hang reports itself instead of
+ * leaving the caller waiting forever.
+ * @template T @param {Promise<T>} p @param {number} ms @param {string} tag
+ * @returns {Promise<T|string>} */
+function withTimeout(p, ms, tag) {
+	return Promise.race([
+		p,
+		new Promise((resolve) => setTimeout(() => resolve('HUNG@' + tag), ms))
+	]);
+}
+
 /** Current permission state, for rendering the Settings toggle.
- * TEMP DIAGNOSTIC: returns a descriptive reason instead of swallowing failures, so we can
- * see WHY the toggle hides. Reverted once the root cause is known.
+ * TEMP DIAGNOSTIC: reports each step it reaches via `step`, and time-boxes both awaits.
+ * A Capacitor bridge call to a plugin the native binary doesn't handle never settles —
+ * that silence is indistinguishable from "never ran", so we make it name itself.
+ * Reverted once the root cause is known.
+ * @param {(s: string) => void} [step]
  * @returns {Promise<string>} */
-export async function pushStatus() {
+export async function pushStatus(step = () => {}) {
 	if (!browser) return 'nobrowser';
 	try {
 		const nat = Capacitor?.isNativePlatform?.();
 		const plat = Capacitor?.getPlatform?.();
+		step('s1:' + String(nat) + '/' + String(plat));
 		if (nat !== true) return 'notnative(' + String(nat) + '/' + String(plat) + ')';
-		const PushNotifications = await plugin();
+
+		step('s2:importing');
+		const mod = await withTimeout(plugin(), 6000, 'import');
+		if (typeof mod === 'string') return mod; // HUNG@import
+		const PushNotifications = /** @type {any} */ (mod);
 		if (!PushNotifications) return 'noplugin';
-		const r = await PushNotifications.checkPermissions();
-		return String(r?.receive ?? 'noreceive');
+
+		step('s3:checking');
+		const r = await withTimeout(PushNotifications.checkPermissions(), 6000, 'checkPerms');
+		if (typeof r === 'string') return r; // HUNG@checkPerms
+		return String(/** @type {any} */ (r)?.receive ?? 'noreceive');
 	} catch (/** @type {any} */ e) {
 		return 'err:' + String((e && e.message) || e).slice(0, 45);
 	}
