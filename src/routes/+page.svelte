@@ -202,6 +202,10 @@
 				go: () => respondToMatch(m)
 			}))
 	];
+	// Mirrors the server buy_powerup gate: an active Cash Game run, in-progress Daily,
+	// or an active challenge (server-truth signals, NOT gameStore's 'default' state).
+	$: hasActiveGame =
+		dailyInProgress || climbInProgress || resumables.some((r) => r.modeKey === 'match');
 	let showResumeMenu = false;
 	function resumeSolo(/** @type {string} */ mode) {
 		if (mode === 'daily') handleMenuDaily();
@@ -2778,7 +2782,7 @@
 			</h3>
 			{#if showMainMenu}
 				<div class="bag-inv"><InventoryList /></div>
-				{#if gameActive}
+				{#if hasActiveGame}
 					<button class="bag-store bag-store-locked" disabled
 						><Icon name="lock" size={15} /> Store closed during a game</button
 					>
