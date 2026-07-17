@@ -97,7 +97,9 @@
 					? 'Not enough Cash.'
 					: res?.reason === 'owned'
 						? 'You already own one — use it first.'
-						: 'Could not buy that.';
+						: res?.reason === 'in_game'
+							? "Can't buy items during a game — finish first."
+							: 'Could not buy that.';
 		}
 	}
 	onMount(async () => {

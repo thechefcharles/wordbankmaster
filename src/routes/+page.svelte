@@ -2778,9 +2778,15 @@
 			</h3>
 			{#if showMainMenu}
 				<div class="bag-inv"><InventoryList /></div>
-				<button class="bag-store" on:click={() => goto('/shop')}
-					><Icon name="bag" size={15} /> Go to the Store →</button
-				>
+				{#if gameActive}
+					<button class="bag-store bag-store-locked" disabled
+						><Icon name="lock" size={15} /> Store closed during a game</button
+					>
+				{:else}
+					<button class="bag-store" on:click={() => goto('/shop')}
+						><Icon name="bag" size={15} /> Go to the Store →</button
+					>
+				{/if}
 			{:else}
 				<div class="bag-use-h">Your items</div>
 				{#if vaultItems.length}
@@ -8780,6 +8786,12 @@
 		font-weight: 800;
 		color: #3a2a00;
 		background: linear-gradient(135deg, #fde047, #f59e0b);
+	}
+	.bag-store-locked {
+		cursor: not-allowed;
+		color: rgba(255, 255, 255, 0.5);
+		background: rgba(255, 255, 255, 0.08);
+		border: 1px solid rgba(255, 255, 255, 0.12);
 	}
 	/* in-game bank modal */
 	.info-big {
