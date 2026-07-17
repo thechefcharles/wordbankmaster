@@ -32,6 +32,9 @@
 	// Back then returns to the menu instead of the Overview the user never saw.
 	let deepLinked = $state(false);
 
+	// "My Items" (power-ups) block on Overview — purely presentational collapse, defaults open.
+	let itemsCollapsed = $state(false);
+
 	onMount(async () => {
 		track('profile_view');
 		const t = $page.url.searchParams.get('tab');
@@ -267,13 +270,30 @@
 				>
 			{/if}
 
-			<button class="ov-sec-link" onclick={() => goto('/shop?from=profile')}>
-				<span>My Items</span>
-				<span class="arrow">›</span>
-			</button>
-			<div class="ov-items">
-				<InventoryList addHref="/shop?from=profile" />
+			<div class="ov-sec-row">
+				<button
+					class="ov-sec-toggle"
+					onclick={() => (itemsCollapsed = !itemsCollapsed)}
+					aria-expanded={!itemsCollapsed}
+				>
+					<span class="ov-chevron" class:collapsed={itemsCollapsed}>
+						<Icon name="chevron-right" size={14} />
+					</span>
+					<span>My Items</span>
+				</button>
+				<button
+					class="ov-sec-goto"
+					onclick={() => goto('/shop?from=profile')}
+					aria-label="Go to shop"
+				>
+					<span class="arrow">›</span>
+				</button>
 			</div>
+			{#if !itemsCollapsed}
+				<div class="ov-items">
+					<InventoryList addHref="/shop?from=profile" />
+				</div>
+			{/if}
 
 			<div class="ov-nav">
 				<button class="ov-link" onclick={() => (tab = 'stats')}
@@ -804,6 +824,49 @@
 	.ov-sec-link .arrow {
 		margin-left: auto;
 		color: var(--text-faint);
+	}
+	/* My Items: header split into a collapse-toggle + a distinct shop-nav affordance. */
+	.ov-sec-row {
+		display: flex;
+		align-items: center;
+		width: 100%;
+		margin: 18px 2px 8px;
+	}
+	.ov-sec-toggle {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: 0;
+		font-family: var(--font-display);
+		font-size: 0.72rem;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--gold);
+	}
+	.ov-chevron {
+		display: inline-flex;
+		color: var(--text-faint);
+		transform: rotate(90deg);
+		transition: transform 0.18s ease;
+	}
+	.ov-chevron.collapsed {
+		transform: rotate(0deg);
+	}
+	.ov-sec-goto {
+		margin-left: auto;
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: 4px;
+		line-height: 1;
+	}
+	.ov-sec-goto .arrow {
+		color: var(--text-faint);
+		font-size: 0.95rem;
 	}
 	.ov-badge-grid {
 		display: grid;

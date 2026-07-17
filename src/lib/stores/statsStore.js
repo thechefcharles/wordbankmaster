@@ -1043,7 +1043,8 @@ export async function makeupSubmitGuess(date, guess) {
 /* ===== Challenge Builder (configurable N-player packs) ===== */
 /**
  * @param {{ opponent?:string|null, group_id?:string|null, categories?:string[], pack_size?:number,
- *   mode?:string, wager?:number, payout?:string, window_seconds?:number, items_allowed?:boolean }} opts
+ *   mode?:string, wager?:number, payout?:string, window_seconds?:number, items_allowed?:boolean,
+ *   clock_mode?:string, clock_seconds?:number|null, time_scores?:boolean }} opts
  * @returns {Promise<{ok:boolean, reason?:string, match?:any}>}
  */
 export async function createMatch(opts) {
@@ -1056,7 +1057,10 @@ export async function createMatch(opts) {
 		p_wager: opts.wager ?? 0,
 		p_payout: opts.payout ?? 'winner',
 		p_window_seconds: opts.window_seconds ?? 172800,
-		p_items_allowed: opts.items_allowed ?? false
+		p_items_allowed: opts.items_allowed ?? false,
+		p_clock_mode: opts.clock_mode ?? 'none',
+		p_clock_seconds: opts.clock_seconds ?? null,
+		p_time_scores: opts.time_scores ?? false
 	});
 	if (error || !data) {
 		if (error) console.error('❌ create_match:', error);

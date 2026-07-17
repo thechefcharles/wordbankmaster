@@ -34,7 +34,7 @@
 		sabotage_tax: { icon: 'percent', desc: "An opponent's letters cost +50%" },
 		sabotage_fog: { icon: 'fog', desc: "Hide an opponent's clue" },
 		sabotage_toll: { icon: 'toll', desc: "An opponent's next letter costs 3×" },
-		sabotage_vowel_block: { icon: 'block', desc: "An opponent's vowels cost 3×" },
+		sabotage_vowel_block: { icon: 'block', desc: "An opponent's vowels cost 3× for their next 3 buys" },
 		sabotage_lock: { icon: 'trash', desc: "Wipe the opponent's most-recently-revealed letter" }
 	};
 	// ticon = Icon.svelte name for the group heading (rendered via <Icon>).

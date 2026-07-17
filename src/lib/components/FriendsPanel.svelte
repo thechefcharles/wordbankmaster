@@ -1,7 +1,7 @@
 <script>
 	// Friends management — search/add, requests, your list. Reused by the /friends
 	// route and the Community ▸ People ▸ Friends tab.
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
 	import {
@@ -14,6 +14,7 @@
 	} from '$lib/stores/statsStore.js';
 	import { requireConfirm } from '$lib/confirm.js';
 	import { fx } from '$lib/sound.js';
+	import { supabase } from '$lib/supabaseClient';
 
 	/** Optional: called to start a challenge with a friend (username). */
 	let { onChallenge = null } = $props();
@@ -40,11 +41,51 @@
 		outgoing = r.outgoing ?? [];
 	}
 
+	/** @type {any} */
+	let channel;
+	/** @type {ReturnType<typeof setTimeout>|undefined} */
+	let reloadTimer;
+	// Coalesce bursts of friend_requests changes into one re-fetch.
+	function scheduleReload() {
+		clearTimeout(reloadTimer);
+		reloadTimer = setTimeout(() => load(), 150);
+	}
+
 	onMount(async () => {
 		try {
 			await load();
 		} finally {
 			loading = false;
+		}
+		// Realtime: when a friend_requests row involving me changes, re-derive the
+		// incoming/outgoing/friends lists live. RLS ("friend_requests_self") scopes
+		// delivery to rows where I'm requester or addressee, so an unfiltered
+		// subscription only fires for me. On accept the server deletes the request
+		// row (+ inserts the friendship), so my outgoing "Pending" flips to a friend
+		// and the recipient's incoming request disappears — all without a poll.
+		try {
+			const { data } = await supabase.auth.getSession();
+			const uid = data?.session?.user?.id;
+			if (uid) {
+				channel = supabase
+					.channel(`friends:${uid}`)
+					.on(
+						'postgres_changes',
+						{ event: '*', schema: 'public', table: 'friend_requests' },
+						() => scheduleReload()
+					)
+					.subscribe();
+			}
+		} catch {
+			/* realtime is best-effort; the panel still works via manual load() */
+		}
+	});
+
+	onDestroy(() => {
+		clearTimeout(reloadTimer);
+		if (channel) {
+			supabase.removeChannel(channel);
+			channel = undefined;
 		}
 	});
 

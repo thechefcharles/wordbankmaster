@@ -202,6 +202,10 @@
 				go: () => respondToMatch(m)
 			}))
 	];
+	// Mirrors the server buy_powerup gate: an active Cash Game run, in-progress Daily,
+	// or an active challenge (server-truth signals, NOT gameStore's 'default' state).
+	$: hasActiveGame =
+		dailyInProgress || climbInProgress || resumables.some((r) => r.modeKey === 'match');
 	let showResumeMenu = false;
 	function resumeSolo(/** @type {string} */ mode) {
 		if (mode === 'daily') handleMenuDaily();
@@ -654,6 +658,35 @@
 		$gameStore.gameState !== 'won' &&
 		$gameStore.gameState !== 'lost';
 	$: matchOpenedAt = matchInfo?.started_at ? new Date(matchInfo.started_at).getTime() : null;
+
+	// ⏱️ Timed challenges (creator-configurable): when a clock is set, the match timer slot
+	// shows a countdown instead of the count-up above — anchored to puzzle_started_at for a
+	// per-puzzle clock, started_at for a whole-match clock. Server is authoritative (_match_tick
+	// folds on expiry); the client just displays it and pokes the server once it hits 0.
+	$: matchClockOn = isMatch && !!matchInfo && matchInfo.clock_mode && matchInfo.clock_mode !== 'none';
+	$: matchClockAnchorMs = matchClockOn
+		? new Date(
+				matchInfo.clock_mode === 'match' ? matchInfo.started_at : matchInfo.puzzle_started_at
+			).getTime()
+		: null;
+	$: matchClockSeconds = matchClockOn ? (matchInfo?.clock_seconds ?? null) : null;
+	// Bound from SolveTimer's countdown; gated by matchTimerActive so it can't linger true
+	// after the puzzle/match ends (the timer stops ticking, freezing the last value otherwise).
+	let matchClockDangerRaw = false;
+	$: matchClockDanger = matchTimerActive && matchClockOn && matchClockDangerRaw;
+	let matchClockExpireFiring = false;
+	/** Countdown hit 0 — poke the server once so the authoritative tick (_match_tick) resolves
+	 *  it (force-folds the expired puzzle/match). Reuses the existing fold path; matchFold()
+	 *  itself is a no-op if the participant is no longer active, so this can't double-fold. */
+	async function handleMatchClockExpire() {
+		if (matchClockExpireFiring) return;
+		matchClockExpireFiring = true;
+		try {
+			await matchFold();
+		} finally {
+			matchClockExpireFiring = false;
+		}
+	}
 
 	// 🎰 Slot-machine money feel: count the hero number up/down; float a −$X off it on each spend.
 	const tweenNet = tweened(0, { duration: 900, easing: cubicOut });
@@ -2031,7 +2064,47 @@
 	let mbCategories = [];
 	let mbPackSize = 3;
 	let mbWager = 500;
-	let mbPayout = 'winner'; // derived from field size at settle; kept for the RPC signature
+	let mbPayout = 'winner'; // 'winner' (whole pot to top scorer) | 'podium' (top finishers split). Group-only choice; 1v1 is always 'winner'.
+	// Live clock (creator-configurable; identical for 1v1 & group). 'none' = today's behavior
+	// (async, no live clock). 'puzzle' = a countdown per puzzle; 'match' = one countdown for
+	// the whole pack. mbClockSeconds is the chosen duration for whichever scope is picked.
+	let mbClockMode = 'none'; // 'none' | 'puzzle' | 'match'
+	/** @type {number|null} */
+	let mbClockSeconds = null;
+	let mbTimeScores = false; // speed bonus: leftover time on solve adds points (only when a clock is set)
+	const CLOCK_PUZZLE_DURATIONS = [
+		{ v: 30, l: '30s' },
+		{ v: 60, l: '1m' },
+		{ v: 120, l: '2m' },
+		{ v: 300, l: '5m' }
+	];
+	const CLOCK_MATCH_DURATIONS = [
+		{ v: 180, l: '3m' },
+		{ v: 600, l: '10m' },
+		{ v: 1800, l: '30m' }
+	];
+	/** @param {'none'|'puzzle'|'match'} mode */
+	function setClockMode(mode) {
+		fx('tap');
+		mbClockMode = mode;
+		if (mode === 'none') {
+			mbClockSeconds = null;
+			mbTimeScores = false;
+		} else {
+			const opts = mode === 'puzzle' ? CLOCK_PUZZLE_DURATIONS : CLOCK_MATCH_DURATIONS;
+			if (!opts.some((o) => o.v === mbClockSeconds)) mbClockSeconds = opts[0].v;
+		}
+	}
+	// "Per-puzzle · 1m · speed bonus" / null when no timer — the confirm-step summary line.
+	$: mbClockLabel =
+		mbClockMode === 'none'
+			? null
+			: (mbClockMode === 'puzzle' ? 'Per-puzzle' : 'Whole-match') +
+				' · ' +
+				((mbClockMode === 'puzzle' ? CLOCK_PUZZLE_DURATIONS : CLOCK_MATCH_DURATIONS).find(
+					(o) => o.v === mbClockSeconds
+				)?.l ?? '') +
+				(mbTimeScores ? ' · speed bonus' : '');
 	// Challenge tier antes (ante = stake = pot size; payout is by field size at settle).
 	const CHALLENGE_TIERS = [
 		{ v: 0, label: 'Friendly' },
@@ -2045,11 +2118,15 @@
 	let mbBusy = false;
 	// Wizard: step 1 (Who) needs an opponent before Continue is allowed.
 	$: mbStep1Ok = mbTarget === 'friend' ? mbOpponent.trim().length > 0 : !!mbGroupId;
+	// A 1v1 is winner-take-all only — force it whenever the target is a friend (any entry path).
+	$: if (mbTarget === 'friend') mbPayout = 'winner';
 	$: potSummary =
 		mbWager === 0
 			? 'Friendly — no stakes, just bragging rights.'
 			: mbTarget === 'group'
-				? `Everyone antes $${mbWager.toLocaleString()} → the pot; top finishers split it. Spend less to keep more.`
+				? mbPayout === 'winner'
+					? `Everyone antes $${mbWager.toLocaleString()} → the pot; winner takes the whole pot. Spend less to keep more.`
+					: `Everyone antes $${mbWager.toLocaleString()} → the pot; top finishers split it. Spend less to keep more.`
 				: `You both ante $${mbWager.toLocaleString()} → $${(mbWager * 2).toLocaleString()} pot · winner takes all.`;
 	/** @type {{username:string,is_friend:boolean}[]} */
 	let mbResults = [];
@@ -2183,8 +2260,9 @@
 			{ label: 'Buy-in', value: w > 0 ? '$' + w.toLocaleString() : 'Friendly' },
 			{
 				label: 'Payout',
-				value: mbTarget === 'group' ? 'Top finishers split the pot' : 'Winner takes all'
-			}
+				value: mbPayout === 'podium' ? 'Top finishers split the pot' : 'Winner takes all'
+			},
+			...(mbClockLabel ? [{ label: 'Timing', value: mbClockLabel }] : [])
 		];
 		try {
 			await requirePin(w > 0 ? 'Send & stake your buy-in' : 'Send this challenge', createStakes);
@@ -2202,7 +2280,10 @@
 			wager: Math.floor(Number(mbWager) || 0),
 			payout: mbPayout,
 			window_seconds: mbWindow,
-			items_allowed: mbItemsAllowed
+			items_allowed: mbItemsAllowed,
+			clock_mode: mbClockMode,
+			clock_seconds: mbClockSeconds,
+			time_scores: mbTimeScores
 		});
 		mbBusy = false;
 		if (res?.ok) {
@@ -2236,10 +2317,12 @@
 				label: 'Buy-in',
 				value: Number(m.wager) > 0 ? '$' + Number(m.wager).toLocaleString() : 'Friendly'
 			},
-			// _match_settle: ≤2 paid → winner takes all; 3+ → top finishers split (70/30, 60/30/10).
+			// Payout is the creator's stored choice: 'winner' → whole pot to the top scorer;
+			// 'podium' → top finishers split (70/30 for 3, 60/30/10 for 4+). 1v1 is always winner.
 			{
 				label: 'Payout',
-				value: Number(m.players) > 2 ? 'Top finishers split the pot' : 'Winner takes all'
+				value:
+					(m.payout === 'podium' && Number(m.players) > 2) ? 'Top finishers split the pot' : 'Winner takes all'
 			}
 		];
 		if (Number(m.wager) > 0 && netWorth != null)
@@ -2772,9 +2855,15 @@
 			</h3>
 			{#if showMainMenu}
 				<div class="bag-inv"><InventoryList /></div>
-				<button class="bag-store" on:click={() => goto('/shop')}
-					><Icon name="bag" size={15} /> Go to the Store →</button
-				>
+				{#if hasActiveGame}
+					<button class="bag-store bag-store-locked" disabled
+						><Icon name="lock" size={15} /> Store closed during a game</button
+					>
+				{:else}
+					<button class="bag-store" on:click={() => goto('/shop')}
+						><Icon name="bag" size={15} /> Go to the Store →</button
+					>
+				{/if}
 			{:else}
 				<div class="bag-use-h">Your items</div>
 				{#if vaultItems.length}
@@ -3355,7 +3444,11 @@
 	</div>
 {/if}
 
-<main class:danger-active={dangerMode && !overdriveArmed && $gameStore.gameState !== 'guess_mode'}>
+<main
+	class:danger-active={(dangerMode || matchClockDanger) &&
+		!overdriveArmed &&
+		$gameStore.gameState !== 'guess_mode'}
+>
 	<!-- 👤 First-run: pick a username (required to play socially) -->
 	{#if loggedIn && hasInitialized && needsUsername}
 		<div
@@ -3881,7 +3974,10 @@
 									type="button"
 									class="ch-mode"
 									class:active={mbTarget === 'group'}
-									on:click={() => (mbTarget = 'group')}
+									on:click={() => {
+											mbTarget = 'group';
+											mbPayout = 'podium';
+										}}
 									><Icon name="users" size={16} /> A group<small>everyone in it</small></button
 								>
 							</div>
@@ -3992,6 +4088,62 @@
 										>{/each}
 								</div>
 							</div>
+
+							<div class="ch-field">
+								<span>Timing</span>
+								<div class="ch-seg">
+									<button
+										type="button"
+										class="ch-seg-btn"
+										class:on={mbClockMode === 'none'}
+										on:click={() => setClockMode('none')}>No timer</button
+									>
+									<button
+										type="button"
+										class="ch-seg-btn"
+										class:on={mbClockMode === 'puzzle'}
+										on:click={() => setClockMode('puzzle')}>Per-puzzle</button
+									>
+									<button
+										type="button"
+										class="ch-seg-btn"
+										class:on={mbClockMode === 'match'}
+										on:click={() => setClockMode('match')}>Whole-match</button
+									>
+								</div>
+								{#if mbClockMode !== 'none'}
+									<div class="ch-seg ch-seg-durations">
+										{#each mbClockMode === 'puzzle' ? CLOCK_PUZZLE_DURATIONS : CLOCK_MATCH_DURATIONS as d}
+											<button
+												type="button"
+												class="ch-seg-btn"
+												class:on={mbClockSeconds === d.v}
+												on:click={() => {
+													mbClockSeconds = d.v;
+													fx('tap');
+												}}>{d.l}</button
+											>
+										{/each}
+									</div>
+									<button
+										type="button"
+										class="ch-toggle"
+										class:on={mbTimeScores}
+										on:click={() => {
+											mbTimeScores = !mbTimeScores;
+											fx('tap');
+										}}
+									>
+										<span class="ch-tog-box"
+											>{#if mbTimeScores}<Icon name="check" size={13} />{/if}</span
+										>
+										<Icon name="bolt" size={14} /> Speed bonus
+									</button>
+									<p class="ch-hint">Solve faster to earn bonus points.</p>
+								{:else}
+									<p class="ch-hint">No clock — play at your own pace, like today.</p>
+								{/if}
+							</div>
 						{:else}
 							<!-- Step 3 · Stakes -->
 							<div class="ch-step-title">The stakes</div>
@@ -4011,6 +4163,31 @@
 									{/each}
 								</div>
 							</div>
+							{#if mbTarget === 'group'}
+								<div class="ch-field">
+									<span>Payout</span>
+									<div class="ch-seg">
+										<button
+											type="button"
+											class="ch-seg-btn"
+											class:on={mbPayout === 'winner'}
+											on:click={() => {
+												mbPayout = 'winner';
+												fx('tap');
+											}}>Winner takes all</button
+										>
+										<button
+											type="button"
+											class="ch-seg-btn"
+											class:on={mbPayout === 'podium'}
+											on:click={() => {
+												mbPayout = 'podium';
+												fx('tap');
+											}}>Top finishers split</button
+										>
+									</div>
+								</div>
+							{/if}
 							<label class="ch-field"
 								><span>Respond within</span>
 								<select class="ch-input" bind:value={mbWindow}
@@ -4417,8 +4594,9 @@
 	{:else}
 		<!-- ✅ GAME UI (Visible only when logged in) -->
 
-		<!-- 🚨 Last-stand red vignette — frames the whole screen when you're out of money. -->
-		{#if dangerMode}
+		<!-- 🚨 Last-stand red vignette — frames the whole screen when you're out of money, or
+		     (timed challenges) when the live clock is about to run out. -->
+		{#if dangerMode || matchClockDanger}
 			<div class="danger-vignette" class:daily={isDaily} aria-hidden="true"></div>
 		{/if}
 
@@ -4467,16 +4645,20 @@
 			</div>
 		{/if}
 
-		<!-- Match solve timer — same server-anchored count-up treatment as Daily. Anchored to
-		     matchInfo.started_at (challenge_participants.started_at, stamped once when the
-		     player starts the match — NOT reset per puzzle), so it tracks total time in the
-		     match, pausing its visual only at each puzzle's win screen like Daily does. -->
+		<!-- Match solve timer. Untimed challenges (clock_mode='none', today's default): same
+		     server-anchored count-up as Daily, anchored to matchInfo.started_at (stamped once
+		     at match_start — NOT reset per puzzle). Timed challenges: a countdown instead,
+		     anchored to puzzle_started_at ('puzzle' clock) or started_at ('match' clock);
+		     hitting 0 pokes the server so the authoritative fold resolves it. -->
 		{#if isMatch && matchInfo && !matchInfo.done && $gameStore.currentPhrase}
 			<div class="daily-timer-wrap">
 				<SolveTimer
-					openedAt={matchOpenedAt}
+					openedAt={matchClockOn ? matchClockAnchorMs : matchOpenedAt}
+					countdownSeconds={matchClockOn ? matchClockSeconds : null}
 					active={matchTimerActive}
 					solved={$gameStore.gameState === 'won'}
+					bind:danger={matchClockDangerRaw}
+					on:expire={handleMatchClockExpire}
 				/>
 			</div>
 		{/if}
@@ -8746,6 +8928,12 @@
 		font-weight: 800;
 		color: #3a2a00;
 		background: linear-gradient(135deg, #fde047, #f59e0b);
+	}
+	.bag-store-locked {
+		cursor: not-allowed;
+		color: rgba(255, 255, 255, 0.5);
+		background: rgba(255, 255, 255, 0.08);
+		border: 1px solid rgba(255, 255, 255, 0.12);
 	}
 	/* in-game bank modal */
 	.info-big {
