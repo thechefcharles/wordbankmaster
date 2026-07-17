@@ -1844,12 +1844,18 @@
 	let fpPoints = { total: 0, best: 0 };
 	// Native push: 'granted' | 'denied' | 'prompt' | 'unsupported' (web = unsupported, toggle hidden).
 	let pushState = 'unsupported';
-	// The primer waits for a natural pause: a challenge arms it, the menu shows it. Checked
-	// once per mount — pushStatus() is a native round-trip, not something to run per render.
-	let primerChecked = false;
-	$: if (showMainMenu && hasInitialized && !primerChecked) {
-		primerChecked = true;
-		maybeShowPushPrimer();
+	// The primer waits for a natural pause: a challenge arms it, the menu shows it. Fire on each
+	// menu ENTRY (edge false->true), not once per mount — a challenge is created mid-session and
+	// the player returns to the menu afterward, so a one-shot guard would miss it. maybeShow…()
+	// synchronously no-ops unless armed, so re-running it on every menu entry is cheap.
+	let menuWasShown = false;
+	$: if (showMainMenu && hasInitialized) {
+		if (!menuWasShown) {
+			menuWasShown = true;
+			maybeShowPushPrimer();
+		}
+	} else {
+		menuWasShown = false;
 	}
 	/** @param {boolean} yes */
 	async function primerAnswer(yes) {
