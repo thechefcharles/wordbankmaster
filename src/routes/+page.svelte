@@ -92,7 +92,7 @@
 	} from '$lib/stores/localGameUtils.js';
 	import { gameWasRestored } from '$lib/stores/GameStateFlags.js';
 	import { soundEnabled, toggleSound, hapticsEnabled, toggleHaptics, fx } from '$lib/sound.js';
-	import { initPush, requestPushPermission, pushStatus } from '$lib/push.js';
+	import { initPush, requestPushPermission, pushStatus, syncTimezone } from '$lib/push.js';
 	import {
 		startMusic,
 		stopMusic,
@@ -327,6 +327,8 @@
 			}
 
 			user.set(/** @type {{ id: string }} */ (session.user));
+			// Fire-and-forget: retention pushes need a timezone to pick a local hour.
+			syncTimezone();
 			const profile = await loadUserProfile(session.user.id);
 			if (!profile) {
 				initError =

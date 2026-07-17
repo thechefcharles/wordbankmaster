@@ -119,6 +119,28 @@ export async function pushStatus() {
 	}
 }
 
+/**
+ * Record this user's IANA timezone so retention pushes land at a sane LOCAL hour
+ * (and respect quiet hours) instead of firing at 3am. Best-effort and fire-and-forget:
+ * a failure here must never affect app start.
+ *
+ * Not native-only — a web user's timezone is just as valid, and they may install the
+ * app later. Cached in localStorage so we issue at most one write per device per zone;
+ * travel/DST changes the zone string, which re-syncs on the next launch.
+ */
+export async function syncTimezone() {
+	if (!browser) return;
+	try {
+		const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+		if (!tz) return;
+		if (localStorage.getItem('wb_tz') === tz) return;
+		const { data } = await supabase.rpc('set_timezone', { p_tz: tz });
+		if (data?.ok) localStorage.setItem('wb_tz', tz);
+	} catch (e) {
+		console.warn('[push] timezone sync failed', e);
+	}
+}
+
 /** Clear the app-icon badge (call when the notifications inbox is opened). */
 export async function clearBadge() {
 	if (!isNative()) return;
