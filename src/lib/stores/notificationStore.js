@@ -79,13 +79,15 @@ export function startNotifications(uid) {
 		if (!document.hidden) poll();
 	};
 	document.addEventListener('visibilitychange', onVis);
-	// Realtime: a new challenge / friend request shows up instantly (not just on poll).
+	// Realtime: a new challenge / friend request shows up instantly (INSERT); a self-cleared
+		// one (e.g. the server deletes the friend-request notification when you accept)
+		// disappears live too (UPDATE = read, DELETE = dismissed).
 	if (uid) {
 		channel = supabase
 			.channel(`notifs:${uid}`)
 			.on(
 				'postgres_changes',
-				{ event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${uid}` },
+				{ event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${uid}` },
 				() => poll()
 			)
 			.subscribe();
