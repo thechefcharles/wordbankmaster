@@ -543,7 +543,8 @@
 	$: dangerMode =
 		((isClimb && !!climb?.must_guess) ||
 			(isDaily && !!$gameStore.dailyMustGuess) ||
-			(isFreeplay && !!$gameStore.dailyMustGuess)) &&
+			(isFreeplay && !!$gameStore.dailyMustGuess) ||
+			(isMatch && !!matchInfo?.must_guess)) &&
 		gameActive &&
 		$gameStore.gameState !== 'won' &&
 		$gameStore.gameState !== 'lost';
@@ -641,6 +642,18 @@
 		!introBuilding &&
 		$gameStore.gameState !== 'won' &&
 		$gameStore.gameState !== 'lost';
+
+	// Same server-anchored count-up for a live match — driven by matchInfo.started_at
+	// (challenge_participants.started_at, stamped once at match_start; not per-puzzle).
+	$: matchTimerActive =
+		isMatch &&
+		!!matchInfo &&
+		!matchInfo.done &&
+		!showMainMenu &&
+		!introBuilding &&
+		$gameStore.gameState !== 'won' &&
+		$gameStore.gameState !== 'lost';
+	$: matchOpenedAt = matchInfo?.started_at ? new Date(matchInfo.started_at).getTime() : null;
 
 	// 🎰 Slot-machine money feel: count the hero number up/down; float a −$X off it on each spend.
 	const tweenNet = tweened(0, { duration: 900, easing: cubicOut });
@@ -822,7 +835,9 @@
 							if (it.id === 'heat_shield') continue;
 							// Self-buffs work in BOTH the Cash Game and Challenges.
 							const climbUsed = (climb?.equipped ?? []).includes(it.id);
-							const matchUsed = (matchInfo?.used_powerups ?? []).includes(it.id);
+							// Match cap: ONE power-up total per puzzle (server: powerup_reason=one_per_puzzle).
+							// Grey the whole tray once any power-up has been used this puzzle, not just this one.
+							const matchCapReached = (matchInfo?.used_powerups ?? []).length >= 1;
 							// 🏧 Overdrive is a Cash-Game lifeline: only usable when you're out of money.
 							const isOverdrive = it.id === 'overdrive';
 							// ⏭️ Free Skip swaps the run's puzzle — Cash Game only, not Challenges.
@@ -837,7 +852,7 @@
 								isMatch &&
 								!!matchInfo?.items_allowed &&
 								gameActive &&
-								!matchUsed &&
+								!matchCapReached &&
 								(it.owned ?? 0) > 0 &&
 								!isOverdrive &&
 								!isFreeSkip;
@@ -856,7 +871,7 @@
 								count: it.owned,
 								usable: avail,
 								reason:
-									climbUsed || matchUsed
+									climbUsed || matchCapReached
 										? 'Already used on this puzzle.'
 										: isOverdrive && $gameStore.gameMode === 'climb' && !climb?.must_guess
 											? 'Use it when you run out of money.'
@@ -930,7 +945,8 @@
 			return;
 		} // keeps flow for the target step
 		else if (isMatch) {
-			matchPowerup(item.id).then(() => {
+			matchPowerup(item.id).then((board) => {
+				noticeFromBoard(board);
 				refreshClimbPups();
 				loadVault();
 			});
@@ -940,6 +956,12 @@
 	// 😈 Sabotage from the bag → pick a target (auto-applies vs a single opponent).
 	/** @type {{ item:any, opponents:any[] }|null} */
 	let sabPicker = null;
+	// 🌫️ Fog only lands on the target's NEXT puzzle → uncastable when they're on their last one.
+	/** @param {string} id → can this opponent be fogged right now? (server: opponents[].can_fog) */
+	function canFogTarget(id) {
+		const o = (matchInfo?.opponents ?? []).find((/** @type {any} */ x) => x.id === id);
+		return o ? o.can_fog !== false : true;
+	}
 	/** @param {any} item */
 	async function openSabotagePicker(item) {
 		showBag = false;
@@ -950,10 +972,16 @@
 			vaultMsg = 'No opponents left to hit.';
 			return;
 		}
+		// Auto-apply vs a single opponent — unless it's Fog with nothing left to fog,
+		// in which case fall through to the picker so the disabled row explains why.
 		if (opps.length === 1) {
-			await matchSabotageOpponent(opps[0].id, item.id);
-			await refreshClimbPups();
-			return;
+			const blocked = item.id === 'sabotage_fog' && !canFogTarget(opps[0].id);
+			if (!blocked) {
+				const board = await matchSabotageOpponent(opps[0].id, item.id);
+				noticeFromBoard(board, opps[0].name);
+				await refreshClimbPups();
+				return;
+			}
 		}
 		sabPicker = { item, opponents: opps };
 	}
@@ -961,8 +989,12 @@
 	async function applySabotage(targetId) {
 		if (!sabPicker) return;
 		const item = sabPicker.item;
+		const targetName = (sabPicker.opponents ?? []).find(
+			(/** @type {any} */ o) => o.id === targetId
+		)?.name;
 		sabPicker = null;
-		await matchSabotageOpponent(targetId, item.id);
+		const board = await matchSabotageOpponent(targetId, item.id);
+		noticeFromBoard(board, targetName);
 		await refreshClimbPups();
 	}
 
@@ -1021,38 +1053,12 @@
 		_prevNet = v ?? null;
 	}
 
-	// ── Fold + broke-timer (Daily + Challenges) ──────────────────────────────
-	// You're "broke" when you can't afford the cheapest still-buyable letter →
-	// a 60s clock starts; guess it or you auto-Fold (lose the puzzle).
-	// Mirror of the server-authoritative public.letter_cost() (economy v3.2: −25%, cheapest $20).
-	const LETTER_COSTS = {
-		Q: 20,
-		W: 40,
-		E: 100,
-		R: 90,
-		T: 90,
-		Y: 50,
-		U: 60,
-		I: 80,
-		O: 70,
-		P: 60,
-		A: 100,
-		S: 90,
-		D: 60,
-		F: 50,
-		G: 50,
-		H: 50,
-		J: 20,
-		K: 40,
-		L: 60,
-		Z: 30,
-		X: 30,
-		C: 60,
-		V: 40,
-		B: 50,
-		N: 80,
-		M: 50
-	};
+	// ── Fold + broke-timer (Match last-stand) ──────────────────────────────
+	// Broke = the server says nothing is affordable (matchInfo.must_guess —
+	// authoritative, already accounts for debuffs/tax/vowel_block/toll). The
+	// player gets the danger screen + a visible 60s countdown for ONE final
+	// guess: a wrong guess folds server-side (match_submit_guess), the timer
+	// expiring folds client-side via doFold(true).
 	// foldMode = modes with a "Give up" button (Daily + Challenges).
 	$: foldMode = $gameStore.gameMode === 'daily' || $gameStore.gameMode === 'match';
 	// brokeMode = modes with the out-of-Cash auto-fold CLOCK. The Daily has NO timer —
@@ -1088,24 +1094,38 @@
 		}, 2600);
 	}
 
-	$: isBroke = (() => {
-		// Only while actively on a game screen — never on the menu.
-		if (!brokeMode || !gameActive || showMainMenu) return false;
-		const mod = $gameStore.modifier,
-			discount = mod === 'discount',
-			vowelHalf = mod === 'vowel_vision';
-		const purchased = new Set(($gameStore.purchasedLetters || []).filter(Boolean));
-		const incorrect = new Set($gameStore.incorrectLetters || []);
-		let minCost = Infinity;
-		for (const [L, base] of Object.entries(LETTER_COSTS)) {
-			if (purchased.has(L) || incorrect.has(L)) continue;
-			let c = base;
-			if (discount) c = Math.ceil(c * 0.75);
-			if (vowelHalf && 'AEIOU'.includes(L)) c = Math.ceil(c * 0.5);
-			if (c < minCost) minCost = c;
-		}
-		return minCost !== Infinity && ($gameStore.bankroll || 0) < minCost;
-	})();
+	// 💥 Match usage-cap notices: the server rejects a 2nd power-up / a repeat sabotage
+	// (or an uncastable fog/erase) and tags the board with powerup_reason/sabotage_reason.
+	// Flash a short toast so the tap doesn't feel like a silent no-op.
+	let matchNotice = /** @type {{ id:number, text:string }|null} */ (null);
+	let _matchNoticeId = 0;
+	/** @param {string} text */
+	function flashMatchNotice(text) {
+		if (!browser || !text) return;
+		const id = ++_matchNoticeId;
+		matchNotice = { id, text };
+		setTimeout(() => {
+			if (matchNotice?.id === id) matchNotice = null;
+		}, 2600);
+	}
+	/**
+	 * Inspect a returned match board for a cap/reject reason and toast it.
+	 * @param {any} board @param {string} [targetName]
+	 */
+	function noticeFromBoard(board, targetName) {
+		const pr = board?.powerup_reason,
+			sr = board?.sabotage_reason;
+		if (pr === 'one_per_puzzle') flashMatchNotice('One power-up per puzzle');
+		else if (sr === 'already_sabotaged')
+			flashMatchNotice(`You've already sabotaged ${targetName || 'them'} this puzzle`);
+		else if (sr === 'no_next_puzzle') flashMatchNotice('Nothing left to fog');
+		else if (sr === 'nothing_to_erase')
+			flashMatchNotice('They have no revealed letter to erase');
+	}
+
+	// Server-authoritative: matchInfo.must_guess already applies the real cost
+	// stack (half_off/tax/vowel_block) for THIS player's debuffs — no local mirror needed.
+	$: isBroke = brokeMode && gameActive && !showMainMenu && !!matchInfo?.must_guess;
 	let brokeDeadline = 0,
 		brokeLeft = 0,
 		brokeFiring = false;
@@ -1196,11 +1216,8 @@
 			).length
 		: 0;
 	$: usableMatchPups =
-		isMatch && matchInfo?.items_allowed
-			? selfPups.filter(
-					(/** @type {any} */ i) =>
-						(i.owned ?? 0) > 0 && !(matchInfo?.used_powerups ?? []).includes(i.id)
-				).length
+		isMatch && matchInfo?.items_allowed && (matchInfo?.used_powerups ?? []).length === 0
+			? selfPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0).length
 			: 0;
 	/** @type {'heat'|'earn'|'streak'|null} ℹ️ Cash Game explainers (mirror of dailyInfo). */
 	let climbInfo = null;
@@ -1236,17 +1253,17 @@
 		sabotage_fog: 'fog',
 		sabotage_toll: 'toll',
 		sabotage_vowel_block: 'block',
-		sabotage_lock: 'lock'
+		sabotage_lock: 'trash'
 	});
 	const DEBUFF_LABEL = /** @type {Record<string,string>} */ ({
 		tax: 'Taxed (letters +50%)',
-		fog: 'Fogged (clue hidden)',
+		fog: 'Fogged (clue hidden — buy 3 to clear)',
 		toll: 'Tolled (next letter 3×)',
 		vowel_block: 'Vowel-blocked (vowels 3×)'
 	});
 	const DEBUFF_DESC = /** @type {Record<string,string>} */ ({
 		tax: 'Every letter you buy costs +50% while this is active.',
-		fog: 'Your clue is hidden — you have to solve it blind.',
+		fog: 'Your next puzzle starts blind — buy 3 letters to clear the fog.',
 		toll: 'Your next letter purchase costs 3×, then it clears.',
 		vowel_block: 'Vowels cost 3× while this is active.'
 	});
@@ -2566,6 +2583,11 @@
 {/if}
 <!-- Skip retired in Cash Game V4 — Cash Out is the graceful bail. -->
 
+<!-- 🏆 Pot — top bar, left of the WORDBANK title, mirroring the chat control on the right -->
+{#if isMatch && matchPot > 0 && !showMainMenu}
+	<div class="pot-chip-top">Pot <b>${matchPot.toLocaleString()}</b></div>
+{/if}
+
 <!-- 💬 Match chat (1v1 + group challenges) — only inside a live match, never on the menu -->
 {#if isMatch && matchInfo && !showMainMenu}
 	<button
@@ -2716,6 +2738,11 @@
 <!-- 🎁 Daily Twist "as it happens" explainer toast -->
 {#if twistToast}
 	<div class="twist-toast" role="status">{twistToast.text}</div>
+{/if}
+
+<!-- 💥 Match usage-cap notice (one power-up / already sabotaged / nothing to fog·erase) -->
+{#if matchNotice}
+	<div class="twist-toast" role="status">{matchNotice.text}</div>
 {/if}
 
 <!-- 🔐 Vault door-open animation (from the main menu, after the PIN) → then items -->
@@ -3191,13 +3218,27 @@
 			<h3 class="info-title">{sabPicker.item.name} — hit who?</h3>
 			<div class="sab-target-list">
 				{#each sabPicker.opponents as o}
-					<button class="sab-target-row" on:click={() => applySabotage(o.id)}>
-						<span class="st-name">{o.name}</span>
-						<span class="st-stat"
-							><Icon name="puzzle" size={14} /> Puzzle {o.position} · ${Number(
-								o.ante_left ?? 0
-							).toLocaleString()}</span
-						>
+					{@const isFog = sabPicker.item.id === 'sabotage_fog'}
+					{@const fogBlocked = isFog && !canFogTarget(o.id)}
+					<button
+						class="sab-target-row"
+						class:is-disabled={fogBlocked}
+						disabled={fogBlocked}
+						title={fogBlocked ? 'Nothing left to fog.' : ''}
+						on:click={() => applySabotage(o.id)}
+					>
+						<span class="st-name">{isFog ? `Fog ${o.name}` : o.name}</span>
+						<span class="st-stat">
+							{#if fogBlocked}
+								Nothing left to fog.
+							{:else if isFog}
+								Their next puzzle starts blind (3 buys)
+							{:else}
+								<Icon name="puzzle" size={14} /> Puzzle {o.position} · ${Number(
+									o.ante_left ?? 0
+								).toLocaleString()}
+							{/if}
+						</span>
 					</button>
 				{/each}
 			</div>
@@ -4412,6 +4453,20 @@
 			</div>
 		{/if}
 
+		<!-- Match solve timer — same server-anchored count-up treatment as Daily. Anchored to
+		     matchInfo.started_at (challenge_participants.started_at, stamped once when the
+		     player starts the match — NOT reset per puzzle), so it tracks total time in the
+		     match, pausing its visual only at each puzzle's win screen like Daily does. -->
+		{#if isMatch && matchInfo && !matchInfo.done && $gameStore.currentPhrase}
+			<div class="daily-timer-wrap">
+				<SolveTimer
+					openedAt={matchOpenedAt}
+					active={matchTimerActive}
+					solved={$gameStore.gameState === 'won'}
+				/>
+			</div>
+		{/if}
+
 		<!-- 💰 Bankroll — top of every mode. Challenge ante now lives in the bounty hero below. -->
 		{#if $gameStore.currentPhrase && $gameStore.gameMode}
 			<!-- 🪙 Small ambient bankroll chip — your account, shown quietly; the hero number
@@ -4514,6 +4569,20 @@
 			</div>
 		{/if}
 
+		<!-- 🚨 Match out-of-money last stand — same danger treatment as Daily/Free Play, plus
+		     a live countdown: ONE guess left. A wrong guess folds server-side
+		     (match_submit_guess); the countdown expiring folds it client-side (doFold(true)). -->
+		{#if isMatch && dangerMode}
+			<div class="danger-cue daily" role="alert">
+				<span class="dc-title"><Icon name="broke" size={16} /> OUT OF MONEY</span>
+				<span class="dc-sub">Last guess — solve it now, or you fold</span>
+				<span class="dc-sub"
+					><Icon name="timer" size={13} /> 0:{String(brokeLeft).padStart(2, '0')}</span
+				>
+				<button class="bn-forfeit" on:click={confirmFold}>Give up now?</button>
+			</div>
+		{/if}
+
 		<!-- ⚔️ Challenge match HUD -->
 		{#if isMatch && matchInfo && !matchInfo.done}
 			<!-- 🏆 Your Score — the accumulated bounty-kept you win the pot on. The center hero
@@ -4523,7 +4592,6 @@
 				<span class="ms-val">{isFriendlyMatch ? '★' : '$'}{Math.round(matchInfo.total_score ?? 0).toLocaleString()}</span>
 			</div>
 			<div class="match-meta">
-				{#if matchPot > 0}<span class="pot-chip">Pot ${matchPot.toLocaleString()}</span>{/if}
 				{#if matchInfo.target != null}<span class="beat-chip"
 						>Beat {isFriendlyMatch ? '★' : '$'}{Number(
 							matchInfo.target
@@ -4585,16 +4653,6 @@
 		<section class="phrase-section">
 			<PhraseDisplay on:revealComplete={onPhraseRevealComplete} on:introDone={onDailyIntroDone} />
 		</section>
-
-		<!-- ⏱ Out-of-Cash broke-timer — live Challenges only (Daily has no timer) -->
-		{#if brokeMode && gameActive && isBroke}
-			<div class="fold-bar broke">
-				<span class="fold-timer"
-					><Icon name="timer" size={13} /> 0:{String(brokeLeft).padStart(2, '0')}</span
-				>
-				<span class="fold-warn">Out of Cash — guess in time or you give up this one</span>
-			</div>
-		{/if}
 
 		<!-- 💰 Money hero -->
 		<section class="stats-section">
@@ -5543,15 +5601,6 @@
 		justify-content: safe center;
 	}
 
-	@keyframes pressurePulse {
-		0%,
-		100% {
-			box-shadow: 0 0 0 rgba(248, 113, 113, 0);
-		}
-		50% {
-			box-shadow: 0 0 16px rgba(248, 113, 113, 0.35);
-		}
-	}
 	.makeup-banner {
 		display: flex;
 		align-items: center;
@@ -5613,18 +5662,6 @@
 		font-weight: 700;
 		font-size: 0.8rem;
 		color: var(--text-muted);
-	}
-	/* 🏆 Pot you're playing for — the prize, off the Score headline */
-	.pot-chip {
-		font-family: var(--font-display);
-		font-weight: 800;
-		font-size: 0.8rem;
-		color: #fcd34d;
-		background: rgba(252, 211, 77, 0.12);
-		border: 1px solid rgba(252, 211, 77, 0.3);
-		padding: 3px 11px;
-		border-radius: 999px;
-		font-variant-numeric: tabular-nums;
 	}
 	/* 🎯 The score to beat (opponent has played) — the async duel's live target */
 	.beat-chip {
@@ -5691,6 +5728,14 @@
 	}
 	.sab-target-row:active {
 		transform: scale(0.98);
+	}
+	.sab-target-row.is-disabled {
+		opacity: 0.45;
+		cursor: not-allowed;
+		filter: grayscale(0.7);
+	}
+	.sab-target-row.is-disabled:active {
+		transform: none;
 	}
 	.st-name {
 		font-weight: 800;
@@ -6015,35 +6060,6 @@
 	}
 	.twist-chip:active {
 		transform: scale(0.92);
-	}
-	/* ⓘ re-open the "How to win" card */
-	.fold-bar {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 10px;
-		flex-wrap: wrap;
-		margin: 6px auto 2px;
-	}
-	.fold-bar.broke {
-		padding: 8px 14px;
-		border-radius: 12px;
-		max-width: 340px;
-		background: rgba(248, 113, 113, 0.12);
-		border: 1px solid rgba(248, 113, 113, 0.5);
-		animation: pressurePulse 1s ease-in-out infinite;
-	}
-	.fold-timer {
-		font-family: 'Orbitron', var(--font-display);
-		font-weight: 800;
-		font-size: 1.25rem;
-		color: #f87171;
-	}
-	.fold-warn {
-		font-size: 0.76rem;
-		color: #fca5a5;
-		flex: 1 1 140px;
-		text-align: left;
 	}
 	.puzzle-clue {
 		max-width: 340px;
@@ -7192,6 +7208,32 @@
 		transform: scale(0.93);
 	}
 	/* match chat — sits just below the help button so they never overlap */
+	/* 🏆 Pot — top bar, left of the title, mirrors .match-chat-btn on the opposite side */
+	.pot-chip-top {
+		position: fixed;
+		top: 60px;
+		left: 14px;
+		z-index: 1000;
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		padding: 9px 14px;
+		border-radius: 999px;
+		font-family: var(--font-display);
+		font-size: 0.84rem;
+		font-weight: 700;
+		color: #fcd34d;
+		background: var(--surface-strong, rgba(20, 28, 40, 0.9));
+		border: 1px solid rgba(252, 211, 77, 0.5);
+		backdrop-filter: blur(10px);
+		box-shadow:
+			0 2px 12px rgba(0, 0, 0, 0.4),
+			0 0 12px rgba(252, 211, 77, 0.15);
+		font-variant-numeric: tabular-nums;
+	}
+	.pot-chip-top b {
+		font-weight: 800;
+	}
 	.match-chat-btn {
 		position: fixed;
 		top: 60px;

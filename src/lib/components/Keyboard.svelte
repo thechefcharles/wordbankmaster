@@ -82,8 +82,22 @@
 	// 1 everywhere else. Server (climb_buy_letter) charges the same.
 	$: climbMult =
 		$gameStore.gameMode === 'climb' ? Number($gameStore.climbInfo?.stake ?? 1) || 1 : 1;
-	// Effective per-letter prices after active discount / vowel_vision / tier stake (server matches):
-	// daily uses the shared modifier.
+	// Match (1v1 challenge) sabotage/power-up state — cost stack mirrors server
+	// match_buy_letter exactly: half_off (×0.5) → tax (×1.5) → vowel_block (×3 on
+	// vowels) → toll (×3 on all, one-shot "next letter" surcharge). CEIL after the
+	// ×0.5 and ×1.5 steps, same as the server's CEIL(v_cost * 0.5)::int etc.
+	$: matchHalfOff =
+		$gameStore.gameMode === 'match' &&
+		($gameStore.matchInfo?.used_powerups ?? []).includes('half_off');
+	$: matchDebuffs =
+		$gameStore.gameMode === 'match' ? ($gameStore.matchInfo?.my_debuffs ?? []) : [];
+	$: matchTax = matchDebuffs.includes('tax');
+	$: matchVowelBlock = matchDebuffs.includes('vowel_block');
+	$: matchToll = matchDebuffs.includes('toll');
+
+	// Effective per-letter prices after active discount / vowel_vision / tier stake / match
+	// sabotage (server matches): daily uses the shared modifier, match applies the debuff/
+	// power-up stack above.
 	$: effCosts = (() => {
 		let discount = false,
 			vowelHalf = false;
@@ -97,10 +111,25 @@
 			let c = letterCosts[k];
 			if (discount) c = Math.ceil(c * 0.75);
 			if (vowelHalf && 'AEIOU'.includes(k)) c = Math.ceil(c * 0.5);
-			out[k] = c * climbMult;
+			c = c * climbMult;
+			if ($gameStore.gameMode === 'match') {
+				if (matchHalfOff) c = Math.ceil(c * 0.5);
+				if (matchTax) c = Math.ceil(c * 1.5);
+				if (matchVowelBlock && 'AEIOU'.includes(k)) c = c * 3;
+				if (matchToll) c = c * 3;
+			}
+			out[k] = c;
 		}
 		return out;
 	})();
+	// A key is "taxed" (sabotage/tax inflated it above its plain base price) — flag it with
+	// a visual tint/▲ so the price shown is never a surprise vs. what the server charges.
+	$: taxedKeys =
+		$gameStore.gameMode === 'match'
+			? Object.keys(letterCosts).filter(
+					(k) => (effCosts[k] ?? 0) > letterCosts[k] * climbMult
+				)
+			: [];
 
 	type SelectedPurchase = { type: string; value?: string } | null;
 	type LockedLetters = Record<string, unknown>;
@@ -236,20 +265,23 @@
 			<button
 				tabindex="-1"
 				class="key
-      {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''} 
+      {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''}
       {selectedPurchase?.type === 'letter' &&
 				selectedPurchase.value === letter &&
 				$gameStore.gameState === 'purchase_pending'
 					? 'pending'
 					: ''}
       {lockedLetters[letter] ? 'purchased' : ''}
-      {incorrectLetters.includes(letter) ? 'incorrect' : ''}"
+      {incorrectLetters.includes(letter) ? 'incorrect' : ''}
+      {taxedKeys.includes(letter) ? 'taxed' : ''}"
 				on:click={() => handleLetterClick(letter)}
 			>
 				<span class="braille">{BRAILLE[letter]}</span>
 				<div class="letter">{letter}</div>
 				<div class="price">
-					{priceMark}{effCosts[letter] ?? 0}
+					{#if taxedKeys.includes(letter)}<span class="tax-mark">▲</span>{/if}{priceMark}{effCosts[
+						letter
+					] ?? 0}
 				</div>
 			</button>
 		{/each}
@@ -262,7 +294,7 @@
 				tabindex="-1"
 				class="key {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode'
 					? 'disabled'
-					: ''} 
+					: ''}
                 {selectedPurchase?.type === 'letter' &&
 				selectedPurchase.value === letter &&
 				$gameStore.gameState === 'purchase_pending'
@@ -271,13 +303,16 @@
 						? 'purchased'
 						: incorrectLetters.includes(letter)
 							? 'incorrect'
-							: ''}"
+							: ''}
+                {taxedKeys.includes(letter) ? 'taxed' : ''}"
 				on:click={() => handleLetterClick(letter)}
 			>
 				<span class="braille">{BRAILLE[letter]}</span>
 				<div class="letter">{letter}</div>
 				<div class="price">
-					{priceMark}{effCosts[letter] ?? 0}
+					{#if taxedKeys.includes(letter)}<span class="tax-mark">▲</span>{/if}{priceMark}{effCosts[
+						letter
+					] ?? 0}
 				</div>
 			</button>
 		{/each}
@@ -290,7 +325,7 @@
 				tabindex="-1"
 				class="key {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode'
 					? 'disabled'
-					: ''} 
+					: ''}
                 {selectedPurchase?.type === 'letter' &&
 				selectedPurchase.value === letter &&
 				$gameStore.gameState === 'purchase_pending'
@@ -299,13 +334,16 @@
 						? 'purchased'
 						: incorrectLetters.includes(letter)
 							? 'incorrect'
-							: ''}"
+							: ''}
+                {taxedKeys.includes(letter) ? 'taxed' : ''}"
 				on:click={() => handleLetterClick(letter)}
 			>
 				<span class="braille">{BRAILLE[letter]}</span>
 				<div class="letter">{letter}</div>
 				<div class="price">
-					{priceMark}{effCosts[letter] ?? 0}
+					{#if taxedKeys.includes(letter)}<span class="tax-mark">▲</span>{/if}{priceMark}{effCosts[
+						letter
+					] ?? 0}
 				</div>
 			</button>
 		{/each}
@@ -517,6 +555,24 @@
 		opacity: 0.4;
 		pointer-events: none;
 		transition: opacity 0.3s ease;
+	}
+
+	/* Match sabotage surcharge (tax/vowel_block/toll): a warm red tint + ▲ marker so an
+	   inflated price is never mistaken for the plain base price. */
+	.key.taxed:not(.purchased):not(.incorrect) {
+		border-color: rgba(248, 113, 113, 0.55);
+		box-shadow:
+			inset 0 0 10px rgba(248, 113, 113, 0.14),
+			0 2px 0 rgba(0, 0, 0, 0.6),
+			0 4px 8px rgba(0, 0, 0, 0.5);
+	}
+	.key.taxed:not(.purchased):not(.incorrect) .price {
+		color: rgba(248, 113, 113, 0.85);
+	}
+	.tax-mark {
+		font-size: 7px;
+		margin-right: 1px;
+		color: rgba(248, 113, 113, 0.9);
 	}
 
 	/* In guess mode, all letters are tappable */
