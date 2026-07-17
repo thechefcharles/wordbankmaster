@@ -450,6 +450,17 @@
 	// PIN gate: unlock screen for returning users; set-PIN after username for new ones.
 	$: showPinUnlock = loggedIn && hasInitialized && $pinLocked;
 	$: showPinSetup = loggedIn && hasInitialized && !$pinLocked && pinNotSet && !needsUsername;
+	// Single source of truth for "the user is actually on the live main menu" — fully past
+	// the auth, username, and PIN gates, and not inside a puzzle. Declared AFTER the gate
+	// flags above so it (and everything gated on it) recomputes with fresh gate values in the
+	// same reactive pass — no flash where music/tutorial fire before the PIN prompt.
+	$: onLiveMenu =
+		loggedIn &&
+		hasInitialized &&
+		showMainMenu &&
+		!needsUsername &&
+		!showPinUnlock &&
+		!showPinSetup;
 	// ===== Home "act-now" banner: the single most-urgent thing needing me =====
 	/** @type {any[]} incoming friend requests [{id,name,username}] */
 	let friendRequests = [];
@@ -484,10 +495,11 @@
 		pinNotSet = false;
 		handleLogout();
 	}
-	// Background music: play continuously through the whole session — menu AND in-game
-	// (it loops seamlessly across screens) — pausing only while locked / setting a PIN.
+	// Background music: MENU ONLY. Plays only on the live main menu (onLiveMenu covers the
+	// auth/username/PIN gates and excludes puzzles), and never over the tutorial / launch
+	// welcome. Stops the moment a puzzle starts.
 	$: if (browser) {
-		if (loggedIn && hasInitialized && !showPinUnlock && !showPinSetup) startMusic();
+		if (onLiveMenu && !showTutorial && !showLaunchWelcome) startMusic();
 		else stopMusic();
 	}
 
@@ -1479,17 +1491,9 @@
 	// Bump this key whenever the tutorial gains new content — it re-shows for
 	// everyone on next login (v3 = persistent Cash, spend-the-least, attendance, no loans).
 	const TUTORIAL_KEY = 'wb_tutorial_v3';
-	// First-run guided tutorial: show once a signed-in user is past the username/PIN
-	// gates and on the menu (not while those full-screen gates are up).
-	$: if (
-		browser &&
-		loggedIn &&
-		hasInitialized &&
-		!needsUsername &&
-		!showPinUnlock &&
-		!showPinSetup &&
-		localStorage.getItem(TUTORIAL_KEY) !== 'true'
-	) {
+	// First-run guided tutorial: only once the user is on the live main menu, fully past
+	// the username/PIN gates (onLiveMenu) — never before the PIN prompt.
+	$: if (browser && onLiveMenu && localStorage.getItem(TUTORIAL_KEY) !== 'true') {
 		showTutorial = true;
 	}
 
@@ -1498,12 +1502,7 @@
 	const LAUNCH_KEY = 'wb_launch_welcome_v1';
 	$: if (
 		browser &&
-		loggedIn &&
-		hasInitialized &&
-		showMainMenu &&
-		!needsUsername &&
-		!showPinUnlock &&
-		!showPinSetup &&
+		onLiveMenu &&
 		!showTutorial &&
 		localStorage.getItem(TUTORIAL_KEY) === 'true' &&
 		localStorage.getItem(LAUNCH_KEY) !== '1'
@@ -5120,6 +5119,13 @@
 						{@const mult = Number(dr.mult ?? $gameStore.bountyMult ?? 1)}
 						{@const prize = Number(dr.base ?? 0)}
 						{@const kept = Number(dr.kept ?? Math.max(0, prize - (dr.spent ?? 0)))}
+						{@const wrongSolves = Number($gameStore.wrongGuesses ?? 0)}
+						<!-- Wrong solves are the only thing that cuts the Daily multiplier below its base,
+						     so the lost winnings = (base mult − applied mult) × subtotal. -->
+						{@const wrongCost = Math.max(
+							0,
+							Math.round((Number($gameStore.bountyMult ?? mult) - mult) * kept)
+						)}
 						{@const banked = Number(
 							dr.winnings ?? dr.banked ?? dr.reward ?? Math.round(kept * mult)
 						)}
@@ -5170,6 +5176,13 @@
 									>−${(dr.spent ?? 0).toLocaleString()}</span
 								>
 							</div>
+							{#if wrongSolves > 0}
+								<div class="rcpt-line">
+									<span>Wrong solves <small>×{wrongSolves}</small></span><span
+										class="neg">{wrongCost > 0 ? `−$${wrongCost.toLocaleString()}` : '—'}</span
+									>
+								</div>
+							{/if}
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line">
 								<span>Subtotal</span><span>${kept.toLocaleString()}</span>
