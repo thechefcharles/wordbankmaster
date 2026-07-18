@@ -157,6 +157,18 @@
 	$: disabledKeys = Object.keys(letterCosts).filter(
 		(letter: string) => (effCosts[letter] ?? 0) > affordPool || incorrectLetters.includes(letter)
 	);
+	// 🟢 Keys you CAN still buy right now: price within budget, not already bought/wrong. Gets a
+	// green price (matching the green budget number) so the buyable set reads at a glance —
+	// only meaningful in purchase mode (guess mode types any letter for free).
+	$: affordableKeys =
+		$gameStore.gameState !== 'guess_mode'
+			? Object.keys(letterCosts).filter(
+					(letter: string) =>
+						(effCosts[letter] ?? 0) <= affordPool &&
+						!lockedLetters[letter] &&
+						!incorrectLetters.includes(letter)
+				)
+			: [];
 
 	/**
 	 * 🔹 Letter click logic for both guess mode and purchase mode.
@@ -266,6 +278,7 @@
 				tabindex="-1"
 				class="key
       {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode' ? 'disabled' : ''}
+      {affordableKeys.includes(letter) ? 'affordable' : ''}
       {selectedPurchase?.type === 'letter' &&
 				selectedPurchase.value === letter &&
 				$gameStore.gameState === 'purchase_pending'
@@ -295,6 +308,7 @@
 				class="key {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode'
 					? 'disabled'
 					: ''}
+                {affordableKeys.includes(letter) ? 'affordable' : ''}
                 {selectedPurchase?.type === 'letter' &&
 				selectedPurchase.value === letter &&
 				$gameStore.gameState === 'purchase_pending'
@@ -326,6 +340,7 @@
 				class="key {disabledKeys.includes(letter) && $gameStore.gameState !== 'guess_mode'
 					? 'disabled'
 					: ''}
+                {affordableKeys.includes(letter) ? 'affordable' : ''}
                 {selectedPurchase?.type === 'letter' &&
 				selectedPurchase.value === letter &&
 				$gameStore.gameState === 'purchase_pending'
@@ -555,11 +570,26 @@
 		}
 	}
 
-	/* Unaffordable letters: dim, not blurred */
+	/* Can't afford it (or wrong): clearly recede — dim + desaturate + grey the price, so the
+	   buyable keys stand out by contrast. */
 	.key.disabled {
-		opacity: 0.4;
+		opacity: 0.32;
+		filter: grayscale(0.7);
 		pointer-events: none;
-		transition: opacity 0.3s ease;
+		transition:
+			opacity 0.25s ease,
+			filter 0.25s ease;
+	}
+	.key.disabled .price {
+		color: var(--text-faint, #5d6b80);
+	}
+	/* 🟢 Can still buy it: green price (matches the green budget number) + a faint green edge,
+	   so the affordable set reads at a glance without checking each price. */
+	.key.affordable:not(.purchased):not(.pending) .price {
+		color: #4ade80;
+	}
+	.key.affordable:not(.purchased):not(.pending):not(.taxed) {
+		border-color: rgba(74, 222, 128, 0.45);
 	}
 
 	/* Match sabotage surcharge (tax/vowel_block/toll): a warm red tint + ▲ marker so an
