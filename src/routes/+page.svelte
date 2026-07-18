@@ -815,9 +815,9 @@
 							// it's not tap-to-use, so keep it out of the usable tray.
 							if (it.id === 'heat_shield') continue;
 							// Self-buffs work in BOTH the Cash Game and Challenges.
-							const climbUsed = (climb?.equipped ?? []).includes(it.id);
-							// Match cap: ONE power-up total per puzzle (server: powerup_reason=one_per_puzzle).
-							// Grey the whole tray once any power-up has been used this puzzle, not just this one.
+							// ONE power-up per puzzle in BOTH modes — grey the whole tray once any has
+							// been used this puzzle (server enforces: climb + powerup_reason=one_per_puzzle).
+							const climbCapReached = (climb?.equipped ?? []).length >= 1;
 							const matchCapReached = (matchInfo?.used_powerups ?? []).length >= 1;
 							// 🏧 Overdrive is a Cash-Game lifeline: only usable when you're out of money.
 							const isOverdrive = it.id === 'overdrive';
@@ -826,7 +826,7 @@
 							const climbAvail =
 								$gameStore.gameMode === 'climb' &&
 								gameActive &&
-								!climbUsed &&
+								!climbCapReached &&
 								(it.owned ?? 0) > 0 &&
 								(!isOverdrive || !!climb?.must_guess);
 							const matchAvail =
@@ -852,7 +852,7 @@
 								count: it.owned,
 								usable: avail,
 								reason:
-									climbUsed || matchCapReached
+									climbCapReached || matchCapReached
 										? 'Already used on this puzzle.'
 										: isOverdrive && $gameStore.gameMode === 'climb' && !climb?.must_guess
 											? 'Use it when you run out of money.'
@@ -1191,11 +1191,10 @@
 	$: climbStreak = Math.max(0, Math.round(((climb?.heat ?? 100) - 100) / 10));
 	// 🔥 The run: solves + cumulative profit since heat last reset (run_profit can be negative early).
 	// Owned, not-yet-used climb buffs — drives the vault badge by the Solve button.
-	$: usableClimbPups = isClimb
-		? selfPups.filter(
-				(/** @type {any} */ i) => (i.owned ?? 0) > 0 && !(climb?.equipped ?? []).includes(i.id)
-			).length
-		: 0;
+	$: usableClimbPups =
+		isClimb && (climb?.equipped ?? []).length === 0
+			? selfPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0).length
+			: 0;
 	$: usableMatchPups =
 		isMatch && matchInfo?.items_allowed && (matchInfo?.used_powerups ?? []).length === 0
 			? selfPups.filter((/** @type {any} */ i) => (i.owned ?? 0) > 0).length
