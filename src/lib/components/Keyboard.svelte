@@ -400,6 +400,11 @@
 		color: #f4e7c6;
 		border-radius: 8px;
 		cursor: pointer;
+		/* Snappy, reliable taps on mobile — no double-tap-zoom delay, no long-press select. */
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
+		user-select: none;
+		-webkit-user-select: none;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
