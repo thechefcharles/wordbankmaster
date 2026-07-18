@@ -105,17 +105,7 @@
 		currentTrackId,
 		selectTrack
 	} from '$lib/music.js';
-	import PinGate from '$lib/components/PinGate.svelte';
-	import {
-		pinLocked,
-		hasPinFor,
-		clearPin,
-		markUnlocked,
-		sessionIsUnlocked,
-		markPinSkipped,
-		pinSkipped,
-		clearPinSkipped
-	} from '$lib/pin.js';
+	import { hasPinFor, clearPin } from '$lib/pin.js';
 	import { requirePin } from '$lib/pinConfirm.js';
 	import { requireConfirm } from '$lib/confirm.js';
 	import { goto, replaceState } from '$app/navigation';
@@ -144,7 +134,6 @@
 	let hasTriggeredModal = false;
 	let hasInitialized = false;
 	let sessionUid = ''; // current session user id (for the PIN gate)
-	let pinNotSet = false; // logged in on this device with no PIN yet → prompt setup
 	/** @type {string | null} */
 	let initError = null; // 🔍 Diagnostic: what failed during init
 	/** Show main menu (Daily / Cash Game / Leaderboard / My account) when true; game when false */
@@ -327,14 +316,9 @@
 				return;
 			}
 
-			// Device PIN gate (approach A): if a PIN is set on this device, lock until it's
-			// entered; otherwise mark that we should prompt to set one (after username).
+			// No sign-in PIN gate: the PIN is only for money actions and is created lazily on
+			// the first purchase/wager (see pinConfirm.js). Opening the app never asks for it.
 			sessionUid = session.user.id;
-			// Lock only on a cold open (close → reopen), not on in-app navigation back
-			// to the menu — sessionIsUnlocked() persists the unlock for this app session.
-			if (hasPinFor(sessionUid)) {
-				if (!sessionIsUnlocked()) pinLocked.set(true);
-			} else pinNotSet = !pinSkipped(sessionUid); // don't re-nag if they chose "Skip for now"
 
 			// Make-up daily launched from the streak calendar → drop straight into the board.
 			if (localStorage.getItem('gameMode') === 'makeup' && localStorage.getItem('makeupDate')) {
@@ -447,20 +431,10 @@
 
 	// Reactive state values
 	$: loggedIn = !!$user?.id;
-	// PIN gate: unlock screen for returning users; set-PIN after username for new ones.
-	$: showPinUnlock = loggedIn && hasInitialized && $pinLocked;
-	$: showPinSetup = loggedIn && hasInitialized && !$pinLocked && pinNotSet && !needsUsername;
-	// Single source of truth for "the user is actually on the live main menu" — fully past
-	// the auth, username, and PIN gates, and not inside a puzzle. Declared AFTER the gate
-	// flags above so it (and everything gated on it) recomputes with fresh gate values in the
-	// same reactive pass — no flash where music/tutorial fire before the PIN prompt.
-	$: onLiveMenu =
-		loggedIn &&
-		hasInitialized &&
-		showMainMenu &&
-		!needsUsername &&
-		!showPinUnlock &&
-		!showPinSetup;
+	// Single source of truth for "the user is actually on the live main menu" — past auth +
+	// username, on the menu, not inside a puzzle. Gates music/tutorial/launch-welcome so none
+	// fire before the user is really there. (No sign-in PIN gate anymore.)
+	$: onLiveMenu = loggedIn && hasInitialized && showMainMenu && !needsUsername;
 	// ===== Home "act-now" banner: the single most-urgent thing needing me =====
 	/** @type {any[]} incoming friend requests [{id,name,username}] */
 	let friendRequests = [];
@@ -474,27 +448,6 @@
 	}
 	// (Resume + challenge-invite + friend-request notifications now live as their own
 	//  top-of-menu buttons — see resumables / challengeInvites / friendRequests.)
-	function onPinUnlocked() {
-		markUnlocked();
-		pinLocked.set(false);
-	}
-	function onPinSet() {
-		markUnlocked();
-		clearPinSkipped();
-		pinNotSet = false;
-	}
-	function onPinSkip() {
-		markUnlocked();
-		markPinSkipped(sessionUid);
-		pinNotSet = false;
-	} // remember the skip so it doesn't nag every open
-	function onPinLogout() {
-		clearPin();
-		clearPinSkipped();
-		pinLocked.set(false);
-		pinNotSet = false;
-		handleLogout();
-	}
 	// Background music: MENU ONLY. Plays only on the live main menu (onLiveMenu covers the
 	// auth/username/PIN gates and excludes puzzles), and never over the tutorial / launch
 	// welcome. Stops the moment a puzzle starts.
@@ -1521,8 +1474,6 @@
 		loggedIn &&
 		hasInitialized &&
 		!needsUsername &&
-		!showPinUnlock &&
-		!showPinSetup &&
 		!challengeDeepLinkDone
 	) {
 		challengeDeepLinkDone = true;
@@ -1563,9 +1514,7 @@
 		$inboxRequest > _inboxSeen &&
 		loggedIn &&
 		hasInitialized &&
-		!needsUsername &&
-		!showPinUnlock &&
-		!showPinSetup
+		!needsUsername
 	) {
 		_inboxSeen = $inboxRequest;
 		if ($inboxTarget === 'people') {
@@ -1637,14 +1586,7 @@
 	}
 
 	// Detect entering a game from the menu (latch flips once per entry).
-	$: if (
-		browser &&
-		loggedIn &&
-		hasInitialized &&
-		!needsUsername &&
-		!showPinUnlock &&
-		!showPinSetup
-	) {
+	$: if (browser && loggedIn && hasInitialized && !needsUsername) {
 		if (showMainMenu) {
 			_wasMenu = true;
 		} else if (
@@ -1699,8 +1641,12 @@
 		}
 		showMyAccount = false;
 		clearPin();
-		clearPinSkipped();
-		pinNotSet = true; // → the create-new-PIN screen
+		// No PIN now → requirePin opens the create flow. Set the new one right away.
+		try {
+			await requirePin('Create your new PIN');
+		} catch {
+			/* cancelled — leaves no PIN, which is fine: it's re-created at the next money action */
+		}
 	}
 	// 🔓 Forgot PIN (from Settings) — verify by email + password, then set a new PIN.
 	async function forgotPin() {
@@ -1715,7 +1661,6 @@
 			return;
 		showMyAccount = false;
 		clearPin();
-		clearPinSkipped();
 		handleLogout();
 	}
 
@@ -3509,27 +3454,6 @@
 		</div>
 	{/if}
 
-	<!-- 🔐 PIN gate: unlock (returning) or set (new), full-screen over everything -->
-	{#if showPinUnlock}
-		<PinGate
-			mode="unlock"
-			uid={sessionUid}
-			name={maUsername}
-			balance={netWorth}
-			on:unlocked={onPinUnlocked}
-			on:logout={onPinLogout}
-		/>
-	{:else if showPinSetup}
-		<PinGate
-			mode="set"
-			uid={sessionUid}
-			name={maUsername}
-			on:pinset={onPinSet}
-			on:skip={onPinSkip}
-			on:logout={onPinLogout}
-		/>
-	{/if}
-
 	{#if !loggedIn}
 		<!-- 🔐 Login Screen -->
 		<div class="auth-screen">
@@ -3538,11 +3462,6 @@
 	{:else if !hasInitialized}
 		<!-- ⏳ Loading (prevents flash of game UI / diagnostic before we know menu vs game) -->
 		<div class="init-loading">Loading…</div>
-	{:else if showPinUnlock || showPinSetup}
-		<!-- 🔒 PIN gate is up (the PinGate overlay above owns the screen). Render NOTHING
-		     behind it: the menu's fixed top bar sits at z-index 3000+ (above the PIN's 2500),
-		     so if the menu rendered here it would overlap the keypad and swallow taps on the
-		     top row — and it would flash the menu before the PIN appears. -->
 	{:else if showMainMenu}
 		<!-- 🏠 Main Menu (after sign-in) -->
 		<div class="main-menu fade-up">

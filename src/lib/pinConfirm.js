@@ -1,16 +1,23 @@
-// One-off PIN confirmation for sensitive Cash commitments (shop purchases,
-// entering a wagered challenge). Distinct from the app-lock: this gates a single
-// action, then returns control. requirePin() resolves when verified, rejects on
-// cancel, and is a no-op (resolves) if no device PIN is set.
+// One-off PIN gate for sensitive Cash commitments (shop purchases, entering a wagered
+// challenge). This is the ONLY place the PIN is used — there is no app-lock / sign-in PIN.
+//
+// requirePin() resolves when confirmed, rejects on cancel. Lazy setup: the FIRST time a
+// user hits a money action with no PIN yet, it opens a "create your PIN" flow instead of a
+// verify — they set it in-context, then the action proceeds. After that it's a quick verify.
 import { writable, get } from 'svelte/store';
-import { hasPinFor } from '$lib/pin.js';
-import { user } from '$lib/stores/userStore.js';
+import { hasPinFor, rememberedName } from '$lib/pin.js';
+import { user, userProfile } from '$lib/stores/userStore.js';
 import { supabase } from '$lib/supabaseClient';
 
-/** @type {import('svelte/store').Writable<null | {reason:string, details?:{label:string,value:string}[], uid:string, resolve:(v:boolean)=>void, reject:(e:any)=>void}>} */
+/** @type {import('svelte/store').Writable<null | {mode:'verify'|'create', reason:string, details?:{label:string,value:string}[], uid:string, name:string|null, resolve:(v:boolean)=>void, reject:(e:any)=>void}>} */
 export const pinConfirm = writable(null);
 
-/** @param {string} reason @param {{label:string,value:string}[]} [details] line items (e.g. challenge stakes) shown above the pad @returns {Promise<boolean>} */
+/**
+ * Gate a money action behind the PIN.
+ * @param {string} reason short label shown above the pad (e.g. "Buy the letter E")
+ * @param {{label:string,value:string}[]} [details] line items (e.g. challenge stakes)
+ * @returns {Promise<boolean>} resolves true when confirmed/created; rejects on cancel
+ */
 export async function requirePin(reason = 'Confirm', details) {
 	// Resolve the uid from the store, or the session (so it works on any route).
 	let uid = get(user)?.id;
@@ -22,8 +29,11 @@ export async function requirePin(reason = 'Confirm', details) {
 			/* ignore */
 		}
 	}
-	if (!uid || !hasPinFor(uid)) return true; // nothing to confirm
+	if (!uid) return true; // can't identify the user → don't block the action
+	const mode = hasPinFor(uid) ? 'verify' : 'create';
+	const uname = get(userProfile)?.username;
+	const name = rememberedName() || (typeof uname === 'string' ? uname : null);
 	return await new Promise((resolve, reject) => {
-		pinConfirm.set({ reason, details, uid, resolve, reject });
+		pinConfirm.set({ mode, reason, details, uid, name, resolve, reject });
 	});
 }

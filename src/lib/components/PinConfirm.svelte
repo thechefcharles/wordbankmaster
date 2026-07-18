@@ -2,30 +2,73 @@
 	import { get } from 'svelte/store';
 	import PinPad from '$lib/components/PinPad.svelte';
 	import { pinConfirm } from '$lib/pinConfirm.js';
-	import { verifyPin, tooManyFails } from '$lib/pin.js';
+	import { verifyPin, setPin, tooManyFails } from '$lib/pin.js';
 
 	let error = false;
 	let msg = '';
 	/** @type {any} */
 	let pad;
 
+	// Create-mode (first money action, no PIN yet): 'set' then 'confirm'.
+	let createStep = 'set';
+	let firstPin = '';
+	// Reset the create sub-state whenever a fresh gate opens.
+	$: if ($pinConfirm) {
+		if ($pinConfirm.mode !== 'create') {
+			createStep = 'set';
+			firstPin = '';
+		}
+	} else {
+		createStep = 'set';
+		firstPin = '';
+	}
+
+	/** @param {string} text */
+	function flash(text) {
+		error = true;
+		msg = text;
+		setTimeout(() => {
+			error = false;
+			pad?.reset();
+		}, 480);
+	}
+
 	/** @param {CustomEvent<string>} e */
 	async function onSubmit(e) {
-		const uid = get(pinConfirm)?.uid;
-		if (!uid) return;
-		const ok = await verifyPin(uid, e.detail);
+		const s = get(pinConfirm);
+		if (!s?.uid) return;
+		const pin = e.detail;
+
+		if (s.mode === 'create') {
+			if (createStep === 'set') {
+				firstPin = pin;
+				createStep = 'confirm';
+				msg = '';
+				pad?.reset();
+				return;
+			}
+			// confirm step
+			if (pin === firstPin) {
+				await setPin(s.uid, s.name, pin);
+				pinConfirm.set(null);
+				msg = '';
+				s.resolve(true); // PIN created → the action proceeds
+			} else {
+				createStep = 'set';
+				firstPin = '';
+				flash('PINs didn’t match — try again.');
+			}
+			return;
+		}
+
+		// verify mode
+		const ok = await verifyPin(s.uid, pin);
 		if (ok) {
-			const s = get(pinConfirm);
 			pinConfirm.set(null);
 			msg = '';
-			s?.resolve(true);
+			s.resolve(true);
 		} else {
-			error = true;
-			msg = tooManyFails() ? 'Too many tries.' : 'Wrong PIN — try again.';
-			setTimeout(() => {
-				error = false;
-				pad?.reset();
-			}, 480);
+			flash(tooManyFails() ? 'Too many tries.' : 'Wrong PIN — try again.');
 		}
 	}
 	function cancel() {
@@ -34,14 +77,26 @@
 		msg = '';
 		s?.reject(new Error('cancelled'));
 	}
+
+	$: isCreate = $pinConfirm?.mode === 'create';
+	$: title = isCreate
+		? createStep === 'set'
+			? 'Create your PIN'
+			: 'Confirm your PIN'
+		: 'Enter your PIN';
+	$: subtext = isCreate
+		? createStep === 'set'
+			? 'Set a 4-digit PIN — you’ll use it to confirm purchases & wagers.'
+			: 'Type it once more to confirm.'
+		: $pinConfirm?.reason;
 </script>
 
 {#if $pinConfirm}
 	<div class="pc-overlay" role="dialog" aria-modal="true" aria-label="Confirm with PIN">
 		<div class="pc-card">
-			<h2 class="pc-title">Enter your PIN</h2>
-			<p class="pc-reason">{$pinConfirm.reason}</p>
-			{#if $pinConfirm.details?.length}
+			<h2 class="pc-title">{title}</h2>
+			<p class="pc-reason" class:soft={isCreate}>{subtext}</p>
+			{#if !isCreate && $pinConfirm.details?.length}
 				<div class="pc-stakes">
 					{#each $pinConfirm.details as d}
 						<div class="pc-stake">
@@ -87,6 +142,13 @@
 		font-weight: 700;
 		font-size: 0.95rem;
 		margin: 0 0 1rem;
+	}
+	.pc-reason.soft {
+		color: var(--text-muted, #aeb8c6);
+		font-weight: 400;
+		max-width: 300px;
+		margin-left: auto;
+		margin-right: auto;
 	}
 	.pc-stakes {
 		width: 100%;
