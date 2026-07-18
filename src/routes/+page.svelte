@@ -5210,6 +5210,8 @@
 						{@const pendAfter = Math.round(climb?.bankroll ?? 0)}
 						{@const solves = Math.round(climb?.run_solves ?? 0)}
 						{@const runInt = Math.max(0, Math.round((climb?.heat ?? 100) - 100))}
+						{@const runInterest = Math.round(climb?.run_interest ?? 0)}
+						{@const runSpent = Math.round(climb?.run_spent ?? 0)}
 						{@const tierName =
 							(climb?.tier ?? '').charAt(0).toUpperCase() + (climb?.tier ?? '').slice(1)}
 						<div class="rcpt-slot" aria-hidden="true"></div>
@@ -5233,9 +5235,7 @@
 								<span>Puzzle value</span><span>${advance.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
-								<span>Spent <small>(letters + guesses)</small></span><span class="neg"
-									>−${letters.toLocaleString()}</span
-								>
+								<span>Spent</span><span class="neg">−${letters.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-rule double"></div>
 							<div class="rcpt-line total profit">
@@ -5247,7 +5247,14 @@
 								<span>RUNNING PAYOUT</span><span>${pendAfter.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
-								<span>Interest · Solves</span><span>+{runInt}% · {solves}</span>
+								<span>Interest earned <small>({runInt}%)</small></span><span class="pos"
+									>+${runInterest.toLocaleString()}</span
+								>
+							</div>
+							<div class="rcpt-line">
+								<span>Solves <small>×{solves}</small></span><span class="neg"
+									>−${runSpent.toLocaleString()}</span
+								>
 							</div>
 							<div class="rcpt-rule"></div>
 							<!-- Ambient reference: your account (untouched until you Deposit the run). -->
