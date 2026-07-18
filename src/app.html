@@ -2,7 +2,11 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+		<!-- No viewport-fit=cover: the native shell uses contentInset "always" (WKWebView insets
+		     content below the status bar). With cover, the web drew edge-to-edge while the WebView
+		     inset the touch layer — so taps landed offset from the buttons. Dropping cover makes the
+		     web's coordinate space match where the WebView actually places content. -->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<link rel="icon" href="/logo-mark.png" />
 		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 		<link rel="manifest" href="/manifest.webmanifest" />
