@@ -2934,12 +2934,11 @@
 					</div>
 				</div>
 				<p class="info-note">
-					Interest is earned — solve day after day to grow your <Icon name="trophy" size={13} /> streak
-					(up to +15%) and keep good
-					<Icon name="card" size={13} /> credit (up to +10%). Tap in <Icon
+					Grow your <Icon name="trophy" size={13} /> streak (up to +15%) and keep good
+					<Icon name="card" size={13} /> credit (up to +10%) to earn more. <Icon
 						name="boost"
 						size={13}
-					/>/<Icon name="gem" size={13} /> Interest Boosts from the Store for more on top.
+					/>/<Icon name="gem" size={13} /> Interest Boosts from the Store stack on top.
 				</p>
 			{:else if dailyInfo === 'twist'}
 				<div class="info-big"><Icon name={dailyMod?.emoji ?? 'boost'} size={40} /></div>
@@ -3166,8 +3165,7 @@
 				</div>
 				<p class="info-note">
 					Highest Score wins the duel (a tie splits the bragging rights). A wrong guess busts the
-					puzzle, so guess only when you're sure. Friendlies don't count toward leaderboards, badges,
-					or your balance.
+					puzzle. Friendlies don't count toward leaderboards, badges, or your balance.
 				</p>
 			{:else}
 				<div class="info-big green">${Math.max(0, matchLeft).toLocaleString()}</div>
@@ -3196,7 +3194,7 @@
 				</div>
 				<p class="info-note">
 					Highest Score wins the pot. Duel = winner-take-all (tie splits 50/50); groups pay a podium
-					(3 → 70/30, 4+ → 60/30/10). A wrong guess busts the puzzle, so guess only when you're sure.
+					(3 → 70/30, 4+ → 60/30/10). A wrong guess busts the puzzle.
 				</p>
 			{/if}
 			<button class="info-close" on:click={() => (showAnteInfo = false)}>Got it</button>

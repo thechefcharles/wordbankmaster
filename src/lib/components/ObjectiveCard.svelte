@@ -41,8 +41,8 @@
 				return {
 					icon: 'coin',
 					title: 'Cash Game',
-					goal: 'Invest your buy-in and grow it by solving puzzles cheaply.',
-					win: 'Bank your Cash between puzzles — once you start one, it’s solve or bust. Your Interest climbs with every solve.',
+					goal: 'Buy in, then grow it by solving puzzles cheaply.',
+					win: 'Winnings grow with each solve, boosted by Interest. Cash out between puzzles — once you start one, it’s solve or bust.',
 					bar: 'A wrong guess drains your budget — run out and you bust.'
 				};
 			case 'makeup':
