@@ -1183,6 +1183,15 @@ export async function matchSubmitGuess(id, guess) {
 	}
 	return data;
 }
+/** Advance from the between-puzzle receipt to the next puzzle. @param {string} id */
+export async function matchNext(id) {
+	const { data, error } = await supabase.rpc('match_next', { p_id: id });
+	if (error) {
+		console.error('❌ match_next:', error);
+		return null;
+	}
+	return data;
+}
 /** Fold (forfeit) the current match puzzle → advances without a solve. @param {string} id */
 export async function matchFold(id) {
 	const { data, error } = await supabase.rpc('match_fold', { p_id: id });

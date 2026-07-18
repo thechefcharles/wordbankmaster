@@ -27,6 +27,7 @@
 		refreshMatchMeta,
 		matchPowerup,
 		matchSabotageOpponent,
+		advanceMatch,
 		dailyFold,
 		matchFold,
 		startFreePlay,
@@ -531,8 +532,16 @@
 			challenge: { name: 'Challenge' }
 		}[$gameStore.gameMode] ?? null;
 	$: isMatch = $gameStore.gameMode === 'match';
-	$: matchInfo = $gameStore.matchInfo; // { position, pack_size, total_score, last_score, done, mode, solved, spent, budget, wager, items_allowed, used_powerups, started_at, clock_seconds, combo }
+	$: matchInfo = $gameStore.matchInfo; // { position, pack_size, total_score, last_score, done, mode, solved, spent, budget, wager, items_allowed, used_powerups, started_at, clock_seconds, combo, awaiting_next, wrong_count, wrong_spent }
 	$: isFriendlyMatch = isMatch && (matchInfo?.wager ?? 0) === 0;
+	// Between-puzzle receipt: a non-final solve pauses here until "Next puzzle" (untimed +
+	// per-puzzle-clock matches only; match-wide-clock matches still auto-advance server-side).
+	$: matchAwaiting = isMatch && !!matchInfo?.awaiting_next && !matchInfo?.done;
+	const ordinalNum = (/** @type {number} */ n) => {
+		const s = ['th', 'st', 'nd', 'rd'],
+			v = n % 100;
+		return n + (s[(v - 20) % 10] || s[v] || s[0]);
+	};
 	// 💥 Double or Nothing (Cash Game): server exposes don_armed + don_available (heat ≥ ×1.5).
 	$: donArmed = !!climb?.don_armed;
 	$: donAvailable = !!climb?.don_available;
@@ -591,6 +600,7 @@
 		isMatch &&
 		!!matchInfo &&
 		!matchInfo.done &&
+		!matchInfo.awaiting_next &&
 		!showMainMenu &&
 		!introBuilding &&
 		$gameStore.gameState !== 'won' &&
@@ -4970,6 +4980,84 @@
 					</div>
 				</div>
 				<div class="da-hint">tap to continue</div>
+			</div>
+		{/if}
+
+		<!-- 🧾 Between-puzzle challenge receipt — mid-match, after a solve, before the next puzzle. -->
+		{#if matchAwaiting}
+			{@const unit = isFriendlyMatch ? '★' : '$'}
+			{@const bounty = Math.round(matchInfo?.budget ?? 0)}
+			{@const kept = Math.round(matchInfo?.last_score ?? 0)}
+			{@const spent = Math.round(matchInfo?.spent ?? 0)}
+			{@const wrongCount = Math.round(matchInfo?.wrong_count ?? 0)}
+			{@const wrongSpent = Math.round(matchInfo?.wrong_spent ?? 0)}
+			{@const lettersSpent = Math.max(0, spent - wrongSpent)}
+			{@const running = Math.round(matchInfo?.total_score ?? 0)}
+			{@const st = matchInfo?.standing ?? null}
+			{@const rank = Math.round(st?.rank ?? 1)}
+			{@const field = Math.round(st?.field_size ?? (matchInfo?.opponents?.length ?? 1) + 1)}
+			<div class="modal-overlay">
+				<div class="modal-content bp-modal">
+					<div class="rcpt-slot" aria-hidden="true"></div>
+					<div class="receipt" use:printSound>
+						<div class="rcpt-brand">
+							<img class="rcpt-coin" src="/logo-coin.png" alt="" width="40" height="40" />
+							<img class="rcpt-mark" src="/wordmark.png" alt="WordBank" />
+						</div>
+						<div class="rcpt-title">CHALLENGE</div>
+						<div class="rcpt-acct">PUZZLE {matchInfo?.position} OF {matchInfo?.pack_size}</div>
+						{#if isFriendlyMatch}<div class="rcpt-sub">Friendly · ★ points</div>{/if}
+						<div class="rcpt-rule"></div>
+						<div class="rcpt-cap">This puzzle</div>
+						<div class="rcpt-line">
+							<span>Bounty</span><span>{unit}{bounty.toLocaleString()}</span>
+						</div>
+						<div class="rcpt-line">
+							<span>Letters</span><span class="neg">−{unit}{lettersSpent.toLocaleString()}</span>
+						</div>
+						{#if wrongCount > 0}
+							<div class="rcpt-line">
+								<span>Wrong solves <small>×{wrongCount}</small></span><span class="neg"
+									>−{unit}{wrongSpent.toLocaleString()}</span
+								>
+							</div>
+						{/if}
+						<div class="rcpt-rule double"></div>
+						<div class="rcpt-line total profit">
+							<span>Kept this puzzle</span><span>+{unit}{kept.toLocaleString()}</span>
+						</div>
+						<div class="rcpt-rule"></div>
+						<div class="rcpt-cap">Your match</div>
+						<div class="rcpt-line balance">
+							<span>RUNNING SCORE</span><span>{unit}{running.toLocaleString()}</span>
+						</div>
+						{#if st}
+							<div class="rcpt-line rcpt-faint">
+								<span>Standing</span><span
+									>{ordinalNum(rank)} of {field}{#if st.finished === 0}
+										· first in{/if}</span
+								>
+							</div>
+						{/if}
+						<div class="rcpt-thanks">
+							{matchInfo?.position >= matchInfo?.pack_size ? 'Last one — finish strong' : 'Keep the run going'}
+						</div>
+					</div>
+					<div class="result-actions">
+						<button
+							class="next-puzzle-button bp-next"
+							disabled={cgBusy}
+							on:click={async () => {
+								cgBusy = true;
+								try {
+									await advanceMatch();
+								} finally {
+									cgBusy = false;
+								}
+							}}>Next puzzle →</button
+						>
+					</div>
+				</div>
 			</div>
 		{/if}
 

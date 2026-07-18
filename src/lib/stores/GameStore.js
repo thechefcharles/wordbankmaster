@@ -43,6 +43,7 @@ import {
 	matchBuyLetter,
 	matchReveal,
 	matchSubmitGuess,
+	matchNext as matchNextRpc,
 	matchFold as matchFoldRpc,
 	matchCheck,
 	matchUsePowerup,
@@ -786,6 +787,17 @@ function reconcileMatchBoard(board) {
 			}
 		})
 	);
+	// Between-puzzle receipt: a non-final solve now pauses in `awaiting_next` (gated modes)
+	// instead of auto-advancing. Detect the fresh solve vs. an auto-advance (match-clock/legacy).
+	const awaiting = match.awaiting_next === true;
+	const wasAwaiting = prev.matchInfo?.awaiting_next === true;
+	const freshSolveGated = awaiting && !wasAwaiting; // just solved → now showing the receipt
+	const advancedAuto =
+		!awaiting &&
+		!wasAwaiting &&
+		prev.matchInfo &&
+		(match.last_score ?? 0) > 0 &&
+		(match.position ?? 1) > (prev.matchInfo.position ?? 0); // match-clock / legacy auto-advance
 	if (done) {
 		setTimeout(() => launchConfetti(), 250);
 		fx('win');
@@ -793,18 +805,29 @@ function reconcileMatchBoard(board) {
 		if ((match.wager ?? 0) === 0) {
 			bankMatchPoints(fpStorage(), activeMatchId, match.total_score ?? 0);
 		}
-	}
-	// Celebrate EACH solved puzzle — but only on an in-session advance (prev.matchInfo
-	// exists), so opening/resuming a match never fires the winner fireworks.
-	else if (
-		prev.matchInfo &&
-		(match.last_score ?? 0) > 0 &&
-		(match.position ?? 1) > (prev.matchInfo.position ?? 0)
-	) {
+	} else if (freshSolveGated || advancedAuto) {
+		// Celebrate EACH solved puzzle. On auto-advance the next puzzle is already loaded,
+		// so arm its opening reveal; on the gated receipt we wait for the Next tap.
 		setTimeout(() => launchConfetti(), 250);
 		fx('win');
-		maybeArmMatchIntro(); // next puzzle in the pack gets the dramatic opening reveal
+		if (advancedAuto) maybeArmMatchIntro();
+	} else if (!awaiting && wasAwaiting) {
+		// Tapped "Next puzzle" → the new puzzle is loaded → give it the dramatic opening reveal.
+		maybeArmMatchIntro();
 	} else playMoveCue(prev, board);
+}
+
+/** Advance to the next puzzle from the between-puzzle receipt. */
+export async function advanceMatch() {
+	if (dailyInFlight || !activeMatchId) return;
+	dailyInFlight = true;
+	try {
+		const board = await matchNextRpc(activeMatchId);
+		if (board) reconcileMatchBoard(board);
+		return board;
+	} finally {
+		dailyInFlight = false;
+	}
 }
 
 /** Create a match and drop into play. @param {any} opts @returns {Promise<any>} */

@@ -119,7 +119,14 @@ async function playMatch(pl, phrases, packSize) {
 		await wait(page, 400);
 		await shot(page, `${tag}-p${pos}-filled`);
 		await page.getByRole('button', { name: /^submit$/i }).first().click().catch(() => {});
-		await wait(page, 3500); // reveal + advance
+		await wait(page, 2600); // reveal
+		// Between-puzzle receipt (non-final solves in untimed / per-puzzle-clock matches):
+		// tap "Next puzzle →" to advance. The final puzzle goes straight to the result.
+		if (pos < packSize) {
+			const nextBtn = page.getByRole('button', { name: /next puzzle/i });
+			await nextBtn.first().click({ timeout: 6000 }).catch(() => {});
+			await wait(page, 1400);
+		}
 	}
 	// finished the pack
 	const winRe = /deposit|available balance|waiting|banking with wordbank|you (won|took)|standings|no luck|bust/i;
