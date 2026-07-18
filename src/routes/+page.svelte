@@ -94,17 +94,6 @@
 	import { soundEnabled, toggleSound, hapticsEnabled, toggleHaptics, fx } from '$lib/sound.js';
 	import { initPush, requestPushPermission, pushStatus, syncTimezone } from '$lib/push.js';
 	import { showPushPrimer, maybeShowPushPrimer, resolvePushPrimer } from '$lib/pushPrimer.js';
-	import {
-		startMusic,
-		stopMusic,
-		musicEnabled,
-		musicVolume,
-		setMusicVolume,
-		toggleMusic,
-		TRACKS,
-		currentTrackId,
-		selectTrack
-	} from '$lib/music.js';
 	import { hasPinFor, clearPin } from '$lib/pin.js';
 	import { requirePin } from '$lib/pinConfirm.js';
 	import { requireConfirm } from '$lib/confirm.js';
@@ -448,14 +437,6 @@
 	}
 	// (Resume + challenge-invite + friend-request notifications now live as their own
 	//  top-of-menu buttons — see resumables / challengeInvites / friendRequests.)
-	// Background music: MENU ONLY. Plays only on the live main menu (onLiveMenu covers the
-	// auth/username/PIN gates and excludes puzzles), and never over the tutorial / launch
-	// welcome. Stops the moment a puzzle starts.
-	$: if (browser) {
-		if (onLiveMenu && !showTutorial && !showLaunchWelcome) startMusic();
-		else stopMusic();
-	}
-
 	// ---- Daily result: shareable card ----
 	// Each day is its own puzzle (one per date), so show the date — not a counter.
 	// Pinned to UTC — the server schedules the Daily/Twist by UTC CURRENT_DATE, so the
@@ -2616,7 +2597,7 @@
 		on:click={() => {
 			fx('tap');
 			showAudio = true;
-		}}><Icon name={$soundEnabled || $musicEnabled ? 'volume' : 'mute'} size={18} /></button
+		}}><Icon name={$soundEnabled ? 'volume' : 'mute'} size={18} /></button
 	>
 {/if}
 <!-- 🏳️ Give up (top-right) — Daily / Challenges / Cash Game (forfeit) -->
@@ -3350,7 +3331,7 @@
 			<button class="modal-x" on:click={() => (showAudio = false)} aria-label="Close"
 				><Icon name="close" size={16} /></button
 			>
-			<h3 class="info-title">Sound &amp; Music</h3>
+			<h3 class="info-title">Sound &amp; Haptics</h3>
 			<div class="ap-rows">
 				<button
 					class="ap-toggle"
@@ -3374,36 +3355,7 @@
 					<span><Icon name={$hapticsEnabled ? 'vibrate' : 'vibrate-off'} size={16} /> Haptics</span
 					><span class="ap-state" class:on={$hapticsEnabled}>{$hapticsEnabled ? 'On' : 'Off'}</span>
 				</button>
-				<button class="ap-toggle" on:click={toggleMusic}>
-					<span>Music</span><span class="ap-state" class:on={$musicEnabled}
-						>{$musicEnabled ? 'On' : 'Off'}</span
-					>
-				</button>
 			</div>
-			{#if $musicEnabled}
-				<div class="ma-music-ctl">
-					<span class="mmc-ic"><Icon name="volume-low" size={16} /></span>
-					<input
-						class="mmc-slider"
-						type="range"
-						min="0"
-						max="100"
-						step="1"
-						value={Math.round($musicVolume * 100)}
-						on:input={(e) => setMusicVolume(Number(e.currentTarget.value) / 100)}
-					/>
-					<span class="mmc-pct">{Math.round($musicVolume * 100)}%</span>
-				</div>
-				<div class="ma-tracks">
-					{#each TRACKS as t, i}
-						<button
-							class="ma-track"
-							class:on={$currentTrackId === t.id}
-							on:click={() => selectTrack(t.id)}>Track {i + 1}</button
-						>
-					{/each}
-				</div>
-			{/if}
 		</div>
 	</div>
 {/if}
@@ -4371,35 +4323,6 @@
 											: 'Enable'}</span
 								>
 							</button>
-						{/if}
-						<button class="set-row" on:click={toggleMusic}>
-							<span>Music</span><span class="set-state" class:on={$musicEnabled}
-								>{$musicEnabled ? 'On' : 'Off'}</span
-							>
-						</button>
-						{#if $musicEnabled}
-							<div class="set-row sub">
-								<span class="mmc-ic"><Icon name="volume-low" size={16} /></span>
-								<input
-									class="mmc-slider"
-									type="range"
-									min="0"
-									max="100"
-									step="1"
-									value={Math.round($musicVolume * 100)}
-									on:input={(e) => setMusicVolume(Number(e.currentTarget.value) / 100)}
-								/>
-								<span class="mmc-pct">{Math.round($musicVolume * 100)}%</span>
-							</div>
-							{#if TRACKS.length > 1}
-								<div class="set-row sub tracks">
-									{#each TRACKS as t, i}<button
-											class="ma-track"
-											class:on={$currentTrackId === t.id}
-											on:click={() => selectTrack(t.id)}>Track {i + 1}</button
-										>{/each}
-								</div>
-							{/if}
 						{/if}
 					</div>
 
@@ -7334,27 +7257,6 @@
 	.ap-state.on {
 		color: #4ade80;
 	}
-	.ma-tracks {
-		display: flex;
-		gap: 6px;
-		margin-top: 8px;
-	}
-	.ma-track {
-		flex: 1;
-		padding: 8px 4px;
-		border-radius: 10px;
-		cursor: pointer;
-		font-weight: 800;
-		font-size: 0.8rem;
-		color: var(--text-muted);
-		background: var(--surface-2, rgba(255, 255, 255, 0.05));
-		border: 1px solid var(--border);
-	}
-	.ma-track.on {
-		color: #3a2a00;
-		background: var(--brand-grad, linear-gradient(135deg, #fbbf24, #fde047));
-		border-color: transparent;
-	}
 	/* 🏳️ give up (top-right) — red exit arrow */
 	.giveup-btn {
 		position: fixed;
@@ -8324,19 +8226,6 @@
 	.set-row:hover {
 		background: rgba(255, 255, 255, 0.04);
 	}
-	.set-row.sub {
-		cursor: default;
-		padding: 11px 15px;
-	}
-	.set-row.sub:hover {
-		background: none;
-	}
-	.set-row.sub.tracks {
-		gap: 6px;
-	}
-	.set-row.sub .mmc-slider {
-		flex: 1;
-	}
 	.set-row.danger {
 		color: #f87171;
 	}
@@ -8381,30 +8270,6 @@
 	}
 	.danger-overlay {
 		z-index: 4000;
-	}
-
-	.ma-music-ctl {
-		display: flex;
-		align-items: center;
-		gap: 0.6rem;
-		margin: 0.4rem 0.2rem 0;
-		padding: 0.3rem 0.2rem;
-	}
-	.mmc-ic {
-		font-size: 0.95rem;
-	}
-	.mmc-slider {
-		flex: 1;
-		accent-color: #fbbf24;
-		height: 4px;
-		cursor: pointer;
-	}
-	.mmc-pct {
-		font-size: 0.72rem;
-		font-weight: 800;
-		color: var(--text-muted);
-		min-width: 34px;
-		text-align: right;
 	}
 
 	.ma-edit {
