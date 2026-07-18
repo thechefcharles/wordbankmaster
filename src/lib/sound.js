@@ -47,6 +47,34 @@ function ac() {
 	return ctx;
 }
 
+// iOS unlock: on iOS/WKWebView a Web-Audio context stays silent until you PLAY a buffer
+// through it inside a real user gesture — resume() alone is not enough. (This is why sounds
+// used to work only while the background-music <audio> element held the audio session open;
+// with music removed, we unlock the context ourselves.) Runs on the first tap/key, retries
+// on later gestures until the context is confirmed running, then stops listening.
+if (browser) {
+	const unlock = () => {
+		const c = ac();
+		if (!c) return;
+		try {
+			const src = c.createBufferSource();
+			src.buffer = c.createBuffer(1, 1, 22050); // one silent sample, one-shot
+			src.connect(c.destination);
+			src.start(0);
+		} catch {
+			/* try again next gesture */
+		}
+		if (c.state === 'running') {
+			window.removeEventListener('pointerdown', unlock, true);
+			window.removeEventListener('touchend', unlock, true);
+			window.removeEventListener('keydown', unlock, true);
+		}
+	};
+	window.addEventListener('pointerdown', unlock, true);
+	window.addEventListener('touchend', unlock, true);
+	window.addEventListener('keydown', unlock, true);
+}
+
 /**
  * A short tone with a fast attack and exponential decay.
  * @param {number} freq @param {number} dur @param {OscillatorType} [type]
