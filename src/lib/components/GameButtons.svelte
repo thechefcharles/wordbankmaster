@@ -47,11 +47,7 @@
 			const unit = Number(m.wager ?? 0) === 0 ? '★' : '$';
 			return `−${unit}${amt.toLocaleString()} if wrong`;
 		}
-		if (mode === 'daily') {
-			const mult = Number($gameStore.dailyLive?.mult ?? $gameStore.bountyMult ?? 1);
-			return mult > 1 ? '−0.2× if wrong' : ''; // at the 1.0× floor a miss costs nothing
-		}
-		return ''; // Free Play: guesses are free
+		return ''; // Daily + Free Play: guesses are free
 	})();
 	// Show it once you're actually composing a guess (after tapping Solve), not while buying.
 	$: showMiss = !!missCost && guessModeActive && !gameOver;

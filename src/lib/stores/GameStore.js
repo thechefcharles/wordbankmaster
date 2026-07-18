@@ -131,7 +131,7 @@ export const gameStore = writable(
 		modifier: null, // today's Daily Twist power-up id (daily only)
 		twistUsed: false, // have you used today's Twist? (unused → ×1.5 bounty)
 		bountyMult: 1, // bounty multiplier (1.0 once Twist used, else 1.5)
-		wrongGuesses: 0, // wrong phrase guesses this Daily (each −0.2× mult, floor 1.0)
+		wrongGuesses: 0, // wrong phrase guesses this Daily — FREE now (tracked for stats only)
 		dailyMustGuess: false, // Daily out-of-budget wall → last-guess danger treatment
 		clue: null, // witty one-line hint for the current puzzle
 		makeupDate: null, // YYYY-MM-DD of the make-up day being played (makeup mode only)
