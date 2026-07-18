@@ -12,6 +12,7 @@
 	} from '$lib/stores/statsStore.js';
 	import { track } from '$lib/analytics.js';
 	import { fx } from '$lib/sound.js';
+	import { requirePin } from '$lib/pinConfirm.js';
 	import InventoryList from '$lib/components/InventoryList.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 
@@ -79,6 +80,14 @@
 	/** @param {any} item */
 	async function buyPup(item) {
 		if (busy) return;
+		// Money-out → PIN confirm (lazy-creates the PIN on the first purchase).
+		try {
+			await requirePin(`Buy ${item.name}`, [
+				{ label: item.name, value: '$' + Number(item.price ?? 0).toLocaleString() }
+			]);
+		} catch {
+			return; // cancelled at the PIN
+		}
 		busy = item.id;
 		msg = '';
 		const res = await buyPowerup(item.id);

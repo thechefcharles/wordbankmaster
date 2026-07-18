@@ -35,6 +35,28 @@ export function toggleHaptics() {
 
 /** @type {AudioContext | null} */
 let ctx = null;
+/** @type {AudioBufferSourceNode | null} */
+let keepAlive = null;
+// iOS shares ONE audio session across the page. The background music (an HTMLAudioElement)
+// used to hold it open; now that music is menu-only, pausing it would let iOS deactivate the
+// session and suspend THIS Web Audio context — killing game sounds during puzzles until music
+// resumes. A silent, looping keep-alive source holds this context's session open on its own,
+// so game sounds no longer depend on music playing.
+function startKeepAlive(/** @type {AudioContext} */ c) {
+	if (keepAlive) return;
+	try {
+		const src = c.createBufferSource();
+		src.buffer = c.createBuffer(1, 1, 22050); // 1 silent sample
+		src.loop = true;
+		const g = c.createGain();
+		g.gain.value = 0;
+		src.connect(g).connect(c.destination);
+		src.start(0);
+		keepAlive = src;
+	} catch {
+		/* best-effort */
+	}
+}
 function ac() {
 	if (!browser) return null;
 	if (!ctx) {
@@ -44,6 +66,7 @@ function ac() {
 	}
 	// Browsers start the context suspended until a user gesture; resume on demand.
 	if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+	startKeepAlive(ctx); // hold the audio session so sounds survive music pausing
 	return ctx;
 }
 
