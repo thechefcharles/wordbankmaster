@@ -9,33 +9,38 @@
 	const steps = [
 		{
 			icon: 'puzzle',
-			title: 'Crack the phrase',
-			body: 'Every puzzle is a hidden phrase. Reveal letters until you can name the whole thing.'
+			title: 'Welcome to WordBank',
+			body: 'Every puzzle is a hidden phrase. Crack it, and keep as much Cash as you can.'
 		},
 		{
 			icon: 'letter-a',
-			title: 'Buy letters, guess when sure',
-			body: 'Each letter you buy reveals every copy of it — and costs Cash. Guess the full phrase anytime; nail it and it’s yours, but a wrong guess can cost you.'
+			title: 'Buy letters, or guess',
+			body: 'Buy a letter and every copy of it appears — each costs Cash. Or guess the full phrase — a wrong guess can cost you.'
 		},
 		{
 			icon: 'cash',
 			title: 'Spend less, keep more',
-			body: 'It’s a game of efficiency: whatever you don’t spend, you keep as Cash. Solve lean and your bankroll grows across every mode.'
+			body: 'Whatever you don’t spend, you keep. The cheaper you solve, the more you pocket.'
 		},
 		{
 			icon: 'calendar',
-			title: 'A new puzzle every day',
-			body: 'The Daily is free and the same for everyone. Play each day to build a streak — the longer it runs, the more you earn.'
+			title: 'The free Daily',
+			body: 'One free puzzle a day, the same for everyone. Keep a streak going to earn more.'
+		},
+		{
+			icon: 'growth',
+			title: 'Cash Game',
+			body: 'Buy in and solve a run of puzzles. Your winnings grow with each solve — cash out to keep them, or bust and lose the run.'
 		},
 		{
 			icon: 'swords',
 			title: 'Challenge your friends',
-			body: 'Buy in and take on a friend or a whole group. Same puzzles for all — whoever solves for the least takes the pot.'
+			body: 'Buy in against a friend or a group. Everyone solves the same puzzles — the cheapest solver takes the pot.'
 		},
 		{
 			icon: 'trophy',
-			title: 'Always more to play',
-			body: 'Build a bankroll in Cash Game runs, climb the leaderboards, and spend winnings in the Store. Tap Play to start with the Daily.'
+			title: 'More to play',
+			body: 'Your Cash earns Interest, the Store has power-ups and looks, and leaderboards rank every mode. Tap Play to start with the Daily.'
 		}
 	];
 
