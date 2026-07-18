@@ -432,15 +432,64 @@ function reconcileFreeplayBoard() {
 	} else if (!won && !lost) {
 		playMoveCue(prev, board);
 	}
+	// Persist for continuous resume — but ONLY once the player has engaged (bought a letter;
+	// spent > 0). Merely viewing a fresh puzzle never commits it, so a glance-and-back-out
+	// gives a fresh puzzle next time. A finished puzzle clears itself.
+	if (won || lost) clearFreeplay();
+	else if ((freeplayState?.spent ?? 0) > 0) saveFreeplay();
 }
 
-/** Begin Free Play (fresh random puzzle). */
+// Free Play persists so it RESUMES continuously (leaving to the menu never restarts it).
+// It lives in its own localStorage key — Free Play is client-only and is never a "saved game"
+// or an "active game", so this never trips the store's can't-buy-during-a-game gate (you
+// can't use items in Free Play anyway).
+const FP_KEY = 'wb_freeplay_game';
+function saveFreeplay() {
+	if (!browser || !freeplayState) return;
+	try {
+		window.localStorage.setItem(FP_KEY, JSON.stringify(freeplayState));
+	} catch {
+		/* storage blocked — just won't resume */
+	}
+}
+function clearFreeplay() {
+	if (!browser) return;
+	try {
+		window.localStorage.removeItem(FP_KEY);
+	} catch {
+		/* ignore */
+	}
+}
+/** Load a resumable Free Play puzzle: in-progress AND actually engaged (a letter bought).
+ * @returns {ReturnType<typeof newGame>|null} */
+function loadFreeplay() {
+	if (!browser) return null;
+	try {
+		const raw = window.localStorage.getItem(FP_KEY);
+		if (!raw) return null;
+		const s = JSON.parse(raw);
+		if (s && s.status === 'active' && (s.spent ?? 0) > 0) return s;
+	} catch {
+		/* ignore */
+	}
+	return null;
+}
+
+/** Enter Free Play. Silently resumes an engaged-with puzzle; otherwise a fresh one.
+ *  No "Resume" prompt — it just picks up where you left off. */
 export function startFreePlay() {
-	freePlayNext();
+	const saved = loadFreeplay();
+	if (saved) {
+		freeplayState = saved;
+		reconcileFreeplayBoard();
+	} else {
+		freePlayNext();
+	}
 }
 
-/** Load the next random Free Play puzzle. */
+/** Load the next random Free Play puzzle (fresh + uncommitted until a letter is bought). */
 export function freePlayNext() {
+	clearFreeplay();
 	const puzzle = FREEPLAY_PUZZLES[Math.floor(Math.random() * FREEPLAY_PUZZLES.length)];
 	freeplayState = newGame(puzzle);
 	reconcileFreeplayBoard();
