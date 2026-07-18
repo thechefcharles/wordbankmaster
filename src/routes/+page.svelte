@@ -5034,8 +5034,7 @@
 						{#if st}
 							<div class="rcpt-line rcpt-faint">
 								<span>Standing</span><span
-									>{ordinalNum(rank)} of {field}{#if st.finished === 0}
-										· first in{/if}</span
+									>{st.finished === 0 ? 'First to play' : `${ordinalNum(rank)} of ${field}`}</span
 								>
 							</div>
 						{/if}

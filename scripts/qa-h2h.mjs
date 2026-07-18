@@ -40,6 +40,31 @@ async function makePlayer(tag) {
 const wait = (p, ms) => p.waitForTimeout(ms);
 const shot = (p, n) => p.screenshot({ path: `screenshots/h2h-${n}.png` }).catch(() => {});
 
+// Money actions (creating/accepting a match) now gate behind the device PIN, created
+// lazily on first use. Drive the pad if it appears: create-mode = enter + confirm (2
+// rounds), verify-mode = enter once. No-op if no pad shows. Returns true if handled.
+async function handlePinPad(page, pin = '1234') {
+	let handled = false;
+	for (let round = 0; round < 2; round++) {
+		try {
+			await page.locator('.pinpad').first().waitFor({ timeout: round === 0 ? 3500 : 1200 });
+		} catch {
+			return handled; // no pad (round 0) or finished after the set step (round 1)
+		}
+		for (const d of pin) {
+			await page
+				.locator('.pinpad button.key.num', { hasText: new RegExp(`^${d}$`) })
+				.first()
+				.click()
+				.catch(() => {});
+			await wait(page, 130);
+		}
+		handled = true;
+		await wait(page, 900); // let it auto-submit + advance (confirm step) or resolve
+	}
+	return handled;
+}
+
 async function onboard(pl, who) {
 	const { page } = pl;
 	await page.goto(BASE, { waitUntil: 'networkidle' });
@@ -123,6 +148,7 @@ async function playMatch(pl, phrases, packSize) {
 		// Between-puzzle receipt (non-final solves in untimed / per-puzzle-clock matches):
 		// tap "Next puzzle →" to advance. The final puzzle goes straight to the result.
 		if (pos < packSize) {
+			if (pos === 1) await shot(page, `${tag}-between-puzzle-receipt`); // visual proof, once
 			const nextBtn = page.getByRole('button', { name: /next puzzle/i });
 			await nextBtn.first().click({ timeout: 6000 }).catch(() => {});
 			await wait(page, 1400);
@@ -172,19 +198,20 @@ try {
 	await wait(pa.page, 700);
 	await shot(pa.page, 'A-wizard-step3');
 	// step 3: ante (friendly or a wager), send
-	if (WAGER_LABEL) {
-		await pa.page
-			.locator('button.ante-chip', { hasText: new RegExp('\\' + WAGER_LABEL.replace('$', '\\$')) })
-			.first()
-			.click()
-			.catch(() => {});
-		note(`A: wager ${WAGER_LABEL} selected`);
-	} else {
-		await pa.page.locator('button.ante-chip', { hasText: /friendly/i }).first().click().catch(() => {});
-	}
-	await wait(pa.page, 400);
+	const anteChip = WAGER_LABEL
+		? pa.page.locator('button.ante-chip', { hasText: new RegExp('\\' + WAGER_LABEL.replace('$', '\\$')) })
+		: pa.page.locator('button.ante-chip', { hasText: /friendly/i });
+	await anteChip.first().click().catch(() => {});
+	await wait(pa.page, 300);
+	// Confirm the ante actually took (a fresh account defaults to $500, which it can't
+	// afford — so a missed Friendly click silently dooms the whole run).
+	const anteOn = await anteChip.first().evaluate((el) => el.classList.contains('on')).catch(() => false);
+	note(`A: ante ${WAGER_LABEL || 'Friendly'} selected (on=${anteOn})`);
 	await pa.page.getByRole('button', { name: /send challenge/i }).first().click().catch(() => {});
-	await wait(pa.page, 4000);
+	await wait(pa.page, 900);
+	// Money-action PIN gate (created lazily on first use).
+	if (await handlePinPad(pa.page)) note('A: created device PIN at the wager gate');
+	await wait(pa.page, 3000);
 	await shot(pa.page, 'A-after-send');
 
 	// ---- read match id + pack phrases from DB ----
@@ -209,7 +236,10 @@ try {
 	if (await playBtn.count()) {
 		note('B: sees the invite with a Play button');
 		await playBtn.first().click().catch(() => {});
-		await wait(pb.page, 3500);
+		await wait(pb.page, 1200);
+		// Accepting a wagered invite stakes the buy-in → PIN gate (no-op for friendly).
+		if (await handlePinPad(pb.page)) note('B: created device PIN at the accept gate');
+		await wait(pb.page, 2500);
 	} else {
 		note('B: ❗ no "Play" invite row in Challenges tab');
 		await shot(pb.page, 'B-noinvite');
