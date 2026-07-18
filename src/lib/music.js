@@ -66,9 +66,12 @@ function ensureAudio() {
 function apply() {
 	const a = audio;
 	if (!a) return;
-	a.volume = enabled ? volume : 0;
-	if (wantPlaying && enabled) a.play().catch(() => armAutoplay());
-	else if (!enabled) a.pause();
+	// Audible ONLY on the menu with music enabled; silent otherwise. But keep the element
+	// PLAYING even when silent (volume 0) rather than pausing — on iOS all page audio shares
+	// one session, and pausing this element drops it, suspending the Web-Audio game sounds.
+	// Volume 0 still counts as "playing", so the session (and game sounds) stay alive.
+	a.volume = enabled && wantPlaying ? volume : 0;
+	a.play().catch(() => armAutoplay());
 }
 
 // Browsers block audio until a user gesture. If play() is rejected, wait for the
@@ -103,7 +106,7 @@ musicEnabled.subscribe((v) => {
 musicVolume.subscribe((v) => {
 	volume = clamp01(v, DEFAULT_VOL);
 	if (browser) localStorage.setItem(VOL_KEY, String(volume));
-	if (audio) audio.volume = enabled ? volume : 0;
+	apply();
 });
 currentTrackId.subscribe((v) => {
 	if (!v) return;
@@ -120,15 +123,15 @@ currentTrackId.subscribe((v) => {
 /** Start lobby music (call when entering the menu lobby). */
 export function startMusic() {
 	wantPlaying = true;
-	const a = ensureAudio();
-	if (!a) return;
-	if (enabled) a.play().catch(() => armAutoplay());
+	ensureAudio();
+	apply();
 }
 
-/** Pause lobby music (call when leaving the lobby / starting a game). */
+/** Silence lobby music (call when leaving the lobby / starting a game). Goes to volume 0
+ *  but keeps PLAYING — pausing would drop the iOS audio session and kill game sounds. */
 export function stopMusic() {
 	wantPlaying = false;
-	if (audio) audio.pause();
+	apply();
 }
 
 /** @param {number} v 0..1 */
