@@ -132,6 +132,12 @@
 		border-radius: 12px;
 		cursor: pointer;
 		position: relative;
+		/* Snappy, reliable taps on mobile: no 300ms double-tap-zoom wait, no gesture
+		   ambiguity, no long-press text selection or grey tap flash. */
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
+		user-select: none;
+		-webkit-user-select: none;
 		font-family: 'Orbitron', var(--font-display);
 		font-weight: 700;
 		font-size: 22px;
