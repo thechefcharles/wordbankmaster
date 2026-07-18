@@ -8,32 +8,29 @@
 	// icon = Icon.svelte name (rendered via <Icon>).
 	const steps = [
 		{
-			icon: 'cash',
-			title: 'Spend less, think more',
-			body: 'Crack the hidden phrase by buying as few letters as you can.'
+			icon: 'puzzle',
+			title: 'Crack the phrase',
+			body: 'A phrase is hidden. Reveal it, letter by letter.'
 		},
 		{
 			icon: 'letter-a',
-			title: 'Buy letters',
-			body: 'Tap a letter to buy every copy of it. A letter that’s not in the phrase still costs you. Guessing the phrase is always free — try as often as you like.'
+			title: 'Buy letters or guess the phrase',
+			body: 'Letters cost Cash. Guessing is always free.'
 		},
 		{
-			icon: 'coin',
-			title: 'Cash is your Score',
-			isNew: true,
-			body: 'You start with $2,000. It’s both your balance and your rank — the less you spend, the more you keep.'
+			icon: 'cash',
+			title: 'Spend less, keep more',
+			body: 'Pocket what you don’t spend — solve cheap, get rich.'
 		},
 		{
-			icon: 'calendar',
-			title: 'Daily paycheck',
-			isNew: true,
-			body: 'One puzzle a day for everyone. Just showing up pays — and a streak pays more.'
+			icon: 'swords',
+			title: 'Challenge anyone',
+			body: 'Same puzzles, head-to-head. Spend least, take the pot.'
 		},
 		{
-			icon: 'growth',
-			title: 'Cash Game & Challenges',
-			isNew: true,
-			body: 'Play endless puzzles in Cash Game, or challenge friends head-to-head — solve for the least and the top Score takes the pot.'
+			icon: 'trophy',
+			title: 'Rack up wins',
+			body: 'Daily puzzles, Cash Game runs, a Store, boards to climb.'
 		}
 	];
 
@@ -187,7 +184,7 @@
 		color: var(--text-muted, #c2cbd8);
 		margin: 0 auto 20px;
 		max-width: 320px;
-		min-height: 4.5em;
+		min-height: 3em;
 	}
 
 	.tut-dots {
