@@ -31,7 +31,7 @@
 		reveal_word: { icon: 'book', desc: 'Reveal a whole word' },
 		extra_hint: { icon: 'bulb', desc: 'First letter of each word' },
 		last_letters: { icon: 'chevron-right', desc: 'Last letter of each word' },
-		sabotage_tax: { icon: 'percent', desc: "An opponent's letters cost +50%" },
+		sabotage_tax: { icon: 'percent', desc: "An opponent's next 3 letter buys cost +50%" },
 		sabotage_fog: { icon: 'fog', desc: "Hide an opponent's clue" },
 		sabotage_toll: { icon: 'toll', desc: "An opponent's next letter costs 3×" },
 		sabotage_vowel_block: { icon: 'block', desc: "An opponent's vowels cost 3× for their next 3 buys" },

@@ -1236,13 +1236,13 @@
 		sabotage_lock: 'trash'
 	});
 	const DEBUFF_LABEL = /** @type {Record<string,string>} */ ({
-		tax: 'Taxed (letters +50%)',
+		tax: 'Taxed (letters +50%, 3 buys)',
 		fog: 'Fogged (clue hidden — buy 3 to clear)',
 		toll: 'Tolled (next letter 3×)',
 		vowel_block: 'Vowel-blocked (vowels 3×)'
 	});
 	const DEBUFF_DESC = /** @type {Record<string,string>} */ ({
-		tax: 'Every letter you buy costs +50% while this is active.',
+		tax: 'Your next 3 letter buys cost +50%.',
 		fog: 'Your next puzzle starts blind — buy 3 letters to clear the fog.',
 		toll: 'Your next letter purchase costs 3×, then it clears.',
 		vowel_block: 'Vowels cost 3× while this is active.'
