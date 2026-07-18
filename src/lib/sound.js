@@ -13,9 +13,16 @@ const initHaptics = browser ? localStorage.getItem(HAPTICS_KEY) !== 'false' : tr
 /** Whether sound effects are enabled (persisted to localStorage). */
 export const soundEnabled = writable(initial);
 let enabled = initial;
+/** @type {HTMLAudioElement | null} */ // declared here so the subscribe below can touch it
+let keepAlive = null;
 soundEnabled.subscribe((v) => {
 	enabled = v;
-	if (browser) localStorage.setItem(STORAGE_KEY, String(v));
+	if (browser) {
+		localStorage.setItem(STORAGE_KEY, String(v));
+		// Hold the audio session only while sound is on (see keep-alive note below).
+		if (v) playKeepAlive();
+		else stopKeepAlive();
+	}
 });
 
 /** Whether vibration/haptics are enabled (persisted, separate from sound). */
@@ -47,24 +54,41 @@ function ac() {
 	return ctx;
 }
 
-// iOS unlock: on iOS/WKWebView a Web-Audio context stays silent until you PLAY a buffer
-// through it inside a real user gesture — resume() alone is not enough. (This is why sounds
-// used to work only while the background-music <audio> element held the audio session open;
-// with music removed, we unlock the context ourselves.) Runs on the first tap/key, retries
-// on later gestures until the context is confirmed running, then stops listening.
+// Silent keep-alive. On iOS/WKWebView, a Web-Audio context only produces sound while an
+// <audio> element is actively playing (holding the audio session) — resuming/unlocking the
+// context is NOT enough on its own. The background music used to be that element; with music
+// gone, a tiny looping silence file does the same job invisibly. It plays only while sound is
+// enabled (nothing to hold the session for when sound is off).
+function playKeepAlive() {
+	if (!browser || !enabled) return;
+	if (!keepAlive) {
+		keepAlive = new Audio('/silence.wav');
+		keepAlive.loop = true;
+		keepAlive.preload = 'auto';
+	}
+	keepAlive.play().catch(() => {}); // blocked until a gesture; the unlock listener retries
+}
+function stopKeepAlive() {
+	keepAlive?.pause();
+}
+
+// iOS unlock: play a one-shot silent buffer through the context inside a real user gesture
+// (resume() alone won't do it), and start the silence keep-alive. Runs on the first tap/key.
 if (browser) {
 	const unlock = () => {
 		const c = ac();
-		if (!c) return;
-		try {
-			const src = c.createBufferSource();
-			src.buffer = c.createBuffer(1, 1, 22050); // one silent sample, one-shot
-			src.connect(c.destination);
-			src.start(0);
-		} catch {
-			/* try again next gesture */
+		if (c) {
+			try {
+				const src = c.createBufferSource();
+				src.buffer = c.createBuffer(1, 1, 22050); // one silent sample, one-shot
+				src.connect(c.destination);
+				src.start(0);
+			} catch {
+				/* try again next gesture */
+			}
 		}
-		if (c.state === 'running') {
+		playKeepAlive();
+		if (c && c.state === 'running' && keepAlive && !keepAlive.paused) {
 			window.removeEventListener('pointerdown', unlock, true);
 			window.removeEventListener('touchend', unlock, true);
 			window.removeEventListener('keydown', unlock, true);
