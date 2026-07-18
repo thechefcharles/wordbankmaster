@@ -68,14 +68,14 @@
 						title: 'Group Challenge',
 						goal: `Solve ${pk}, keeping as much of each Bounty as you can.`,
 						win: 'Top Score takes the pot; your buy-in is the stake.',
-						bar: 'A wrong guess busts the puzzle.'
+						bar: 'A wrong guess drains your Bounty — run out and you fold.'
 					};
 				return {
 					icon: 'swords',
 					title: c.opponent ? `Duel vs @${c.opponent}` : 'Challenge',
 					goal: `Solve ${pk}, keeping as much of each Bounty as you can.`,
 					win: 'Top Score takes the pot; your buy-in is the stake.',
-					bar: 'A wrong guess busts the puzzle.'
+					bar: 'A wrong guess drains your Bounty — run out and you fold.'
 				};
 			}
 			default:

@@ -3046,7 +3046,8 @@
 				<div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
 				<h3 class="info-title">Payout</h3>
 				<p class="info-sub">
-					Your running cash this run — solve to keep it, one wrong guess loses it all.
+					Your running cash this run — solve to keep it. A wrong guess drains your budget; run out
+					and you bust.
 				</p>
 				<div class="info-rows">
 					<div class="info-row">
@@ -3161,8 +3162,9 @@
 					<div class="info-row"><span>Buy-in</span><b>None — friendly</b></div>
 				</div>
 				<p class="info-note">
-					Highest Score wins the duel (a tie splits the bragging rights). A wrong guess busts the
-					puzzle. Friendlies don't count toward leaderboards, badges, or your balance.
+					Highest Score wins the duel (a tie splits the bragging rights). A wrong guess drains your
+					Bounty; run out and you fold. Friendlies don't count toward leaderboards, badges, or your
+					balance.
 				</p>
 			{:else}
 				<div class="info-big green">${Math.max(0, matchLeft).toLocaleString()}</div>
@@ -3191,7 +3193,7 @@
 				</div>
 				<p class="info-note">
 					Highest Score wins the pot. Duel = winner-take-all (tie splits 50/50); groups pay a podium
-					(3 → 70/30, 4+ → 60/30/10). A wrong guess busts the puzzle.
+					(3 → 70/30, 4+ → 60/30/10). A wrong guess drains your Bounty; run out and you fold.
 				</p>
 			{/if}
 			<button class="info-close" on:click={() => (showAnteInfo = false)}>Got it</button>
