@@ -4965,13 +4965,6 @@
 						{@const mult = Number(dr.mult ?? $gameStore.bountyMult ?? 1)}
 						{@const prize = Number(dr.base ?? 0)}
 						{@const kept = Number(dr.kept ?? Math.max(0, prize - (dr.spent ?? 0)))}
-						{@const wrongSolves = Number($gameStore.wrongGuesses ?? 0)}
-						<!-- Wrong solves are the only thing that cuts the Daily multiplier below its base,
-						     so the lost winnings = (base mult − applied mult) × subtotal. -->
-						{@const wrongCost = Math.max(
-							0,
-							Math.round((Number($gameStore.bountyMult ?? mult) - mult) * kept)
-						)}
 						{@const banked = Number(
 							dr.winnings ?? dr.banked ?? dr.reward ?? Math.round(kept * mult)
 						)}
@@ -5022,13 +5015,6 @@
 									>−${(dr.spent ?? 0).toLocaleString()}</span
 								>
 							</div>
-							{#if wrongSolves > 0}
-								<div class="rcpt-line">
-									<span>Wrong solves <small>×{wrongSolves}</small></span><span
-										class="neg">{wrongCost > 0 ? `−$${wrongCost.toLocaleString()}` : '—'}</span
-									>
-								</div>
-							{/if}
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line">
 								<span>Subtotal</span><span>${kept.toLocaleString()}</span>
@@ -5247,7 +5233,9 @@
 								<span>Puzzle value</span><span>${advance.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
-								<span>Letters (debit)</span><span class="neg">−${letters.toLocaleString()}</span>
+								<span>Spent <small>(letters + guesses)</small></span><span class="neg"
+									>−${letters.toLocaleString()}</span
+								>
 							</div>
 							<div class="rcpt-rule double"></div>
 							<div class="rcpt-line total profit">

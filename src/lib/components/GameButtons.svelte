@@ -25,6 +25,37 @@
 	$: dualButtonMode = purchasePending || (guessModeActive && guessComplete);
 	$: guessCancelOnlyMode = guessModeActive && !guessComplete;
 
+	// ⚠️ What a WRONG guess costs, per mode (mirrors the server). Shown while composing a
+	// guess so the stakes are clear before you commit. A correct guess is always free. Not
+	// shown in the broke "last stand" state — there a miss busts you, which the danger UI owns.
+	$: missCost = (() => {
+		const mode = $gameStore.gameMode;
+		if (mode === 'climb') {
+			const c = $gameStore.climbInfo || {};
+			if (c.must_guess) return '';
+			const rem = Number(c.budget_left ?? 0);
+			if (rem <= 0) return '';
+			const amt = Math.max(Number(c.cheapest ?? 0), Math.round((0.2 * rem) / 10) * 10);
+			return amt > 0 ? `−$${amt.toLocaleString()} if wrong` : '';
+		}
+		if (mode === 'match') {
+			const m = $gameStore.matchInfo || {};
+			if (m.must_guess || m.done) return '';
+			const rem = Math.max(0, Number(m.budget ?? 0) - Number(m.spent ?? 0));
+			if (rem <= 0) return '';
+			const amt = Math.max(10, Math.round((0.2 * rem) / 10) * 10);
+			const unit = Number(m.wager ?? 0) === 0 ? '★' : '$';
+			return `−${unit}${amt.toLocaleString()} if wrong`;
+		}
+		if (mode === 'daily') {
+			const mult = Number($gameStore.dailyLive?.mult ?? $gameStore.bountyMult ?? 1);
+			return mult > 1 ? '−0.2× if wrong' : ''; // at the 1.0× floor a miss costs nothing
+		}
+		return ''; // Free Play: guesses are free
+	})();
+	// Show it once you're actually composing a guess (after tapping Solve), not while buying.
+	$: showMiss = !!missCost && guessModeActive && !gameOver;
+
 	// 🏷️ Main button label
 	$: buttonLabel = purchasePending
 		? 'Confirm'
@@ -67,6 +98,9 @@
 {/if}
 
 <div class="main-button-wrapper">
+	{#if showMiss}
+		<div class="miss-cost" role="status">{missCost}</div>
+	{/if}
 	<!-- Optional left accessory (e.g. Cash Game vault). Absolutely positioned so Solve stays centered. -->
 	<slot name="left" />
 	{#if dualButtonMode}
@@ -152,6 +186,24 @@
 	/* ---------------------------
    Button Wrapper Layout
 --------------------------- */
+	/* ⚠️ "−$X if wrong" — sits just above the Solve/Submit button while composing a guess. */
+	.miss-cost {
+		position: absolute;
+		bottom: calc(100% + 9px);
+		left: 50%;
+		transform: translateX(-50%);
+		white-space: nowrap;
+		font-family: var(--font-ui);
+		font-weight: 800;
+		font-size: 0.74rem;
+		color: #fb7185;
+		background: rgba(251, 90, 90, 0.13);
+		border: 1px solid rgba(251, 90, 90, 0.4);
+		padding: 3px 11px;
+		border-radius: 999px;
+		pointer-events: none;
+	}
+
 	.main-button-wrapper {
 		position: fixed;
 		/* Sit above the keyboard, which is lifted by the safe-area inset — match it so
