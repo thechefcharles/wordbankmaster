@@ -4612,7 +4612,6 @@
 				<div class="danger-cue" role="alert">
 					<span class="dc-title"><Icon name="broke" size={16} /> OUT OF MONEY</span>
 					<span class="dc-sub">Last guess — solve now, or lose your run</span>
-					<button class="dc-freeplay" on:click={handleFreePlay}>Keep playing free →</button>
 					<button class="bn-forfeit" on:click={askForfeit}>Give up?</button>
 				</div>
 			{/if}
@@ -5954,17 +5953,6 @@
 		text-underline-offset: 2px;
 	}
 	/* ★ escape hatch on the out-of-money banner — keep playing with no money on the line */
-	.dc-freeplay {
-		margin-top: 8px;
-		background: none;
-		border: none;
-		color: var(--brand-2, #fde047);
-		font-weight: 700;
-		font-size: 0.85rem;
-		cursor: pointer;
-		text-decoration: underline;
-	}
-
 	.dep-ic {
 		width: 26px;
 		height: 26px;
