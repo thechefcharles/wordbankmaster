@@ -185,7 +185,7 @@
 				<span class="acct-lbl">Available Balance</span>
 				{#if Number(d.net_worth ?? 0) !== Number(d.cash ?? d.net_worth ?? 0)}
 					<span class="acct-net" class:neg={Number(d.net_worth ?? 0) < 0}
-						>Net worth {fmtSigned(d.net_worth)}</span
+						>Net Worth {fmtSigned(d.net_worth)}</span
 					>
 				{/if}
 				<img class="acct-coin" src="/logo-coin.png" alt="" width="30" height="30" />
@@ -202,7 +202,7 @@
 					() =>
 						(statInfo = {
 							title: 'Total solves',
-							desc: 'Every puzzle you’ve solved across all modes — Daily, Cash Game, and challenges.'
+							desc: 'Every puzzle you’ve solved across all modes — Daily, Cash Game, and Challenges.'
 						})
 				)}
 				{@render chipAct(
@@ -231,7 +231,7 @@
 					() =>
 						(statInfo = {
 							title: 'Win streak',
-							desc: 'Daily puzzles you’ve solved in a row. Powers your bounty multiplier — the longer it runs, the more you earn.',
+							desc: 'Daily puzzles you’ve solved in a row. Powers your Bounty multiplier — the longer it runs, the more you earn.',
 							link: '/streak',
 							linkLabel: 'View Daily Calendar'
 						})

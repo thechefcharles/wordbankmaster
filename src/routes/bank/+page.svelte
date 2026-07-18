@@ -104,7 +104,7 @@
 			</span>
 			{#if Number(b.loan ?? 0) > 0}
 				<span class="bal-net" class:neg={Number(b.net_worth ?? 0) < 0}
-					>Net worth {fmtSigned(b.net_worth)}</span
+					>Net Worth {fmtSigned(b.net_worth)}</span
 				>
 			{/if}
 		</div>
@@ -330,7 +330,7 @@
 				<div class="help-item">
 					<h3>Paying it back</h3>
 					<p>
-						Repay any amount, any time. While you owe, the Store is locked and half of every payout
+						Repay any amount, any time. While you owe, the Store is locked and half of every Payout
 						auto-repays your loan. What you owe keeps growing daily until it's clear, capped at 2.5×
 						what you borrowed.
 					</p>

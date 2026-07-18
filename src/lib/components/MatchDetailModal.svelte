@@ -179,7 +179,7 @@
 							</div>
 						{:else if !wagered}
 							<div class="rcpt-rule"></div>
-							<div class="rcpt-note">Friendly match — no cash on the line.</div>
+							<div class="rcpt-note">Friendly match — no Cash on the line.</div>
 						{/if}
 					{/if}
 

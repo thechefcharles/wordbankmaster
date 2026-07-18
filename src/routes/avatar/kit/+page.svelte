@@ -21,9 +21,7 @@
 	</header>
 
 	<p class="kp-note">
-		Full-body kit — real <b>Humaaans</b> art. Mix & match below. When you're happy with the look +
-		wardrobe, set <code>KIT_READY = true</code> in <code>avatarKit.js</code> and I'll switch the builder/store/profile
-		over to this from the current head-and-shoulders avatar.
+		Full-body kit — real <b>Humaaans</b> art. Mix & match below. Not yet live in the builder.
 	</p>
 
 	<div class="kp-stage"><KitAvatar {config} size={220} /></div>

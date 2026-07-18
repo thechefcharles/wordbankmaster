@@ -19,7 +19,7 @@
 		},
 		{
 			icon: 'coin',
-			title: 'Cash is your score',
+			title: 'Cash is your Score',
 			isNew: true,
 			body: 'You start with $2,000. It’s both your balance and your rank — the less you spend, the more you keep.'
 		},

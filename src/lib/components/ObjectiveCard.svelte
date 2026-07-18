@@ -42,7 +42,7 @@
 					icon: 'coin',
 					title: 'Cash Game',
 					goal: 'Invest your buy-in and grow it by solving puzzles cheaply.',
-					win: 'Bank your cash between puzzles — once you start one, it’s solve or bust. Your Interest climbs with every solve.',
+					win: 'Bank your Cash between puzzles — once you start one, it’s solve or bust. Your Interest climbs with every solve.',
 					bar: 'A wrong guess drains your budget — run out and you bust.'
 				};
 			case 'makeup':
@@ -58,15 +58,15 @@
 					return {
 						icon: 'users',
 						title: 'Group Challenge',
-						goal: `Solve ${pk} — keep the most of each bounty for a higher Score.`,
-						win: 'Highest Score takes the pot. Your ante is the stake.',
+						goal: `Solve ${pk} — keep the most of each Bounty for a higher Score.`,
+						win: 'Highest Score takes the pot. Your buy-in is the stake.',
 						bar: 'A wrong guess busts the puzzle.'
 					};
 				return {
 					icon: 'swords',
 					title: c.opponent ? `Duel vs @${c.opponent}` : 'Challenge',
-					goal: `Solve ${pk} — keep the most of each bounty for a higher Score.`,
-					win: 'Highest Score takes the pot. Your ante is the stake.',
+					goal: `Solve ${pk} — keep the most of each Bounty for a higher Score.`,
+					win: 'Highest Score takes the pot. Your buy-in is the stake.',
 					bar: 'A wrong guess busts the puzzle.'
 				};
 			}

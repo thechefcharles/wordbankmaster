@@ -86,7 +86,7 @@
 		: 'Enter your PIN';
 	$: subtext = isCreate
 		? createStep === 'set'
-			? 'Set a 4-digit PIN — you’ll use it to confirm purchases & wagers.'
+			? 'Set a 4-digit PIN — you’ll use it to confirm purchases & buy-ins.'
 			: 'Type it once more to confirm.'
 		: $pinConfirm?.reason;
 </script>

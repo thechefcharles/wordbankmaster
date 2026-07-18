@@ -126,11 +126,11 @@
 			? [
 					{
 						term: 'Daily Earnings',
-						desc: "What you banked from today's Daily — the budget you didn't spend, grown by your Interest."
+						desc: "What you banked from today's Daily — the Bounty you didn't spend, grown by your Interest."
 					},
 					{
 						term: 'Efficiency',
-						desc: "Share of the puzzle's base budget you kept. Same for everyone — pure spend-less skill."
+						desc: "Share of the puzzle's base Bounty you kept. Same for everyone — pure spend-less skill."
 					},
 					{ term: 'Play', desc: "Play streak — days in a row you've shown up for the Daily." },
 					{ term: 'Win', desc: "Win streak — Dailies you've solved in a row." },
@@ -330,7 +330,7 @@
 							class="sort"
 							class:on={sortKey === 'efficiency'}
 							onclick={() => setSort('efficiency')}
-							title="Efficiency — value kept of the puzzle's base bounty (same for everyone; pure spend-less skill)"
+							title="Efficiency — value kept of the puzzle's base Bounty (same for everyone; pure spend-less skill)"
 							><svg class="hcol-ic" viewBox="0 0 24 24" aria-hidden="true"
 								><path d="M4.5 16a7.5 7.5 0 0 1 15 0" /><path d="M12 16l3.6-3" /><circle
 									cx="12"

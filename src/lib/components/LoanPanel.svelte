@@ -175,7 +175,7 @@
 			<span>→ {fmt(owedTomorrow)} tomorrow</span>
 		</div>
 		<p class="loan-note">
-			The Store is locked and half of every payout auto-repays this. Net worth
+			The Store is locked and half of every Payout auto-repays this. Net Worth
 			<b class="neg">{fmt(bank.net_worth)}</b>.
 		</p>
 		{#if maxRepay > 0}

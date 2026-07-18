@@ -50,7 +50,7 @@
 			{#if loanAmt > 0}
 				<div class="ac-loan">Loan −${loanAmt.toLocaleString()}</div>
 				<div class="ac-net" class:neg={netWorthAmt < 0}>
-					<span class="ac-net-cap">Net worth</span>{netWorthLabel}
+					<span class="ac-net-cap">Net Worth</span>{netWorthLabel}
 				</div>
 			{/if}
 		</div>

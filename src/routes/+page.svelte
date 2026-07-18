@@ -1813,7 +1813,7 @@
 			message:
 				"You'll get a fresh puzzle and won't bank any points from this one. Your points total stays safe — you just won't earn anything for the puzzle you're skipping.",
 			confirmText: 'Skip',
-			cancelText: 'Keep playing'
+			cancelText: 'Keep Playing'
 		});
 		if (ok) freePlayNext();
 	}
@@ -2082,12 +2082,12 @@
 	$: if (mbTarget === 'friend') mbPayout = 'winner';
 	$: potSummary =
 		mbWager === 0
-			? 'Friendly — no stakes, just bragging rights.'
+			? 'Friendly — no Cash on the line, just bragging rights and ★ points.'
 			: mbTarget === 'group'
 				? mbPayout === 'winner'
-					? `Everyone antes $${mbWager.toLocaleString()} → the pot; winner takes the whole pot. Spend less to keep more.`
-					: `Everyone antes $${mbWager.toLocaleString()} → the pot; top finishers split it. Spend less to keep more.`
-				: `You both ante $${mbWager.toLocaleString()} → $${(mbWager * 2).toLocaleString()} pot · winner takes all.`;
+					? `Everyone buys in at $${mbWager.toLocaleString()} → the pot; winner takes the whole pot. Spend less to keep more.`
+					: `Everyone buys in at $${mbWager.toLocaleString()} → the pot; top finishers split it. Spend less to keep more.`
+				: `You both buy in at $${mbWager.toLocaleString()} → $${(mbWager * 2).toLocaleString()} pot · winner takes all.`;
 	/** @type {{username:string,is_friend:boolean}[]} */
 	let mbResults = [];
 	let mbSearch = ''; // opponent search box (separate from the selected mbOpponent)
@@ -2253,9 +2253,9 @@
 				res?.reason === 'no_opponent'
 					? 'No player with that username.'
 					: res?.reason === 'insufficient'
-						? 'Not enough Cash for that wager.'
+						? 'Not enough Cash for that buy-in.'
 						: res?.reason === 'min_wager'
-							? 'Minimum wager is $500 (or $0 for a friendly).'
+							? 'Minimum buy-in is $500 (or $0 for a friendly).'
 							: res?.reason === 'self'
 								? "You can't challenge yourself."
 								: res?.reason === 'not_member'
@@ -2704,7 +2704,7 @@
 					: 'It counts as a loss — you deposit nothing and the answer is revealed.'}
 			</p>
 			<div class="gu-actions">
-				<button class="gu-cancel" on:click={cancelGiveUp}>Keep playing</button>
+				<button class="gu-cancel" on:click={cancelGiveUp}>Keep Playing</button>
 				<button class="gu-confirm" on:click={doGiveUp}
 					><Icon name="flag" size={15} /> Give up</button
 				>
@@ -2720,7 +2720,7 @@
 		<div class="modal-content giveup-modal don-modal">
 			<h2 class="gu-title"><Icon name="boost" size={18} /> Double or Nothing?</h2>
 			<p class="gu-text">
-				Solve this puzzle and your payout <b>doubles</b> to
+				Solve this puzzle and your Payout <b>doubles</b> to
 				<b class="don-win">${donTarget.toLocaleString()}</b>. But you're all in — you
 				<b>can't skip</b>, and if you get stuck you walk away with
 				<b class="don-loss">$0</b>{(climb?.spent ?? 0) > 0
@@ -2962,7 +2962,7 @@
 				</p>
 				<div class="info-rows">
 					<div class="info-row">
-						<span>Balance Remaining</span><b class="pos">${dlRemaining.toLocaleString()}</b>
+						<span>Bounty left</span><b class="pos">${dlRemaining.toLocaleString()}</b>
 					</div>
 					{#if dlMult > 1}<div class="info-row">
 							<span>Interest</span><b class="pos">+{Math.round((dlMult - 1) * 100)}%</b>
@@ -2972,10 +2972,10 @@
 					</div>
 				</div>
 				<p class="info-note">
-					Deduce letters instead of buying them — keep more of your balance. Grows your <button
+					Deduce letters instead of buying them — keep more, and grow your <button
 						class="info-inline"
 						on:click|stopPropagation={openDailyMult}>Interest</button
-					> too.
+					>.
 				</p>
 			{/if}
 			<button class="info-close" on:click={() => (dailyInfo = null)}>Got it</button>
@@ -3004,7 +3004,7 @@
 				<div class="info-big">
 					<Icon name="fire" size={34} /> +{Math.round((climb?.heat ?? 100) - 100)}%
 				</div>
-				<h3 class="info-title">Interest — grows your payouts</h3>
+				<h3 class="info-title">Interest — grows your Payouts</h3>
 				<p class="info-sub">
 					Every puzzle you solve adds its value to your Payout — boosted by your Interest.
 				</p>
@@ -3066,8 +3066,8 @@
 					</div>
 				</div>
 				<p class="info-note">
-					Each puzzle's <b>budget</b> shrinks as you buy letters — solve to lock it into your
-					Payout. Reveal less, keep more; the next puzzle's value lands ×
+					Reveal less, keep more — solving locks your <b>budget</b> into your Payout, and the next
+					puzzle lands ×
 					<button class="info-inline" on:click|stopPropagation={() => (climbInfo = 'heat')}
 						>Interest</button
 					>.
@@ -3149,9 +3149,9 @@
 				</div>
 				<h3 class="info-title">Bounty kept</h3>
 				<p class="info-sub">
-					This is a <b>friendly</b> — no money, no stakes. Each puzzle gives you a
-					<b>fresh ★ bounty</b> to spend on letters; whatever you don't spend adds to your
-					<b>★ Score</b>, and your ★ bank into your <b>Free Play points</b>.
+					No Cash on the line — just bragging rights. Each puzzle gives a
+					<b>fresh ★ Bounty</b>; keep what you don't spend as <b>★ Score</b>, banked to your
+					<b>Free Play points</b>.
 				</p>
 				<div class="info-rows">
 					<div class="info-row">
@@ -3162,7 +3162,7 @@
 							>★{Math.round(matchInfo?.total_score ?? 0).toLocaleString()}</b
 						>
 					</div>
-					<div class="info-row"><span>Stakes</span><b>None — friendly</b></div>
+					<div class="info-row"><span>Buy-in</span><b>None — friendly</b></div>
 				</div>
 				<p class="info-note">
 					Highest Score wins the duel (a tie splits the bragging rights). A wrong guess busts the
@@ -3187,12 +3187,12 @@
 						>
 					</div>
 					<div class="info-row">
-						<span>Your ante</span><b>${(matchInfo?.wager ?? 0).toLocaleString()}</b>
+						<span>Your buy-in</span><b>${(matchInfo?.wager ?? 0).toLocaleString()}</b>
 					</div>
 					<div class="info-row">
 						<span>Playing for</span><b class="pos">${matchPot.toLocaleString()} pot</b>
 					</div>
-					<div class="info-row"><span>Lose the duel</span><b class="neg">forfeit your ante</b></div>
+					<div class="info-row"><span>Lose the duel</span><b class="neg">forfeit your buy-in</b></div>
 				</div>
 				<p class="info-note">
 					Highest Score wins the pot. Duel = winner-take-all (tie splits 50/50); groups pay a podium
@@ -3784,7 +3784,7 @@
 					<p class="cat-sub">
 						Spend to solve each puzzle cheaply, keep what's left, and grow your Payout across
 						puzzles. Cash out anytime — but run out of budget and you bust. Higher tiers, bigger
-						payouts.
+						Payouts.
 					</p>
 					<div class="tier-balance">
 						Your Cash <b class:neg={cgBroke}>${(cgMeta?.bank ?? 0).toLocaleString()}</b>
@@ -3799,7 +3799,7 @@
 							>
 								<span class="tt-label">{t.label}</span>
 								<span class="tt-buyin">${t.buy_in.toLocaleString()} <small>buy-in</small></span>
-								<span class="tt-meta">interest to +{Math.round(t.heat_cap - 100)}%</span>
+								<span class="tt-meta">Interest to +{Math.round(t.heat_cap - 100)}%</span>
 								{#if !t.unlocked}<span class="tt-lock"
 										><Icon name="lock" size={13} />
 										{t.tier === 'silver'
@@ -4058,7 +4058,7 @@
 							<!-- Step 3 · Stakes -->
 							<div class="ch-step-title">The stakes</div>
 							<div class="ch-field ch-ante">
-								<span>Ante</span>
+								<span>Buy-in</span>
 								<div class="ante-chips">
 									{#each CHALLENGE_TIERS as t}
 										<button
@@ -4093,7 +4093,7 @@
 											on:click={() => {
 												mbPayout = 'podium';
 												fx('tap');
-											}}>Top finishers split</button
+											}}>Top finishers split the pot</button
 										>
 									</div>
 								</div>
@@ -4647,7 +4647,7 @@
 		     today's win on the line). Same red screen + keyboard lock structure. -->
 		{#if isDaily && dangerMode}
 			<div class="danger-cue daily" role="alert">
-				<span class="dc-title"><Icon name="broke" size={16} /> OUT OF BUDGET</span>
+				<span class="dc-title"><Icon name="broke" size={16} /> OUT OF BOUNTY</span>
 				<span class="dc-sub">Last guess — get it right to win today</span>
 				<button class="bn-forfeit" on:click={confirmFold}>Give up?</button>
 			</div>
@@ -5111,7 +5111,7 @@
 							{/if}
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-line">
-								<span>Budget</span><span>${prize.toLocaleString()}</span>
+								<span>Bounty</span><span>${prize.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
 								<span>Letters (debit)</span><span class="neg"
@@ -5275,7 +5275,7 @@
 								>
 							</div>
 							<div class="rcpt-note">
-								{((co.multiple_x100 ?? 0) / 100).toFixed(1)}× buy-in · peak interest +{Math.round(
+								{((co.multiple_x100 ?? 0) / 100).toFixed(1)}× buy-in · peak Interest +{Math.round(
 									(co.heat ?? 100) - 100
 								)}%
 							</div>
@@ -5387,7 +5387,7 @@
 							<div class="rcpt-rule"></div>
 							<!-- Ambient reference: your account (untouched until you Deposit the run). -->
 							<div class="rcpt-line rcpt-faint">
-								<span>Available balance</span><span
+								<span>Available Balance</span><span
 									>${Math.round(menuBank ?? 0).toLocaleString()}</span
 								>
 							</div>
