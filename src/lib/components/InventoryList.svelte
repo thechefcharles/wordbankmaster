@@ -20,7 +20,7 @@
 		jackpot_boost: { icon: 'gem', desc: 'Adds +100% Interest to your Daily deposit' },
 		free_reveal: { icon: 'search', desc: 'Reveal the most useful letter' },
 		free_vowel: { icon: 'letter-a', desc: 'Reveal one vowel free' },
-		half_off: { icon: 'tag', desc: 'Letters cost 50% less this puzzle' },
+		half_off: { icon: 'tag', desc: 'Your next 3 letter buys cost 50% less' },
 		vowel_vision: { icon: 'eye', desc: 'Reveal every vowel' },
 		heat_shield: { icon: 'shield', desc: 'Escape one bust — keep your Payout & Interest' },
 		overdrive: { icon: 'coin', desc: 'Out of money? Reveal one more letter, free' },

@@ -86,9 +86,12 @@
 	// match_buy_letter exactly: half_off (×0.5) → tax (×1.5) → vowel_block (×3 on
 	// vowels) → toll (×3 on all, one-shot "next letter" surcharge). CEIL after the
 	// ×0.5 and ×1.5 steps, same as the server's CEIL(v_cost * 0.5)::int etc.
+	// Half Off now lasts 3 letter buys (half_off_left counter), not the whole puzzle — show the
+	// discount only while it has charges left, in both Cash Game and matches.
 	$: matchHalfOff =
-		$gameStore.gameMode === 'match' &&
-		($gameStore.matchInfo?.used_powerups ?? []).includes('half_off');
+		$gameStore.gameMode === 'match' && Number($gameStore.matchInfo?.half_off_left ?? 0) > 0;
+	$: climbHalfOff =
+		$gameStore.gameMode === 'climb' && Number($gameStore.climbInfo?.half_off_left ?? 0) > 0;
 	$: matchDebuffs =
 		$gameStore.gameMode === 'match' ? ($gameStore.matchInfo?.my_debuffs ?? []) : [];
 	$: matchTax = matchDebuffs.includes('tax');
@@ -112,6 +115,7 @@
 			if (discount) c = Math.ceil(c * 0.75);
 			if (vowelHalf && 'AEIOU'.includes(k)) c = Math.ceil(c * 0.5);
 			c = c * climbMult;
+			if (climbHalfOff) c = Math.ceil(c * 0.5);
 			if ($gameStore.gameMode === 'match') {
 				if (matchHalfOff) c = Math.ceil(c * 0.5);
 				if (matchTax) c = Math.ceil(c * 1.5);

@@ -33,7 +33,7 @@
 	const PUP_META = /** @type {Record<string,{icon:string,desc:string}>} */ ({
 		free_reveal: { icon: 'search', desc: 'Reveal the most useful letter' },
 		free_vowel: { icon: 'letter-a', desc: 'Reveal one vowel free' },
-		half_off: { icon: 'tag', desc: 'Letters cost 50% less this puzzle' },
+		half_off: { icon: 'tag', desc: 'Your next 3 letter buys cost 50% less' },
 		vowel_vision: { icon: 'eye', desc: 'Reveal every vowel' },
 		heat_shield: {
 			icon: 'shield',
