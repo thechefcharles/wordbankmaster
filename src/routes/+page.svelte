@@ -4506,23 +4506,25 @@
 			</button>
 		{/if}
 
-		<!-- ★ Free Play HUD — points earned this device + Next/Skip (freeplay only, no money). -->
-		{#if $gameStore.gameMode === 'freeplay'}
+		<!-- ★ Free Play HUD — Skip during play / Next on a loss. On a WIN the flourish card
+		     below owns the "Next puzzle" action, so this top button hides. -->
+		{#if $gameStore.gameMode === 'freeplay' && !fpWon}
 			<div class="fp-hud">
 				<button class="fp-next" on:click={handleFreePlayNext}
-					>{$gameStore.gameState === 'won' || $gameStore.gameState === 'lost'
-						? 'Next puzzle →'
-						: 'Skip →'}</button
+					>{$gameStore.gameState === 'lost' ? 'Next puzzle →' : 'Skip →'}</button
 				>
 			</div>
 		{/if}
 
-		<!-- ★ Free Play solve flourish — a light banked-points pill, no modal. -->
+		<!-- ★ Free Play solve flourish — a light banked-points card (no modal) that doubles
+		     as the next-puzzle prompt. Sits clear of the board. -->
 		{#if fpWon}
 			<div class="fp-flourish" role="status" aria-live="polite">
-				{#if fpIsBest}<div class="fp-fl-best">★ NEW BEST</div>{/if}
-				<div class="fp-fl-gain">+★{fpLastGain.toLocaleString()}</div>
-				<div class="fp-fl-lbl">banked · {fpPoints.total.toLocaleString()} pts total</div>
+				{#if fpIsBest}<div class="fp-fl-best">★ New personal best</div>{/if}
+				<div class="fp-fl-gain"><span class="fp-fl-star">★</span>{fpLastGain.toLocaleString()}</div>
+				<div class="fp-fl-lbl">banked this solve</div>
+				<div class="fp-fl-total">{fpPoints.total.toLocaleString()} pts total</div>
+				<button class="fp-fl-next" on:click={handleFreePlayNext}>Next puzzle →</button>
 			</div>
 		{/if}
 
@@ -9226,33 +9228,34 @@
 		cursor: pointer;
 	}
 
-	/* ★ Free Play solve flourish — a light, centered banked-points pop (no modal). */
+	/* ★ Free Play solve flourish — a light banked-points card that owns the Next action.
+	   Anchored below the board (short Free Play phrases) and above the SOLVE button. */
 	.fp-flourish {
 		position: fixed;
-		top: 27%;
+		top: 48%;
 		left: 50%;
 		transform: translateX(-50%);
 		z-index: 900;
+		width: min(84vw, 300px);
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 2px;
-		padding: 12px 22px;
+		gap: 3px;
+		padding: 16px 22px 16px;
 		text-align: center;
-		pointer-events: none;
-		border-radius: 16px;
-		background: rgba(20, 18, 8, 0.72);
-		border: 1px solid rgba(251, 191, 36, 0.4);
+		border-radius: 18px;
+		background: rgba(22, 20, 10, 0.92);
+		border: 1px solid rgba(251, 191, 36, 0.38);
 		box-shadow:
-			0 10px 34px rgba(0, 0, 0, 0.5),
-			0 0 22px rgba(251, 191, 36, 0.22);
-		backdrop-filter: blur(8px);
+			0 14px 44px rgba(0, 0, 0, 0.55),
+			0 0 26px rgba(251, 191, 36, 0.2);
+		backdrop-filter: blur(10px);
 		animation: fp-pop 0.34s var(--ease-spring, cubic-bezier(0.2, 1.3, 0.4, 1)) both;
 	}
 	@keyframes fp-pop {
 		from {
 			opacity: 0;
-			transform: translateX(-50%) scale(0.8) translateY(6px);
+			transform: translateX(-50%) scale(0.85) translateY(8px);
 		}
 		to {
 			opacity: 1;
@@ -9265,26 +9268,71 @@
 		}
 	}
 	.fp-fl-best {
-		font-family: var(--font-display);
-		font-size: 0.62rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		font-family: var(--font-ui);
+		font-size: 0.66rem;
 		font-weight: 800;
-		letter-spacing: 0.14em;
-		color: #fde047;
-		text-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		color: #0b0a06;
+		background: linear-gradient(180deg, #fde047, #fbbf24);
+		padding: 3px 10px;
+		border-radius: 999px;
+		box-shadow: 0 0 14px rgba(251, 191, 36, 0.45);
+		margin-bottom: 3px;
 	}
 	.fp-fl-gain {
-		font-family: 'Orbitron', var(--font-display);
-		font-size: 2rem;
-		font-weight: 800;
+		font-family: var(--font-display);
+		font-size: 2.4rem;
+		font-weight: 700;
 		line-height: 1;
 		color: #fbbf24;
-		text-shadow: 0 0 16px rgba(251, 191, 36, 0.45);
+		text-shadow: 0 0 18px rgba(251, 191, 36, 0.4);
 		font-variant-numeric: tabular-nums;
+		letter-spacing: -0.01em;
+	}
+	.fp-fl-star {
+		font-size: 0.62em;
+		vertical-align: 0.14em;
+		margin-right: 0.06em;
 	}
 	.fp-fl-lbl {
-		font-size: 0.72rem;
-		color: var(--text-muted);
+		font-size: 0.74rem;
+		font-weight: 600;
+		color: var(--text);
 		letter-spacing: 0.02em;
+	}
+	.fp-fl-total {
+		font-size: 0.72rem;
+		color: var(--text-faint);
+		letter-spacing: 0.02em;
+	}
+	.fp-fl-next {
+		margin-top: 11px;
+		width: 100%;
+		background: var(--brand-grad);
+		color: #3a2a00;
+		font-family: var(--font-display);
+		font-weight: 700;
+		font-size: 0.95rem;
+		letter-spacing: 0.02em;
+		border: none;
+		border-radius: 12px;
+		padding: 10px 0;
+		cursor: pointer;
+		box-shadow: var(--glow-brand);
+		transition:
+			transform 0.16s var(--ease-spring),
+			filter 0.2s;
+	}
+	.fp-fl-next:hover {
+		transform: translateY(-1px);
+		filter: brightness(1.05);
+	}
+	.fp-fl-next:active {
+		transform: scale(0.98);
 	}
 
 	.game-logo {
