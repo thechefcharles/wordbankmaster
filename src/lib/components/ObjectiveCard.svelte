@@ -3,23 +3,9 @@
 	// player always knows the objective. The parent gates on localStorage so it shows
 	// once — per-mode for solo modes, per-match for challenges (first entry, not resume).
 	import { createEventDispatcher } from 'svelte';
-	import { MODIFIERS } from '$lib/powerups.js';
 	import ModeIcon from '$lib/components/ModeIcon.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	const dispatch = createEventDispatcher();
-
-	let page = 0; // 0 = how to win, 1 = power-ups (daily only)
-	// Power-ups a player can use in the Daily: the weekday Twists + the Interest Boosts.
-	const DAILY_PUPS = [
-		{ group: 'Daily Twist — one free helper each weekday', items: Object.values(MODIFIERS) },
-		{
-			group: 'Interest Boosts — buy in the Store, stack your rate',
-			items: [
-				{ emoji: 'boost', name: 'Interest Boost', blurb: 'Adds +50% Interest to your deposit' },
-				{ emoji: 'gem', name: 'Jackpot', blurb: 'Adds +100% Interest to your deposit' }
-			]
-		}
-	];
 
 	/** @type {string} */ export let mode;
 	/** @type {{ opponent?: string, wager?: number, packSize?: number, fieldSize?: number }} */
@@ -35,7 +21,7 @@
 					title: "Today's Daily",
 					goal: "Solve today's hidden phrase.",
 					win: 'Spend as little as you can — whatever you don’t spend is deposited to your account.',
-					bar: 'Every deposit earns Interest, bigger with your streak, credit, and boosts.'
+					bar: 'Every deposit earns Interest, bigger with your streak and credit.'
 				};
 			case 'climb':
 				return {
@@ -103,39 +89,17 @@
 <div class="obj-overlay" role="dialog" aria-modal="true" aria-label="How to win">
 	<div class="obj-card">
 		<button class="obj-x" on:click={go} aria-label="Close"><Icon name="close" size={16} /></button>
-		{#if page === 0}
-			<span class="obj-pill"><Icon name="target" size={14} /> How to win</span>
-			<div class="obj-icon">
-				{#if useModeIcon}<ModeIcon {mode} size={44} />{:else}<Icon name={c.icon} size={44} />{/if}
-			</div>
-			<h2 class="obj-title">{c.title}</h2>
+		<span class="obj-pill"><Icon name="target" size={14} /> How to win</span>
+		<div class="obj-icon">
+			{#if useModeIcon}<ModeIcon {mode} size={44} />{:else}<Icon name={c.icon} size={44} />{/if}
+		</div>
+		<h2 class="obj-title">{c.title}</h2>
 
-			<p class="obj-goal">{c.goal}</p>
-			<div class="obj-win"><span class="obj-win-key">WIN</span>{c.win}</div>
-			{#if c.bar}<p class="obj-bar">{c.bar}</p>{/if}
+		<p class="obj-goal">{c.goal}</p>
+		<div class="obj-win"><span class="obj-win-key">WIN</span>{c.win}</div>
+		{#if c.bar}<p class="obj-bar">{c.bar}</p>{/if}
 
-			{#if mode === 'daily'}
-				<button class="obj-link" on:click={() => (page = 1)}>Power-ups &amp; boosts →</button>
-			{/if}
-			<button class="obj-btn" on:click={go}>Let’s go →</button>
-		{:else}
-			<span class="obj-pill">Power-ups</span>
-			<h2 class="obj-title">Daily Power-ups</h2>
-			<div class="pup-list">
-				{#each DAILY_PUPS as grp}
-					<div class="pup-group-h">{grp.group}</div>
-					{#each grp.items as it}
-						<div class="pup-row">
-							<span class="pup-e"><Icon name={it.emoji} size={22} /></span>
-							<span class="pup-txt"
-								><span class="pup-n">{it.name}</span><span class="pup-d">{it.blurb}</span></span
-							>
-						</div>
-					{/each}
-				{/each}
-			</div>
-			<button class="obj-btn ghost" on:click={() => (page = 0)}>← Back</button>
-		{/if}
+		<button class="obj-btn" on:click={go}>Let’s go →</button>
 	</div>
 </div>
 

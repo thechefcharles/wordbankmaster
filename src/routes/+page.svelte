@@ -2931,10 +2931,7 @@
 				</div>
 				<p class="info-note">
 					Grow your <Icon name="trophy" size={13} /> streak (up to +15%) and keep good
-					<Icon name="card" size={13} /> credit (up to +10%) to earn more. <Icon
-						name="boost"
-						size={13}
-					/>/<Icon name="gem" size={13} /> Interest Boosts from the Store stack on top.
+					<Icon name="card" size={13} /> credit (up to +10%) to earn more.
 				</p>
 			{:else if dailyInfo === 'twist'}
 				<div class="info-big"><Icon name={dailyMod?.emoji ?? 'boost'} size={40} /></div>
