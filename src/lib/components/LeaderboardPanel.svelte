@@ -12,6 +12,7 @@
 		getWealthLeaderboard,
 		getMyGroups
 	} from '$lib/stores/statsStore.js';
+	import { cosmeticsMap, titleLabel, colorHex } from '$lib/cosmetics.js';
 
 	// Which game-type board is showing. Daily is the rich sortable table; the rest are
 	// simple rank/metric boards fed by their own server RPCs (same scope convention).
@@ -274,16 +275,18 @@
 								<button
 									class="name-link"
 									onclick={() => goto('/profile')}
-									style={r.color ? `color:${r.color}` : ''}>You</button
+									style={colorHex($cosmeticsMap, r.color) ? `color:${colorHex($cosmeticsMap, r.color)}` : ''}>You</button
 								>
 							{:else}
 								<button
 									class="name-link"
 									onclick={() => goto('/u/' + encodeURIComponent(r.name || ''))}
-									style={r.color ? `color:${r.color}` : ''}>{r.name || 'Player'}</button
+									style={colorHex($cosmeticsMap, r.color) ? `color:${colorHex($cosmeticsMap, r.color)}` : ''}>{r.name || 'Player'}</button
 								>
 							{/if}
-							{#if r.title}<span class="title">{r.title}</span>{/if}
+							{#if titleLabel($cosmeticsMap, r.title)}<span class="title"
+									>{titleLabel($cosmeticsMap, r.title)}</span
+								>{/if}
 						</td>
 						{#each modeCols as c}<td class="metric gold">{c.cell(r)}</td>{/each}
 					</tr>
@@ -376,16 +379,18 @@
 								<button
 									class="name-link"
 									onclick={() => goto('/profile')}
-									style={r.color ? `color:${r.color}` : ''}>You</button
+									style={colorHex($cosmeticsMap, r.color) ? `color:${colorHex($cosmeticsMap, r.color)}` : ''}>You</button
 								>
 							{:else}
 								<button
 									class="name-link"
 									onclick={() => goto('/u/' + encodeURIComponent(r.name || ''))}
-									style={r.color ? `color:${r.color}` : ''}>{r.name || 'Player'}</button
+									style={colorHex($cosmeticsMap, r.color) ? `color:${colorHex($cosmeticsMap, r.color)}` : ''}>{r.name || 'Player'}</button
 								>
 							{/if}
-							{#if r.title}<span class="title">{r.title}</span>{/if}
+							{#if titleLabel($cosmeticsMap, r.title)}<span class="title"
+									>{titleLabel($cosmeticsMap, r.title)}</span
+								>{/if}
 						</td>
 						<td class="metric gold">{r.played ? Number(r.score).toLocaleString() : '—'}</td>
 						<td class="metric eff">{r.efficiency != null ? r.efficiency + '%' : '—'}</td>

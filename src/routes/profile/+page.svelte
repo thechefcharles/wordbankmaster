@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { getProfileDetail, getMyAvatar, getUserBadges } from '$lib/stores/statsStore.js';
+	import { cosmeticsMap, titleLabel, colorHex } from '$lib/cosmetics.js';
 	import { badgeInfo } from '$lib/badges.js';
 	import { fmtSecs } from '$lib/time.js';
 	import Icon from '$lib/components/Icon.svelte';
@@ -20,6 +21,9 @@
 	let tab = $state('overview');
 	/** @type {any|null} */
 	let d = $state(null);
+	// Equipped cosmetics are ids → resolve to the title label + name-colour hex.
+	const myTitle = $derived(titleLabel($cosmeticsMap, d?.title));
+	const myColor = $derived(colorHex($cosmeticsMap, d?.color));
 	let loading = $state(true);
 	let avatar = $state(null);
 	/** @type {string[]} */
@@ -143,7 +147,10 @@
 				</button>
 				<div class="ov-id">
 					<div class="uname-row">
-						<span class="uname">{d.username ? '@' + d.username : 'You'}</span>
+						<span class="uname" style={myColor ? `color:${myColor}` : ''}
+							>{d.username ? '@' + d.username : 'You'}</span
+						>
+						{#if myTitle}<span class="uname-title">{myTitle}</span>{/if}
 						<button
 							class="bell-btn"
 							onclick={() => (tab = 'alerts')}
@@ -553,6 +560,18 @@
 		font-family: var(--font-display);
 		font-weight: 700;
 		font-size: 1.3rem;
+	}
+	.uname-title {
+		display: inline-block;
+		margin-left: 8px;
+		padding: 2px 9px;
+		border-radius: 999px;
+		font-size: 0.72rem;
+		font-weight: 800;
+		color: var(--brand-1, #fbbf24);
+		background: color-mix(in srgb, var(--brand-1, #fbbf24) 14%, transparent);
+		border: 1px solid color-mix(in srgb, var(--brand-1, #fbbf24) 40%, transparent);
+		vertical-align: middle;
 	}
 	/* 💹 Lifetime net hero */
 	.st-hero {

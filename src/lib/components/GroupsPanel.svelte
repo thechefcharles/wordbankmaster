@@ -20,6 +20,7 @@
 	} from '$lib/stores/statsStore.js';
 	import { requireConfirm } from '$lib/confirm.js';
 	import Icon from '$lib/components/Icon.svelte';
+	import { cosmeticsMap, titleLabel, colorHex } from '$lib/cosmetics.js';
 	import { supabase } from '$lib/supabaseClient.js';
 
 	/** Optional: list-view back button (e.g. the route's "← Menu"). Hidden if absent.
@@ -371,14 +372,16 @@
 										>{:else}{m.rank}{/if}</td
 								>
 								<td class="name"
-									>{#if m.is_me}<span style={m.color ? `color:${m.color}` : ''}>You</span
+									>{#if m.is_me}<span style={colorHex($cosmeticsMap, m.color) ? `color:${colorHex($cosmeticsMap, m.color)}` : ''}>You</span
 										>{:else}<button
 											class="m-link"
-											style={m.color ? `color:${m.color}` : ''}
+											style={colorHex($cosmeticsMap, m.color) ? `color:${colorHex($cosmeticsMap, m.color)}` : ''}
 											onclick={() => m.username && goto('/u/' + encodeURIComponent(m.username))}
 											>{m.name}</button
 										>{/if}{#if m.is_owner}<span class="owner-tag">owner</span
-										>{/if}{#if m.title}<span class="nw-title">{m.title}</span>{/if}</td
+										>{/if}{#if titleLabel($cosmeticsMap, m.title)}<span class="nw-title"
+									>{titleLabel($cosmeticsMap, m.title)}</span
+								>{/if}</td
 								>
 								<td class="score-cell" class:neg={(m.net_worth ?? 0) < 0}>{fmt(m.net_worth)}</td>
 								<td>{fmt(m.cash)}</td>

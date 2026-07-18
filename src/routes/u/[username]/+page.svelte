@@ -9,6 +9,7 @@
 	import AccountCard from '$lib/components/AccountCard.svelte';
 	import ModeIcon from '$lib/components/ModeIcon.svelte';
 	import { track } from '$lib/analytics.js';
+	import { cosmeticsMap, titleLabel, colorHex } from '$lib/cosmetics.js';
 	/** @type {Record<string,string>} */ let busyFriend = $state({});
 	/** @type {Record<string,string>} */ let groupState = $state({});
 
@@ -20,6 +21,9 @@
 	let addMsg = $state('');
 
 	const username = $derived($page.params.username);
+	// Equipped cosmetics come back as ids; resolve to the title label + name-colour hex.
+	const titleTxt = $derived(titleLabel($cosmeticsMap, p?.title));
+	const nameColor = $derived(colorHex($cosmeticsMap, p?.color));
 
 	const mult = (/** @type {any} */ x) => (x ? (Number(x) / 100).toFixed(1) + '×' : '—');
 	const winPct = (/** @type {any} */ a) =>
@@ -82,8 +86,8 @@
 	{:else}
 		<header class="u-head">
 			<Avatar config={p.avatar} fx size={110} />
-			<h1>@{p.username}</h1>
-			{#if p.title}<span class="u-title">{p.title}</span>{/if}
+			<h1 style={nameColor ? `color:${nameColor}` : ''}>@{p.username}</h1>
+			{#if titleTxt}<span class="u-title">{titleTxt}</span>{/if}
 			<div class="u-card">
 				<AccountCard
 					holder={p.name || p.username}
