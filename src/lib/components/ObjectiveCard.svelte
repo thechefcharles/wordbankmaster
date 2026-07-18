@@ -33,9 +33,9 @@
 				return {
 					icon: 'calendar',
 					title: "Today's Daily",
-					goal: 'Solve the hidden phrase.',
-					win: 'Spend as little as you can — whatever’s left is deposited to your account.',
-					bar: 'Every deposit earns Interest — from your streak, credit & boosts.'
+					goal: "Solve today's hidden phrase.",
+					win: 'Spend as little as you can — whatever you don’t spend is deposited to your account.',
+					bar: 'Every deposit earns Interest, bigger with your streak, credit, and boosts.'
 				};
 			case 'climb':
 				return {
@@ -49,24 +49,32 @@
 				return {
 					icon: 'calendar',
 					title: 'Make-up Daily',
-					goal: 'Play a daily you missed.',
+					goal: 'Play a Daily you missed.',
 					win: 'Same rules — solve it as cheaply as you can.',
-					bar: 'Counts toward your stats.'
+					bar: 'Fills your calendar; won’t change your streak.'
+				};
+			case 'freeplay':
+				return {
+					icon: 'star',
+					title: 'Free Play',
+					goal: 'Solve as many phrases as you want.',
+					win: 'No stakes — just ★ points. The less you spend, the higher you score.',
+					bar: ''
 				};
 			case 'match': {
 				if ((c.fieldSize ?? 2) > 2)
 					return {
 						icon: 'users',
 						title: 'Group Challenge',
-						goal: `Solve ${pk} — keep the most of each Bounty for a higher Score.`,
-						win: 'Highest Score takes the pot. Your buy-in is the stake.',
+						goal: `Solve ${pk}, keeping as much of each Bounty as you can.`,
+						win: 'Top Score takes the pot; your buy-in is the stake.',
 						bar: 'A wrong guess busts the puzzle.'
 					};
 				return {
 					icon: 'swords',
 					title: c.opponent ? `Duel vs @${c.opponent}` : 'Challenge',
-					goal: `Solve ${pk} — keep the most of each Bounty for a higher Score.`,
-					win: 'Highest Score takes the pot. Your buy-in is the stake.',
+					goal: `Solve ${pk}, keeping as much of each Bounty as you can.`,
+					win: 'Top Score takes the pot; your buy-in is the stake.',
 					bar: 'A wrong guess busts the puzzle.'
 				};
 			}

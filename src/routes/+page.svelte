@@ -1532,13 +1532,13 @@
 	}
 
 	// ===== Pre-game "How to win" objective card =====
-	// Shows the objective the moment a mode starts. Solo modes show once (per mode,
-	// localStorage); challenges show every entry. One reactive latch detects the
-	// menu→game transition so we don't have to wire every scattered start site.
+	// Shows the objective the moment a mode starts — ONCE per mode, ever (localStorage),
+	// for every mode including challenges. One reactive latch detects the menu→game
+	// transition so we don't have to wire every scattered start site.
 	/** @type {{ mode: string, ctx: any } | null} */
 	let objective = null;
 	let _wasMenu = true;
-	const SOLO_MODES = ['daily', 'climb', 'makeup'];
+	const SOLO_MODES = ['daily', 'climb', 'makeup', 'freeplay'];
 
 	function buildObjectiveCtx(/** @type {string} */ mode) {
 		if (mode !== 'match') return {};
@@ -1551,13 +1551,10 @@
 			fieldSize: opps.length + 1
 		};
 	}
-	// once-seen localStorage key: per-mode for solo modes, per-match for challenges
-	// (so the "How to win" card shows on the FIRST entry only, never on resume).
+	// once-seen localStorage key — the "How to win" card shows ONCE per mode, ever
+	// (all modes, challenges included). The board ⓘ button (forced) re-opens it anytime.
 	function objSeenKey(/** @type {string} */ mode) {
-		if (mode === 'match') {
-			const id = get(gameStore).matchInfo?.id;
-			return id ? 'wb_obj_match_' + id : null;
-		}
+		if (mode === 'match') return 'wb_obj_match';
 		return SOLO_MODES.includes(mode) ? 'wb_obj_' + mode : null;
 	}
 	/** @param {boolean} [forced] re-opened via the board ⓘ button — bypass the once-seen gate */
