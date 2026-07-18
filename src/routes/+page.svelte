@@ -1778,6 +1778,11 @@
 	}
 	$: if (($gameStore.gameMode === 'freeplay' || isFriendlyMatch) && $gameStore.gameState)
 		fpPoints = freePlayPoints();
+	// ★ Free Play win flourish — light, no modal. Shows the ★ just banked + running total.
+	$: fpWon = isFreeplay && $gameStore.gameState === 'won';
+	$: fpLastGain = Number($gameStore.fpLastGain ?? 0);
+	// fpPoints re-reads storage on win (above), so best already reflects this solve.
+	$: fpIsBest = fpWon && fpLastGain > 0 && fpLastGain >= (fpPoints.best ?? 0);
 	function handleFreePlay() {
 		fx('tap');
 		startFreePlay();
@@ -4512,6 +4517,15 @@
 			</div>
 		{/if}
 
+		<!-- ★ Free Play solve flourish — a light banked-points pill, no modal. -->
+		{#if fpWon}
+			<div class="fp-flourish" role="status" aria-live="polite">
+				{#if fpIsBest}<div class="fp-fl-best">★ NEW BEST</div>{/if}
+				<div class="fp-fl-gain">+★{fpLastGain.toLocaleString()}</div>
+				<div class="fp-fl-lbl">banked · {fpPoints.total.toLocaleString()} pts total</div>
+			</div>
+		{/if}
+
 		<!-- Daily solve timer — subtle server-anchored count-up (Daily only). -->
 		{#if $gameStore.gameMode === 'daily' && $gameStore.currentPhrase}
 			<div class="daily-timer-wrap">
@@ -5368,28 +5382,26 @@
 							>
 						</div>
 					{:else if isMatch}
-						<!-- Challenge match: finished the whole pack -->
+						<!-- Challenge match: finished the whole pack. Results settle asynchronously,
+						     so this is the interstitial — the full receipt lives in MatchDetailModal. -->
+						{@const mSettled = matchInfo?.status === 'settled'}
 						<div class="result-medal"><Icon name="swords" size={40} /></div>
-						<h2>Challenge complete!</h2>
+						<h2>{mSettled ? 'Challenge settled!' : 'Your run is in!'}</h2>
 						<p class="result-sub">
-							You solved {matchInfo?.solved ?? 0}/{matchInfo?.pack_size} spending ${(
-								matchInfo?.spent ?? 0
-							).toLocaleString()}
+							You solved {matchInfo?.solved ?? 0}/{matchInfo?.pack_size}{#if (matchInfo?.spent ?? 0) > 0}
+								· spent ${(matchInfo?.spent ?? 0).toLocaleString()}{/if}
 						</p>
 						<p class="arcade-gain">
-							{matchInfo?.status === 'settled'
-								? 'Settled — check the results.'
+							{mSettled
+								? 'Tap for your full results receipt.'
 								: "Most Cash left wins — we'll settle once everyone plays."}
 						</p>
 						<div class="result-actions">
-							{#if matchInfo?.status === 'settled'}
+							{#if mSettled}
 								<button
 									class="share-btn"
 									on:click={async () => {
 										const id = matchInfo?.id;
-										showResultModal = false;
-										hasTriggeredModal = false;
-										goToMainMenu();
 										matchResults = { loading: true };
 										matchResults = await getMatchDetail(id);
 									}}>View Results</button
@@ -9212,6 +9224,67 @@
 		color: var(--text);
 		font-weight: 700;
 		cursor: pointer;
+	}
+
+	/* ★ Free Play solve flourish — a light, centered banked-points pop (no modal). */
+	.fp-flourish {
+		position: fixed;
+		top: 27%;
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 900;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 2px;
+		padding: 12px 22px;
+		text-align: center;
+		pointer-events: none;
+		border-radius: 16px;
+		background: rgba(20, 18, 8, 0.72);
+		border: 1px solid rgba(251, 191, 36, 0.4);
+		box-shadow:
+			0 10px 34px rgba(0, 0, 0, 0.5),
+			0 0 22px rgba(251, 191, 36, 0.22);
+		backdrop-filter: blur(8px);
+		animation: fp-pop 0.34s var(--ease-spring, cubic-bezier(0.2, 1.3, 0.4, 1)) both;
+	}
+	@keyframes fp-pop {
+		from {
+			opacity: 0;
+			transform: translateX(-50%) scale(0.8) translateY(6px);
+		}
+		to {
+			opacity: 1;
+			transform: translateX(-50%) scale(1) translateY(0);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.fp-flourish {
+			animation: none;
+		}
+	}
+	.fp-fl-best {
+		font-family: var(--font-display);
+		font-size: 0.62rem;
+		font-weight: 800;
+		letter-spacing: 0.14em;
+		color: #fde047;
+		text-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
+	}
+	.fp-fl-gain {
+		font-family: 'Orbitron', var(--font-display);
+		font-size: 2rem;
+		font-weight: 800;
+		line-height: 1;
+		color: #fbbf24;
+		text-shadow: 0 0 16px rgba(251, 191, 36, 0.45);
+		font-variant-numeric: tabular-nums;
+	}
+	.fp-fl-lbl {
+		font-size: 0.72rem;
+		color: var(--text-muted);
+		letter-spacing: 0.02em;
 	}
 
 	.game-logo {

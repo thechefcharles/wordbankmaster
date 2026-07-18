@@ -85,6 +85,7 @@ import { loadPoints, recordSolve, bankMatchPoints } from '$lib/freeplay/points.j
  *   twistUsed?: boolean,
  *   wrongGuesses?: number,
  *   dailyMustGuess?: boolean,
+ *   fpLastGain?: number,
  *   clue?: string | null,
  *   makeupDate?: string | null,
  *   dailyResult?: any,
@@ -406,6 +407,9 @@ function reconcileFreeplayBoard() {
 	const lost = board.state === 'lost';
 	const justWon = won && prev.gameState !== 'won';
 	const justLost = lost && prev.gameState !== 'lost';
+	// ★ banked this solve (kept = budget − spent). Held on the state so the win flourish
+	// can show "+★X banked" without recomputing; preserved while the won board lingers.
+	const gained = justWon ? scoreOnSolve(freeplayState) : won ? (prev.fpLastGain ?? 0) : 0;
 	gameStore.set(
 		/** @type {GameState} */ ({
 			...prev,
@@ -414,6 +418,7 @@ function reconcileFreeplayBoard() {
 			gameState: won ? 'won' : lost ? 'lost' : 'default',
 			clue: board.clue ?? null,
 			dailyLive: board.live,
+			fpLastGain: gained,
 			// Out-of-points "last guess" wall — reuses the Daily must-guess flag + danger screen.
 			dailyMustGuess: !!board.must_guess,
 			// freeplay never uses these money/daily fields:
@@ -424,7 +429,6 @@ function reconcileFreeplayBoard() {
 		})
 	);
 	if (justWon) {
-		const gained = scoreOnSolve(freeplayState);
 		recordSolve(fpStorage(), gained);
 		fx('win');
 	} else if (justLost) {
