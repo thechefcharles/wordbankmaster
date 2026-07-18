@@ -65,38 +65,45 @@ function playKeepAlive() {
 		keepAlive = new Audio('/silence.wav');
 		keepAlive.loop = true;
 		keepAlive.preload = 'auto';
+		// If iOS pauses it (audio interruption / background), restart it as soon as we're
+		// foregrounded and sound is still on — otherwise the session drops and sounds die.
+		keepAlive.addEventListener('pause', () => {
+			if (enabled && document.visibilityState === 'visible') keepAlive?.play().catch(() => {});
+		});
 	}
-	keepAlive.play().catch(() => {}); // blocked until a gesture; the unlock listener retries
+	keepAlive.play().catch(() => {}); // blocked until a gesture; ensureLive() retries
 }
 function stopKeepAlive() {
 	keepAlive?.pause();
 }
 
-// iOS unlock: play a one-shot silent buffer through the context inside a real user gesture
-// (resume() alone won't do it), and start the silence keep-alive. Runs on the first tap/key.
+// Keep the audio session alive for the WHOLE session — not just once. iOS pauses page audio
+// whenever the app is backgrounded/locked, which drops the shared session and suspends this
+// Web-Audio context, killing game sounds. So we RE-arm on every user gesture AND every time
+// the app returns to the foreground. (The earlier version unhooked after the first tap, so a
+// single lock/app-switch permanently killed sounds.)
 if (browser) {
-	const unlock = () => {
-		const c = ac();
-		if (c) {
+	const ensureLive = () => {
+		const c = ac(); // resumes a suspended context
+		if (c && c.state !== 'running') {
+			// One-shot silent buffer — the iOS unlock (resume() alone isn't enough).
 			try {
 				const src = c.createBufferSource();
-				src.buffer = c.createBuffer(1, 1, 22050); // one silent sample, one-shot
+				src.buffer = c.createBuffer(1, 1, 22050);
 				src.connect(c.destination);
 				src.start(0);
 			} catch {
-				/* try again next gesture */
+				/* retry next gesture */
 			}
 		}
-		playKeepAlive();
-		if (c && c.state === 'running' && keepAlive && !keepAlive.paused) {
-			window.removeEventListener('pointerdown', unlock, true);
-			window.removeEventListener('touchend', unlock, true);
-			window.removeEventListener('keydown', unlock, true);
-		}
+		playKeepAlive(); // (re)start the silence keep-alive; no-op if already playing / sound off
 	};
-	window.addEventListener('pointerdown', unlock, true);
-	window.addEventListener('touchend', unlock, true);
-	window.addEventListener('keydown', unlock, true);
+	window.addEventListener('pointerdown', ensureLive, true);
+	window.addEventListener('touchend', ensureLive, true);
+	window.addEventListener('keydown', ensureLive, true);
+	document.addEventListener('visibilitychange', () => {
+		if (document.visibilityState === 'visible') ensureLive();
+	});
 }
 
 /**
