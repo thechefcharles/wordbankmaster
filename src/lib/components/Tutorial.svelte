@@ -10,27 +10,32 @@
 		{
 			icon: 'puzzle',
 			title: 'Crack the phrase',
-			body: 'A phrase is hidden. Reveal it, letter by letter.'
+			body: 'Every puzzle is a hidden phrase. Reveal letters until you can name the whole thing.'
 		},
 		{
 			icon: 'letter-a',
-			title: 'Buy letters or guess the phrase',
-			body: 'Letters cost Cash. Guessing is always free.'
+			title: 'Buy letters, guess when sure',
+			body: 'Each letter you buy reveals every copy of it — and costs Cash. Guess the full phrase anytime; nail it and it’s yours, but a wrong guess can cost you.'
 		},
 		{
 			icon: 'cash',
 			title: 'Spend less, keep more',
-			body: 'Pocket what you don’t spend — solve cheap, get rich.'
+			body: 'It’s a game of efficiency: whatever you don’t spend, you keep as Cash. Solve lean and your bankroll grows across every mode.'
+		},
+		{
+			icon: 'calendar',
+			title: 'A new puzzle every day',
+			body: 'The Daily is free and the same for everyone. Play each day to build a streak — the longer it runs, the more you earn.'
 		},
 		{
 			icon: 'swords',
-			title: 'Challenge anyone',
-			body: 'Same puzzles, head-to-head. Spend least, take the pot.'
+			title: 'Challenge your friends',
+			body: 'Buy in and take on a friend or a whole group. Same puzzles for all — whoever solves for the least takes the pot.'
 		},
 		{
 			icon: 'trophy',
-			title: 'Rack up wins',
-			body: 'Daily puzzles, Cash Game runs, a Store, boards to climb.'
+			title: 'Always more to play',
+			body: 'Build a bankroll in Cash Game runs, climb the leaderboards, and spend winnings in the Store. Tap Play to start with the Daily.'
 		}
 	];
 
@@ -184,7 +189,7 @@
 		color: var(--text-muted, #c2cbd8);
 		margin: 0 auto 20px;
 		max-width: 320px;
-		min-height: 3em;
+		min-height: 4em;
 	}
 
 	.tut-dots {
