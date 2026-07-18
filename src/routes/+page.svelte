@@ -5220,14 +5220,16 @@
 						</div>
 					{:else if isClimb && resultWon}
 						<!-- 🧾 Per-puzzle RUN scorecard — mid-run, nothing hits the account until you Deposit. -->
-						{@const letters = Math.round(climb?.spent ?? 0)}
+						{@const totalSpent = Math.round(climb?.spent ?? 0)}
 						{@const payout = Math.round(climb?.last_gain ?? 0)}
-						{@const advance = payout + letters}
+						{@const value = payout + totalSpent}
+						{@const wrongCount = Math.round(climb?.wrong_count ?? 0)}
+						{@const wrongSpent = Math.round(climb?.wrong_spent ?? 0)}
+						{@const lettersSpent = Math.max(0, totalSpent - wrongSpent)}
 						{@const pendAfter = Math.round(climb?.bankroll ?? 0)}
 						{@const solves = Math.round(climb?.run_solves ?? 0)}
 						{@const runInt = Math.max(0, Math.round((climb?.heat ?? 100) - 100))}
 						{@const runInterest = Math.round(climb?.run_interest ?? 0)}
-						{@const runSpent = Math.round(climb?.run_spent ?? 0)}
 						{@const tierName =
 							(climb?.tier ?? '').charAt(0).toUpperCase() + (climb?.tier ?? '').slice(1)}
 						<div class="rcpt-slot" aria-hidden="true"></div>
@@ -5248,11 +5250,18 @@
 							<div class="rcpt-rule"></div>
 							<div class="rcpt-cap">This solve</div>
 							<div class="rcpt-line">
-								<span>Puzzle value</span><span>${advance.toLocaleString()}</span>
+								<span>Puzzle value</span><span>${value.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
-								<span>Spent</span><span class="neg">−${letters.toLocaleString()}</span>
+								<span>Letters</span><span class="neg">−${lettersSpent.toLocaleString()}</span>
 							</div>
+							{#if wrongCount > 0}
+								<div class="rcpt-line">
+									<span>Wrong solves <small>×{wrongCount}</small></span><span class="neg"
+										>−${wrongSpent.toLocaleString()}</span
+									>
+								</div>
+							{/if}
 							<div class="rcpt-rule double"></div>
 							<div class="rcpt-line total profit">
 								<span>Kept this solve</span><span>+${payout.toLocaleString()}</span>
@@ -5265,11 +5274,6 @@
 							<div class="rcpt-line">
 								<span>Interest earned <small>({runInt}%)</small></span><span class="pos"
 									>+${runInterest.toLocaleString()}</span
-								>
-							</div>
-							<div class="rcpt-line">
-								<span>Solves <small>×{solves}</small></span><span class="neg"
-									>−${runSpent.toLocaleString()}</span
 								>
 							</div>
 							<div class="rcpt-rule"></div>
