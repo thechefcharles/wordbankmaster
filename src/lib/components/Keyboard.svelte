@@ -381,7 +381,12 @@
   --------------------------- */
 	.keyboard-container {
 		position: fixed;
-		bottom: calc(env(safe-area-inset-bottom, 0px) + 9px); /* lifted off the bottom edge */
+		/* Lift off the bottom edge, clearing the home indicator. env(safe-area-inset-bottom)
+		   reads 0 here because the app intentionally omits viewport-fit=cover (it broke native
+		   tap coordinates), so env() can't be relied on. We floor the offset at 22px so the
+		   bottom row is never clipped on phones with a home indicator, and still honor a real
+		   --safe-area-inset-bottom var if a numeric-inset plugin later provides one. */
+		bottom: calc(max(var(--safe-area-inset-bottom, 0px), 22px) + 8px);
 		left: 50%;
 		transform: translateX(-50%);
 		width: 100%;
@@ -401,7 +406,7 @@
 		flex-wrap: nowrap;
 	}
 	:global(body) {
-		padding-bottom: 176px; /* Space for the lifted keyboard */
+		padding-bottom: 192px; /* Space for the lifted keyboard (raised for the home-indicator gap) */
 		display: flex;
 		flex-direction: column;
 		align-items: center;
