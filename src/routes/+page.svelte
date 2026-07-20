@@ -6382,9 +6382,10 @@
 		width: 100%;
 		padding: 0;
 	}
-	/* Clear the (safe-area-lifted) keyboard's top edge so the Solve/vault row isn't cramped. */
+	/* Clear the (safe-area-lifted) keyboard's top edge so the Solve/vault row isn't cramped.
+	   There's ample empty space above the row, so a generous gap is safe. */
 	.buttons-section {
-		margin-bottom: 22px;
+		margin-bottom: 44px;
 	}
 	/* ⚡ Power-up tray (above the keyboard) */
 
