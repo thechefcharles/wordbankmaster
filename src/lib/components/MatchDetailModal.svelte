@@ -136,7 +136,7 @@
 					<div class="rcpt-acct">{title}</div>
 					<div class="rcpt-sub">
 						{m?.pack_size} puzzle{m?.pack_size === 1 ? '' : 's'} ·
-						{field >= 3 ? 'podium 3·2·1' : 'winner-take-all'}
+						{m?.payout === 'podium' && field >= 3 ? '3-2-1 split' : 'winner-take-all'}
 						{#if !wagered}· friendly{/if}
 					</div>
 
@@ -468,10 +468,11 @@
 		border-color: rgba(185, 28, 28, 0.28);
 	}
 	.rv-head {
-		font-family: 'Orbitron', var(--font-display), sans-serif;
-		font-weight: 800;
-		font-size: 1.55rem;
-		letter-spacing: 0.05em;
+		/* Match the receipt's typewriter face — no arcade display font on the paper receipt. */
+		font-family: 'Courier New', 'Courier', ui-monospace, monospace;
+		font-weight: 700;
+		font-size: 1.7rem;
+		letter-spacing: 0.04em;
 		line-height: 1.1;
 		color: #23201a;
 	}
