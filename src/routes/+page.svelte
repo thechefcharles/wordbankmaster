@@ -6382,6 +6382,10 @@
 		width: 100%;
 		padding: 0;
 	}
+	/* Clear the (safe-area-lifted) keyboard's top edge so the Solve/vault row isn't cramped. */
+	.buttons-section {
+		margin-bottom: 22px;
+	}
 	/* ⚡ Power-up tray (above the keyboard) */
 
 	.diagnostic-banner {
