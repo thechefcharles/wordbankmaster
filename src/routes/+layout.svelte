@@ -4,6 +4,7 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { startNotifications, stopNotifications } from '$lib/stores/notificationStore.js';
 	import { fx } from '$lib/sound.js';
+	import { installScrollLock } from '$lib/scrollLock.js';
 	import Toaster from '$lib/components/Toaster.svelte';
 	import PinConfirm from '$lib/components/PinConfirm.svelte';
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
@@ -25,6 +26,9 @@
 		document.addEventListener('click', buttonPress, true);
 		return () => document.removeEventListener('click', buttonPress, true);
 	});
+
+	// Lock background scroll whenever any modal overlay is open (see scrollLock.js).
+	onMount(() => installScrollLock());
 
 	onMount(() => {
 		// "Keep me logged in" = off → end the session on a cold open (new browser
