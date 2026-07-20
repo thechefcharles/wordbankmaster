@@ -122,6 +122,9 @@
 	let menuView = 'home'; // 'home' | 'play' | 'challenge' | 'progress'
 	let showResultModal = false;
 	let hasTriggeredModal = false;
+	// Final-puzzle receipt: the last solve goes straight to 'done' server-side (no awaiting_next),
+	// so we surface its per-puzzle receipt client-side before the full results, like every other puzzle.
+	let matchFinalReceipt = false;
 	let hasInitialized = false;
 	let sessionUid = ''; // current session user id (for the PIN gate)
 	/** @type {string | null} */
@@ -794,6 +797,7 @@
 							blurb: dailyMod.blurb,
 							count: 1,
 							usable: true,
+							kind: 'twist',
 							reason: ''
 						});
 					}
@@ -808,6 +812,7 @@
 								blurb: BOOST_META[it.id]?.blurb ?? '',
 								count: it.owned,
 								usable: avail,
+								kind: 'daily',
 								reason: avail ? '' : 'Bought after you started — usable on your next puzzle.'
 							});
 						} else if (it.kind === 'climb') {
@@ -851,6 +856,7 @@
 									: '',
 								count: it.owned,
 								usable: avail,
+								kind: 'climb',
 								reason:
 									climbCapReached || matchCapReached
 										? 'Already used on this puzzle.'
@@ -883,12 +889,16 @@
 								blurb: '',
 								count: it.owned,
 								usable: false,
+								kind: it.kind ?? 'climb',
 								reason: 'For the Cash Game or Challenges — not this mode.'
 							});
 						}
 					}
 					return out;
 				})();
+	// Split the vault tray so offensive Sabotage reads apart from self-help Power-ups.
+	$: vaultPowerups = vaultItems.filter((/** @type {any} */ i) => i.kind !== 'sabotage');
+	$: vaultSabotage = vaultItems.filter((/** @type {any} */ i) => i.kind === 'sabotage');
 	/** @param {any} item */
 	function tapVaultItem(item) {
 		if (item.usable) {
@@ -1273,6 +1283,9 @@
 	let matchChatUnread = false;
 	/** @type {string|null} id of the newest message you've already seen */
 	let matchChatSeenId = null;
+	/** True once the thread has synced at least once — distinguishes "not initialized"
+	 *  from "no messages seen" so the FIRST message on an empty thread still notifies. */
+	let matchChatPrimed = false;
 	/** @type {any[]} */
 	let matchMessages = [];
 	let matchChatInput = '';
@@ -1299,13 +1312,16 @@
 			tick().then(() => {
 				if (matchChatScroll) matchChatScroll.scrollTop = matchChatScroll.scrollHeight;
 			});
-		} else if (matchChatSeenId === null) {
-			// First sync: treat the existing backlog as already seen (don't nag).
+		} else if (!matchChatPrimed) {
+			// First sync: treat any existing backlog as already seen (don't nag). Note we
+			// key this on the primed flag, NOT on matchChatSeenId — an empty thread leaves
+			// seenId null, and the first real message must still light the unread dot.
 			if (newest) matchChatSeenId = newest.id;
 		} else if (newest && !newest.is_me && newest.id !== matchChatSeenId) {
 			// Light up only for a NEW message from someone else you haven't opened.
 			matchChatUnread = true;
 		}
+		matchChatPrimed = true;
 	}
 	function teardownMatchChat() {
 		if (matchChannel) {
@@ -1318,6 +1334,7 @@
 		matchChatOpen = false;
 		matchChatUnread = false;
 		matchChatSeenId = null;
+		matchChatPrimed = false;
 	}
 	/** @param {string|null|undefined} id */
 	function syncMatchChat(id) {
@@ -2082,7 +2099,7 @@
 			: mbTarget === 'group'
 				? mbPayout === 'winner'
 					? `Everyone buys in at $${mbWager.toLocaleString()} → the pot; winner takes the whole pot. Spend less to keep more.`
-					: `Everyone buys in at $${mbWager.toLocaleString()} → the pot; top finishers split it. Spend less to keep more.`
+					: `Everyone buys in at $${mbWager.toLocaleString()} → the pot; the top 3 split it 3-2-1 (½ · ⅓ · ⅙). Spend less to keep more.`
 				: `You both buy in at $${mbWager.toLocaleString()} → $${(mbWager * 2).toLocaleString()} pot · winner takes all.`;
 	/** @type {{username:string,is_friend:boolean}[]} */
 	let mbResults = [];
@@ -2216,7 +2233,7 @@
 			{ label: 'Buy-in', value: w > 0 ? '$' + w.toLocaleString() : 'Friendly' },
 			{
 				label: 'Payout',
-				value: mbPayout === 'podium' ? 'Top finishers split the pot' : 'Winner takes all'
+				value: mbPayout === 'podium' ? '3-2-1 split (top 3)' : 'Winner takes all'
 			},
 			...(mbClockLabel ? [{ label: 'Timing', value: mbClockLabel }] : [])
 		];
@@ -2278,7 +2295,7 @@
 			{
 				label: 'Payout',
 				value:
-					(m.payout === 'podium' && Number(m.players) > 2) ? 'Top finishers split the pot' : 'Winner takes all'
+					(m.payout === 'podium' && Number(m.players) > 2) ? '3-2-1 split' : 'Winner takes all'
 			}
 		];
 		if (Number(m.wager) > 0 && netWorth != null)
@@ -2372,6 +2389,7 @@
 		}
 		saveGameToLocalStorage();
 		savedGameInfo = getSavedGameInfo(currentUser.id);
+		matchFinalReceipt = false;
 		showMainMenu = true;
 		// Refresh the daily completion indicator (e.g. just finished today's daily).
 		getDailyStatus(currentUser.id).then((s) => {
@@ -2558,6 +2576,15 @@
 					})
 					.catch(() => {});
 			playDailyDepositAnim();
+			return;
+		}
+
+		// Challenge FINAL puzzle (a win that completes the pack) → show its per-puzzle receipt
+		// first, just like every earlier puzzle. The last solve goes straight to 'done'
+		// server-side (settlement already fired), so this is client-side; "See results" opens
+		// the full results receipt.
+		if (isMatch && won && matchInfo?.done) {
+			matchFinalReceipt = true;
 			return;
 		}
 
@@ -2821,26 +2848,51 @@
 					>
 				{/if}
 			{:else}
-				<div class="bag-use-h">Your items</div>
 				{#if vaultItems.length}
-					<div class="bag-use-grid">
-						{#each vaultItems as it}
-							<button
-								class="bag-use"
-								class:locked={!it.usable}
-								disabled={(dailyTwistBusy || dailyBoostBusy) && it.usable}
-								on:click={() => tapVaultItem(it)}
-								title={it.usable ? it.blurb : it.reason}
-							>
-								<span class="bag-use-e"><Icon name={it.emoji} size={20} /></span>
-								{#if (it.count ?? 1) > 1}<span class="bag-use-n">×{it.count}</span>{/if}
-								<span class="bag-use-name">{it.name}</span>
-								<span class="bag-use-d"
-									>{#if it.usable}{it.blurb}{:else}<Icon name="lock" size={12} /> tap for why{/if}</span
+					{#if vaultPowerups.length}
+						<div class="bag-use-h">Power-ups</div>
+						<div class="bag-use-grid">
+							{#each vaultPowerups as it}
+								<button
+									class="bag-use"
+									class:locked={!it.usable}
+									disabled={(dailyTwistBusy || dailyBoostBusy) && it.usable}
+									on:click={() => tapVaultItem(it)}
+									title={it.usable ? it.blurb : it.reason}
 								>
-							</button>
-						{/each}
-					</div>
+									<span class="bag-use-e"><Icon name={it.emoji} size={20} /></span>
+									{#if (it.count ?? 1) > 1}<span class="bag-use-n">×{it.count}</span>{/if}
+									<span class="bag-use-name">{it.name}</span>
+									<span class="bag-use-d"
+										>{#if it.usable}{it.blurb}{:else}<Icon name="lock" size={12} /> tap for why{/if}</span
+									>
+								</button>
+							{/each}
+						</div>
+					{/if}
+					{#if vaultSabotage.length}
+						<div class="bag-use-h bag-use-h-sab">
+							Sabotage <span class="bag-use-h-sub">— aim at an opponent</span>
+						</div>
+						<div class="bag-use-grid">
+							{#each vaultSabotage as it}
+								<button
+									class="bag-use bag-use-sab"
+									class:locked={!it.usable}
+									disabled={(dailyTwistBusy || dailyBoostBusy) && it.usable}
+									on:click={() => tapVaultItem(it)}
+									title={it.usable ? it.blurb : it.reason}
+								>
+									<span class="bag-use-e"><Icon name={it.emoji} size={20} /></span>
+									{#if (it.count ?? 1) > 1}<span class="bag-use-n">×{it.count}</span>{/if}
+									<span class="bag-use-name">{it.name}</span>
+									<span class="bag-use-d"
+										>{#if it.usable}{it.blurb}{:else}<Icon name="lock" size={12} /> tap for why{/if}</span
+									>
+								</button>
+							{/each}
+						</div>
+					{/if}
 				{:else}
 					<p class="bag-note">Nothing usable here right now.</p>
 				{/if}
@@ -3188,8 +3240,9 @@
 					<div class="info-row"><span>Lose the duel</span><b class="neg">forfeit your buy-in</b></div>
 				</div>
 				<p class="info-note">
-					Highest Score wins the pot. Duel = winner-take-all (tie splits 50/50); groups pay a podium
-					(3 → 70/30, 4+ → 60/30/10). A wrong guess drains your Bounty; run out and you fold.
+					Highest Score wins the pot. Duel = winner-take-all (tie splits 50/50); groups can pay
+					3-2-1 (3 players → top 2 at 60/40, 4+ → top 3 at 50/33/17). A wrong guess drains your
+					Bounty; run out and you fold.
 				</p>
 			{/if}
 			<button class="info-close" on:click={() => (showAnteInfo = false)}>Got it</button>
@@ -4086,7 +4139,7 @@
 											on:click={() => {
 												mbPayout = 'podium';
 												fx('tap');
-											}}>Top finishers split the pot</button
+											}}>3-2-1 split</button
 										>
 									</div>
 								</div>
@@ -4977,7 +5030,7 @@
 		{/if}
 
 		<!-- 🧾 Between-puzzle challenge receipt — mid-match, after a solve, before the next puzzle. -->
-		{#if matchAwaiting}
+		{#if matchAwaiting || matchFinalReceipt}
 			{@const unit = isFriendlyMatch ? '★' : '$'}
 			{@const bounty = Math.round(matchInfo?.budget ?? 0)}
 			{@const kept = Math.round(matchInfo?.last_score ?? 0)}
@@ -5032,22 +5085,41 @@
 							</div>
 						{/if}
 						<div class="rcpt-thanks">
-							{matchInfo?.position >= matchInfo?.pack_size ? 'Last one — finish strong' : 'Keep the run going'}
+							{matchFinalReceipt
+								? 'That’s a wrap — nice run'
+								: matchInfo?.position >= matchInfo?.pack_size
+									? 'Last one — finish strong'
+									: 'Keep the run going'}
 						</div>
 					</div>
 					<div class="result-actions">
-						<button
-							class="next-puzzle-button bp-next"
-							disabled={cgBusy}
-							on:click={async () => {
-								cgBusy = true;
-								try {
-									await advanceMatch();
-								} finally {
-									cgBusy = false;
-								}
-							}}>Next puzzle →</button
-						>
+						{#if matchFinalReceipt}
+							<button
+								class="next-puzzle-button bp-next"
+								on:click={async () => {
+									matchFinalReceipt = false;
+									showResultModal = true; // interstitial behind (has Menu) once the receipt is closed
+									const id = matchInfo?.id;
+									if (id) {
+										matchResults = { loading: true };
+										matchResults = await getMatchDetail(id);
+									}
+								}}>See results →</button
+							>
+						{:else}
+							<button
+								class="next-puzzle-button bp-next"
+								disabled={cgBusy}
+								on:click={async () => {
+									cgBusy = true;
+									try {
+										await advanceMatch();
+									} finally {
+										cgBusy = false;
+									}
+								}}>Next puzzle →</button
+							>
+						{/if}
 					</div>
 				</div>
 			</div>
@@ -5504,18 +5576,22 @@
 								: "Most Cash left wins — we'll settle once everyone plays."}
 						</p>
 						<div class="result-actions">
-							{#if mSettled}
+							<!-- Always available: get_match_detail returns standings for OPEN matches too,
+							     and the receipt modal renders a "still in progress" state — so this works
+							     for a group challenge that hasn't settled yet (previously it was gated on
+							     mSettled and group players only ever saw "Challenge Friends"). -->
+							<button
+								class="share-btn"
+								on:click={async () => {
+									const id = matchInfo?.id;
+									if (!id) return;
+									matchResults = { loading: true };
+									matchResults = await getMatchDetail(id);
+								}}>View Results</button
+							>
+							{#if !mSettled}
 								<button
-									class="share-btn"
-									on:click={async () => {
-										const id = matchInfo?.id;
-										matchResults = { loading: true };
-										matchResults = await getMatchDetail(id);
-									}}>View Results</button
-								>
-							{:else}
-								<button
-									class="share-btn"
+									class="next-puzzle-button"
 									on:click={() => {
 										showResultModal = false;
 										hasTriggeredModal = false;
@@ -5927,15 +6003,16 @@
 	}
 	.sab-target-row {
 		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		gap: 10px;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 3px;
 		padding: 11px 14px;
 		border-radius: 12px;
 		cursor: pointer;
 		background: rgba(244, 114, 182, 0.1);
 		border: 1px solid rgba(244, 114, 182, 0.4);
 		color: var(--text);
+		text-align: left;
 	}
 	.sab-target-row:active {
 		transform: scale(0.98);
@@ -5956,7 +6033,8 @@
 		font-size: 0.82rem;
 		color: #f9a8d4;
 		font-variant-numeric: tabular-nums;
-		white-space: nowrap;
+		white-space: normal;
+		line-height: 1.35;
 	}
 
 	/* 🔔 Bank-app style push notification (out-of-Cash-Advance alert) */
@@ -8833,6 +8911,21 @@
 	}
 	.bag-use.locked .bag-use-e {
 		opacity: 0.55;
+	}
+	/* Sabotage reads apart from self-help power-ups: pink header + pink card accent. */
+	.bag-use-h-sab {
+		color: #f472b6;
+	}
+	.bag-use-h-sub {
+		font-weight: 600;
+		text-transform: none;
+		letter-spacing: 0;
+		font-size: 0.72rem;
+		opacity: 0.75;
+	}
+	.bag-use-sab:not(.locked) {
+		background: linear-gradient(135deg, rgba(244, 114, 182, 0.22), rgba(244, 114, 182, 0.06));
+		border-color: rgba(244, 114, 182, 0.55);
 	}
 	.bag-use.locked .bag-use-d {
 		color: var(--text-faint);

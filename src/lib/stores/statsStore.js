@@ -929,6 +929,7 @@ export async function getHeadToHead(opponentId) {
 }
 /** @param {string} matchId @returns {Promise<any|null>} */
 export async function getMatchDetail(matchId) {
+	if (!matchId) return null;
 	const { data, error } = await supabase.rpc('get_match_detail', { p_match_id: matchId });
 	if (error) {
 		console.error('❌ get_match_detail:', error);
