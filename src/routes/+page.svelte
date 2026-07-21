@@ -2638,15 +2638,7 @@
 		}}><Icon name={$soundEnabled ? 'volume' : 'mute'} size={18} /></button
 	>
 {/if}
-<!-- 🏳️ Give up (top-right) — Daily / Challenges / Cash Game (forfeit) -->
-{#if loggedIn && hasInitialized && !showMainMenu && gameActive && (foldMode || (isClimb && climb?.state === 'active'))}
-	<button
-		class="giveup-btn"
-		title="Give up"
-		aria-label="Give up"
-		on:click={isClimb ? askForfeit : confirmFold}><Icon name="flag" size={18} /></button
-	>
-{/if}
+<!-- 🏳️ Give up now lives to the RIGHT of Solve (see GameButtons slot="right" below). -->
 <!-- Skip retired in Cash Game V4 — Cash Out is the graceful bail. -->
 
 <!-- 🏆 Pot — top bar, left of the WORDBANK title, mirroring the chat control on the right -->
@@ -4972,6 +4964,19 @@
 								<rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
 							</svg>
 							{#if usableMatchPups > 0}<span class="solve-vault-badge">{usableMatchPups}</span>{/if}
+						</button>
+					{/if}
+				</svelte:fragment>
+				<!-- 🏳️ Give up — a box to the RIGHT of Solve, mirroring the item box on the left. -->
+				<svelte:fragment slot="right">
+					{#if gameActive && (foldMode || (isClimb && climb?.state === 'active'))}
+						<button
+							class="solve-flag"
+							title="Give up"
+							aria-label="Give up"
+							on:click={isClimb ? askForfeit : confirmFold}
+						>
+							<Icon name="flag" size={20} />
 						</button>
 					{/if}
 				</svelte:fragment>
@@ -7355,8 +7360,7 @@
 	.help-btn {
 		position: fixed;
 		top: 14px;
-		left: 50%;
-		transform: translateX(-50%);
+		right: 14px;
 		z-index: 1000;
 		width: 38px;
 		height: 38px;
@@ -7380,7 +7384,7 @@
 	.audio-btn {
 		position: fixed;
 		top: 14px;
-		left: calc(50% + 46px);
+		left: 50%;
 		transform: translateX(-50%);
 		z-index: 1000;
 		width: 38px;
@@ -7438,32 +7442,6 @@
 		color: #4ade80;
 	}
 	/* 🏳️ give up (top-right) — red exit arrow */
-	.giveup-btn {
-		position: fixed;
-		top: 14px;
-		right: 14px;
-		z-index: 1000;
-		width: 38px;
-		height: 38px;
-		border-radius: 999px;
-		cursor: pointer;
-		font-size: 1.25rem;
-		line-height: 1;
-		font-weight: 800;
-		display: grid;
-		place-items: center;
-		color: #f87171;
-		background: var(--surface-strong, rgba(20, 28, 40, 0.85));
-		border: 1px solid rgba(248, 113, 113, 0.5);
-		backdrop-filter: blur(10px);
-	}
-	.giveup-btn:hover {
-		border-color: #f87171;
-		background: rgba(248, 113, 113, 0.16);
-	}
-	.giveup-btn:active {
-		transform: scale(0.93);
-	}
 	/* match chat — sits just below the help button so they never overlap */
 	/* 🏆 Pot — top bar, left of the title, mirrors .match-chat-btn on the opposite side */
 	.pot-chip-top {
@@ -8831,6 +8809,29 @@
 		transition: transform 0.16s var(--ease-spring);
 	}
 	.solve-vault:active {
+		transform: translateY(-50%) scale(0.93);
+	}
+	/* 🏳️ Give-up box — mirrors .solve-vault on the RIGHT of Solve (red accent). */
+	.solve-flag {
+		position: absolute;
+		left: 100%;
+		margin-left: 12px;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 50px;
+		height: 50px;
+		border-radius: 14px;
+		display: grid;
+		place-items: center;
+		cursor: pointer;
+		color: #f87171;
+		background: var(--surface-strong, rgba(20, 28, 40, 0.9));
+		border: 1px solid rgba(248, 113, 113, 0.5);
+		backdrop-filter: blur(10px);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+		transition: transform 0.16s var(--ease-spring);
+	}
+	.solve-flag:active {
 		transform: translateY(-50%) scale(0.93);
 	}
 	.solve-vault .qt-svg {
