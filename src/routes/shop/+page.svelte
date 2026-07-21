@@ -47,7 +47,6 @@
 			icon: 'skip',
 			desc: 'Swap this puzzle for a fresh one — keep your Interest, Payout & run. Anytime, no streak lost'
 		},
-		reveal_word: { icon: 'book', desc: 'Reveal a whole word' },
 		extra_hint: { icon: 'bulb', desc: 'Reveal the first letter of each word' },
 		last_letters: { icon: 'chevron-right', desc: 'Reveal the last letter of each word' },
 		sabotage_tax: { icon: 'percent', desc: "An opponent's next 3 letter buys cost +50%" },

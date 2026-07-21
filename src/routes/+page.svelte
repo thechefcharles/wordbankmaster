@@ -1234,7 +1234,6 @@
 		half_off: 'tag',
 		vowel_vision: 'eye',
 		extra_hint: 'bulb',
-		reveal_word: 'book',
 		free_vowel: 'letter-a',
 		last_letters: 'chevron-right',
 		overdrive: 'coin',
