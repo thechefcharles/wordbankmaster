@@ -162,7 +162,8 @@
 
 	.message-box {
 		position: fixed;
-		bottom: calc(env(safe-area-inset-bottom, 0px) + 232px);
+		/* Sits above the (raised) Solve button. */
+		bottom: calc(max(var(--safe-area-inset-bottom, 0px), 22px) + 251px);
 		left: 50%;
 		transform: translateX(-50%);
 		z-index: 1002;
@@ -202,9 +203,10 @@
 
 	.main-button-wrapper {
 		position: fixed;
-		/* Sit above the keyboard, which is lifted by the safe-area inset — match it so
-     the button never overlaps the top key row on phones with a home indicator. */
-		bottom: calc(env(safe-area-inset-bottom, 0px) + 188px);
+		/* Sit clearly above the keyboard. The keyboard bottom is max(safe-area, 22px)+8px and
+     it's ~163px tall, so its top is ~base+163; add ~24px so the Solve/vault row never
+     hugs or overlaps the top key row. Uses the SAME base as the keyboard to stay in sync. */
+		bottom: calc(max(var(--safe-area-inset-bottom, 0px), 22px) + 195px);
 		left: 50%;
 		transform: translateX(-50%);
 		display: flex;

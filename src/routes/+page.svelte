@@ -5878,7 +5878,7 @@
 		margin: 0 auto;
 		text-align: center;
 		font-family: var(--font-ui);
-		padding: 16px 12px calc(env(safe-area-inset-bottom, 0px) + 244px); /* space so content stays above fixed Solve + keyboard */
+		padding: 16px 12px calc(max(var(--safe-area-inset-bottom, 0px), 22px) + 256px); /* space so content stays above the fixed Solve row + keyboard */
 		min-height: 100vh;
 		display: flex;
 		flex-direction: column;
@@ -6381,11 +6381,6 @@
 	.buttons-section {
 		width: 100%;
 		padding: 0;
-	}
-	/* Clear the (safe-area-lifted) keyboard's top edge so the Solve/vault row isn't cramped.
-	   There's ample empty space above the row, so a generous gap is safe. */
-	.buttons-section {
-		margin-bottom: 44px;
 	}
 	/* ⚡ Power-up tray (above the keyboard) */
 
