@@ -729,6 +729,15 @@
 		!matchFinalReceipt
 	)
 		armScoreBeat();
+	// Challenge NON-FINAL solves stay gameState='default' (they pause in awaiting_next), so the
+	// arm reactive above misses them — fire the port beat here, before the between-puzzle receipt.
+	let _matchBeatDone = false;
+	$: if (matchAwaiting && !solveBeat && !_matchBeatDone) {
+		_matchBeatDone = true;
+		armScoreBeat();
+		runScoreBeat(() => {}); // no receipt trigger — the awaiting_next receipt shows once solveBeat clears
+	}
+	$: if (!matchAwaiting) _matchBeatDone = false;
 	// 💸 "Deposit lands" beat (Daily): coins fly into the account card + the balance counts up,
 	// played AFTER the SOLVED reveal and BEFORE the receipt.
 	const depositBank = tweened(0, { duration: 1300, easing: cubicOut });
@@ -5147,7 +5156,7 @@
 		{/if}
 
 		<!-- 🧾 Between-puzzle challenge receipt — mid-match, after a solve, before the next puzzle. -->
-		{#if matchAwaiting || matchFinalReceipt}
+		{#if (matchAwaiting && !solveBeat) || matchFinalReceipt}
 			{@const unit = isFriendlyMatch ? '★' : '$'}
 			{@const bounty = Math.round(matchInfo?.budget ?? 0)}
 			{@const kept = Math.round(matchInfo?.last_score ?? 0)}
