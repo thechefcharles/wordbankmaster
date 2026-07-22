@@ -2,7 +2,7 @@
 	// Public, no-auth Terms of Service page. URL: /terms
 	// Used for TestFlight external testing + App Store submission.
 	const CONTACT = 'charlieforeman77@gmail.com';
-	const UPDATED = 'June 26, 2026';
+	const UPDATED = 'July 21, 2026';
 </script>
 
 <svelte:head>
@@ -74,11 +74,36 @@
 	</ul>
 	<p>We may suspend or terminate accounts that break these rules.</p>
 
+	<h2>Ownership &amp; your content</h2>
+	<p>
+		WordBank — including its puzzles, design, artwork, and software — is owned by us and protected by
+		intellectual-property laws. We grant you a personal, non-exclusive, non-transferable license to
+		use the app for your own entertainment; you don't acquire any ownership rights in the app.
+	</p>
+	<p>
+		You keep ownership of the content you submit (such as your username and challenge or group chat
+		messages), but you grant us a worldwide, royalty-free license to host, display, and use that
+		content as needed to operate the app. Don't submit content you don't have the right to share.
+	</p>
+
 	<h2>Deleting your account</h2>
 	<p>
 		You can permanently delete your account and all associated data at any time from
 		<strong>My Account → Delete Account</strong>. This is immediate and can't be undone. We may also
 		terminate accounts that violate these Terms.
+	</p>
+
+	<h2>Apple App Store</h2>
+	<p>
+		If you download WordBank from the Apple App Store, you acknowledge that these Terms are between
+		you and us only — not Apple — and that Apple is not responsible for the app or its content. Apple
+		has no obligation to provide any support or maintenance for the app. To the fullest extent
+		permitted by law, Apple has no warranty obligation with respect to the app, and is not
+		responsible for addressing any claims relating to it, including product-liability, legal or
+		regulatory, or intellectual-property claims. Apple and its subsidiaries are third-party
+		beneficiaries of these Terms and may enforce them against you. You also represent that you are
+		not located in a country subject to a U.S. Government embargo and are not listed on any U.S.
+		Government restricted-party list.
 	</p>
 
 	<h2>No warranty</h2>

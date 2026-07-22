@@ -2,7 +2,7 @@
 	// Public, no-auth privacy policy page. URL: /privacy
 	// Used for TestFlight external testing + App Store submission.
 	const CONTACT = 'charlieforeman77@gmail.com'; // ← change to your support email if you prefer
-	const UPDATED = 'June 21, 2026';
+	const UPDATED = 'July 21, 2026';
 </script>
 
 <svelte:head>
@@ -34,9 +34,19 @@
 			that comes with normal network requests).
 		</li>
 		<li>
-			<strong>Usage analytics:</strong> anonymous, first‑party events about how the app is used (e.g.,
-			opening the app, starting/finishing a puzzle) so we can understand engagement and improve the game.
-			This stays in our own systems; we don't use third‑party ad trackers.
+			<strong>Usage analytics:</strong> first‑party events about how the app is used (e.g., opening
+			the app, starting/finishing a puzzle) so we can understand engagement and improve the game. We
+			don't use third‑party advertising trackers.
+		</li>
+		<li>
+			<strong>Error &amp; diagnostic data:</strong> when the app hits an error we collect crash and
+			diagnostic details (including your IP address and device/browser information) to find and fix
+			bugs. This is processed by our error‑monitoring provider, <strong>Sentry</strong>.
+		</li>
+		<li>
+			<strong>Push notifications:</strong> if you enable notifications, we store a device push token
+			so we can send you alerts (e.g., a challenge result). Delivery is handled by
+			<strong>Apple</strong> (APNs). You can turn notifications off at any time in your device settings.
 		</li>
 	</ul>
 
@@ -56,11 +66,12 @@
 
 	<h2>How your data is stored and shared</h2>
 	<p>
-		We use trusted infrastructure providers to run WordBank: <strong>Supabase</strong>
-		(database and authentication) and <strong>Vercel</strong> (app hosting). Your data is stored on
-		their secure infrastructure on our behalf. We do
-		<strong>not sell your data</strong>, and we do not share it for advertising. We may disclose
-		information if required by law.
+		We use trusted third‑party providers to run WordBank and share data with them only as needed to
+		operate the app: <strong>Supabase</strong> (database and authentication), <strong>Vercel</strong>
+		(app hosting), <strong>Sentry</strong> (error and crash monitoring), and <strong>Apple</strong>
+		(push‑notification delivery via APNs). Your data is stored on their secure infrastructure on our
+		behalf. We do <strong>not sell your data</strong>, and we do not share it for advertising. We may
+		disclose information if required by law.
 	</p>
 
 	<h2>Data security</h2>

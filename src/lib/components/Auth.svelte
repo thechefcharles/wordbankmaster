@@ -285,6 +285,15 @@
 				{isLoading ? 'Loading…' : isLogin ? 'Log in' : 'Sign up'}
 			</button>
 
+			<!-- Clickwrap consent: shown at the point of account creation, above the OAuth
+			     buttons so it covers Google/Apple sign-up too. -->
+			<p class="consent-line">
+				By continuing, you agree to our
+				<a href="/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a>
+				and
+				<a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+			</p>
+
 			{#if !isNativeApp}
 				<div class="divider"><span>or</span></div>
 
@@ -437,6 +446,19 @@
 		margin-top: 16px;
 		font-size: 0.9rem;
 		color: var(--text-muted);
+	}
+
+	/* Clickwrap consent notice under the primary button. */
+	.consent-line {
+		margin: 10px 2px 0;
+		font-size: 0.76rem;
+		line-height: 1.45;
+		color: var(--text-muted);
+		text-align: center;
+	}
+	.consent-line a {
+		color: var(--brand-2, #fde047);
+		text-decoration: underline;
 	}
 
 	/* Gold primary button (Log in / Sign up / reset) */
