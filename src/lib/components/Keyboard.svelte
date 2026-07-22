@@ -102,18 +102,18 @@
 	// sabotage (server matches): daily uses the shared modifier, match applies the debuff/
 	// power-up stack above.
 	$: effCosts = (() => {
-		let discount = false,
-			vowelHalf = false;
-		if ($gameStore.gameMode === 'daily') {
-			const m = $gameStore.modifier;
-			discount = m === 'discount';
-			vowelHalf = m === 'vowel_vision';
-		}
+		// Daily Twist that changes pricing — mirror the server buy (supabase-daily-v2.sql):
+		// a mutually-exclusive IF/ELSIF chain. flat_rate=$50, discount=−25%, vowel_vision=vowels
+		// −50%, consonant_sale=consonants −25%.
+		const dailyMod = $gameStore.gameMode === 'daily' ? $gameStore.modifier : null;
 		const out: Record<string, number> = {};
 		for (const k of Object.keys(letterCosts)) {
 			let c = letterCosts[k];
-			if (discount) c = Math.ceil(c * 0.75);
-			if (vowelHalf && 'AEIOU'.includes(k)) c = Math.ceil(c * 0.5);
+			const isVowel = 'AEIOU'.includes(k);
+			if (dailyMod === 'flat_rate') c = 50;
+			else if (dailyMod === 'discount') c = Math.ceil(c * 0.75);
+			else if (dailyMod === 'vowel_vision' && isVowel) c = Math.ceil(c * 0.5);
+			else if (dailyMod === 'consonant_sale' && !isVowel) c = Math.ceil(c * 0.75);
 			c = c * climbMult;
 			if (climbHalfOff) c = Math.ceil(c * 0.5);
 			if ($gameStore.gameMode === 'match') {
