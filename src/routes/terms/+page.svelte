@@ -120,6 +120,16 @@
 		the app.
 	</p>
 
+	<h2>Governing law</h2>
+	<p>
+		These Terms are governed by the laws of the State of Illinois, United States, without regard to
+		its conflict-of-laws rules, and any disputes will be handled by the state or federal courts
+		located in Illinois. If you use WordBank from outside the United States, you do so on your own
+		initiative and are responsible for complying with your local laws — and nothing in these Terms
+		removes any mandatory consumer-protection rights you have under the laws of the country where you
+		live.
+	</p>
+
 	<h2>Changes to these Terms</h2>
 	<p>
 		We may update these Terms from time to time. We'll revise the "Last updated" date above when we
