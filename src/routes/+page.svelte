@@ -702,7 +702,7 @@
 			solveBeat = false;
 			if (onDone) onDone();
 			else showResultModal = true; // beat done → print the receipt
-		}, 1350);
+		}, 2400); // hold well past the ~1.3s count-up so the animation fully finishes first
 	}
 	// 💸 "Deposit lands" beat (Daily): coins fly into the account card + the balance counts up,
 	// played AFTER the SOLVED reveal and BEFORE the receipt.
@@ -4988,23 +4988,6 @@
 							<span class="bp-badge-spacer"></span>
 						{/if}
 					</div>
-					{#if isClimb && climb?.state === 'active'}
-						<!-- Run Bankroll: bare number, no label/emoji; tap for the explainer. -->
-						<button
-							class="bp-runbank"
-							title="Run Bankroll"
-							on:click={() => {
-								fx('tap');
-								climbInfo = 'runbank';
-							}}>${Math.round($climbScoreAnim).toLocaleString()}</button
-						>
-					{/if}
-					{#if isMatch && matchInfo && !matchInfo.done}
-						<!-- Your Score: bare number under the bounty hero (no label), like Run Bankroll. -->
-						<span class="bp-score"
-							>{isFriendlyMatch ? '★' : '$'}{Math.round($matchScoreAnim).toLocaleString()}</span
-						>
-					{/if}
 					{#each spendFloaters as f (f.id)}<span class="spend-float" class:wrong={f.wrong}
 							>{f.text}</span
 						>{/each}
@@ -5012,6 +4995,16 @@
 						<span class="carry-float">+${carryCue.toLocaleString()}</span>
 					{/if}
 				</div>
+					<!-- Score in its own box below the bounty: Run Bankroll (Cash Game) / Your Score (Challenge). -->
+					{#if isClimb && climb?.state === 'active'}
+						<button class="score-box" title="Run Bankroll" on:click={() => { fx('tap'); climbInfo = 'runbank'; }}
+							>${Math.round($climbScoreAnim).toLocaleString()}</button
+						>
+					{:else if isMatch && matchInfo && !matchInfo.done}
+						<span class="score-box score-box-static"
+							>{isFriendlyMatch ? '★' : '$'}{Math.round($matchScoreAnim).toLocaleString()}</span
+						>
+					{/if}
 			{/if}
 		</section>
 
@@ -8849,6 +8842,32 @@
 		line-height: 1.1;
 		color: #b8912f;
 		font-variant-numeric: tabular-nums;
+	}
+	/* Score in its OWN box below the bounty (Run Bankroll / Your Score) — a dim gold mini-panel. */
+	.score-box {
+		display: block;
+		margin: 9px auto 0;
+		padding: 6px 20px;
+		border-radius: 14px;
+		border: 1px solid rgba(184, 145, 47, 0.38);
+		background: rgba(184, 145, 47, 0.09);
+		font-family: var(--font-display, sans-serif);
+		font-weight: 800;
+		font-size: 1.2rem;
+		line-height: 1.15;
+		color: #e9c25c;
+		font-variant-numeric: tabular-nums;
+		cursor: pointer;
+		transition:
+			border-color 0.15s,
+			background 0.15s;
+	}
+	.score-box:hover {
+		border-color: rgba(233, 194, 92, 0.6);
+		background: rgba(184, 145, 47, 0.14);
+	}
+	.score-box.score-box-static {
+		cursor: default;
 	}
 	/* 🪙 Money-to-score beat: a coin flies up into the counting score, then the receipt prints. */
 	.solve-beat {
