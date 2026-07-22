@@ -37,14 +37,14 @@
 			const c = $gameStore.climbInfo || {};
 			if (c.bust_on_wrong) return ''; // the danger row is shown instead
 			const amt = Number(c.wrong_next_cost ?? 0);
-			return amt > 0 ? `−$${amt.toLocaleString()} if wrong` : '';
+			return amt > 0 ? `−$${amt.toLocaleString()}` : '';
 		}
 		if (mode === 'match') {
 			const m = $gameStore.matchInfo || {};
 			if (m.fold_on_wrong || m.done) return ''; // danger row is shown instead
 			const amt = Number(m.wrong_next_cost ?? 0);
 			const unit = Number(m.wager ?? 0) === 0 ? '★' : '$';
-			return amt > 0 ? `−${unit}${amt.toLocaleString()} if wrong` : '';
+			return amt > 0 ? `−${unit}${amt.toLocaleString()}` : '';
 		}
 		return ''; // Daily + Free Play: guesses are free
 	})();
@@ -59,16 +59,9 @@
 		!gameOver &&
 		(($gameStore.gameMode === 'climb' && !!($gameStore.climbInfo || {}).bust_on_wrong) ||
 			($gameStore.gameMode === 'match' && !!($gameStore.matchInfo || {}).fold_on_wrong));
-	$: dangerWord = $gameStore.gameMode === 'match' ? 'fold' : 'bust';
-	$: dangerLose =
-		$gameStore.gameMode === 'match'
-			? 'this puzzle'
-			: `$${Math.round(Number(($gameStore.climbInfo || {}).bankroll ?? 0)).toLocaleString()}`;
+	$: dangerWord = $gameStore.gameMode === 'match' ? 'Fold' : 'Bust';
 	$: hasSolveInfo = $gameStore.gameMode === 'climb' || $gameStore.gameMode === 'match';
 	$: showMissRow = guessModeActive && !gameOver && (!!missCost || dangerOnWrong);
-	// Two-tap confirm before a bust/fold: first Submit tap warns, the second commits.
-	let confirmDanger = false;
-	$: if (!(dangerOnWrong && guessComplete)) confirmDanger = false;
 
 	// 🏷️ Main button label
 	$: buttonLabel = purchasePending
@@ -94,11 +87,6 @@
 			return;
 		}
 		if (guessModeActive && guessComplete) {
-			if (dangerOnWrong && !confirmDanger) {
-				confirmDanger = true; // first tap warns (danger row + "Solve anyway"); second commits
-				return;
-			}
-			confirmDanger = false;
 			submitGuess();
 			return;
 		}
@@ -119,7 +107,7 @@
 <div class="main-button-wrapper">
 	{#if showMissRow}
 		<div class="miss-cost" class:danger={dangerOnWrong} role="status">
-				{#if dangerOnWrong}Wrong = {dangerWord} · lose {dangerLose}{:else}{missCost}{/if}{#if hasSolveInfo}<button
+				{#if dangerOnWrong}{dangerWord}{:else}{missCost}{/if}{#if hasSolveInfo}<button
 						class="miss-info"
 						title="Solve cost"
 						aria-label="Solve cost breakdown"
@@ -155,7 +143,7 @@
 				on:click={handleMainButtonClick}
 				disabled={buttonsDisabled}
 			>
-				{purchasePending ? 'Confirm' : confirmDanger ? 'Solve anyway' : 'Submit'}
+				{purchasePending ? 'Confirm' : 'Submit'}
 			</button>
 		</div>
 	{:else if guessCancelOnlyMode}

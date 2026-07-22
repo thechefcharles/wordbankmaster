@@ -683,36 +683,53 @@
 	let portFloat = false; // "+$X" chip that drifts from the bounty box into the score box
 	$: if (!solveBeat) climbScoreAnim.set(Math.round(climb?.bankroll ?? 0), { duration: 0 });
 	$: if (!solveBeat) matchScoreAnim.set(Math.round(matchInfo?.total_score ?? 0), { duration: 0 });
-	function startScoreBeat(onDone) {
+	let solveBeatTo = 0;
+	// Arm the beat the INSTANT you win so the two money boxes never blink out: freeze the bounty
+	// at the leftover you kept and the score at its pre-solve total, and keep both on screen
+	// through the win reveal (solveBeat also lifts them above the keyboard).
+	function armScoreBeat() {
 		const gain = isClimb
 			? Math.round(climb?.last_gain ?? 0)
 			: Math.round(matchInfo?.last_score ?? 0);
-		const to = isClimb
+		solveBeatTo = isClimb
 			? Math.round(climb?.bankroll ?? 0)
 			: Math.round(matchInfo?.total_score ?? 0);
 		const anim = isClimb ? climbScoreAnim : matchScoreAnim;
 		solveBeatUnit = isMatch && isFriendlyMatch ? '★' : '$';
 		solveBeatGain = gain;
 		solveBeat = true;
-		// Both boxes STAY put. Freeze the bounty box at the leftover you kept, and the score box
-		// at its pre-solve total — then port: the bounty empties into the score, in sync.
 		tweenNet.set(gain, { duration: 0 });
-		anim.set(Math.max(0, to - gain), { duration: 0 });
-		portFloat = gain > 0; // "+$X" drifts from the bounty box down into the score box
+		anim.set(Math.max(0, solveBeatTo - gain), { duration: 0 });
+	}
+	// Run the port AFTER the reveal: the bounty box empties into the score box, then the receipt.
+	function runScoreBeat(onDone) {
+		if (!solveBeat) armScoreBeat(); // safety if the reveal fired before the arm reactive
+		const anim = isClimb ? climbScoreAnim : matchScoreAnim;
+		portFloat = solveBeatGain > 0;
 		setTimeout(() => {
 			fx('multiplier'); // the money lands on the score
 			tweenNet.set(0, { duration: 850 }); // bounty box empties…
-			anim.set(to, { duration: 850 }); // …into the score box
-		}, 500);
+			anim.set(solveBeatTo, { duration: 850 }); // …into the score box
+		}, 300);
 		setTimeout(() => {
 			portFloat = false;
-		}, 1650);
+		}, 1450);
 		setTimeout(() => {
 			solveBeat = false;
 			if (onDone) onDone();
 			else showResultModal = true; // beat done → print the receipt
-		}, 2400); // hold well past the count-up so the animation fully finishes first
+		}, 2200);
 	}
+	// The instant a Cash Game / Challenge puzzle is won, arm the beat (before the reveal even ends)
+	// so the boxes stay put. Guarded so it fires once per solve.
+	$: if (
+		($gameStore.gameMode === 'climb' || isMatch) &&
+		$gameStore.gameState === 'won' &&
+		!solveBeat &&
+		!showResultModal &&
+		!matchFinalReceipt
+	)
+		armScoreBeat();
 	// 💸 "Deposit lands" beat (Daily): coins fly into the account card + the balance counts up,
 	// played AFTER the SOLVED reveal and BEFORE the receipt.
 	const depositBank = tweened(0, { duration: 1300, easing: cubicOut });
@@ -2642,14 +2659,14 @@
 		// server-side (settlement already fired), so this is client-side; "See results" opens
 		// the full results receipt.
 		if (isMatch && won && matchInfo?.done) {
-			startScoreBeat(() => (matchFinalReceipt = true)); // 🪙 beat first, then the final receipt
+			runScoreBeat(() => (matchFinalReceipt = true)); // 🪙 beat first, then the final receipt
 			return;
 		}
 
 		// Everything else (loss, Cash Game, etc.) → straight to the receipt.
 		setTimeout(() => {
 			if (won && ($gameStore.gameMode === 'climb' || isMatch)) {
-				startScoreBeat(); // 🪙 fly the leftover to the score, THEN print the receipt
+				runScoreBeat(); // 🪙 fly the leftover to the score, THEN print the receipt
 			} else {
 				showResultModal = true;
 			}
@@ -2672,7 +2689,7 @@
 					runBankAnim.set(runAfter);
 				}, 1100);
 			}
-		}, 1000);
+		}, 300);
 	};
 </script>
 
@@ -3166,24 +3183,13 @@
 						puzzles to bank it to your account and end the run safe.
 					</p>
 				{:else if climbInfo === 'solvecost'}
-					{#if solveCost && solveCost.next !== null}
-						<div class="info-big neg">−{solveCost.unit}{solveCost.next.toLocaleString()}</div>
-					{:else}
-						<div class="info-big neg">{solveCost?.terminal ?? 'Bust'}</div>
-					{/if}
-					<h3 class="info-title">If your guess is wrong</h3>
-					<p class="info-sub">
-						Right → free, you keep your budget. Wrong → charged to your budget, climbing each
-						miss:
-					</p>
+					<h3 class="info-title">Wrong guess</h3>
 					<div class="info-rows">
-						<div class="info-row"><span>Miss 1</span><b class="neg">−{solveCost?.unit ?? '$'}{(solveCost?.pen1 ?? 0).toLocaleString()}</b></div>
-						<div class="info-row"><span>Miss 2</span><b class="neg">−{solveCost?.unit ?? '$'}{(solveCost?.pen2 ?? 0).toLocaleString()}</b></div>
-						<div class="info-row total"><span>Miss 3</span><b class="neg">{solveCost?.terminal ?? 'Bust'}</b></div>
+						<div class="info-row"><span>1st miss <small>(20%)</small></span><b class="neg">−{solveCost?.unit ?? '$'}{(solveCost?.pen1 ?? 0).toLocaleString()}</b></div>
+						<div class="info-row"><span>2nd miss <small>(50%)</small></span><b class="neg">−{solveCost?.unit ?? '$'}{(solveCost?.pen2 ?? 0).toLocaleString()}</b></div>
+						<div class="info-row total"><span>3rd miss</span><b class="neg">{solveCost?.terminal ?? 'Bust'}</b></div>
 					</div>
-					<p class="info-note">
-						You're on guess {solveCost?.n ?? 1} of 3. {solveCost?.terminal === 'Fold' ? 'Folding' : 'A bust'} loses {solveCost?.loseLabel ?? ''}.
-					</p>
+					<p class="info-note">Right is free. {solveCost?.terminal === 'Fold' ? 'A fold loses this puzzle' : 'A bust loses your whole Run Bankroll'}.</p>
 				{:else}
 					<div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
 					<h3 class="info-title">This Puzzle's Budget</h3>
