@@ -4439,6 +4439,10 @@
 								>↗</span
 							></a
 						>
+						<a class="set-row nav" href="/support" target="_blank" rel="noopener noreferrer"
+							><span><Icon name="help" size={15} /> Support &amp; FAQ</span><span class="chev">↗</span
+							></a
+						>
 						<a class="set-row nav" href={`mailto:${SUPPORT_EMAIL}`}
 							><span><Icon name="mail" size={15} /> Contact Support</span><span class="chev"
 								>↗</span
