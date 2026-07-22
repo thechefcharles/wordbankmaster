@@ -686,6 +686,8 @@
 	let solveBeatTo = 0;
 	let _beatFallback = null;
 	let _beatPorted = true; // guards the port from running twice
+	let _beatArmed = false; // arm the win-beat only ONCE per solve — Play On flips showResultModal→false
+	// while gameState is still 'won', which was re-arming with the previous puzzle's stale values
 	// Arm the beat the INSTANT you win so the two money boxes never blink out (freeze bounty at
 	// the leftover, score at its pre-solve total). A fallback timer guarantees the port ALWAYS
 	// runs, so the game can never hang frozen if the reveal never fires (e.g. resuming a run that
@@ -697,6 +699,7 @@
 		solveBeatUnit = isMatch && isFriendlyMatch ? '★' : '$';
 		solveBeatGain = gain;
 		solveBeat = true;
+		_beatArmed = true;
 		_beatPorted = false;
 		tweenNet.set(gain, { duration: 0 });
 		anim.set(Math.max(0, solveBeatTo - gain), { duration: 0 });
@@ -726,9 +729,11 @@
 		$gameStore.gameState === 'won' &&
 		!solveBeat &&
 		!showResultModal &&
-		!matchFinalReceipt
+		!matchFinalReceipt &&
+		!_beatArmed
 	)
 		armScoreBeat();
+	$: if ($gameStore.gameState !== 'won') _beatArmed = false;
 	// Challenge NON-FINAL solves stay gameState='default' (they pause in awaiting_next), so the
 	// arm reactive above misses them — fire the port beat here, before the between-puzzle receipt.
 	let _matchBeatDone = false;
