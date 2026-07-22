@@ -645,6 +645,9 @@
 	// 🏆 Win-banner animations: profit counts up, then Cash scrolls to the new total.
 	const resultProfit = tweened(0, { duration: 1100, easing: cubicOut });
 	const resultBankAnim = tweened(0, { duration: 1300, easing: cubicOut });
+	// Run Bankroll count-up on the solve receipt: the leftover "This solve" hands off into the
+	// running total, which ticks from before→after (the leftover-flows-into-Run-Bankroll beat).
+	const runBankAnim = tweened(0, { duration: 900, easing: cubicOut });
 	// 💸 "Deposit lands" beat (Daily): coins fly into the account card + the balance counts up,
 	// played AFTER the SOLVED reveal and BEFORE the receipt.
 	const depositBank = tweened(0, { duration: 1300, easing: cubicOut });
@@ -2587,12 +2590,16 @@
 				const newBank = Math.round($gameStore.bankroll ?? 0);
 				resultProfit.set(0, { duration: 0 });
 				resultBankAnim.set(newBank - profit, { duration: 0 });
+				const runKeep = Math.round(c.last_gain ?? 0);
+				const runAfter = Math.round(c.bankroll ?? 0);
+				runBankAnim.set(Math.max(0, runAfter - runKeep), { duration: 0 });
 				setTimeout(() => {
 					resultProfit.set(profit);
 					fx('win');
 				}, 350);
 				setTimeout(() => {
 					resultBankAnim.set(newBank);
+					runBankAnim.set(runAfter);
 				}, 1100);
 			}
 		}, 1000);
@@ -5462,11 +5469,11 @@
 								<span>Before this solve</span><span>${bankedBefore.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-line">
-								<span>This solve</span><span class="pos">+${payout.toLocaleString()}</span>
+								<span>This solve</span><span class="pos rcpt-give">+${payout.toLocaleString()}</span>
 							</div>
 							<div class="rcpt-rule double"></div>
 							<div class="rcpt-line balance">
-								<span>RUNNING PAYOUT</span><span>${pendAfter.toLocaleString()}</span>
+								<span>RUNNING PAYOUT</span><span class="rcpt-run-num">${Math.round($runBankAnim).toLocaleString()}</span>
 							</div>
 							<div class="rcpt-rule"></div>
 							<!-- Ambient reference: your account (untouched until you Deposit the run). -->
@@ -8679,6 +8686,43 @@
 	.bounty-panel.loss .bp-amount {
 		color: #fb7185;
 		text-shadow: none;
+	}
+	/* Leftover-flows-in beat on the solve receipt: the "+$X this solve" hands off downward while
+	   the RUNNING PAYOUT total pops as it counts up (runBankAnim before→after). */
+	@keyframes rcptGive {
+		0%,
+		45% {
+			transform: translateY(0);
+			opacity: 1;
+		}
+		75%,
+		100% {
+			transform: translateY(6px);
+			opacity: 0.3;
+		}
+	}
+	.rcpt-give {
+		display: inline-block;
+		animation: rcptGive 1s ease forwards;
+	}
+	@keyframes rcptCatch {
+		0%,
+		58% {
+			transform: scale(1);
+			text-shadow: none;
+		}
+		72% {
+			transform: scale(1.09);
+			text-shadow: 0 0 15px rgba(233, 194, 92, 0.65);
+		}
+		100% {
+			transform: scale(1);
+			text-shadow: none;
+		}
+	}
+	.rcpt-run-num {
+		display: inline-block;
+		animation: rcptCatch 1.25s ease;
 	}
 	/* Run Bankroll: bare tappable number under the budget hero — dim gold, dotted underline. */
 	.bp-runbank {
