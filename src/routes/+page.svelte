@@ -711,15 +711,15 @@
 		portFloat = solveBeatGain > 0;
 		setTimeout(() => {
 			fx('multiplier');
-			tweenNet.set(0, { duration: 850 });
-			anim.set(solveBeatTo, { duration: 850 });
-		}, 300);
-		setTimeout(() => { portFloat = false; }, 1450);
+			tweenNet.set(0, { duration: 800 });
+			anim.set(solveBeatTo, { duration: 800 });
+		}, 150);
+		setTimeout(() => { portFloat = false; }, 1100);
 		setTimeout(() => {
 			solveBeat = false;
 			if (onDone) onDone();
 			else showResultModal = true;
-		}, 2200);
+		}, 1450);
 	}
 	$: if (
 		($gameStore.gameMode === 'climb' || isMatch) &&
