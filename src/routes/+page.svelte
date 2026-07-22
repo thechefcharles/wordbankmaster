@@ -1287,7 +1287,9 @@
 	}
 
 	// Heat IS the Cash Game win streak: each solve +0.1× (cap ×2.0), reset to ×1.0 when stuck.
-	$: climbStreak = Math.max(0, Math.round(((climb?.heat ?? 100) - 100) / 10));
+	// Real streak = puzzles solved in a row THIS run (server run_solves; resets to 0 on bust/deposit
+	// since the run row is deleted). Was previously (heat−100)/10, which just mirrored Interest.
+	$: climbStreak = Math.max(0, Math.round(climb?.run_solves ?? 0));
 	// 🔥 The run: solves + cumulative profit since heat last reset (run_profit can be negative early).
 	// Owned, not-yet-used climb buffs — drives the vault badge by the Solve button.
 	$: usableClimbPups =
@@ -3172,11 +3174,10 @@
 					<div class="info-row"><span>Bust</span><b class="neg">back to 0</b></div>
 				</div>
 				<p class="info-note">
-					Powers your <button
+					Each solve also raises your <button
 						class="info-inline"
 						on:click|stopPropagation={() => (climbInfo = 'heat')}>Interest</button
-					>
-					— <b>+10%</b> per solve.
+					>, the payout multiplier.
 				</p>
 			{:else}
 				{#if climbInfo === 'runbank'}
@@ -5002,7 +5003,7 @@
 						{:else if isClimb}
 							<button
 								class="bp-winstreak"
-								title="Deposit streak"
+								title="Solve streak"
 								on:click={() => {
 									fx('tap');
 									climbInfo = 'streak';
