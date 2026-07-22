@@ -680,6 +680,7 @@
 	let solveBeat = false; // true while the fly-to-score beat plays (before the receipt)
 	let solveBeatUnit = '$';
 	let solveBeatGain = 0;
+	let portFloat = false; // "+$X" chip that drifts from the bounty box into the score box
 	$: if (!solveBeat) climbScoreAnim.set(Math.round(climb?.bankroll ?? 0), { duration: 0 });
 	$: if (!solveBeat) matchScoreAnim.set(Math.round(matchInfo?.total_score ?? 0), { duration: 0 });
 	function startScoreBeat(onDone) {
@@ -693,16 +694,24 @@
 		solveBeatUnit = isMatch && isFriendlyMatch ? '★' : '$';
 		solveBeatGain = gain;
 		solveBeat = true;
+		// Both boxes STAY put. Freeze the bounty box at the leftover you kept, and the score box
+		// at its pre-solve total — then port: the bounty empties into the score, in sync.
+		tweenNet.set(gain, { duration: 0 });
 		anim.set(Math.max(0, to - gain), { duration: 0 });
+		portFloat = gain > 0; // "+$X" drifts from the bounty box down into the score box
 		setTimeout(() => {
-			fx('multiplier'); // coin lands on the score
-			anim.set(to); // count up old → new
-		}, 380);
+			fx('multiplier'); // the money lands on the score
+			tweenNet.set(0, { duration: 850 }); // bounty box empties…
+			anim.set(to, { duration: 850 }); // …into the score box
+		}, 500);
+		setTimeout(() => {
+			portFloat = false;
+		}, 1650);
 		setTimeout(() => {
 			solveBeat = false;
 			if (onDone) onDone();
 			else showResultModal = true; // beat done → print the receipt
-		}, 2400); // hold well past the ~1.3s count-up so the animation fully finishes first
+		}, 2400); // hold well past the count-up so the animation fully finishes first
 	}
 	// 💸 "Deposit lands" beat (Daily): coins fly into the account card + the balance counts up,
 	// played AFTER the SOLVED reveal and BEFORE the receipt.
@@ -718,7 +727,8 @@
 	// While the opening reveal is landing boxes, hold the bounty at $0 so it can
 	// dramatically count up at the climax (introDone). Cash Game stages the count-up manually
 	// (puzzle value → + carried run pile), so pause this auto-driver while climbStaging is on.
-	$: if (!climbStaging) tweenNet.set(introBuilding ? 0 : soloHero ? Math.round(soloHero.net) : 0);
+	$: if (!climbStaging && !solveBeat)
+		tweenNet.set(introBuilding ? 0 : soloHero ? Math.round(soloHero.net) : 0);
 	// The Pot you're playing for = every player's ante (server-computed over all
 	// non-declined players, so it stays stable as opponents finish). Reduced-stake joins
 	// can make the settled pot a bit lower; this is the headline "playing for" figure.
@@ -4876,7 +4886,7 @@
 
 		<!-- 💰 Money hero -->
 		<section class="stats-section">
-			{#if soloHero}
+			{#if soloHero || solveBeat}
 				<!-- Daily · Cash Game hero = Payout (bounty − spent, the cash you keep by solving efficiently). -->
 				<div
 					class="bounty-panel"
@@ -4996,17 +5006,21 @@
 					{/if}
 				</div>
 					<!-- Score in its own box below the bounty: Run Bankroll (Cash Game) / Your Score (Challenge). -->
-					{#if isClimb && climb?.state === 'active'}
+					{#if isClimb && (climb?.state === 'active' || solveBeat)}
 						<button class="score-box" title="Run Bankroll" on:click={() => { fx('tap'); climbInfo = 'runbank'; }}
 							>${Math.round($climbScoreAnim).toLocaleString()}</button
 						>
-					{:else if isMatch && matchInfo && !matchInfo.done}
+					{:else if isMatch && matchInfo && (!matchInfo.done || solveBeat)}
 						<span class="score-box score-box-static"
 							>{isFriendlyMatch ? '★' : '$'}{Math.round($matchScoreAnim).toLocaleString()}</span
 						>
 					{/if}
 			{/if}
-		</section>
+					<!-- "+$X" ports from the bounty box down into the score box during the beat. -->
+			{#if portFloat}
+				<span class="port-float">{solveBeatUnit}{solveBeatGain.toLocaleString()}</span>
+			{/if}
+			</section>
 
 		<!-- 💥 Double or Nothing — Cash Game only, when heat ≥ ×1.5. Arm to double the payout. -->
 		{#if isClimb && climb && $gameStore.gameState !== 'won'}
@@ -5025,14 +5039,7 @@
 
 		<!-- 🎮 Solve / Cancel Buttons (Cash Game gets a vault to the left for power-ups) -->
 		<section class="buttons-section">
-			{#if solveBeat}
-			<div class="solve-beat" aria-hidden="true">
-				<span class="sb-score"
-					>{solveBeatUnit}{Math.round(isClimb ? $climbScoreAnim : $matchScoreAnim).toLocaleString()}</span
-				>
-				<span class="sb-coin">+{solveBeatUnit}{solveBeatGain.toLocaleString()}</span>
-			</div>
-			{/if}
+			
 			<GameButtons on:solveinfo={() => (climbInfo = 'solvecost')}>
 				<svelte:fragment slot="left">
 					{#if isClimb && climb?.state === 'active'}
@@ -6479,6 +6486,36 @@
 		margin-top: 0.6rem;
 		margin-bottom: 0.4rem;
 		flex-shrink: 0;
+		position: relative; /* anchor for the port-float that drifts bounty → score */
+	}
+	/* "+$X" chip that ports from the bounty box down into the score box during a solve. */
+	.port-float {
+		position: absolute;
+		left: 50%;
+		top: 42%;
+		transform: translateX(-50%);
+		z-index: 20;
+		font-family: var(--font-display, sans-serif);
+		font-weight: 800;
+		font-size: 1.05rem;
+		color: #f6c445;
+		font-variant-numeric: tabular-nums;
+		text-shadow: 0 0 14px rgba(246, 196, 69, 0.6);
+		pointer-events: none;
+		animation: portDown 1.15s cubic-bezier(0.4, 0.7, 0.3, 1) forwards;
+	}
+	@keyframes portDown {
+		0% {
+			transform: translate(-50%, -14px);
+			opacity: 0;
+		}
+		22% {
+			opacity: 1;
+		}
+		100% {
+			transform: translate(-50%, 52px);
+			opacity: 0;
+		}
 	}
 
 	@media (max-width: 600px) {
