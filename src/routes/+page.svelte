@@ -3095,6 +3095,26 @@
 						It's all on the line — <b>lose a puzzle and you lose the whole thing</b>. Deposit between
 						puzzles to bank it to your account and end the run safe.
 					</p>
+				{:else if climbInfo === 'solvecost'}
+					{#if (climb?.wrong_next_cost ?? null) !== null}
+						<div class="info-big neg">−${Math.round(climb?.wrong_next_cost ?? 0).toLocaleString()}</div>
+					{:else}
+						<div class="info-big neg">Bust</div>
+					{/if}
+					<h3 class="info-title">If your guess is wrong</h3>
+					<p class="info-sub">
+						Right → free, you keep your budget. Wrong → charged to your budget (never your Run
+						Bankroll), climbing each miss:
+					</p>
+					<div class="info-rows">
+						<div class="info-row"><span>Miss 1</span><b class="neg">−${Math.round(climb?.wrong_pen1 ?? 0).toLocaleString()}</b></div>
+						<div class="info-row"><span>Miss 2</span><b class="neg">−${Math.round(climb?.wrong_pen2 ?? 0).toLocaleString()}</b></div>
+						<div class="info-row total"><span>Miss 3</span><b class="neg">Bust</b></div>
+					</div>
+					<p class="info-note">
+						You're on guess {climb?.wrong_guess_num ?? 1} of 3. A bust ends the run and loses your
+						whole Run Bankroll (${Math.round(climb?.bankroll ?? 0).toLocaleString()}).
+					</p>
 				{:else}
 					<div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
 					<h3 class="info-title">This Puzzle's Budget</h3>
@@ -4954,7 +4974,7 @@
 
 		<!-- 🎮 Solve / Cancel Buttons (Cash Game gets a vault to the left for power-ups) -->
 		<section class="buttons-section">
-			<GameButtons>
+			<GameButtons on:solveinfo={() => (climbInfo = 'solvecost')}>
 				<svelte:fragment slot="left">
 					{#if isClimb && climb?.state === 'active'}
 						<button

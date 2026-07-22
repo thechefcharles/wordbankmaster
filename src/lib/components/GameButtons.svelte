@@ -1,6 +1,9 @@
 <script>
 	import { gameStore, confirmPurchase, submitGuess } from '$lib/stores/GameStore.js';
 	import { fx } from '$lib/sound.js';
+	import { createEventDispatcher } from 'svelte';
+
+	const dispatch = createEventDispatcher();
 
 	// 🧠 Reactive state (server-authoritative). v3: unlimited guesses, no Reveal button.
 	$: guessModeActive = $gameStore.gameState === 'guess_mode';
@@ -32,10 +35,8 @@
 		const mode = $gameStore.gameMode;
 		if (mode === 'climb') {
 			const c = $gameStore.climbInfo || {};
-			if (c.must_guess) return '';
-			const rem = Number(c.budget_left ?? 0);
-			if (rem <= 0) return '';
-			const amt = Math.max(Number(c.cheapest ?? 0), Math.round((0.2 * rem) / 10) * 10);
+			if (c.bust_on_wrong) return ''; // the danger row is shown instead
+			const amt = Number(c.wrong_next_cost ?? 0);
 			return amt > 0 ? `−$${amt.toLocaleString()} if wrong` : '';
 		}
 		if (mode === 'match') {
@@ -51,6 +52,18 @@
 	})();
 	// Show it once you're actually composing a guess (after tapping Solve), not while buying.
 	$: showMiss = !!missCost && guessModeActive && !gameOver;
+	// 💥 Cash Game "Wrong = bust" state: the next wrong guess ends the run (3rd strike, or the
+	// penalty can't be covered by budget). Server-authoritative via climbInfo.bust_on_wrong.
+	$: bustOnWrong =
+		$gameStore.gameMode === 'climb' &&
+		guessModeActive &&
+		!gameOver &&
+		!!($gameStore.climbInfo || {}).bust_on_wrong;
+	$: showMissRow = guessModeActive && !gameOver && (!!missCost || bustOnWrong);
+	$: runAtRisk = Math.round(Number(($gameStore.climbInfo || {}).bankroll ?? 0));
+	// Two-tap confirm before a bust: first Submit tap warns, the second commits.
+	let confirmBust = false;
+	$: if (!(bustOnWrong && guessComplete)) confirmBust = false;
 
 	// 🏷️ Main button label
 	$: buttonLabel = purchasePending
@@ -76,6 +89,11 @@
 			return;
 		}
 		if (guessModeActive && guessComplete) {
+			if (bustOnWrong && !confirmBust) {
+				confirmBust = true; // first tap warns (danger row + "Solve anyway"); second commits
+				return;
+			}
+			confirmBust = false;
 			submitGuess();
 			return;
 		}
@@ -94,8 +112,18 @@
 {/if}
 
 <div class="main-button-wrapper">
-	{#if showMiss}
-		<div class="miss-cost" role="status">{missCost}</div>
+	{#if showMissRow}
+		<div class="miss-cost" class:danger={bustOnWrong} role="status">
+				{#if bustOnWrong}Wrong = bust · lose ${runAtRisk.toLocaleString()}{:else}{missCost}{/if}{#if $gameStore.gameMode === 'climb'}<button
+						class="miss-info"
+						title="Solve cost"
+						aria-label="Solve cost breakdown"
+						on:click|stopPropagation={() => {
+							fx('tap');
+							dispatch('solveinfo');
+						}}>i</button
+					>{/if}
+			</div>
 	{/if}
 	<!-- Optional left accessory (e.g. Cash Game vault). Absolutely positioned so Solve stays centered. -->
 	<slot name="left" />
@@ -116,8 +144,13 @@
 				Cancel
 			</button>
 
-			<button class="confirm-button" on:click={handleMainButtonClick} disabled={buttonsDisabled}>
-				{purchasePending ? 'Confirm' : 'Submit'}
+			<button
+				class="confirm-button"
+				class:danger={bustOnWrong && !purchasePending}
+				on:click={handleMainButtonClick}
+				disabled={buttonsDisabled}
+			>
+				{purchasePending ? 'Confirm' : confirmBust ? 'Solve anyway' : 'Submit'}
 			</button>
 		</div>
 	{:else if guessCancelOnlyMode}
@@ -199,6 +232,41 @@
 		padding: 3px 11px;
 		border-radius: 999px;
 		pointer-events: none;
+	}
+	/* 💥 Wrong = bust: the miss-cost row goes full-danger and pulses. */
+	.miss-cost.danger {
+		color: #fff;
+		background: rgba(226, 60, 60, 0.92);
+		border-color: #ff5f5f;
+		box-shadow: 0 0 16px rgba(255, 95, 95, 0.5);
+		animation: solvePulse 1.1s infinite;
+	}
+	/* ⓘ solve-cost breakdown — the only clickable thing inside the (pointer-events:none) row. */
+	.miss-info {
+		pointer-events: auto;
+		margin-left: 6px;
+		width: 15px;
+		height: 15px;
+		padding: 0;
+		border-radius: 50%;
+		border: 1px solid currentColor;
+		background: transparent;
+		color: inherit;
+		font-family: var(--font-ui);
+		font-size: 0.62rem;
+		font-weight: 800;
+		font-style: italic;
+		line-height: 13px;
+		cursor: pointer;
+		vertical-align: middle;
+	}
+	.miss-info:hover {
+		background: rgba(255, 255, 255, 0.18);
+	}
+	.confirm-button.danger {
+		background: linear-gradient(180deg, #ff6a6a, #e23c3c);
+		border-color: #ff5f5f;
+		box-shadow: 0 0 18px rgba(255, 95, 95, 0.5);
 	}
 
 	.main-button-wrapper {
