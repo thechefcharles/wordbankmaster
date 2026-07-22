@@ -568,6 +568,30 @@
 			? { spent: matchInfo.spent ?? 0, budget: matchInfo.budget ?? 0 }
 			: null;
 	$: matchLeft = matchLive ? Math.max(0, (matchLive.budget ?? 0) - (matchLive.spent ?? 0)) : 0;
+	// Mode-aware solve-cost data for the shared ⓘ breakdown: Cash Game busts (loses the Run
+	// Bankroll), Challenge folds (loses this puzzle). Same 20%/50%/end schedule.
+	$: solveCost =
+		isClimb && climb
+			? {
+					pen1: Math.round(climb.wrong_pen1 ?? 0),
+					pen2: Math.round(climb.wrong_pen2 ?? 0),
+					n: climb.wrong_guess_num ?? 1,
+					next: climb.wrong_next_cost ?? null,
+					terminal: 'Bust',
+					loseLabel: `your whole Run Bankroll ($${Math.round(climb.bankroll ?? 0).toLocaleString()})`,
+					unit: '$'
+				}
+			: isMatch && matchInfo
+				? {
+						pen1: Math.round(matchInfo.wrong_pen1 ?? 0),
+						pen2: Math.round(matchInfo.wrong_pen2 ?? 0),
+						n: matchInfo.wrong_guess_num ?? 1,
+						next: matchInfo.wrong_next_cost ?? null,
+						terminal: 'Fold',
+						loseLabel: 'this puzzle',
+						unit: isFriendlyMatch ? '★' : '$'
+					}
+				: null;
 	// The hero number: the bounty you spend down THIS puzzle. Daily & Cash Game keep the
 	// leftover; Challenge's resets each puzzle (fresh bounty) — the accumulated total is the
 	// Cash Game hero is now THIS puzzle's budget (budget_left); the run pile shows as the
@@ -648,6 +672,37 @@
 	// Run Bankroll count-up on the solve receipt: the leftover "This solve" hands off into the
 	// running total, which ticks from before→after (the leftover-flows-into-Run-Bankroll beat).
 	const runBankAnim = tweened(0, { duration: 900, easing: cubicOut });
+	// 🪙 Money-to-score beat (Cash Game + Challenge): on a solve, the leftover flies from the
+	// bounty hero into the score number below it (Run Bankroll / Your Score), which counts up —
+	// then the receipt prints. Score numbers read these tweens; synced instantly during play.
+	const climbScoreAnim = tweened(0, { duration: 900, easing: cubicOut });
+	const matchScoreAnim = tweened(0, { duration: 900, easing: cubicOut });
+	let solveBeat = false; // true while the fly-to-score beat plays (before the receipt)
+	let solveBeatUnit = '$';
+	let solveBeatGain = 0;
+	$: if (!solveBeat) climbScoreAnim.set(Math.round(climb?.bankroll ?? 0), { duration: 0 });
+	$: if (!solveBeat) matchScoreAnim.set(Math.round(matchInfo?.total_score ?? 0), { duration: 0 });
+	function startScoreBeat() {
+		const gain = isClimb
+			? Math.round(climb?.last_gain ?? 0)
+			: Math.round(matchInfo?.last_score ?? 0);
+		const to = isClimb
+			? Math.round(climb?.bankroll ?? 0)
+			: Math.round(matchInfo?.total_score ?? 0);
+		const anim = isClimb ? climbScoreAnim : matchScoreAnim;
+		solveBeatUnit = isMatch && isFriendlyMatch ? '★' : '$';
+		solveBeatGain = gain;
+		solveBeat = true;
+		anim.set(Math.max(0, to - gain), { duration: 0 });
+		setTimeout(() => {
+			fx('multiplier'); // coin lands on the score
+			anim.set(to); // count up old → new
+		}, 380);
+		setTimeout(() => {
+			solveBeat = false;
+			showResultModal = true; // beat done → print the receipt
+		}, 1350);
+	}
 	// 💸 "Deposit lands" beat (Daily): coins fly into the account card + the balance counts up,
 	// played AFTER the SOLVED reveal and BEFORE the receipt.
 	const depositBank = tweened(0, { duration: 1300, easing: cubicOut });
@@ -2582,7 +2637,11 @@
 
 		// Everything else (loss, Cash Game, etc.) → straight to the receipt.
 		setTimeout(() => {
-			showResultModal = true;
+			if (won && ($gameStore.gameMode === 'climb' || isMatch)) {
+				startScoreBeat(); // 🪙 fly the leftover to the score, THEN print the receipt
+			} else {
+				showResultModal = true;
+			}
 			// 🏆 Cash Game win banner: count the profit up, then scroll Cash to the new total.
 			if ($gameStore.gameMode === 'climb' && won) {
 				const c = $gameStore.climbInfo || {};
@@ -2592,7 +2651,7 @@
 				resultBankAnim.set(newBank - profit, { duration: 0 });
 				const runKeep = Math.round(c.last_gain ?? 0);
 				const runAfter = Math.round(c.bankroll ?? 0);
-				runBankAnim.set(Math.max(0, runAfter - runKeep), { duration: 0 });
+				runBankAnim.set(runAfter, { duration: 0 }); // board beat already counted the score up
 				setTimeout(() => {
 					resultProfit.set(profit);
 					fx('win');
@@ -3096,24 +3155,23 @@
 						puzzles to bank it to your account and end the run safe.
 					</p>
 				{:else if climbInfo === 'solvecost'}
-					{#if (climb?.wrong_next_cost ?? null) !== null}
-						<div class="info-big neg">−${Math.round(climb?.wrong_next_cost ?? 0).toLocaleString()}</div>
+					{#if solveCost && solveCost.next !== null}
+						<div class="info-big neg">−{solveCost.unit}{solveCost.next.toLocaleString()}</div>
 					{:else}
-						<div class="info-big neg">Bust</div>
+						<div class="info-big neg">{solveCost?.terminal ?? 'Bust'}</div>
 					{/if}
 					<h3 class="info-title">If your guess is wrong</h3>
 					<p class="info-sub">
-						Right → free, you keep your budget. Wrong → charged to your budget (never your Run
-						Bankroll), climbing each miss:
+						Right → free, you keep your budget. Wrong → charged to your budget, climbing each
+						miss:
 					</p>
 					<div class="info-rows">
-						<div class="info-row"><span>Miss 1</span><b class="neg">−${Math.round(climb?.wrong_pen1 ?? 0).toLocaleString()}</b></div>
-						<div class="info-row"><span>Miss 2</span><b class="neg">−${Math.round(climb?.wrong_pen2 ?? 0).toLocaleString()}</b></div>
-						<div class="info-row total"><span>Miss 3</span><b class="neg">Bust</b></div>
+						<div class="info-row"><span>Miss 1</span><b class="neg">−{solveCost?.unit ?? '$'}{(solveCost?.pen1 ?? 0).toLocaleString()}</b></div>
+						<div class="info-row"><span>Miss 2</span><b class="neg">−{solveCost?.unit ?? '$'}{(solveCost?.pen2 ?? 0).toLocaleString()}</b></div>
+						<div class="info-row total"><span>Miss 3</span><b class="neg">{solveCost?.terminal ?? 'Bust'}</b></div>
 					</div>
 					<p class="info-note">
-						You're on guess {climb?.wrong_guess_num ?? 1} of 3. A bust ends the run and loses your
-						whole Run Bankroll (${Math.round(climb?.bankroll ?? 0).toLocaleString()}).
+						You're on guess {solveCost?.n ?? 1} of 3. {solveCost?.terminal === 'Fold' ? 'Folding' : 'A bust'} loses {solveCost?.loseLabel ?? ''}.
 					</p>
 				{:else}
 					<div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
@@ -4753,12 +4811,7 @@
 
 		<!-- ⚔️ Challenge match HUD -->
 		{#if isMatch && matchInfo && !matchInfo.done}
-			<!-- 🏆 Your Score — the accumulated bounty-kept you win the pot on. The center hero
-             below is just this puzzle's fresh bounty; this is the number that matters. -->
-			<div class="match-score">
-				<span class="ms-cap">Your Score</span>
-				<span class="ms-val">{isFriendlyMatch ? '★' : '$'}{Math.round(matchInfo.total_score ?? 0).toLocaleString()}</span>
-			</div>
+			<!-- Your Score now shows as the bare number under the bounty hero (no label). -->
 			<div class="match-meta">
 				{#if matchInfo.target != null}<span class="beat-chip"
 						>Beat {isFriendlyMatch ? '★' : '$'}{Number(
@@ -4766,9 +4819,7 @@
 						).toLocaleString()}{#if matchInfo.target_kind === 'place'}
 							to place{/if}</span
 					>{/if}
-				{#if matchInfo.pack_size > 1}<span class="match-pos"
-						>Puzzle {matchInfo.position}/{matchInfo.pack_size}</span
-					>{/if}
+				
 			</div>
 			<StandingStrip standing={matchInfo.standing ?? null} />
 			{#if (matchInfo.my_debuffs ?? []).length}
@@ -4791,7 +4842,7 @@
 			{#if $gameStore.category}<span class="category-chip"
 					><CategoryIcon category={$gameStore.category} size={14} />{categoryLabel(
 						$gameStore.category
-					)}</span
+					)}{#if isMatch && matchInfo && matchInfo.pack_size > 1}<span class="cat-pos">{matchInfo.position}/{matchInfo.pack_size}</span>{/if}</span
 				>{/if}
 			{#if $gameStore.gameMode === 'daily' && dailyMod}
 				<button
@@ -4944,7 +4995,13 @@
 							on:click={() => {
 								fx('tap');
 								climbInfo = 'runbank';
-							}}>${Math.round(climb?.bankroll ?? 0).toLocaleString()}</button
+							}}>${Math.round($climbScoreAnim).toLocaleString()}</button
+						>
+					{/if}
+					{#if isMatch && matchInfo && !matchInfo.done}
+						<!-- Your Score: bare number under the bounty hero (no label), like Run Bankroll. -->
+						<span class="bp-score"
+							>{isFriendlyMatch ? '★' : '$'}{Math.round($matchScoreAnim).toLocaleString()}</span
 						>
 					{/if}
 					{#each spendFloaters as f (f.id)}<span class="spend-float" class:wrong={f.wrong}
@@ -4974,6 +5031,14 @@
 
 		<!-- 🎮 Solve / Cancel Buttons (Cash Game gets a vault to the left for power-ups) -->
 		<section class="buttons-section">
+			{#if solveBeat}
+			<div class="solve-beat" aria-hidden="true">
+				<span class="sb-score"
+					>{solveBeatUnit}{Math.round(isClimb ? $climbScoreAnim : $matchScoreAnim).toLocaleString()}</span
+				>
+				<span class="sb-coin">+{solveBeatUnit}{solveBeatGain.toLocaleString()}</span>
+			</div>
+			{/if}
 			<GameButtons on:solveinfo={() => (climbInfo = 'solvecost')}>
 				<svelte:fragment slot="left">
 					{#if isClimb && climb?.state === 'active'}
@@ -6367,6 +6432,14 @@
 		border: 1px solid rgba(253, 224, 71, 0.28);
 		padding: 6px 13px;
 		border-radius: var(--r-pill);
+	}
+	/* Challenge puzzle counter — "N/M" tucked to the right of the category (no "Puzzle" word). */
+	.cat-pos {
+		margin-left: 8px;
+		padding-left: 8px;
+		border-left: 1px solid rgba(253, 224, 71, 0.28);
+		font-variant-numeric: tabular-nums;
+		opacity: 0.85;
 	}
 	/* 🎁 today's auto-applied Twist chip (tap to see what it does) */
 	.twist-chip {
@@ -8764,6 +8837,71 @@
 	.bp-runbank:hover,
 	.bp-runbank:active {
 		color: #e9c25c;
+	}
+	/* Challenge "Your Score": same bare-number-under-the-hero look, not tappable. */
+	.bp-score {
+		display: block;
+		margin: 3px auto 0;
+		font-family: var(--font-display, sans-serif);
+		font-weight: 700;
+		font-size: 0.95rem;
+		line-height: 1.1;
+		color: #b8912f;
+		font-variant-numeric: tabular-nums;
+	}
+	/* 🪙 Money-to-score beat: a coin flies up into the counting score, then the receipt prints. */
+	.solve-beat {
+		position: fixed;
+		left: 50%;
+		bottom: 46%;
+		transform: translateX(-50%);
+		z-index: 1100;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 2px;
+		pointer-events: none;
+	}
+	.sb-score {
+		font-family: var(--font-display, sans-serif);
+		font-weight: 800;
+		font-size: 2rem;
+		color: #f6c445;
+		font-variant-numeric: tabular-nums;
+		text-shadow: 0 0 20px rgba(246, 196, 69, 0.5);
+		animation: sbPop 1.35s ease;
+	}
+	.sb-coin {
+		font-weight: 800;
+		font-size: 1rem;
+		color: #f6c445;
+		font-variant-numeric: tabular-nums;
+		animation: sbFly 0.9s cubic-bezier(0.4, 0.7, 0.3, 1) forwards;
+	}
+	@keyframes sbFly {
+		0% {
+			transform: translateY(30px);
+			opacity: 0;
+		}
+		25% {
+			opacity: 1;
+		}
+		100% {
+			transform: translateY(-8px);
+			opacity: 0;
+		}
+	}
+	@keyframes sbPop {
+		0%,
+		30% {
+			transform: scale(1);
+		}
+		42% {
+			transform: scale(1.14);
+		}
+		100% {
+			transform: scale(1);
+		}
 	}
 	/* 🪙 Challenge ante: the bounty hero depletes as you spend; empties to a calm "out of ante" look */
 	.bounty-panel.ante-empty {

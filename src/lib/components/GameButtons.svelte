@@ -41,12 +41,10 @@
 		}
 		if (mode === 'match') {
 			const m = $gameStore.matchInfo || {};
-			if (m.must_guess || m.done) return '';
-			const rem = Math.max(0, Number(m.budget ?? 0) - Number(m.spent ?? 0));
-			if (rem <= 0) return '';
-			const amt = Math.max(10, Math.round((0.2 * rem) / 10) * 10);
+			if (m.fold_on_wrong || m.done) return ''; // danger row is shown instead
+			const amt = Number(m.wrong_next_cost ?? 0);
 			const unit = Number(m.wager ?? 0) === 0 ? '★' : '$';
-			return `−${unit}${amt.toLocaleString()} if wrong`;
+			return amt > 0 ? `−${unit}${amt.toLocaleString()} if wrong` : '';
 		}
 		return ''; // Daily + Free Play: guesses are free
 	})();
@@ -54,16 +52,23 @@
 	$: showMiss = !!missCost && guessModeActive && !gameOver;
 	// 💥 Cash Game "Wrong = bust" state: the next wrong guess ends the run (3rd strike, or the
 	// penalty can't be covered by budget). Server-authoritative via climbInfo.bust_on_wrong.
-	$: bustOnWrong =
-		$gameStore.gameMode === 'climb' &&
+	// 💥 "Wrong ends it" state: Cash Game busts (loses the Run Bankroll), Challenge folds (loses
+	// this puzzle). Server-authoritative via bust_on_wrong / fold_on_wrong.
+	$: dangerOnWrong =
 		guessModeActive &&
 		!gameOver &&
-		!!($gameStore.climbInfo || {}).bust_on_wrong;
-	$: showMissRow = guessModeActive && !gameOver && (!!missCost || bustOnWrong);
-	$: runAtRisk = Math.round(Number(($gameStore.climbInfo || {}).bankroll ?? 0));
-	// Two-tap confirm before a bust: first Submit tap warns, the second commits.
-	let confirmBust = false;
-	$: if (!(bustOnWrong && guessComplete)) confirmBust = false;
+		(($gameStore.gameMode === 'climb' && !!($gameStore.climbInfo || {}).bust_on_wrong) ||
+			($gameStore.gameMode === 'match' && !!($gameStore.matchInfo || {}).fold_on_wrong));
+	$: dangerWord = $gameStore.gameMode === 'match' ? 'fold' : 'bust';
+	$: dangerLose =
+		$gameStore.gameMode === 'match'
+			? 'this puzzle'
+			: `$${Math.round(Number(($gameStore.climbInfo || {}).bankroll ?? 0)).toLocaleString()}`;
+	$: hasSolveInfo = $gameStore.gameMode === 'climb' || $gameStore.gameMode === 'match';
+	$: showMissRow = guessModeActive && !gameOver && (!!missCost || dangerOnWrong);
+	// Two-tap confirm before a bust/fold: first Submit tap warns, the second commits.
+	let confirmDanger = false;
+	$: if (!(dangerOnWrong && guessComplete)) confirmDanger = false;
 
 	// 🏷️ Main button label
 	$: buttonLabel = purchasePending
@@ -89,11 +94,11 @@
 			return;
 		}
 		if (guessModeActive && guessComplete) {
-			if (bustOnWrong && !confirmBust) {
-				confirmBust = true; // first tap warns (danger row + "Solve anyway"); second commits
+			if (dangerOnWrong && !confirmDanger) {
+				confirmDanger = true; // first tap warns (danger row + "Solve anyway"); second commits
 				return;
 			}
-			confirmBust = false;
+			confirmDanger = false;
 			submitGuess();
 			return;
 		}
@@ -113,8 +118,8 @@
 
 <div class="main-button-wrapper">
 	{#if showMissRow}
-		<div class="miss-cost" class:danger={bustOnWrong} role="status">
-				{#if bustOnWrong}Wrong = bust · lose ${runAtRisk.toLocaleString()}{:else}{missCost}{/if}{#if $gameStore.gameMode === 'climb'}<button
+		<div class="miss-cost" class:danger={dangerOnWrong} role="status">
+				{#if dangerOnWrong}Wrong = {dangerWord} · lose {dangerLose}{:else}{missCost}{/if}{#if hasSolveInfo}<button
 						class="miss-info"
 						title="Solve cost"
 						aria-label="Solve cost breakdown"
@@ -146,11 +151,11 @@
 
 			<button
 				class="confirm-button"
-				class:danger={bustOnWrong && !purchasePending}
+				class:danger={dangerOnWrong && !purchasePending}
 				on:click={handleMainButtonClick}
 				disabled={buttonsDisabled}
 			>
-				{purchasePending ? 'Confirm' : confirmBust ? 'Solve anyway' : 'Submit'}
+				{purchasePending ? 'Confirm' : confirmDanger ? 'Solve anyway' : 'Submit'}
 			</button>
 		</div>
 	{:else if guessCancelOnlyMode}
