@@ -43,8 +43,12 @@ CREATE TEMP TABLE _drop ON COMMIT DROP AS
     'test7@gmail.com',
     'hi@jim.com',
     'jim@gmail.com',
-    'jim@beam.com'
-    -- add more junk emails here
+    'jim@beam.com',
+    'dummyproofcrypto@gmail.com',
+    'chatgptvsgrok@gmail.com'
+    -- Likely owner alt accounts — uncomment to delete these too:
+    -- , 'char4man77@yahoo.com'   -- username "chuckles"
+    -- , 'sfforema@gmail.com'
   );
 
 -- Safety: NEVER drop the owner account, and never let this delete everyone.
