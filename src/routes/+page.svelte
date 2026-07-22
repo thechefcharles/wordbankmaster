@@ -682,7 +682,7 @@
 	let solveBeatGain = 0;
 	$: if (!solveBeat) climbScoreAnim.set(Math.round(climb?.bankroll ?? 0), { duration: 0 });
 	$: if (!solveBeat) matchScoreAnim.set(Math.round(matchInfo?.total_score ?? 0), { duration: 0 });
-	function startScoreBeat() {
+	function startScoreBeat(onDone) {
 		const gain = isClimb
 			? Math.round(climb?.last_gain ?? 0)
 			: Math.round(matchInfo?.last_score ?? 0);
@@ -700,7 +700,8 @@
 		}, 380);
 		setTimeout(() => {
 			solveBeat = false;
-			showResultModal = true; // beat done → print the receipt
+			if (onDone) onDone();
+			else showResultModal = true; // beat done → print the receipt
 		}, 1350);
 	}
 	// 💸 "Deposit lands" beat (Daily): coins fly into the account card + the balance counts up,
@@ -2631,7 +2632,7 @@
 		// server-side (settlement already fired), so this is client-side; "See results" opens
 		// the full results receipt.
 		if (isMatch && won && matchInfo?.done) {
-			matchFinalReceipt = true;
+			startScoreBeat(() => (matchFinalReceipt = true)); // 🪙 beat first, then the final receipt
 			return;
 		}
 
