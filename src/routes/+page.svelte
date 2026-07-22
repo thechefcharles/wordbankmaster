@@ -684,44 +684,43 @@
 	$: if (!solveBeat) climbScoreAnim.set(Math.round(climb?.bankroll ?? 0), { duration: 0 });
 	$: if (!solveBeat) matchScoreAnim.set(Math.round(matchInfo?.total_score ?? 0), { duration: 0 });
 	let solveBeatTo = 0;
-	// Arm the beat the INSTANT you win so the two money boxes never blink out: freeze the bounty
-	// at the leftover you kept and the score at its pre-solve total, and keep both on screen
-	// through the win reveal (solveBeat also lifts them above the keyboard).
+	let _beatFallback = null;
+	let _beatPorted = true; // guards the port from running twice
+	// Arm the beat the INSTANT you win so the two money boxes never blink out (freeze bounty at
+	// the leftover, score at its pre-solve total). A fallback timer guarantees the port ALWAYS
+	// runs, so the game can never hang frozen if the reveal never fires (e.g. resuming a run that
+	// was already sitting on a solved puzzle).
 	function armScoreBeat() {
-		const gain = isClimb
-			? Math.round(climb?.last_gain ?? 0)
-			: Math.round(matchInfo?.last_score ?? 0);
-		solveBeatTo = isClimb
-			? Math.round(climb?.bankroll ?? 0)
-			: Math.round(matchInfo?.total_score ?? 0);
+		const gain = isClimb ? Math.round(climb?.last_gain ?? 0) : Math.round(matchInfo?.last_score ?? 0);
+		solveBeatTo = isClimb ? Math.round(climb?.bankroll ?? 0) : Math.round(matchInfo?.total_score ?? 0);
 		const anim = isClimb ? climbScoreAnim : matchScoreAnim;
 		solveBeatUnit = isMatch && isFriendlyMatch ? '★' : '$';
 		solveBeatGain = gain;
 		solveBeat = true;
+		_beatPorted = false;
 		tweenNet.set(gain, { duration: 0 });
 		anim.set(Math.max(0, solveBeatTo - gain), { duration: 0 });
+		clearTimeout(_beatFallback);
+		_beatFallback = setTimeout(() => runScoreBeat(), 2600);
 	}
-	// Run the port AFTER the reveal: the bounty box empties into the score box, then the receipt.
 	function runScoreBeat(onDone) {
-		if (!solveBeat) armScoreBeat(); // safety if the reveal fired before the arm reactive
+		clearTimeout(_beatFallback);
+		if (_beatPorted) return;
+		_beatPorted = true;
 		const anim = isClimb ? climbScoreAnim : matchScoreAnim;
 		portFloat = solveBeatGain > 0;
 		setTimeout(() => {
-			fx('multiplier'); // the money lands on the score
-			tweenNet.set(0, { duration: 850 }); // bounty box empties…
-			anim.set(solveBeatTo, { duration: 850 }); // …into the score box
+			fx('multiplier');
+			tweenNet.set(0, { duration: 850 });
+			anim.set(solveBeatTo, { duration: 850 });
 		}, 300);
-		setTimeout(() => {
-			portFloat = false;
-		}, 1450);
+		setTimeout(() => { portFloat = false; }, 1450);
 		setTimeout(() => {
 			solveBeat = false;
 			if (onDone) onDone();
-			else showResultModal = true; // beat done → print the receipt
+			else showResultModal = true;
 		}, 2200);
 	}
-	// The instant a Cash Game / Challenge puzzle is won, arm the beat (before the reveal even ends)
-	// so the boxes stay put. Guarded so it fires once per solve.
 	$: if (
 		($gameStore.gameMode === 'climb' || isMatch) &&
 		$gameStore.gameState === 'won' &&
