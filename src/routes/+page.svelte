@@ -4885,7 +4885,7 @@
 		</section>
 
 		<!-- 💰 Money hero -->
-		<section class="stats-section">
+		<section class="stats-section" class:beating={solveBeat}>
 			{#if soloHero || solveBeat}
 				<!-- Daily · Cash Game hero = Payout (bounty − spent, the cash you keep by solving efficiently). -->
 				<div
@@ -6487,6 +6487,11 @@
 		margin-bottom: 0.4rem;
 		flex-shrink: 0;
 		position: relative; /* anchor for the port-float that drifts bounty → score */
+	}
+	/* During the solve beat, lift the money boxes above the fixed keyboard (z:1000) + Solve row
+	   (z:999) so the port animation isn't hidden behind them. */
+	.stats-section.beating {
+		z-index: 1003;
 	}
 	/* "+$X" chip that ports from the bounty box down into the score box during a solve. */
 	.port-float {
