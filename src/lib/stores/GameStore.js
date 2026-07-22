@@ -1096,7 +1096,7 @@ export function selectLetter(letter) {
 			const overdrive = isClimb && (state.climbInfo?.equipped ?? []).includes('overdrive');
 			const cost = overdrive ? 0 : (LETTER_COSTS[letter] || 0) * climbMult;
 			const affordPool = isClimb
-				? Number(state.climbInfo?.balance ?? state.climbInfo?.budget_left ?? 0)
+				? Number(state.climbInfo?.budget_left ?? 0)
 				: state.bankroll;
 			if (affordPool < cost) {
 				console.log(`Insufficient funds to purchase letter ${letter}`);

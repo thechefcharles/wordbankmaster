@@ -559,7 +559,7 @@
 					spent: climb.spent ?? 0,
 					payout: climb.solve_reward ?? 0,
 					// One-number model: the hero shows the running Balance (secured pile + this puzzle's spend).
-					net: climb.balance ?? (climb.bankroll ?? 0) + (climb.solve_reward ?? 0)
+					net: climb.budget_left ?? climb.solve_reward ?? 0
 				}
 			: null;
 	// Challenge live: Spent of your ante budget — lowest spend wins (standard only).
@@ -570,7 +570,8 @@
 	$: matchLeft = matchLive ? Math.max(0, (matchLive.budget ?? 0) - (matchLive.spent ?? 0)) : 0;
 	// The hero number: the bounty you spend down THIS puzzle. Daily & Cash Game keep the
 	// leftover; Challenge's resets each puzzle (fresh bounty) — the accumulated total is the
-	// Score, shown up top. Cash Game's carries via climb.balance (secured pile + current budget).
+	// Cash Game hero is now THIS puzzle's budget (budget_left); the run pile shows as the
+	// separate, locked Run Bankroll number underneath — letters can't spend it.
 	// Free Play: the current puzzle's spendable points budget drives the bounty hero,
 	// exactly where the money modes show their prize/budget.
 	$: fpLive =
@@ -704,27 +705,16 @@
 		setTimeout(() => {
 			introCountPop = false;
 		}, 1200);
-		// 🎰 Cash Game with a carried run pile → stage it: count up to THIS puzzle's value first,
-		// then fly the carried pile on and tick up to the new total.
-		if (isClimb && climb && (climb.bankroll ?? 0) > 0) {
-			const total = Math.round(soloHero?.net ?? 0);
-			const carried = Math.round(climb.bankroll ?? 0);
-			const bounty = Math.max(0, total - carried); // this puzzle's value (net − carried)
+		// 🎰 Cash Game: count THIS puzzle's budget up from 0. The run pile is no longer folded
+		// into the hero — it shows as the separate Run Bankroll number below it.
+		if (isClimb && climb) {
+			const budget = Math.round(soloHero?.net ?? 0);
 			climbStaging = true;
 			tweenNet.set(0, { duration: 0 });
-			tweenNet.set(bounty, { duration: 700 }); // 0 → puzzle value
-			// hold the puzzle value for a beat, THEN fly the carried pile on
+			tweenNet.set(budget, { duration: 800 });
 			setTimeout(() => {
-				carryCue = carried; // flashy "+$X run pile" floats onto the number
-				fx('multiplier');
-				tweenNet.set(total, { duration: 950 }); // puzzle value → puzzle value + run pile
-			}, 1500);
-			setTimeout(() => {
-				climbStaging = false; // count-up done → the reactive can drive again
-			}, 2600);
-			setTimeout(() => {
-				carryCue = 0; // float lingers ~2s before clearing
-			}, 3650);
+				climbStaging = false;
+			}, 900);
 		}
 	}
 	// 🎬 Challenges auto-advance through a pack, so play the armed opening reveal on each
@@ -3082,32 +3072,42 @@
 					— <b>+10%</b> per solve.
 				</p>
 			{:else}
-				<div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
-				<h3 class="info-title">Payout</h3>
-				<p class="info-sub">
-					Your running cash this run — solve to keep it. A wrong guess drains your budget; run out
-					and you bust.
-				</p>
-				<div class="info-rows">
-					<div class="info-row">
-						<span>Secured so far</span><b>${Math.round(climb?.bankroll ?? 0).toLocaleString()}</b>
+				{#if climbInfo === 'runbank'}
+					<div class="info-big gold">${Math.round(climb?.bankroll ?? 0).toLocaleString()}</div>
+					<h3 class="info-title">Run Bankroll</h3>
+					<p class="info-sub">
+						Everything you've banked this run. Each puzzle you solve, whatever budget you didn't spend
+						drops in here.
+					</p>
+					<div class="info-rows">
+						<div class="info-row"><span>Grows when you</span><b class="pos">solve</b></div>
+						<div class="info-row"><span>Spend it on letters?</span><b class="neg">no — locked</b></div>
+						<div class="info-row total"><span>If you bust</span><b class="neg">lose it all</b></div>
 					</div>
-					<div class="info-row">
-						<span>This puzzle's budget <small>(spend on letters)</small></span><b
-							>${Math.round(climb?.budget_left ?? 0).toLocaleString()}</b
-						>
+					<p class="info-note">
+						It's all on the line — <b>lose a puzzle and you lose the whole thing</b>. Deposit between
+						puzzles to bank it to your account and end the run safe.
+					</p>
+				{:else}
+					<div class="info-big green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</div>
+					<h3 class="info-title">This Puzzle's Budget</h3>
+					<p class="info-sub">
+						What you can spend on letters right now. Whatever you don't spend, you keep — it drops into
+						your Run Bankroll when you solve.
+					</p>
+					<div class="info-rows">
+						<div class="info-row"><span>Bounty</span><b>${Math.round(climb?.bounty ?? 0).toLocaleString()}</b></div>
+						<div class="info-row"><span>Spent on letters</span><b class="neg">−${Math.round(climb?.spent ?? 0).toLocaleString()}</b></div>
+						<div class="info-row total"><span>Left to keep</span><b class="green">${Math.max(0, climbLive?.net ?? 0).toLocaleString()}</b></div>
 					</div>
-					<div class="info-row total">
-						<span>Payout</span><b class="green">${(climbLive?.net ?? 0).toLocaleString()}</b>
-					</div>
-				</div>
-				<p class="info-note">
-					Reveal less, keep more — solving locks your <b>budget</b> into your Payout, and the next
-					puzzle lands ×
-					<button class="info-inline" on:click|stopPropagation={() => (climbInfo = 'heat')}
-						>Interest</button
-					>.
-				</p>
+					<p class="info-note">
+						Reveal less, keep more. Run out of budget and you <b>must guess</b> — your Run Bankroll
+						can't buy letters. Each solve boosts the next puzzle ×
+						<button class="info-inline" on:click|stopPropagation={() => (climbInfo = 'heat')}
+							>Interest</button
+						>.
+					</p>
+				{/if}
 			{/if}
 			<button class="info-close" on:click={() => (climbInfo = null)}>Got it</button>
 		</div>
@@ -4909,6 +4909,17 @@
 							<span class="bp-badge-spacer"></span>
 						{/if}
 					</div>
+					{#if isClimb && climb?.state === 'active'}
+						<!-- Run Bankroll: bare number, no label/emoji; tap for the explainer. -->
+						<button
+							class="bp-runbank"
+							title="Run Bankroll"
+							on:click={() => {
+								fx('tap');
+								climbInfo = 'runbank';
+							}}>${Math.round(climb?.bankroll ?? 0).toLocaleString()}</button
+						>
+					{/if}
 					{#each spendFloaters as f (f.id)}<span class="spend-float" class:wrong={f.wrong}
 							>{f.text}</span
 						>{/each}
@@ -8669,6 +8680,27 @@
 		color: #fb7185;
 		text-shadow: none;
 	}
+	/* Run Bankroll: bare tappable number under the budget hero — dim gold, dotted underline. */
+	.bp-runbank {
+		display: block;
+		margin: 3px auto 0;
+		background: none;
+		border: none;
+		padding: 0 0 1px;
+		font-family: var(--font-display, sans-serif);
+		font-weight: 700;
+		font-size: 0.95rem;
+		line-height: 1.1;
+		color: #b8912f;
+		border-bottom: 1px dotted rgba(184, 145, 47, 0.55);
+		font-variant-numeric: tabular-nums;
+		cursor: pointer;
+		transition: color 0.15s;
+	}
+	.bp-runbank:hover,
+	.bp-runbank:active {
+		color: #e9c25c;
+	}
 	/* 🪙 Challenge ante: the bounty hero depletes as you spend; empties to a calm "out of ante" look */
 	.bounty-panel.ante-empty {
 		border-color: rgba(148, 163, 184, 0.4);
@@ -9000,6 +9032,10 @@
 	.info-big.green {
 		color: #4ade80;
 		text-shadow: 0 0 22px rgba(74, 222, 128, 0.45);
+	}
+	.info-big.gold {
+		color: #e9c25c;
+		text-shadow: 0 0 22px rgba(233, 194, 92, 0.4);
 	}
 	.info-big.neg {
 		font-family: var(--font-display, sans-serif);

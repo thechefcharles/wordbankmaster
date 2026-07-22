@@ -150,7 +150,7 @@
 	$: affordPool =
 		$gameStore.gameMode === 'climb'
 			? // Single shared balance: letters spend from banked run money + this puzzle's budget.
-				Number($gameStore.climbInfo?.balance ?? $gameStore.climbInfo?.budget_left ?? 0)
+				Number($gameStore.climbInfo?.budget_left ?? 0)
 			: $gameStore.gameMode === 'daily' || $gameStore.gameMode === 'freeplay'
 				? Number($gameStore.dailyLive?.remaining ?? $gameStore.bankroll ?? 0)
 				: Number($gameStore.bankroll ?? 0);
