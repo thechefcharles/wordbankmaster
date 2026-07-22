@@ -4895,7 +4895,7 @@
 				<!-- Daily · Cash Game hero = Payout (bounty − spent, the cash you keep by solving efficiently). -->
 				<div
 					class="bounty-panel"
-					class:loss={!isMatch && soloHero.net < 0}
+					class:loss={!isMatch && (soloHero?.net ?? 0) < 0}
 					class:ante-empty={isMatch && matchLeft <= 0}
 					class:count-pop={introCountPop}
 				>
