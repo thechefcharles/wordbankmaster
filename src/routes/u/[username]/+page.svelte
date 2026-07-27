@@ -3,7 +3,15 @@
 	import { goto } from '$app/navigation';
 	import PageNav from '$lib/components/PageNav.svelte';
 	import { page } from '$app/stores';
-	import { getPublicProfile, addFriend, requestJoinGroup } from '$lib/stores/statsStore.js';
+	import {
+		getPublicProfile,
+		addFriend,
+		requestJoinGroup,
+		blockUser,
+		unblockUser,
+		isBlocking,
+		reportContent
+	} from '$lib/stores/statsStore.js';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import AccountCard from '$lib/components/AccountCard.svelte';
@@ -19,6 +27,12 @@
 	let notFound = $state(false);
 	let addBusy = $state(false);
 	let addMsg = $state('');
+	// Moderation (App Store Guideline 1.2)
+	let blocked = $state(false);
+	let modBusy = $state(false);
+	let modMsg = $state('');
+	let showReport = $state(false);
+	let reportReason = $state('');
 
 	const username = $derived($page.params.username);
 	// Equipped cosmetics come back as ids; resolve to the title label + name-colour hex.
@@ -36,6 +50,43 @@
 		p = d;
 		notFound = !d;
 		loading = false;
+		modMsg = '';
+		showReport = false;
+		reportReason = '';
+		blocked = d && !d.is_self ? await isBlocking(d.username) : false;
+	}
+
+	async function doBlock() {
+		if (modBusy || !p) return;
+		modBusy = true;
+		const res = await blockUser(p.username);
+		modBusy = false;
+		if (res?.ok) {
+			blocked = true;
+			p = { ...p, is_friend: false, request_outgoing: false, request_incoming: false };
+			modMsg = `Blocked. @${p.username} can no longer message or challenge you.`;
+		} else modMsg = res?.reason || 'Could not block';
+	}
+	async function doUnblock() {
+		if (modBusy || !p) return;
+		modBusy = true;
+		const res = await unblockUser(p.username);
+		modBusy = false;
+		if (res?.ok) {
+			blocked = false;
+			modMsg = 'Unblocked.';
+		} else modMsg = res?.reason || 'Could not unblock';
+	}
+	async function doReport() {
+		if (modBusy || !p) return;
+		modBusy = true;
+		const res = await reportContent('user', p.id, reportReason);
+		modBusy = false;
+		showReport = false;
+		reportReason = '';
+		modMsg = res?.ok
+			? 'Thanks — this account has been reported to our team.'
+			: res?.reason || 'Could not report';
 	}
 
 	async function add() {
@@ -121,21 +172,50 @@
 				{/if}
 			</section>
 
-			<div class="u-actions">
-				{#if p.is_friend}
-					<span class="pill friend"><Icon name="check" size={12} /> Friends</span>
-				{:else if p.request_outgoing}
-					<span class="pill muted">Request sent</span>
-				{:else if p.request_incoming}
-					<button class="pill" onclick={() => goto('/friends')}>Respond to request →</button>
-				{:else}
-					<button class="pill" disabled={addBusy} onclick={add}>+ Add friend</button>
+			{#if blocked}
+				<div class="blocked-banner">
+					<Icon name="shield" size={14} /> You've blocked @{p.username}
+				</div>
+				<div class="u-actions">
+					<button class="pill" disabled={modBusy} onclick={doUnblock}>Unblock</button>
+				</div>
+			{:else}
+				<div class="u-actions">
+					{#if p.is_friend}
+						<span class="pill friend"><Icon name="check" size={12} /> Friends</span>
+					{:else if p.request_outgoing}
+						<span class="pill muted">Request sent</span>
+					{:else if p.request_incoming}
+						<button class="pill" onclick={() => goto('/friends')}>Respond to request →</button>
+					{:else}
+						<button class="pill" disabled={addBusy} onclick={add}>+ Add friend</button>
+					{/if}
+					<button class="pill gold" onclick={() => goto('/?challenge=' + p.username)}
+						><ModeIcon mode="challenge" size={16} /> Challenge</button
+					>
+				</div>
+				<div class="mod-row">
+					<button class="mod-link" onclick={() => (showReport = !showReport)}>Report</button>
+					<span class="mod-dot">·</span>
+					<button class="mod-link danger" disabled={modBusy} onclick={doBlock}>Block</button>
+				</div>
+				{#if showReport}
+					<div class="report-box">
+						<textarea
+							bind:value={reportReason}
+							maxlength="300"
+							rows="2"
+							placeholder="What's the problem? (optional)"
+						></textarea>
+						<div class="rb-actions">
+							<button class="pill muted" onclick={() => (showReport = false)}>Cancel</button>
+							<button class="pill" disabled={modBusy} onclick={doReport}>Submit report</button>
+						</div>
+					</div>
 				{/if}
-				<button class="pill gold" onclick={() => goto('/?challenge=' + p.username)}
-					><ModeIcon mode="challenge" size={16} /> Challenge</button
-				>
-			</div>
+			{/if}
 			{#if addMsg}<p class="add-msg">{addMsg}</p>{/if}
+			{#if modMsg}<p class="add-msg">{modMsg}</p>{/if}
 		{:else}
 			<div class="u-actions">
 				<button class="pill" onclick={() => goto('/profile')}>This is you → your stats</button>
@@ -385,6 +465,69 @@
 		color: var(--text-muted);
 		font-size: 0.82rem;
 		margin: 8px 0 0;
+	}
+	.mod-row {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		margin-top: 10px;
+	}
+	.mod-link {
+		background: none;
+		border: none;
+		color: var(--text-faint);
+		font-size: 0.78rem;
+		cursor: pointer;
+		padding: 4px 6px;
+	}
+	.mod-link:hover {
+		color: var(--text-muted);
+		text-decoration: underline;
+	}
+	.mod-link.danger:hover {
+		color: #fb7185;
+	}
+	.mod-dot {
+		color: var(--text-faint);
+		font-size: 0.78rem;
+	}
+	.blocked-banner {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		color: #fb7185;
+		font-size: 0.86rem;
+		font-weight: 600;
+		margin-bottom: 10px;
+	}
+	.report-box {
+		max-width: 340px;
+		margin: 10px auto 0;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.report-box textarea {
+		width: 100%;
+		resize: none;
+		border-radius: var(--r-sm);
+		border: 1px solid var(--border);
+		background: var(--surface);
+		color: var(--text);
+		padding: 9px 11px;
+		font-size: 0.86rem;
+		font-family: inherit;
+	}
+	.rb-actions {
+		display: flex;
+		gap: 8px;
+		justify-content: flex-end;
+	}
+	.rb-actions .pill {
+		padding: 7px 14px;
+		font-size: 0.8rem;
 	}
 
 	.grid {

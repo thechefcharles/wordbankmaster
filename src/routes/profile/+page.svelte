@@ -2,7 +2,13 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { getProfileDetail, getMyAvatar, getUserBadges } from '$lib/stores/statsStore.js';
+	import {
+		getProfileDetail,
+		getMyAvatar,
+		getUserBadges,
+		listBlocked,
+		unblockUser
+	} from '$lib/stores/statsStore.js';
 	import { cosmeticsMap, titleLabel, colorHex } from '$lib/cosmetics.js';
 	import { badgeInfo } from '$lib/badges.js';
 	import { fmtSecs } from '$lib/time.js';
@@ -38,6 +44,28 @@
 
 	// "My Items" (power-ups) block on Overview — purely presentational collapse, defaults open.
 	let itemsCollapsed = $state(false);
+
+	// Blocked accounts (App Store Guideline 1.2): collapsible list with unblock.
+	let showBlocked = $state(false);
+	/** @type {any[]} */
+	let blockedList = $state([]);
+	let blockedLoaded = $state(false);
+	let blkBusy = $state('');
+	async function toggleBlocked() {
+		showBlocked = !showBlocked;
+		if (showBlocked && !blockedLoaded) {
+			blockedList = await listBlocked();
+			blockedLoaded = true;
+		}
+	}
+	/** @param {string} username */
+	async function doUnblock(username) {
+		if (blkBusy) return;
+		blkBusy = username;
+		const res = await unblockUser(username);
+		if (res?.ok) blockedList = blockedList.filter((b) => b.username !== username);
+		blkBusy = '';
+	}
 
 	onMount(async () => {
 		track('profile_view');
@@ -312,7 +340,30 @@
 				<button class="ov-link" onclick={() => goto('/streak')}
 					>Daily Calendar <span class="arrow">›</span></button
 				>
+				<button class="ov-link" onclick={toggleBlocked} aria-expanded={showBlocked}
+					>Blocked accounts <span class="arrow">{showBlocked ? '⌄' : '›'}</span></button
+				>
 			</div>
+			{#if showBlocked}
+				<div class="blocked-list">
+					{#if !blockedLoaded}
+						<p class="blk-empty">Loading…</p>
+					{:else if blockedList.length === 0}
+						<p class="blk-empty">You haven't blocked anyone.</p>
+					{:else}
+						{#each blockedList as b}
+							<div class="blk-row">
+								<span class="blk-name">@{b.username}</span>
+								<button
+									class="blk-unblock"
+									disabled={blkBusy === b.username}
+									onclick={() => doUnblock(b.username)}>Unblock</button
+								>
+							</div>
+						{/each}
+					{/if}
+				</div>
+			{/if}
 		{:else if tab === 'stats'}
 			{@const net = Number(d.overall.earned ?? 0) - Number(d.overall.spent ?? 0)}
 			{@const cgNet = Number(d.cash_game.net ?? 0)}
@@ -945,6 +996,47 @@
 	}
 	.ov-link .arrow {
 		color: var(--text-faint);
+	}
+	.blocked-list {
+		margin-top: 8px;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		padding: 4px 2px;
+	}
+	.blk-empty {
+		color: var(--text-faint);
+		font-size: 0.84rem;
+		padding: 6px 13px;
+		margin: 0;
+	}
+	.blk-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 9px 13px;
+		border-radius: 12px;
+		background: var(--surface);
+		border: 1px solid var(--border);
+	}
+	.blk-name {
+		font-weight: 600;
+		font-size: 0.9rem;
+		color: var(--text);
+	}
+	.blk-unblock {
+		background: none;
+		border: 1px solid var(--border-strong);
+		border-radius: var(--r-pill);
+		color: var(--text);
+		font-weight: 700;
+		font-size: 0.8rem;
+		padding: 6px 14px;
+		cursor: pointer;
+	}
+	.blk-unblock:disabled {
+		opacity: 0.5;
+		cursor: default;
 	}
 	.stat {
 		display: flex;

@@ -70,6 +70,8 @@
 		getDailyBoard,
 		getMatchMessages,
 		sendMatchMessage,
+		reportContent,
+		blockUser,
 		listFriendRequests,
 		deleteMyAccount,
 		getMyAvatar,
@@ -1465,12 +1467,49 @@
 		const body = matchChatInput.trim();
 		if (!body || matchChatBusy || !matchChatId) return;
 		matchChatBusy = true;
+		matchChatMsg = '';
 		const res = await sendMatchMessage(matchChatId, body);
 		matchChatBusy = false;
 		if (res.ok) {
 			matchChatInput = '';
 			await loadMatchMsgs();
+		} else if (res.reason === 'inappropriate') {
+			matchChatMsg = "That message can't be sent — please keep it civil.";
 		}
+	}
+	// Chat moderation (report / block) — App Store Guideline 1.2
+	let matchChatMsg = '';
+	let matchMenuFor = '';
+	let matchModBusy = false;
+	/** @param {any} m */
+	async function reportMatchMsg(m) {
+		matchMenuFor = '';
+		if (matchModBusy) return;
+		matchModBusy = true;
+		const res = await reportContent('match_message', m.id, '');
+		matchModBusy = false;
+		matchChatMsg = res?.ok ? 'Reported. Thanks — our team will review it.' : 'Could not report';
+	}
+	/** @param {any} m */
+	async function blockFromMatch(m) {
+		matchMenuFor = '';
+		if (matchModBusy || !m.username) return;
+		if (
+			!(await requireConfirm({
+				title: `Block @${m.username}?`,
+				message: 'You won’t see their messages, and they can’t friend or challenge you.',
+				confirmText: 'Block',
+				danger: true
+			}))
+		)
+			return;
+		matchModBusy = true;
+		const res = await blockUser(m.username);
+		matchModBusy = false;
+		if (res?.ok) {
+			await loadMatchMsgs();
+			matchChatMsg = `Blocked @${m.username}.`;
+		} else matchChatMsg = 'Could not block';
 	}
 	onDestroy(teardownMatchChat);
 
@@ -2536,7 +2575,9 @@
 						? 'That one’s reserved — try another.'
 						: res.reason === 'invalid'
 							? '3–15 characters: letters, numbers, or _.'
-							: 'Could not set that username.';
+							: res.reason === 'inappropriate'
+								? 'Please choose a different username.'
+								: 'Could not set that username.';
 		}
 	}
 	async function handleMenuMyAccount() {
@@ -2567,7 +2608,9 @@
 						? 'That username is reserved.'
 						: res.reason === 'invalid'
 							? '3–15 letters, numbers or _ only.'
-							: 'Could not save username.';
+							: res.reason === 'inappropriate'
+								? 'Please choose a different username.'
+								: 'Could not save username.';
 		}
 	}
 	/** @param {KeyboardEvent} e */
@@ -2776,12 +2819,38 @@
 						<div class="cmsg" class:mine={m.is_me}>
 							<span class="cm-name">{m.is_me ? 'You' : m.name}</span>
 							<span class="cm-body">{m.body}</span>
+							{#if !m.is_me}
+								<div class="cm-mod">
+									<button
+										class="cm-flag"
+										aria-label="Report or block"
+										on:click={() => (matchMenuFor = matchMenuFor === m.id ? '' : m.id)}
+									>
+										<Icon name="flag" size={12} />
+									</button>
+									{#if matchMenuFor === m.id}
+										<div class="cm-menu">
+											<button on:click={() => reportMatchMsg(m)} disabled={matchModBusy}
+												>Report message</button
+											>
+											{#if m.username}
+												<button
+													class="danger"
+													on:click={() => blockFromMatch(m)}
+													disabled={matchModBusy}>Block @{m.username}</button
+												>
+											{/if}
+										</div>
+									{/if}
+								</div>
+							{/if}
 						</div>
 					{/each}
 				{:else}
 					<p class="chat-empty">No messages yet — start the smack talk</p>
 				{/if}
 			</div>
+			{#if matchChatMsg}<p class="chat-modmsg">{matchChatMsg}</p>{/if}
 			<div class="chat-input-row">
 				<input
 					class="chat-input"
@@ -7930,6 +7999,65 @@
 		font-size: 0.88rem;
 		color: var(--text);
 		word-break: break-word;
+	}
+	.cmsg {
+		position: relative;
+	}
+	.cmsg:not(.mine) {
+		padding-right: 1.4rem;
+	}
+	.cm-mod {
+		position: absolute;
+		top: 2px;
+		right: 4px;
+	}
+	.cm-flag {
+		background: none;
+		border: none;
+		color: var(--text-faint);
+		opacity: 0.5;
+		cursor: pointer;
+		padding: 2px;
+		line-height: 0;
+	}
+	.cm-flag:hover {
+		opacity: 1;
+		color: var(--text-muted);
+	}
+	.cm-menu {
+		position: absolute;
+		top: 22px;
+		right: 0;
+		z-index: 5;
+		display: flex;
+		flex-direction: column;
+		min-width: 152px;
+		background: var(--surface);
+		border: 1px solid var(--border-strong);
+		border-radius: 10px;
+		overflow: hidden;
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+	}
+	.cm-menu button {
+		text-align: left;
+		background: none;
+		border: none;
+		color: var(--text);
+		padding: 9px 12px;
+		font-size: 0.82rem;
+		cursor: pointer;
+	}
+	.cm-menu button:hover {
+		background: var(--surface-2, rgba(255, 255, 255, 0.06));
+	}
+	.cm-menu button.danger {
+		color: #fb7185;
+	}
+	.chat-modmsg {
+		font-size: 0.78rem;
+		color: var(--text-muted);
+		text-align: center;
+		margin: 0.4rem 0 0;
 	}
 	.chat-input-row {
 		display: flex;

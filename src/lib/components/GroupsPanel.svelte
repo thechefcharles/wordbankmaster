@@ -16,7 +16,9 @@
 		listFriends,
 		getGroupMessages,
 		sendGroupMessage,
-		getGroupStandings
+		getGroupStandings,
+		reportContent,
+		blockUser
 	} from '$lib/stores/statsStore.js';
 	import { requireConfirm } from '$lib/confirm.js';
 	import Icon from '$lib/components/Icon.svelte';
@@ -113,6 +115,10 @@
 	let messages = $state([]);
 	let chatInput = $state('');
 	let chatBusy = $state(false);
+	let chatMsg = $state('');
+	/** id of the message whose report/block menu is open */
+	let menuFor = $state('');
+	let modBusy = $state(false);
 	/** @type {HTMLElement|undefined} */
 	let chatScroll = $state();
 
@@ -157,12 +163,46 @@
 		const body = chatInput.trim();
 		if (!body || chatBusy || !open) return;
 		chatBusy = true;
+		chatMsg = '';
 		const res = await sendGroupMessage(open.id, body);
 		chatBusy = false;
 		if (res.ok) {
 			chatInput = '';
 			messages = await getGroupMessages(open.id);
+		} else if (res.reason === 'inappropriate') {
+			chatMsg = "That message can't be sent — please keep it civil.";
 		}
+	}
+
+	/** @param {any} m */
+	async function reportMsg(m) {
+		menuFor = '';
+		if (modBusy) return;
+		modBusy = true;
+		const res = await reportContent('group_message', m.id, '');
+		modBusy = false;
+		chatMsg = res?.ok ? 'Reported. Thanks — our team will review it.' : 'Could not report';
+	}
+	/** @param {any} m */
+	async function blockFromChat(m) {
+		menuFor = '';
+		if (modBusy || !m.username) return;
+		if (
+			!(await requireConfirm({
+				title: `Block @${m.username}?`,
+				message: 'You won’t see their messages, and they can’t friend or challenge you.',
+				confirmText: 'Block',
+				danger: true
+			}))
+		)
+			return;
+		modBusy = true;
+		const res = await blockUser(m.username);
+		modBusy = false;
+		if (res?.ok && open) {
+			messages = await getGroupMessages(open.id);
+			chatMsg = `Blocked @${m.username}.`;
+		} else chatMsg = 'Could not block';
 	}
 
 	async function refresh() {
@@ -522,12 +562,34 @@
 							{#if !m.is_me}<span class="cm-name">{m.name}</span>{/if}<span class="cm-body"
 								>{m.body}</span
 							>
+							{#if !m.is_me}
+								<div class="cm-mod">
+									<button
+										class="cm-flag"
+										aria-label="Report or block"
+										onclick={() => (menuFor = menuFor === m.id ? '' : m.id)}
+									>
+										<Icon name="flag" size={12} />
+									</button>
+									{#if menuFor === m.id}
+										<div class="cm-menu">
+											<button onclick={() => reportMsg(m)} disabled={modBusy}>Report message</button>
+											{#if m.username}
+												<button class="danger" onclick={() => blockFromChat(m)} disabled={modBusy}
+													>Block @{m.username}</button
+												>
+											{/if}
+										</div>
+									{/if}
+								</div>
+							{/if}
 						</div>
 					{/each}
 				{:else}
 					<p class="chat-empty">No messages yet — say hi</p>
 				{/if}
 			</div>
+			{#if chatMsg}<p class="chat-modmsg">{chatMsg}</p>{/if}
 			<div class="g-row chat-input-row">
 				<input
 					class="g-input"
@@ -1145,5 +1207,64 @@
 	}
 	.chat-input-row {
 		margin-top: 0.6rem;
+	}
+	.cmsg {
+		position: relative;
+	}
+	.cmsg:not(.mine) {
+		padding-right: 1.4rem;
+	}
+	.cm-mod {
+		position: absolute;
+		top: 2px;
+		right: 4px;
+	}
+	.cm-flag {
+		background: none;
+		border: none;
+		color: var(--text-faint);
+		opacity: 0.5;
+		cursor: pointer;
+		padding: 2px;
+		line-height: 0;
+	}
+	.cm-flag:hover {
+		opacity: 1;
+		color: var(--text-muted);
+	}
+	.cm-menu {
+		position: absolute;
+		top: 22px;
+		right: 0;
+		z-index: 5;
+		display: flex;
+		flex-direction: column;
+		min-width: 152px;
+		background: var(--surface);
+		border: 1px solid var(--border-strong);
+		border-radius: 10px;
+		overflow: hidden;
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+	}
+	.cm-menu button {
+		text-align: left;
+		background: none;
+		border: none;
+		color: var(--text);
+		padding: 9px 12px;
+		font-size: 0.82rem;
+		cursor: pointer;
+	}
+	.cm-menu button:hover {
+		background: var(--surface-2, rgba(255, 255, 255, 0.06));
+	}
+	.cm-menu button.danger {
+		color: #fb7185;
+	}
+	.chat-modmsg {
+		font-size: 0.78rem;
+		color: var(--text-muted);
+		text-align: center;
+		margin: 0.4rem 0 0;
 	}
 </style>

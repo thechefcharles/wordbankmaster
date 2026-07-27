@@ -310,6 +310,58 @@ export async function sendGroupMessage(groupId, body) {
 	return data;
 }
 
+/* ===== Moderation (report / block — App Store Guideline 1.2) ===== */
+/** Report content. context: 'match_message'|'group_message'|'user'|'username'; refId = message id or reported profile id.
+ *  @param {string} context @param {string} refId @param {string} [reason] @returns {Promise<{ok:boolean, reason?:string, dup?:boolean}>} */
+export async function reportContent(context, refId, reason = '') {
+	const { data, error } = await supabase.rpc('report_content', {
+		p_context: context,
+		p_ref_id: refId,
+		p_reason: reason
+	});
+	if (error || !data) {
+		if (error) console.error('❌ report_content:', error);
+		return { ok: false };
+	}
+	return data;
+}
+/** Block a user by username (also severs friendship + pending requests). @param {string} username @returns {Promise<{ok:boolean, reason?:string}>} */
+export async function blockUser(username) {
+	const { data, error } = await supabase.rpc('block_user', { p_username: username });
+	if (error || !data) {
+		if (error) console.error('❌ block_user:', error);
+		return { ok: false };
+	}
+	return data;
+}
+/** Unblock a user by username. @param {string} username @returns {Promise<{ok:boolean, reason?:string}>} */
+export async function unblockUser(username) {
+	const { data, error } = await supabase.rpc('unblock_user', { p_username: username });
+	if (error || !data) {
+		if (error) console.error('❌ unblock_user:', error);
+		return { ok: false };
+	}
+	return data;
+}
+/** List accounts you've blocked. @returns {Promise<any[]>} */
+export async function listBlocked() {
+	const { data, error } = await supabase.rpc('list_blocked');
+	if (error) {
+		console.error('❌ list_blocked:', error);
+		return [];
+	}
+	return Array.isArray(data) ? data : [];
+}
+/** Whether you're currently blocking a username. @param {string} username @returns {Promise<boolean>} */
+export async function isBlocking(username) {
+	const { data, error } = await supabase.rpc('is_blocking', { p_username: username });
+	if (error) {
+		console.error('❌ is_blocking:', error);
+		return false;
+	}
+	return data === true;
+}
+
 /* ===== Notifications ===== */
 /** @returns {Promise<{items:any[], unread_count:number}>} */
 export async function getNotifications() {
