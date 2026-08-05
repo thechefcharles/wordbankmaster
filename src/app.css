@@ -73,6 +73,31 @@ body {
 	text-rendering: optimizeLegibility;
 }
 
+/* --- App frame -------------------------------------------------------------
+   Clamps the whole app to a centered phone-width column on WIDE viewports only
+   — insurance against the "stretched/cropped on iPad" App Review 4.0 rejection.
+   On phones it is display:contents (literally no box, zero effect). It engages
+   only at >=500px, a width no phone — and not the iPhone-only iPad build, which
+   renders at ~390px letterboxed — ever reaches. The `transform` turns the frame
+   into the containing block for position:fixed descendants (keyboard, HUD, and
+   in-page modals) so they align to this column instead of the full viewport and
+   never stretch. Global overlays (Toaster/PinConfirm/ConfirmModal) sit OUTSIDE
+   the frame and stay viewport-centered; the body glow/grain also stay full-screen
+   (they live on <body>), so the letterbox area keeps the branded background. */
+.app-frame {
+	display: contents;
+}
+@media (min-width: 500px) {
+	.app-frame {
+		display: block;
+		max-width: 480px;
+		margin-inline: auto;
+		min-height: 100dvh;
+		position: relative;
+		transform: translateZ(0);
+	}
+}
+
 /* Gold spotlight glow (warm light pooling from the top, behind the hero) */
 body::before {
 	content: '';

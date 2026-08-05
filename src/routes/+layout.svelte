@@ -64,7 +64,14 @@
 	});
 </script>
 
-{@render children()}
+<!-- app-frame: on phones this is display:contents (no effect). At >=500px (a wide
+	 tablet/desktop viewport — never a phone, never the iPhone-only iPad build which
+	 renders at ~390px) it clamps everything to a centered phone-width column and
+	 becomes the containing block for position:fixed descendants (keyboard, HUD),
+	 so the app never stretches or floats sparsely. Insurance for App Review 4.0. -->
+<div class="app-frame">
+	{@render children()}
+</div>
 <Toaster />
 <PinConfirm />
 <ConfirmModal />
