@@ -95,6 +95,14 @@ body {
 		min-height: 100dvh;
 		position: relative;
 		transform: translateZ(0);
+		/* Frame the column so on iPad it reads as an intentional app surface set
+		   into the branded field — not a cropped/stretched phone layout. Hairline
+		   side edges + a soft outer vignette separate the column from the glow that
+		   pools around it (body::before/::after stay full-screen behind everything). */
+		border-inline: 1px solid rgba(255, 255, 255, 0.07);
+		box-shadow:
+			0 0 0 1px rgba(255, 255, 255, 0.03),
+			0 24px 90px 12px rgba(0, 0, 0, 0.5);
 	}
 }
 
